@@ -1,4 +1,7 @@
-import type { BinCondition, BinRuleGroup } from "../interfaces/sort-bins.interface";
+import type {
+  BinCondition,
+  BinRuleGroup,
+} from "../interfaces/sort-bins.interface";
 import { FieldMeta } from "../interfaces/sort-bins.interface";
 
 export const BIN_COUNT = 7;
@@ -12,6 +15,7 @@ export const FIELD_DEFINITIONS: FieldMeta[] = [
     field: "rarity",
     label: "Rarity",
     type: "enum",
+    path: "rarity",
     operators: [
       { value: "in", label: "is any of" },
       { value: "not_in", label: "is none of" },
@@ -31,6 +35,7 @@ export const FIELD_DEFINITIONS: FieldMeta[] = [
     field: "color_identity",
     label: "Color Identity",
     type: "set",
+    path: "color_identity",
     operators: [
       { value: "contains_any", label: "contains any of" },
       { value: "contains_all", label: "contains all of" },
@@ -49,6 +54,7 @@ export const FIELD_DEFINITIONS: FieldMeta[] = [
     field: "type_line",
     label: "Type Line",
     type: "string",
+    path: "type_line",
     operators: [
       { value: "contains", label: "contains" },
       { value: "not_contains", label: "does not contain" },
@@ -60,6 +66,7 @@ export const FIELD_DEFINITIONS: FieldMeta[] = [
     field: "set",
     label: "Set Code",
     type: "string",
+    path: "set",
     operators: [
       { value: "equals", label: "equals" },
       { value: "not_equals", label: "does not equal" },
@@ -71,6 +78,7 @@ export const FIELD_DEFINITIONS: FieldMeta[] = [
     field: "price_usd",
     label: "Price (USD)",
     type: "numeric",
+    path: "prices.usd",
     operators: [
       { value: "gt", label: "greater than" },
       { value: "gte", label: "greater than or equal" },
@@ -83,6 +91,7 @@ export const FIELD_DEFINITIONS: FieldMeta[] = [
     field: "cmc",
     label: "Mana Value",
     type: "numeric",
+    path: "cmc",
     operators: [
       { value: "equals", label: "equals" },
       { value: "gt", label: "greater than" },
@@ -95,6 +104,19 @@ export const FIELD_DEFINITIONS: FieldMeta[] = [
     field: "name",
     label: "Name",
     type: "string",
+    path: "name",
+    operators: [
+      { value: "contains", label: "contains" },
+      { value: "not_contains", label: "does not contain" },
+      { value: "equals", label: "equals" },
+      { value: "not_equals", label: "does not equal" },
+    ],
+  },
+  {
+    field: "description",
+    label: "Description",
+    type: "string",
+    path: "oracle_text",
     operators: [
       { value: "contains", label: "contains" },
       { value: "not_contains", label: "does not contain" },

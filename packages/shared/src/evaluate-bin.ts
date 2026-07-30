@@ -1,38 +1,45 @@
-import type { ScryfallCard } from "./interfaces/scryfall.interface";
+import { FIELD_DEFINITIONS } from "./constants/sort-bins.constant";
 import type {
   BinCondition,
   BinConfig,
   BinRuleGroup,
+  FieldMeta,
 } from "./interfaces/sort-bins.interface";
 import { isRuleGroup } from "./interfaces/sort-bins.interface";
 
+export type SourceCard = Record<string, unknown>;
+
+function getByPath(card: SourceCard, path: string): unknown {
+  return path.split(".").reduce<unknown>((value, key) => {
+    if (value && typeof value === "object" && key in value) {
+      return (value as Record<string, unknown>)[key];
+    }
+    return undefined;
+  }, card);
+}
+
 function getCardValue(
-  card: ScryfallCard,
+  card: SourceCard,
   field: BinCondition["field"],
+  fieldDefinitions: FieldMeta[],
 ): string | number | string[] {
-  switch (field) {
-    case "rarity":
-      return card.rarity;
-    case "color_identity":
-      return card.color_identity;
-    case "type_line":
-      return card.type_line;
-    case "set":
-      return card.set;
-    case "price_usd":
-      return parseFloat(card.prices.usd ?? "0");
-    case "cmc":
-      return card.cmc;
-    case "name":
-      return card.name;
+  const meta = fieldDefinitions.find((f) => f.field === field);
+  if (!meta) return "";
+
+  const raw = getByPath(card, meta.path);
+  if (meta.type === "numeric") {
+    return typeof raw === "number" ? raw : parseFloat(String(raw ?? "0")) || 0;
   }
+  if (Array.isArray(raw)) return raw as string[];
+  return raw === undefined || raw === null ? "" : (raw as string | number);
 }
 
 function evaluateCondition(
-  card: ScryfallCard,
+  card: SourceCard,
   condition: BinCondition,
+  fieldDefinitions: FieldMeta[],
 ): boolean {
-  const cardValue = getCardValue(card, condition.field);
+  const cardValue = getCardValue(card, condition.field, fieldDefinitions);
   const { operator, value } = condition;
 
   switch (operator) {
@@ -110,13 +117,17 @@ function evaluateCondition(
   }
 }
 
-function evaluateRuleGroup(card: ScryfallCard, group: BinRuleGroup): boolean {
+function evaluateRuleGroup(
+  card: SourceCard,
+  group: BinRuleGroup,
+  fieldDefinitions: FieldMeta[],
+): boolean {
   if (group.conditions.length === 0) return false;
 
   const results = group.conditions.map((item) =>
     isRuleGroup(item)
-      ? evaluateRuleGroup(card, item)
-      : evaluateCondition(card, item),
+      ? evaluateRuleGroup(card, item, fieldDefinitions)
+      : evaluateCondition(card, item, fieldDefinitions),
   );
 
   return group.combinator === "and"
@@ -129,10 +140,10 @@ export function getCatchAllBin(configs: BinConfig[]): BinConfig | undefined {
   return configs.find((c) => c.isCatchAll);
 }
 
-/** Returns the first matching bin config for a card, falling back to the catch-all bin if none match. */
 export function evaluateCardBin(
-  card: ScryfallCard,
+  card: SourceCard,
   configs: BinConfig[],
+  fieldDefinitions: FieldMeta[] = FIELD_DEFINITIONS,
 ): BinConfig | undefined {
   let catchAll: BinConfig | undefined;
 
@@ -143,7 +154,7 @@ export function evaluateCardBin(
     }
     if (
       config.rules.conditions.length > 0 &&
-      evaluateRuleGroup(card, config.rules)
+      evaluateRuleGroup(card, config.rules, fieldDefinitions)
     ) {
       return config;
     }

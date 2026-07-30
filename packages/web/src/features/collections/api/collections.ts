@@ -12,8 +12,11 @@ export const collectionsQueryOptions = queryOptions({
   staleTime: Infinity,
 });
 
-export async function createCollection(name: string): Promise<Result<Collection[]>> {
-  return apiPost<Result<Collection[]>>("/api/collections", { name });
+export async function createCollection(
+  name: string,
+  gameGuid: string,
+): Promise<Result<Collection[]>> {
+  return apiPost<Result<Collection[]>>("/api/collections", { name, gameGuid });
 }
 
 export async function renameCollection(guid: string, name: string): Promise<Result<Collection[]>> {

@@ -4,6 +4,7 @@ import {
   BinConfig,
   BinRuleGroup,
   BinSet,
+  FIELD_DEFINITIONS,
 } from "@magic-vault/shared";
 
 import {
@@ -16,6 +17,7 @@ import {
   saveBinConfig as saveBinConfigAction,
   saveSet as saveSetAction,
 } from "@/features/bins/api/sort-bins";
+import { useCollections } from "@/features/collections/api/use-collections";
 import { useOrg } from "@/features/companies/api/use-organization";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -53,9 +55,13 @@ export function BinConfigsProvider({
 }) {
   const queryClient = useQueryClient();
   const { activeOrg } = useOrg();
+  const { activeCollection } = useCollections();
   const [selectedBin, setSelectedBin] = useState(1);
 
   const { data: sets = [] } = useQuery({ ...binsQueryOptions, enabled: !!activeOrg });
+
+  const fieldDefinitions =
+    activeCollection?.game?.fieldDefinitions ?? FIELD_DEFINITIONS;
 
   const selectedSet = useMemo(
     () => sets.find((s) => s.isActive) ?? sets[0],
@@ -271,6 +277,7 @@ export function BinConfigsProvider({
       value={{
         configs,
         sets,
+        fieldDefinitions,
         isPending,
         isActivating,
         isPresetMutating,

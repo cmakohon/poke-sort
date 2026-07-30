@@ -23,6 +23,7 @@ import {
 import { useCollectionLocks } from "@/features/collections/api/use-collection-locks";
 import { useCollections } from "@/features/collections/api/use-collections";
 import { useOrg } from "@/features/companies/api/use-organization";
+import { gamesQueryOptions } from "@/features/games/api/games";
 import {
   createCollectionSchema,
   type CreateCollectionFormValues,
@@ -56,6 +57,8 @@ export function CollectionSwitcher() {
     ...collectionsQueryOptions,
     enabled: !!activeOrg,
   });
+  const { data: games = [] } = useQuery(gamesQueryOptions);
+  const activeGames = games.filter((g) => g.isActive);
   const { locks, currentUserId, isLockedByOther } = useCollectionLocks();
   const [createOpen, setCreateOpen] = useState(false);
   const [releasing, setReleasing] = useState(false);
@@ -81,7 +84,7 @@ export function CollectionSwitcher() {
 
   const form = useForm<CreateCollectionFormValues>({
     resolver: zodResolver(createCollectionSchema),
-    defaultValues: { name: "" },
+    defaultValues: { name: "", gameGuid: "" },
     mode: "onChange",
   });
 
@@ -97,7 +100,7 @@ export function CollectionSwitcher() {
         });
         return;
       }
-      await createCollection(values.name);
+      await createCollection(values.name, values.gameGuid);
       form.reset();
       setCreateOpen(false);
     },
@@ -107,9 +110,13 @@ export function CollectionSwitcher() {
   const handleCreateDialogChange = useCallback(
     (open: boolean) => {
       setCreateOpen(open);
-      if (!open) form.reset();
+      if (open) {
+        form.reset({ name: "", gameGuid: activeGames[0]?.guid ?? "" });
+      } else {
+        form.reset();
+      }
     },
-    [form],
+    [form, activeGames],
   );
 
   const handleShare = useCallback(() => {
@@ -253,7 +260,16 @@ export function CollectionSwitcher() {
           title="New Collection"
           description="Create a new collection to scan cards into."
           trigger={
-            <Button variant="outline" size="icon" disabled={isMutating}>
+            <Button
+              variant="outline"
+              size="icon"
+              disabled={isMutating || activeGames.length === 0}
+              title={
+                activeGames.length === 0
+                  ? "Ask an admin to add a game before creating a collection"
+                  : undefined
+              }
+            >
               <IconPlus />
             </Button>
           }
@@ -276,7 +292,7 @@ export function CollectionSwitcher() {
           }
           footerClassName="flex-col-reverse md:flex-row"
         >
-          <form onSubmit={form.handleSubmit(handleCreate)}>
+          <form onSubmit={form.handleSubmit(handleCreate)} className="flex flex-col gap-4">
             <Controller
               name="name"
               control={form.control}
@@ -292,6 +308,30 @@ export function CollectionSwitcher() {
                     aria-invalid={fieldState.invalid}
                     autoFocus
                   />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
+                </Field>
+              )}
+            />
+            <Controller
+              name="gameGuid"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid || undefined}>
+                  <FieldLabel htmlFor="collection-game">Game</FieldLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger id="collection-game">
+                      <SelectValue placeholder="Select a game..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {activeGames.map((game) => (
+                        <SelectItem key={game.guid} value={game.guid}>
+                          {game.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />
                   )}

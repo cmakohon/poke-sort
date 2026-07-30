@@ -1,3 +1,4 @@
+import type { Game } from "./games.interface";
 import type { ScannedCard } from "./scanner.interface";
 
 export interface Collection {
@@ -5,6 +6,7 @@ export interface Collection {
   name: string;
   isActive: boolean;
   cardCount: number;
+  game: Game | null;
   createdAt: Date;
   updatedAt: Date;
 }

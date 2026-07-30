@@ -18,6 +18,7 @@ import {
   startSync,
 } from "@/lib/api/admin";
 import { useOrg } from "@/features/companies/api/use-organization";
+import { GamesManager } from "@/features/games/components/games-manager";
 import type { SyncState } from "@magic-vault/shared";
 import {
   IconChevronLeft,
@@ -336,6 +337,10 @@ export default function AdminPage() {
             </div>
           </div>
         )}
+      </div>
+
+      <div className="mt-4">
+        <GamesManager />
       </div>
 
       <div className="rounded-lg border p-4 flex items-center justify-between mt-4">

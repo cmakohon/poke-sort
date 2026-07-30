@@ -2,28 +2,47 @@ import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { count, desc, eq, sql } from "drizzle-orm";
 import { authQuery, db, type Transaction } from "../db";
-import { collections, collectionCards } from "../db/schema";
+import { collections, collectionCards, games } from "../db/schema";
 import { getUserDisplayName, requireAuth, requireOrg, verifyToken, type AppEnv } from "../middleware/auth";
 import { emitToSession, getSessionViewers, sessionListenerCount, subscribeSession } from "../lib/session-stream";
 import { acquireLock, getLocksForGuids, releaseLock, subscribeOrgLocks } from "../lib/scan-lock";
-import type { Collection, ScannedCard, ScryfallCardWithDistance } from "@magic-vault/shared";
+import type { Collection, FieldMeta, ScannedCard, ScryfallCardWithDistance } from "@magic-vault/shared";
 
 const router = new Hono<AppEnv>();
 
 function toCollection(row: {
-  id: number;
   guid: string | null;
   name: string;
   isActive: boolean;
   cardCount: string | number;
   createdAt: Date;
   updatedAt: Date;
+  gameGuid: string | null;
+  gameKey: string | null;
+  gameName: string | null;
+  gameDataSourceUrl: string | null;
+  gameIsActive: boolean | null;
+  gameFieldDefinitions: unknown;
+  gameCreatedAt: Date | null;
+  gameUpdatedAt: Date | null;
 }): Collection {
   return {
     guid: row.guid!,
     name: row.name,
     isActive: row.isActive,
     cardCount: Number(row.cardCount),
+    game: row.gameGuid
+      ? {
+          guid: row.gameGuid,
+          key: row.gameKey!,
+          name: row.gameName!,
+          dataSourceUrl: row.gameDataSourceUrl!,
+          isActive: row.gameIsActive!,
+          fieldDefinitions: row.gameFieldDefinitions as FieldMeta[],
+          createdAt: row.gameCreatedAt!,
+          updatedAt: row.gameUpdatedAt!,
+        }
+      : null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -62,9 +81,18 @@ async function _loadCollections(tx: Transaction): Promise<{ success: true; data:
       cardCount: count(collectionCards.id),
       createdAt: collections.createdAt,
       updatedAt: collections.updatedAt,
+      gameGuid: games.guid,
+      gameKey: games.key,
+      gameName: games.name,
+      gameDataSourceUrl: games.dataSourceUrl,
+      gameIsActive: games.isActive,
+      gameFieldDefinitions: games.fieldDefinitions,
+      gameCreatedAt: games.createdAt,
+      gameUpdatedAt: games.updatedAt,
     })
     .from(collections)
     .leftJoin(collectionCards, eq(collectionCards.collectionId, collections.id))
+    .leftJoin(games, eq(games.id, collections.gameId))
     .groupBy(
       collections.id,
       collections.guid,
@@ -72,6 +100,7 @@ async function _loadCollections(tx: Transaction): Promise<{ success: true; data:
       collections.isActive,
       collections.createdAt,
       collections.updatedAt,
+      games.id,
     )
     .orderBy(desc(collections.updatedAt));
 
@@ -185,15 +214,24 @@ router.get("/:guid/viewers", requireAuth, requireOrg, async (c) => {
 // POST /collections — create and activate
 router.post("/", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
-  const { name } = await c.req.json<{ name: string }>();
+  const { name, gameGuid } = await c.req.json<{ name: string; gameGuid?: string }>();
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
+      let gameId: number | null = null;
+      if (gameGuid) {
+        const game = await tx.query.games.findFirst({
+          where: (t, { eq }) => eq(t.guid, gameGuid),
+          columns: { id: true },
+        });
+        gameId = game?.id ?? null;
+      }
+
       await tx
         .update(collections)
         .set({ isActive: false })
         .where(eq(collections.isActive, true));
 
-      await tx.insert(collections).values({ name, isActive: true, orgId });
+      await tx.insert(collections).values({ name, isActive: true, orgId, gameId });
 
       return _loadCollections(tx);
     });
@@ -564,9 +602,15 @@ router.get("/:guid/stream", async (c) => {
       const initial = await authQuery(jwtClaims, async (tx) => {
         const collection = await tx.query.collections.findFirst({
           where: (t, { eq }) => eq(t.guid, guid),
-          columns: { id: true, guid: true, name: true, isActive: true, createdAt: true, updatedAt: true },
+          columns: { id: true, guid: true, name: true, isActive: true, gameId: true, createdAt: true, updatedAt: true },
         });
         if (!collection) return null;
+
+        const game = collection.gameId
+          ? await tx.query.games.findFirst({
+              where: (t, { eq }) => eq(t.id, collection.gameId!),
+            })
+          : null;
 
         const cardRows = await tx
           .select({
@@ -589,6 +633,18 @@ router.get("/:guid/stream", async (c) => {
             name: collection.name,
             isActive: collection.isActive,
             cardCount: cardRows.length,
+            game: game
+              ? {
+                  guid: game.guid!,
+                  key: game.key,
+                  name: game.name,
+                  dataSourceUrl: game.dataSourceUrl,
+                  isActive: game.isActive,
+                  fieldDefinitions: game.fieldDefinitions as FieldMeta[],
+                  createdAt: game.createdAt,
+                  updatedAt: game.updatedAt,
+                }
+              : null,
             createdAt: collection.createdAt,
             updatedAt: collection.updatedAt,
           } satisfies Collection,

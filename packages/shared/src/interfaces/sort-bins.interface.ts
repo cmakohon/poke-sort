@@ -1,11 +1,4 @@
-export type ConditionField =
-  | "rarity"
-  | "color_identity"
-  | "type_line"
-  | "set"
-  | "price_usd"
-  | "cmc"
-  | "name";
+export type ConditionField = string;
 
 export type ConditionOperator =
   | "equals"
@@ -41,6 +34,7 @@ export interface FieldMeta {
   field: ConditionField;
   label: string;
   type: FieldType;
+  path: string;
   operators: { value: ConditionOperator; label: string }[];
   options?: { value: string; label: string }[];
 }

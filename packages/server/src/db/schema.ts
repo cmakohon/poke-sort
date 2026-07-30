@@ -55,6 +55,30 @@ export const cardImageVectors = pgTable(
   ],
 ).enableRLS();
 
+export const games = pgTable(
+  "games",
+  {
+    id: serial().primaryKey(),
+    guid: uuid("guid").defaultRandom(),
+    key: text("key").notNull(),
+    name: text("name").notNull(),
+    dataSourceUrl: text("data_source_url").notNull(),
+    fieldDefinitions: jsonb("field_definitions").notNull(),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    unique("games_key_idx").on(table.key),
+    unique("games_guid_idx").on(table.guid),
+    crudPolicy({
+      role: authenticatedRole,
+      read: true,
+      modify: false,
+    }),
+  ],
+).enableRLS();
+
 // ─── Org-scoped data tables ───────────────────────────────────────────────────
 
 export const binSets = pgTable(
@@ -161,6 +185,7 @@ export const collections = pgTable(
     guid: uuid("guid").defaultRandom(),
     name: text("name").notNull(),
     isActive: boolean("is_active").notNull().default(false),
+    gameId: integer("game_id").references(() => games.id),
     orgId: text("org_id").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
