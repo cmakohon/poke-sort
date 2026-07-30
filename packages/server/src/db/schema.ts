@@ -89,6 +89,7 @@ export const binSets = pgTable(
     guid: uuid("guid").defaultRandom(),
     name: text("name").notNull(),
     isActive: boolean("is_active").notNull().default(false),
+    gameId: integer("game_id").references(() => games.id),
     orgId: text("org_id").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -343,8 +344,12 @@ export const feederConfigAudit = pgTable(
   ],
 ).enableRLS();
 
-export const binSetRelations = relations(binSets, ({ many }) => ({
+export const binSetRelations = relations(binSets, ({ many, one }) => ({
   bins: many(bins),
+  game: one(games, {
+    fields: [binSets.gameId],
+    references: [games.id],
+  }),
 }));
 
 export const binRelations = relations(bins, ({ one }) => ({

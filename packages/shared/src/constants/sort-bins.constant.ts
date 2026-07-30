@@ -170,3 +170,15 @@ export function createDefaultColorBins(): DefaultBinInit[] {
     },
   ];
 }
+
+export function createDefaultCatchAllOnlyBins(): DefaultBinInit[] {
+  return Array.from({ length: BIN_COUNT }, (_, i) => ({
+    binNumber: i + 1,
+    isCatchAll: i === BIN_COUNT - 1,
+    rules: {
+      id: crypto.randomUUID(),
+      combinator: "and" as const,
+      conditions: [],
+    } satisfies BinRuleGroup,
+  }));
+}

@@ -1,8 +1,15 @@
 import { Hono } from "hono";
 import { authQuery } from "../db";
 import { binSetAudit, bins, binSets } from "../db/schema";
-import { BIN_COUNT, type BinConfig, type BinRuleGroup, type BinSet, type DefaultBinInit } from "@magic-vault/shared";
-import { eq } from "drizzle-orm";
+import {
+  BIN_COUNT,
+  type BinConfig,
+  type BinRuleGroup,
+  type BinSet,
+  type DefaultBinInit,
+  type FieldMeta,
+} from "@magic-vault/shared";
+import { and, eq, isNull } from "drizzle-orm";
 import { requireAuth, requireOrg, type AppEnv } from "../middleware/auth";
 import type { Transaction } from "../db";
 
@@ -23,6 +30,16 @@ function toBinSet(row: {
   createdAt: Date;
   updatedAt: Date;
   bins: { guid: string | null; binNumber: number; rules: unknown; isCatchAll: boolean }[];
+  game: {
+    guid: string | null;
+    key: string;
+    name: string;
+    dataSourceUrl: string;
+    isActive: boolean;
+    fieldDefinitions: unknown;
+    createdAt: Date;
+    updatedAt: Date;
+  } | null;
 }): BinSet {
   return {
     guid: row.guid!,
@@ -34,6 +51,18 @@ function toBinSet(row: {
       rules: bin.rules as BinRuleGroup,
       isCatchAll: bin.isCatchAll,
     })),
+    game: row.game
+      ? {
+          guid: row.game.guid!,
+          key: row.game.key,
+          name: row.game.name,
+          dataSourceUrl: row.game.dataSourceUrl,
+          isActive: row.game.isActive,
+          fieldDefinitions: row.game.fieldDefinitions as FieldMeta[],
+          createdAt: row.game.createdAt,
+          updatedAt: row.game.updatedAt,
+        }
+      : null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -41,7 +70,10 @@ function toBinSet(row: {
 
 const binSetQuery = {
   columns: { guid: true, name: true, isActive: true, createdAt: true, updatedAt: true },
-  with: { bins: { columns: { guid: true, binNumber: true, rules: true, isCatchAll: true } } },
+  with: {
+    bins: { columns: { guid: true, binNumber: true, rules: true, isCatchAll: true } },
+    game: true,
+  },
 } as const;
 
 async function _loadSets(tx: Transaction) {
@@ -66,6 +98,17 @@ async function _snapshotBinSet(tx: Transaction, binSetId: number, binSetGuid: st
   await tx.insert(binSetAudit).values({ binSetGuid, snapshot, orgId });
 }
 
+// Resolves a game guid (from the client) to its internal id, or null if
+// omitted - bin sets with no game are legacy/game-agnostic sets.
+async function _resolveGameId(tx: Transaction, gameGuid: string | undefined): Promise<number | null> {
+  if (!gameGuid) return null;
+  const game = await tx.query.games.findFirst({
+    where: (t, { eq }) => eq(t.guid, gameGuid),
+    columns: { id: true },
+  });
+  return game?.id ?? null;
+}
+
 // GET /bins
 router.get("/", requireAuth, requireOrg, async (c) => {
   try {
@@ -84,10 +127,20 @@ router.put("/:guid/active", requireAuth, requireOrg, async (c) => {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
       const target = await tx.query.binSets.findFirst({
         where: (binSets, { eq }) => eq(binSets.guid, guid),
-        columns: { id: true },
+        columns: { id: true, gameId: true },
       });
       if (!target) return { message: "Set not found.", success: false };
-      await tx.update(binSets).set({ isActive: false }).where(eq(binSets.isActive, true));
+
+      // Only one active set per game (or per "no game") - activating a
+      // Gundam set shouldn't deactivate an already-active Magic set.
+      await tx
+        .update(binSets)
+        .set({ isActive: false })
+        .where(
+          target.gameId === null
+            ? and(eq(binSets.isActive, true), isNull(binSets.gameId))
+            : and(eq(binSets.isActive, true), eq(binSets.gameId, target.gameId)),
+        );
       await tx.update(binSets).set({ isActive: true }).where(eq(binSets.id, target.id));
       return _loadSets(tx);
     });
@@ -101,11 +154,28 @@ router.put("/:guid/active", requireAuth, requireOrg, async (c) => {
 // POST /bins
 router.post("/", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
-  const { name, initialBins } = await c.req.json<{ name: string; initialBins?: DefaultBinInit[] }>();
+  const { name, initialBins, gameGuid } = await c.req.json<{
+    name: string;
+    initialBins?: DefaultBinInit[];
+    gameGuid?: string;
+  }>();
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
-      await tx.update(binSets).set({ isActive: false }).where(eq(binSets.isActive, true));
-      const [newBinSet] = await tx.insert(binSets).values({ name, isActive: true, orgId }).returning({ id: binSets.id });
+      const gameId = await _resolveGameId(tx, gameGuid);
+
+      await tx
+        .update(binSets)
+        .set({ isActive: false })
+        .where(
+          gameId === null
+            ? and(eq(binSets.isActive, true), isNull(binSets.gameId))
+            : and(eq(binSets.isActive, true), eq(binSets.gameId, gameId)),
+        );
+
+      const [newBinSet] = await tx
+        .insert(binSets)
+        .values({ name, isActive: true, gameId, orgId })
+        .returning({ id: binSets.id });
       const binsToInsert = Array.isArray(initialBins) ? initialBins : Array.from({ length: BIN_COUNT }, (_, i) => ({
         binNumber: i + 1,
         rules: emptyRules(),
@@ -132,16 +202,24 @@ router.post("/", requireAuth, requireOrg, async (c) => {
 // POST /bins/copies
 router.post("/copies", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
-  const { name } = await c.req.json<{ name: string }>();
+  const { name, gameGuid } = await c.req.json<{ name: string; gameGuid?: string }>();
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
+      const gameId = await _resolveGameId(tx, gameGuid);
+
       const active = await tx.query.binSets.findFirst({
-        where: (binSets, { eq }) => eq(binSets.isActive, true),
+        where: (binSets, { eq, and, isNull }) =>
+          gameId === null
+            ? and(eq(binSets.isActive, true), isNull(binSets.gameId))
+            : and(eq(binSets.isActive, true), eq(binSets.gameId, gameId)),
         columns: { id: true },
         with: { bins: { columns: { binNumber: true, rules: true, isCatchAll: true } } },
       });
       const activeBins = active?.bins ?? [];
-      const [newBinSet] = await tx.insert(binSets).values({ name, isActive: false, orgId }).returning({ id: binSets.id });
+      const [newBinSet] = await tx
+        .insert(binSets)
+        .values({ name, isActive: false, gameId, orgId })
+        .returning({ id: binSets.id });
       if (activeBins.length > 0) {
         await tx.insert(bins).values(
           activeBins.map((bin) => ({
@@ -162,15 +240,20 @@ router.post("/copies", requireAuth, requireOrg, async (c) => {
   }
 });
 
-// PUT /bins/bins/:binNumber
+// PUT /bins/bins/:binNumber?gameGuid=
 router.put("/bins/:binNumber", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
   const binNumber = parseInt(c.req.param("binNumber"));
+  const gameGuid = c.req.query("gameGuid");
   const { rules, isCatchAll } = await c.req.json<{ rules: BinRuleGroup; isCatchAll?: boolean }>();
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
+      const gameId = await _resolveGameId(tx, gameGuid);
       const activeBinSet = await tx.query.binSets.findFirst({
-        where: (binSets, { eq }) => eq(binSets.isActive, true),
+        where: (binSets, { eq, and, isNull }) =>
+          gameId === null
+            ? and(eq(binSets.isActive, true), isNull(binSets.gameId))
+            : and(eq(binSets.isActive, true), eq(binSets.gameId, gameId)),
         columns: { id: true, guid: true },
         with: { bins: { columns: { id: true, binNumber: true } } },
       });
@@ -204,13 +287,18 @@ router.put("/bins/:binNumber", requireAuth, requireOrg, async (c) => {
   }
 });
 
-// DELETE /bins/bins/:binNumber
+// DELETE /bins/bins/:binNumber?gameGuid=
 router.delete("/bins/:binNumber", requireAuth, requireOrg, async (c) => {
   const binNumber = parseInt(c.req.param("binNumber"));
+  const gameGuid = c.req.query("gameGuid");
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
+      const gameId = await _resolveGameId(tx, gameGuid);
       const activeBinSet = await tx.query.binSets.findFirst({
-        where: (binSets, { eq }) => eq(binSets.isActive, true),
+        where: (binSets, { eq, and, isNull }) =>
+          gameId === null
+            ? and(eq(binSets.isActive, true), isNull(binSets.gameId))
+            : and(eq(binSets.isActive, true), eq(binSets.gameId, gameId)),
         columns: { id: true },
         with: { bins: { columns: { id: true, binNumber: true } } },
       });

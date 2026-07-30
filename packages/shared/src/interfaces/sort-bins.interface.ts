@@ -1,3 +1,5 @@
+import type { Game } from "./games.interface";
+
 export type ConditionField = string;
 
 export type ConditionOperator =
@@ -57,6 +59,7 @@ export interface BinSet {
   name: string;
   isActive: boolean;
   bins: BinConfig[];
+  game: Game | null;
   createdAt: Date;
   updatedAt: Date;
 }

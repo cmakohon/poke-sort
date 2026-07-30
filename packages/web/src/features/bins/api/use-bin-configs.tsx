@@ -46,6 +46,10 @@ function configsFromSet(set: BinSet | undefined): BinConfig[] {
   return filled;
 }
 
+function matchesGame(set: BinSet, gameGuid: string | undefined): boolean {
+  return (set.game?.guid ?? undefined) === gameGuid;
+}
+
 const BinConfigsContext = createContext<BinConfigsContextValue | null>(null);
 
 export function BinConfigsProvider({
@@ -58,10 +62,19 @@ export function BinConfigsProvider({
   const { activeCollection } = useCollections();
   const [selectedBin, setSelectedBin] = useState(1);
 
-  const { data: sets = [] } = useQuery({ ...binsQueryOptions, enabled: !!activeOrg });
+  const { data: allSets = [] } = useQuery({
+    ...binsQueryOptions,
+    enabled: !!activeOrg,
+  });
 
+  const activeGameGuid = activeCollection?.game?.guid;
   const fieldDefinitions =
     activeCollection?.game?.fieldDefinitions ?? FIELD_DEFINITIONS;
+
+  const sets = useMemo(
+    () => allSets.filter((s) => matchesGame(s, activeGameGuid)),
+    [allSets, activeGameGuid],
+  );
 
   const selectedSet = useMemo(
     () => sets.find((s) => s.isActive) ?? sets[0],
@@ -87,7 +100,7 @@ export function BinConfigsProvider({
       const previous = queryClient.getQueryData<BinSet[]>(["bins"]);
       queryClient.setQueryData<BinSet[]>(["bins"], (old = []) =>
         old.map((set) => {
-          if (!set.isActive) return set;
+          if (!set.isActive || !matchesGame(set, activeGameGuid)) return set;
           const idx = set.bins.findIndex((b) => b.binNumber === binNumber);
           const updated: BinConfig = {
             guid: idx >= 0 ? set.bins[idx].guid : crypto.randomUUID(),
@@ -120,7 +133,7 @@ export function BinConfigsProvider({
         const confirmed = result.data;
         queryClient.setQueryData<BinSet[]>(["bins"], (old = []) =>
           old.map((set) =>
-            set.isActive
+            set.isActive && matchesGame(set, activeGameGuid)
               ? {
                   ...set,
                   bins: set.bins.map((b) =>
@@ -135,13 +148,14 @@ export function BinConfigsProvider({
   });
 
   const clearBinMutation = useMutation({
-    mutationFn: clearBinConfigAction,
+    mutationFn: (binNumber: number) =>
+      clearBinConfigAction(binNumber, activeGameGuid),
     onMutate: async (binNumber) => {
       await queryClient.cancelQueries({ queryKey: ["bins"] });
       const previous = queryClient.getQueryData<BinSet[]>(["bins"]);
       queryClient.setQueryData<BinSet[]>(["bins"], (old = []) =>
         old.map((set) =>
-          set.isActive
+          set.isActive && matchesGame(set, activeGameGuid)
             ? {
                 ...set,
                 bins: set.bins.filter((b) => b.binNumber !== binNumber),
@@ -172,7 +186,8 @@ export function BinConfigsProvider({
   });
 
   const createSetMutation = useMutation({
-    mutationFn: (name: string) => createSetAction(name),
+    mutationFn: (name: string) =>
+      createSetAction(name, undefined, activeGameGuid),
     onSuccess: (result) => {
       if (result.success && result.data) {
         setSelectedBin(1);
@@ -183,7 +198,7 @@ export function BinConfigsProvider({
   });
 
   const saveSetMutation = useMutation({
-    mutationFn: saveSetAction,
+    mutationFn: (name: string) => saveSetAction(name, activeGameGuid),
     onSuccess: (result) => {
       if (result.success && result.data) {
         queryClient.setQueryData(["bins"], result.data);
@@ -225,9 +240,14 @@ export function BinConfigsProvider({
 
   const save = useCallback(
     (binNumber: number, rules: BinRuleGroup, isCatchAll?: boolean) => {
-      saveBinMutation.mutate({ binNumber, rules, isCatchAll });
+      saveBinMutation.mutate({
+        binNumber,
+        rules,
+        isCatchAll,
+        gameGuid: activeGameGuid,
+      });
     },
-    [saveBinMutation],
+    [saveBinMutation, activeGameGuid],
   );
 
   const clear = useCallback(
