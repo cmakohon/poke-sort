@@ -7,7 +7,10 @@ import type {
 } from "./interfaces/sort-bins.interface";
 import { isRuleGroup } from "./interfaces/sort-bins.interface";
 
-export type SourceCard = Record<string, unknown>;
+// `object` (not `Record<string, unknown>`) so concrete card interfaces like
+// ScryfallCard - which have no index signature - are assignable without a
+// cast at every call site. getByPath narrows internally as it walks the path.
+export type SourceCard = object;
 
 export function getByPath(card: SourceCard, path: string): unknown {
   return path.split(".").reduce<unknown>((value, key) => {

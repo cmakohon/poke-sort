@@ -158,7 +158,7 @@ export function exportToCsv(
       String(quantity),
       isFoil ? "True" : "False",
       ...fieldDefinitions.map((f) => {
-        const raw = getByPath(card as unknown as Record<string, unknown>, f.path);
+        const raw = getByPath(card, f.path);
         if (Array.isArray(raw)) return csvEscape(raw.join("; "));
         return csvEscape(raw == null ? "" : String(raw));
       }),
