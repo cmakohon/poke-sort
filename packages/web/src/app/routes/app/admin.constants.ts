@@ -2,6 +2,7 @@ import type { SyncState } from "@magic-vault/shared";
 
 export const DEFAULT_SYNC_STATE: SyncState = {
   status: "idle",
+  gameKey: "mtg",
   total: 0,
   processed: 0,
   skipped: 0,

@@ -14,11 +14,12 @@ import { useScannedCards } from "@/features/scanner/api/use-scanned-cards";
 import { useScannerIsland } from "@/features/scanner/api/use-scanner-island";
 import { ScannerControls } from "@/features/scanner/components/scanner-controls";
 import { ScannerDebug } from "@/features/scanner/components/scanner-debug";
+import { computeStats } from "@/features/scanner/lib/compute-stats";
 
 import { IconFolders } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence } from "framer-motion";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 export function CardGrid() {
@@ -58,6 +59,7 @@ export function CardGrid() {
     setSortKey,
     activeFilterCount,
   } = useCardFilterSort(cards, { filters, setFilters });
+  const stats = useMemo(() => computeStats(cards), [cards]);
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -246,6 +248,8 @@ export function CardGrid() {
           watchers={viewers}
           allSelected={allSelected}
           onToggleSelectAll={toggleSelectAll}
+          availableRarities={stats?.rarities}
+          availableColors={stats?.colors}
         />
       </div>
       {filteredAndSorted.length === 0 && (

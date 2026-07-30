@@ -12,12 +12,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
+import { useBinConfigs } from "@/features/bins/api/use-bin-configs";
 import {
   exportToCardKingdom,
+  exportToCsv,
   exportToManabox,
   exportToMoxfield,
   exportToTcgplayer,
 } from "@/features/cards/lib/export-formats";
+import { useCollections } from "@/features/collections/api/use-collections";
 import {
   formatElapsed,
   formatUsd,
@@ -27,14 +30,11 @@ import type { ScannedCard } from "@magic-vault/shared";
 import { IconChevronDown, IconDownload } from "@tabler/icons-react";
 import { useMemo, useState } from "react";
 
-const EXPORT_FORMATS = {
-  manabox: { label: "Manabox", fn: exportToManabox },
-  moxfield: { label: "Moxfield", fn: exportToMoxfield },
-  tcgplayer: { label: "TCGPlayer", fn: exportToTcgplayer },
-  cardkingdom: { label: "Card Kingdom Buylist", fn: exportToCardKingdom },
-} as const;
-
-type ExportFormat = keyof typeof EXPORT_FORMATS;
+interface ExportOption {
+  key: string;
+  label: string;
+  fn: (cards: ScannedCard[], collection: string) => void;
+}
 
 interface SessionSummaryDialogProps {
   open: boolean;
@@ -75,12 +75,52 @@ export function SessionSummaryDialog({
   );
   const stats = useMemo(() => computeStats(cards), [cards]);
   const slug = collectionName.replace(/\s+/g, "-").toLowerCase();
+  const { activeCollection } = useCollections();
+  const { fieldDefinitions } = useBinConfigs();
+
+  const isMtg = !activeCollection?.game || activeCollection.game.key === "mtg";
+  const exportOptions: ExportOption[] = isMtg
+    ? [
+        { key: "manabox", label: "Manabox", fn: exportToManabox },
+        { key: "moxfield", label: "Moxfield", fn: exportToMoxfield },
+        { key: "tcgplayer", label: "TCGPlayer", fn: exportToTcgplayer },
+        {
+          key: "cardkingdom",
+          label: "Card Kingdom Buylist",
+          fn: exportToCardKingdom,
+        },
+      ]
+    : [
+        {
+          key: "csv",
+          label: "CSV",
+          fn: (c, collection) => exportToCsv(c, collection, fieldDefinitions),
+        },
+      ];
 
   const cardsPerHour =
     elapsedMs > 0 ? Math.round((cards.length / elapsedMs) * 3_600_000) : null;
 
-  function handleDownload(format: ExportFormat) {
-    EXPORT_FORMATS[format].fn(exportCards, slug);
+  const summaryCells: { label: string; value: string }[] = [
+    { label: "Total Cards", value: String(cards.length) },
+    { label: "Unique", value: stats ? String(stats.uniqueCount) : "-" },
+  ];
+  if (stats?.hasPricing) {
+    summaryCells.push(
+      { label: "Total Value", value: formatUsd(stats.totalValue) },
+      { label: "Avg Value", value: formatUsd(stats.avgValue) },
+    );
+  }
+  summaryCells.push(
+    { label: "Duration", value: formatElapsed(elapsedMs) },
+    {
+      label: "Cards / hr",
+      value: cardsPerHour != null ? String(cardsPerHour) : "-",
+    },
+  );
+
+  function handleDownload(option: ExportOption) {
+    option.fn(exportCards, slug);
     onMarkDownloaded(exportCards.map((c) => c.scanId));
     onOpenChange(false);
   }
@@ -93,27 +133,14 @@ export function SessionSummaryDialog({
         </DialogHeader>
         <div className="flex flex-col gap-3">
           <div className="rounded-lg border bg-input/20 dark:bg-input/30 divide-y divide-border">
-            <div className="grid grid-cols-3 divide-x divide-border">
-              <StatCell label="Total Cards" value={String(cards.length)} />
-              <StatCell
-                label="Unique"
-                value={stats ? String(stats.uniqueCount) : "-"}
-              />
-              <StatCell
-                label="Total Value"
-                value={stats ? formatUsd(stats.totalValue) : "-"}
-              />
-            </div>
-            <div className="grid grid-cols-3 divide-x divide-border">
-              <StatCell
-                label="Avg Value"
-                value={stats ? formatUsd(stats.avgValue) : "-"}
-              />
-              <StatCell label="Duration" value={formatElapsed(elapsedMs)} />
-              <StatCell
-                label="Cards / hr"
-                value={cardsPerHour != null ? String(cardsPerHour) : "-"}
-              />
+            <div className="grid grid-cols-3 divide-x divide-y divide-border">
+              {summaryCells.map((cell) => (
+                <StatCell
+                  key={cell.label}
+                  label={cell.label}
+                  value={cell.value}
+                />
+              ))}
             </div>
             {stats?.mostValuable && (
               <div className="px-2.5 py-2 flex items-center justify-between gap-2">
@@ -132,29 +159,37 @@ export function SessionSummaryDialog({
             )}
           </div>
           {stats && (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-lg border bg-input/20 dark:bg-input/30 p-2.5">
-                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
-                  By Rarity
-                </p>
-                <div className="flex flex-col gap-1">
-                  {stats.rarities.map((r) => (
-                    <div
-                      key={r.key}
-                      className="flex items-center justify-between text-xs"
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <div
-                          className="size-2 rounded-full shrink-0"
-                          style={{ backgroundColor: `var(--${r.key})` }}
-                        />
-                        <span>{r.label}</span>
+            <div
+              className={
+                stats.rarities.length > 0
+                  ? "grid grid-cols-2 gap-3"
+                  : "grid grid-cols-1 gap-3"
+              }
+            >
+              {stats.rarities.length > 0 && (
+                <div className="rounded-lg border bg-input/20 dark:bg-input/30 p-2.5">
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
+                    By Rarity
+                  </p>
+                  <div className="flex flex-col gap-1">
+                    {stats.rarities.map((r) => (
+                      <div
+                        key={r.key}
+                        className="flex items-center justify-between text-xs"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <div
+                            className="size-2 rounded-full shrink-0"
+                            style={{ backgroundColor: `var(--${r.key})` }}
+                          />
+                          <span>{r.label}</span>
+                        </div>
+                        <span className="text-muted-foreground">{r.count}</span>
                       </div>
-                      <span className="text-muted-foreground">{r.count}</span>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
               <div className="rounded-lg border bg-input/20 dark:bg-input/30 p-2.5">
                 <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
                   Top Sets
@@ -203,12 +238,12 @@ export function SessionSummaryDialog({
                 <IconChevronDown className="size-4" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                {Object.entries(EXPORT_FORMATS).map(([key, { label }]) => (
+                {exportOptions.map((option) => (
                   <DropdownMenuItem
-                    key={key}
-                    onClick={() => handleDownload(key as ExportFormat)}
+                    key={option.key}
+                    onClick={() => handleDownload(option)}
                   >
-                    {label}
+                    {option.label}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>

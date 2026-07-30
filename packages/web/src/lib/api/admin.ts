@@ -5,6 +5,7 @@ import type { SyncState } from "@magic-vault/shared";
 export interface AdminCard {
   id: number;
   scryfallId: string;
+  gameKey: string;
   name: string;
   setCode: string;
   updatedAt: string;
@@ -17,11 +18,23 @@ export interface AdminCardsPage {
   limit: number;
 }
 
-export async function startSync(): Promise<{
+export interface SyncSourceInfo {
+  gameKey: string;
+  label: string;
+}
+
+export async function listSyncSources(): Promise<{
+  success: boolean;
+  data: SyncSourceInfo[];
+}> {
+  return apiGet<{ success: boolean; data: SyncSourceInfo[] }>("/api/admin/sync/sources");
+}
+
+export async function startSync(gameKey: string): Promise<{
   success: boolean;
   data: SyncState;
 }> {
-  return apiPost<{ success: boolean; data: SyncState }>("/api/admin/sync");
+  return apiPost<{ success: boolean; data: SyncState }>("/api/admin/sync", { gameKey });
 }
 
 export async function cancelSync(): Promise<{

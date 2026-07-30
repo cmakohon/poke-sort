@@ -1,6 +1,7 @@
+import { DeleteDialog } from "@/components/delete-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DeleteDialog } from "@/components/delete-dialog";
+import { ButtonGroup } from "@/components/ui/button-group";
 import {
   createGame,
   deleteGame,
@@ -12,7 +13,11 @@ import { IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { GameFormDialog, toFieldDefinitions, type GameFormValues } from "./game-form-dialog";
+import {
+  GameFormDialog,
+  toFieldDefinitions,
+  type GameFormValues,
+} from "./game-form-dialog";
 
 export function GamesManager() {
   const queryClient = useQueryClient();
@@ -60,7 +65,9 @@ export function GamesManager() {
         return;
       }
       setGames(
-        (gamesQuery.data ?? []).map((g) => (g.guid === r.data!.guid ? r.data! : g)),
+        (gamesQuery.data ?? []).map((g) =>
+          g.guid === r.data!.guid ? r.data! : g,
+        ),
       );
       toast.success(`Saved ${r.data.name}`);
     },
@@ -94,8 +101,8 @@ export function GamesManager() {
         <div>
           <p className="text-sm font-medium">Games</p>
           <p className="text-xs text-muted-foreground">
-            Configure which trading card games can be scanned into and how
-            their cards are matched against bin rules.
+            Configure which trading card games can be scanned into and how their
+            cards are matched against bin rules.
           </p>
         </div>
         <Button size="sm" onClick={() => setFormGame(null)}>
@@ -125,22 +132,24 @@ export function GamesManager() {
                 {game.dataSourceUrl}
               </p>
             </div>
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={() => setFormGame(game)}
-              title="Edit"
-            >
-              <IconPencil size={14} />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={() => setDeleteTarget(game)}
-              title="Delete"
-            >
-              <IconTrash size={14} />
-            </Button>
+            <ButtonGroup>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => setFormGame(game)}
+                title="Edit"
+              >
+                <IconPencil size={14} />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => setDeleteTarget(game)}
+                title="Delete"
+              >
+                <IconTrash size={14} />
+              </Button>
+            </ButtonGroup>
           </div>
         ))}
         {gamesQuery.data?.length === 0 && (

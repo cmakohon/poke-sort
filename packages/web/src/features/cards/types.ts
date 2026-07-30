@@ -42,6 +42,8 @@ export interface CardToolbarProps {
   watchers?: { userId: string; displayName: string }[];
   allSelected?: boolean;
   onToggleSelectAll?: () => void;
+  availableRarities?: { key: string; label: string }[];
+  availableColors?: { key: string; label: string; bg: string }[];
 }
 
 export interface ScannedCardItemProps {

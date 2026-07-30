@@ -29,6 +29,8 @@ export function CardToolbar({
   watchers,
   allSelected,
   onToggleSelectAll,
+  availableRarities,
+  availableColors,
 }: CardToolbarProps) {
   const [isClearing, setIsClearing] = useState(false);
   const [clearAllDialogOpen, setClearAllDialogOpen] = useState(false);
@@ -78,6 +80,8 @@ export function CardToolbar({
         activeFilters={activeFilters}
         onFiltersChange={onFiltersChange}
         activeFilterCount={activeFilterCount}
+        availableRarities={availableRarities ?? []}
+        availableColors={availableColors ?? []}
       />
       {onToggleSelectAll && (
         <Button

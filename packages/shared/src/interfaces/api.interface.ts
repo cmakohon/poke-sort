@@ -16,6 +16,7 @@ export type SyncStatus = "idle" | "running" | "completed" | "failed" | "cancelle
 
 export interface SyncState {
   status: SyncStatus;
+  gameKey: string;
   total: number;
   processed: number;
   skipped: number;

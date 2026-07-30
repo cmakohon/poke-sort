@@ -1,9 +1,13 @@
 import type { Result, ScryfallCard } from "@magic-vault/shared";
 import { QUERY_MIN_LENGTH } from "@magic-vault/shared";
-import { SCRYFALL_HEADERS } from "../sync-job";
 import type { CardSearchAdapter } from "../card-search/types";
 
 export const SCRYFALL_DEFAULT_URL = "https://api.scryfall.com/cards";
+
+export const SCRYFALL_HEADERS = {
+  "User-Agent": "MagicVault/1.0",
+  Accept: "application/json",
+};
 
 export async function Search(
   query: string,

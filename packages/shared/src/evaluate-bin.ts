@@ -9,7 +9,7 @@ import { isRuleGroup } from "./interfaces/sort-bins.interface";
 
 export type SourceCard = Record<string, unknown>;
 
-function getByPath(card: SourceCard, path: string): unknown {
+export function getByPath(card: SourceCard, path: string): unknown {
   return path.split(".").reduce<unknown>((value, key) => {
     if (value && typeof value === "object" && key in value) {
       return (value as Record<string, unknown>)[key];

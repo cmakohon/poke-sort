@@ -4,7 +4,7 @@ import type { CardSearchAdapter } from "../card-search/types";
 
 export const GUNDAM_DEFAULT_URL = "https://api.gcgapi.com/v1/cards";
 
-const GUNDAM_HEADERS: Record<string, string> = {
+export const GUNDAM_HEADERS: Record<string, string> = {
   "User-Agent": "MagicVault/1.0",
   Accept: "application/json",
   ...(process.env.GCG_API_KEY ? { "X-API-Key": process.env.GCG_API_KEY } : {}),
@@ -52,9 +52,13 @@ interface GundamCard {
   keyword_effects?: { keyword: string; value: number | null }[];
 }
 
+function proxiedImageUrl(url: string): string {
+  return `/api/cards/image-proxy?url=${encodeURIComponent(url)}`;
+}
+
 function normalizeGundamCard(raw: GundamCard): ScryfallCard {
   const id = String(raw.product_id ?? raw.card_number ?? "");
-  const image = raw.image_url ?? "";
+  const image = raw.image_url ? proxiedImageUrl(raw.image_url) : "";
   const setCode = raw.set_code ?? "";
   const collectorNumber =
     String(raw.card_number ?? id)
