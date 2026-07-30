@@ -1,5 +1,5 @@
-import { Search } from "@/features/cards/api/card";
-import { SearchById } from "@/features/cards/api/scryfall";
+import { searchByImage } from "@/features/cards/api/card";
+import { getCardById } from "@/features/cards/api/card-search";
 import { useCameraContext } from "@/features/scanner/api/use-camera";
 import {
   DETECTION_INTERVAL_MS,
@@ -90,7 +90,7 @@ async function searchCardImage(
   const formData = new FormData();
   formData.append("image", blob, "card.jpg");
 
-  const { data } = await Search(formData);
+  const { data } = await searchByImage(formData);
   if (!data || data.length === 0)
     return { card: null, alternativeMatches: [], debugImageUrl };
 
@@ -99,7 +99,7 @@ async function searchCardImage(
   );
   const resolved = await Promise.all(
     closeMatches.map((m) =>
-      SearchById(m.scryfallId).then((r) =>
+      getCardById(m.scryfallId).then((r) =>
         r.data ? { ...r.data, distance: m.distance } : null,
       ),
     ),

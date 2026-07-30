@@ -3,7 +3,7 @@ import { sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { authQuery } from "../db";
 import { sendDiscordNotification } from "../lib/discord";
-import { Search, SearchById } from "../lib/scryfall/search";
+import { resolveCardSearch } from "../lib/card-search/resolve";
 import { vectorizeImageFromBuffer } from "../lib/vectorize";
 import { requireAuth, type AppEnv } from "../middleware/auth";
 
@@ -80,15 +80,25 @@ router.post("/", requireAuth, async (c) => {
   }
 });
 
-// /scryfall must be registered before /scryfall/:id to avoid path conflicts
-router.get("/scryfall", requireAuth, async (c) => {
+// /search must be registered before /search/:id to avoid path conflicts.
+// Dispatches to whichever game's card API backs the given collection
+// (Scryfall by default) - see lib/card-search/resolve.ts.
+router.get("/search", requireAuth, async (c) => {
   const query = c.req.query("q") ?? "";
-  const result = await Search(query);
+  const { adapter, baseUrl } = await resolveCardSearch(
+    c.get("jwtClaims"),
+    c.req.query("collectionGuid"),
+  );
+  const result = await adapter.search(query, baseUrl);
   return c.json(result);
 });
 
-router.get("/scryfall/:id", requireAuth, async (c) => {
-  const result = await SearchById(c.req.param("id"));
+router.get("/search/:id", requireAuth, async (c) => {
+  const { adapter, baseUrl } = await resolveCardSearch(
+    c.get("jwtClaims"),
+    c.req.query("collectionGuid"),
+  );
+  const result = await adapter.searchById(c.req.param("id"), baseUrl);
   return c.json(result);
 });
 

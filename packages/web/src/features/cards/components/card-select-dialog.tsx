@@ -9,8 +9,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search } from "@/features/cards/api/scryfall";
+import { searchCards } from "@/features/cards/api/card-search";
 import type { CardSelectDialogProps } from "@/features/cards/types";
+import { useCollections } from "@/features/collections/api/use-collections";
 import { useScannedCards } from "@/features/scanner/api/use-scanned-cards";
 import { cn } from "@/lib/utils";
 import {
@@ -74,6 +75,7 @@ export function CardSelectDialog({
   const prevScanIdRef = useRef<string | undefined>(undefined);
 
   const { addCard, correctCard } = useScannedCards();
+  const { activeCollection } = useCollections();
 
   // Rebuild candidates when navigating to a different scan entry
   useEffect(() => {
@@ -108,8 +110,11 @@ export function CardSelectDialog({
   const isQueryReady = debouncedQuery.trim().length >= QUERY_MIN_LENGTH;
 
   const { data: results = [], isFetching: loading } = useQuery({
-    queryKey: ["scryfall", "search", debouncedQuery],
-    queryFn: () => Search(debouncedQuery).then((r) => r.data ?? []),
+    queryKey: ["scryfall", "search", debouncedQuery, activeCollection?.guid],
+    queryFn: () =>
+      searchCards(debouncedQuery, activeCollection?.guid).then(
+        (r) => r.data ?? [],
+      ),
     enabled: isQueryReady,
     staleTime: 60_000,
   });
@@ -394,7 +399,7 @@ export function CardSelectDialog({
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 text-primary hover:underline w-fit"
                       >
-                        View on Scryfall
+                        View source
                         <IconExternalLink className="h-3 w-3" />
                       </a>
                     </div>

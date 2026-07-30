@@ -12,7 +12,8 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { BinLocationDiagram } from "@/features/bins/components/bin-location-diagram";
-import { Search } from "@/features/cards/api/scryfall";
+import { searchCards } from "@/features/cards/api/card-search";
+import { useCollections } from "@/features/collections/api/use-collections";
 import { useScannedCards } from "@/features/scanner/api/use-scanned-cards";
 import { cn } from "@/lib/utils";
 import {
@@ -88,6 +89,7 @@ export function CardDetailPanel({
   const prevScanIdRef = useRef<string | undefined>(undefined);
 
   const { addCard, correctCard, toggleFoil } = useScannedCards();
+  const { activeCollection } = useCollections();
 
   useEffect(() => {
     if (!currentCard) return;
@@ -124,8 +126,11 @@ export function CardDetailPanel({
   const isQueryReady = debouncedQuery.trim().length >= QUERY_MIN_LENGTH;
 
   const { data: results = [], isFetching: loading } = useQuery({
-    queryKey: ["scryfall", "search", debouncedQuery],
-    queryFn: () => Search(debouncedQuery).then((r) => r.data ?? []),
+    queryKey: ["scryfall", "search", debouncedQuery, activeCollection?.guid],
+    queryFn: () =>
+      searchCards(debouncedQuery, activeCollection?.guid).then(
+        (r) => r.data ?? [],
+      ),
     enabled: isQueryReady,
     staleTime: 60_000,
   });
@@ -413,7 +418,7 @@ export function CardDetailPanel({
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1 text-sm text-primary hover:underline w-fit"
                         >
-                          View on Scryfall
+                          View source
                           <IconExternalLink className="h-3.5 w-3.5" />
                         </a>
                       </div>
