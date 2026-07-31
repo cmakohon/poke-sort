@@ -14,7 +14,6 @@ import {
   extractCardImage,
   getDefaultCardContour,
 } from "@/features/scanner/lib/card-detection";
-import { loadOpenCv } from "@/features/scanner/lib/opencv-loader";
 import {
   DEFAULT_SCAN_REGION,
   type CardContour,
@@ -331,10 +330,6 @@ export function useCardScanner({
             }
           }
         }
-
-        // Wait for OpenCV to finish loading before starting detection
-        await loadOpenCv();
-        if (cancelled) return;
 
         updateStatus("paused");
         rafRef.current = requestAnimationFrame(detectionLoop);

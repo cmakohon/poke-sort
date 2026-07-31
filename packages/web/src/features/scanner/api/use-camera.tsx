@@ -1,4 +1,3 @@
-import { loadOpenCv } from "@/features/scanner/lib/opencv-loader";
 import type {
   CameraContextValue,
   CameraStatus,
@@ -126,7 +125,6 @@ export function CameraProvider({ children }: { children: React.ReactNode }) {
   }, [startCamera, stopCamera]);
 
   useEffect(() => {
-    loadOpenCv().catch(() => {}); // preload OpenCV in background
     startCamera();
 
     return () => {

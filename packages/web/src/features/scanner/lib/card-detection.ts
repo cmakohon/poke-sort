@@ -47,7 +47,12 @@ export function getDefaultCardContour(
 }
 
 /**
- * Extract and perspective-warp the detected card region from a canvas.
+ * Extract the card region from a canvas, straightened to a fixed-size
+ * portrait output. `contour` always comes from getDefaultCardContour above,
+ * which only ever produces an axis-aligned rectangle (no skew) - so this is
+ * a plain crop, not a general four-point perspective warp. If a contour
+ * source that can return a skewed quadrilateral is ever reintroduced (e.g.
+ * per-frame edge detection), this needs a real homography again.
  */
 export function extractCardImage(
   sourceCanvas: HTMLCanvasElement,
@@ -56,90 +61,38 @@ export function extractCardImage(
 ): HTMLCanvasElement {
   const outputHeight = Math.round(outputWidth / MTG_ASPECT_RATIO);
 
+  const left = contour.topLeft.x;
+  const top = contour.topLeft.y;
+  const boxW = contour.topRight.x - contour.topLeft.x;
+  const boxH = contour.bottomLeft.y - contour.topLeft.y;
+
   // If the card bounding box is wider than tall, it's landscape in the frame.
-  // Warp to a landscape canvas matching that ratio, then rotate 90° CW to portrait
-  // so extractArtRegion receives a correctly-oriented image and nothing gets squished.
-  const xs = [
-    contour.topLeft.x,
-    contour.topRight.x,
-    contour.bottomRight.x,
-    contour.bottomLeft.x,
-  ];
-  const ys = [
-    contour.topLeft.y,
-    contour.topRight.y,
-    contour.bottomRight.y,
-    contour.bottomLeft.y,
-  ];
-  const isLandscape =
-    Math.max(...xs) - Math.min(...xs) > Math.max(...ys) - Math.min(...ys);
+  // Crop into a landscape canvas matching that ratio, then rotate 90° CW to
+  // portrait so extractArtRegion receives a correctly-oriented image and
+  // nothing gets squished.
+  const isLandscape = boxW > boxH;
+  const cropW = isLandscape ? outputHeight : outputWidth;
+  const cropH = isLandscape ? outputWidth : outputHeight;
 
-  const warpW = isLandscape ? outputHeight : outputWidth;
-  const warpH = isLandscape ? outputWidth : outputHeight;
+  const cropCanvas = document.createElement("canvas");
+  cropCanvas.width = cropW;
+  cropCanvas.height = cropH;
+  const cropCtx = cropCanvas.getContext("2d");
+  if (!cropCtx) throw new Error("Could not get canvas context");
+  cropCtx.drawImage(sourceCanvas, left, top, boxW, boxH, 0, 0, cropW, cropH);
 
-  const ctx = sourceCanvas.getContext("2d");
-  if (!ctx) throw new Error("Could not get canvas context");
+  if (!isLandscape) return cropCanvas;
 
-  const imageData = ctx.getImageData(
-    0,
-    0,
-    sourceCanvas.width,
-    sourceCanvas.height,
-  );
-  const src = cv.matFromImageData(imageData);
-  const dst = new cv.Mat();
-
-  const srcPts = cv.matFromArray(4, 1, cv.CV_32FC2, [
-    contour.topLeft.x,
-    contour.topLeft.y,
-    contour.topRight.x,
-    contour.topRight.y,
-    contour.bottomRight.x,
-    contour.bottomRight.y,
-    contour.bottomLeft.x,
-    contour.bottomLeft.y,
-  ]);
-
-  const dstPts = cv.matFromArray(4, 1, cv.CV_32FC2, [
-    0,
-    0,
-    warpW,
-    0,
-    warpW,
-    warpH,
-    0,
-    warpH,
-  ]);
-
-  let transformMatrix: cv.Mat | null = null;
-
-  try {
-    transformMatrix = cv.getPerspectiveTransform(srcPts, dstPts);
-    cv.warpPerspective(src, dst, transformMatrix, new cv.Size(warpW, warpH));
-
-    const warpCanvas = document.createElement("canvas");
-    warpCanvas.width = warpW;
-    warpCanvas.height = warpH;
-    cv.imshow(warpCanvas, dst);
-
-    if (!isLandscape) return warpCanvas;
-
-    // Rotate the landscape warp result 90° CW to produce a portrait canvas.
-    const outputCanvas = document.createElement("canvas");
-    outputCanvas.width = outputWidth;
-    outputCanvas.height = outputHeight;
-    const outCtx = outputCanvas.getContext("2d")!;
-    outCtx.translate(outputWidth / 2, outputHeight / 2);
-    outCtx.rotate(Math.PI / 2);
-    outCtx.drawImage(warpCanvas, -warpW / 2, -warpH / 2);
-    return outputCanvas;
-  } finally {
-    src.delete();
-    dst.delete();
-    srcPts.delete();
-    dstPts.delete();
-    transformMatrix?.delete();
-  }
+  // Rotate the landscape crop 90° CW to produce a portrait canvas.
+  const outputCanvas = document.createElement("canvas");
+  outputCanvas.width = outputWidth;
+  outputCanvas.height = outputHeight;
+  const outCtx = outputCanvas.getContext("2d");
+  if (!outCtx) throw new Error("Could not get canvas context");
+  outCtx.translate(outputWidth / 2, outputHeight / 2);
+  outCtx.rotate(Math.PI / 2);
+  outCtx.drawImage(cropCanvas, -cropW / 2, -cropH / 2);
+  return outputCanvas;
 }
 
 /**
