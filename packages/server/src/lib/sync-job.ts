@@ -1,13 +1,24 @@
 import type { SyncState, SyncStatus } from "@magic-vault/shared";
+import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { cardImageVectors } from "../db/schema";
+import { gundamSyncSource } from "./gundam/sync";
+import { scryfallSyncSource } from "./scryfall/sync";
+import type { SyncSource } from "./card-search/sync-types";
+import { resolveGameDataSourceUrl } from "./card-search/resolve";
 import { sendDiscordNotification } from "./discord";
 import { vectorizeImageFromBuffer } from "./vectorize";
+
+export const SYNC_SOURCES: Record<string, SyncSource> = {
+  mtg: scryfallSyncSource,
+  gundam: gundamSyncSource,
+};
 
 type SseWriter = (event: string, data: unknown) => void;
 
 let state: SyncState = {
   status: "idle",
+  gameKey: "mtg",
   total: 0,
   processed: 0,
   skipped: 0,
@@ -50,12 +61,16 @@ export function cancelSync(): void {
   }
 }
 
-export function startSync(orgId?: string): void {
+export function startSync(orgId?: string, gameKey: string = "mtg"): void {
   if (state.status === "running") return;
+
+  const source = SYNC_SOURCES[gameKey];
+  if (!source) return;
 
   cancelFlag = false;
   state = {
     status: "running",
+    gameKey,
     total: 0,
     processed: 0,
     skipped: 0,
@@ -65,7 +80,7 @@ export function startSync(orgId?: string): void {
   };
 
   emit("status", getStatus());
-  runSync().catch((err) => {
+  runSync(source).catch((err) => {
     state = { ...state, status: "failed" };
     const msg = err instanceof Error ? err.message : String(err);
     addLog(`Fatal error: ${msg}`);
@@ -85,56 +100,24 @@ async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-type ScryfallBulkCard = {
-  id: string;
-  name: string;
-  set: string;
-  image_uris?: { png?: string; large?: string };
-};
+async function runSync(source: SyncSource): Promise<void> {
+  const baseUrl = await resolveGameDataSourceUrl(source.gameKey, source.defaultUrl);
+  addLog(`Using data source: ${baseUrl}`);
 
-export const SCRYFALL_HEADERS = {
-  "User-Agent": "MagicVault/1.0",
-  Accept: "application/json",
-};
-
-async function runSync(): Promise<void> {
-  addLog("Fetching Scryfall bulk data catalog...");
-
-  const catalogRes = await fetch("https://api.scryfall.com/bulk-data", {
-    headers: SCRYFALL_HEADERS,
-  });
-  if (!catalogRes.ok) {
-    throw new Error(`Scryfall catalog fetch failed: ${catalogRes.status}`);
-  }
-  const catalog = (await catalogRes.json()) as {
-    data: { type: string; download_uri: string }[];
-  };
-
-  const artEntry = catalog.data.find((e) => e.type === "unique_artwork");
-  if (!artEntry)
-    throw new Error("Could not find unique_artwork bulk data entry");
-
-  addLog(`Downloading bulk artwork data...`);
-
-  const bulkRes = await fetch(artEntry.download_uri, {
-    headers: SCRYFALL_HEADERS,
-  });
-  if (!bulkRes.ok)
-    throw new Error(`Bulk data download failed: ${bulkRes.status}`);
-
-  const cards = (await bulkRes.json()) as ScryfallBulkCard[];
+  const cards = await source.fetchCards(baseUrl, addLog);
   state = { ...state, total: cards.length };
   emit("status", getStatus());
 
-  addLog(`Downloaded ${cards.length} cards. Loading existing IDs from DB...`);
+  addLog(`Loading existing ${source.label} cards from DB...`);
 
   const existing = await db
-    .select({ scryfallId: cardImageVectors.scryfallId })
-    .from(cardImageVectors);
-  const existingSet = new Set(existing.map((r) => r.scryfallId));
+    .select({ id: cardImageVectors.scryfallId })
+    .from(cardImageVectors)
+    .where(eq(cardImageVectors.gameKey, source.gameKey));
+  const existingSet = new Set(existing.map((r) => r.id));
 
   addLog(
-    `Found ${existingSet.size} existing cards in DB. Starting vectorization...`,
+    `Found ${existingSet.size} existing ${source.label} cards in DB. Starting vectorization...`,
   );
 
   for (const card of cards) {
@@ -150,8 +133,7 @@ async function runSync(): Promise<void> {
       return;
     }
 
-    const imageUrl = card.image_uris?.png ?? card.image_uris?.large;
-    if (!imageUrl || existingSet.has(card.id)) {
+    if (!card.imageUrl || existingSet.has(card.id)) {
       state = { ...state, skipped: state.skipped + 1 };
       emit("progress", {
         processed: state.processed,
@@ -163,9 +145,8 @@ async function runSync(): Promise<void> {
     }
 
     try {
-      const imageRes = await fetch(imageUrl, { headers: SCRYFALL_HEADERS });
-      if (!imageRes.ok)
-        throw new Error(`Image fetch failed: ${imageRes.status}`);
+      const imageRes = await fetch(card.imageUrl, { headers: source.fetchHeaders });
+      if (!imageRes.ok) throw new Error(`Image fetch failed: ${imageRes.status}`);
       const buffer = Buffer.from(await imageRes.arrayBuffer());
       const embedding = await vectorizeImageFromBuffer(buffer);
 
@@ -173,8 +154,9 @@ async function runSync(): Promise<void> {
         .insert(cardImageVectors)
         .values({
           scryfallId: card.id,
+          gameKey: source.gameKey,
           name: card.name,
-          setCode: card.set,
+          setCode: card.setCode,
           embedding,
         })
         .onConflictDoNothing();
@@ -182,7 +164,7 @@ async function runSync(): Promise<void> {
       existingSet.add(card.id);
       state = { ...state, processed: state.processed + 1 };
       addLog(
-        `[${state.processed + state.skipped}/${state.total}] ${card.name} (${card.set})`,
+        `[${state.processed + state.skipped}/${state.total}] ${card.name} (${card.setCode})`,
       );
       emit("progress", {
         processed: state.processed,

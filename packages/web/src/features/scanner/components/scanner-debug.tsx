@@ -142,6 +142,141 @@ const MOCK_CARDS: ScryfallCardWithDistance[] = [LIGHTNING_BOLT_M11];
 const FAKE_SCAN_URL =
   "https://cards.scryfall.io/art_crop/front/e/3/e3285e6b-3e79-4d7c-bf96-d920f973b122.jpg";
 
+function proxiedImageUrl(url: string): string {
+  return `/api/cards/image-proxy?url=${encodeURIComponent(url)}`;
+}
+
+const RISING_FREEDOM_GUNDAM_IMG = proxiedImageUrl(
+  "https://www.gundam-gcg.com/en/images/cards/card/EB01-039.webp?260715",
+);
+
+const RISING_FREEDOM_GUNDAM: ScryfallCardWithDistance = {
+  object: "card",
+  id: "EB01-039",
+  oracle_id: "EB01-039",
+  name: "Rising Freedom Gundam",
+  lang: "en",
+  released_at: "",
+  uri: "",
+  scryfall_uri:
+    "https://www.gundam-gcg.com/en/cards/detail.php?detailSearch=EB01-039",
+  layout: "normal",
+  highres_image: true,
+  image_status: "highres_scan",
+  image_uris: {
+    small: RISING_FREEDOM_GUNDAM_IMG,
+    normal: RISING_FREEDOM_GUNDAM_IMG,
+    large: RISING_FREEDOM_GUNDAM_IMG,
+    png: RISING_FREEDOM_GUNDAM_IMG,
+    art_crop: RISING_FREEDOM_GUNDAM_IMG,
+    border_crop: RISING_FREEDOM_GUNDAM_IMG,
+  },
+  cmc: 5,
+  type_line: "UNIT",
+  oracle_text:
+    "When playing this card from your hand, if 3 or more enemy Units are in play, play it as if it has 3 Lv. and cost.",
+  power: "4",
+  toughness: "4",
+  colors: ["Green"],
+  color_identity: ["Green"],
+  keywords: [],
+  set: "EB01",
+  set_name: "Eternal Nexus",
+  collector_number: "039",
+  rarity: "c",
+  artist: "",
+  border_color: "black",
+  frame: "2015",
+  reserved: false,
+  foil: false,
+  nonfoil: true,
+  legalities: {} as never,
+  prices: {
+    usd: null,
+    usd_foil: null,
+    usd_etched: null,
+    eur: null,
+    eur_foil: null,
+    tix: null,
+  },
+  distance: 0.03,
+  games: [],
+  game_changer: false,
+  finishes: [],
+  oversized: false,
+  promo: false,
+  reprint: false,
+  variation: false,
+  set_id: "",
+  set_type: "",
+  set_uri: "",
+  set_search_uri: "",
+  scryfall_set_uri: "",
+  rulings_uri: "",
+  prints_search_uri: "",
+  digital: false,
+  artist_ids: [],
+  full_art: false,
+  textless: false,
+  booster: false,
+  story_spotlight: false,
+  related_uris: undefined,
+  purchase_uris: undefined,
+};
+
+const STRIKE_FREEDOM_GUNDAM_IMG = proxiedImageUrl(
+  "https://www.gundam-gcg.com/en/images/cards/card/EB01-041.webp?260715",
+);
+
+const STRIKE_FREEDOM_GUNDAM: ScryfallCardWithDistance = {
+  ...RISING_FREEDOM_GUNDAM,
+  id: "EB01-041",
+  oracle_id: "EB01-041",
+  name: "Strike Freedom Gundam (EX)",
+  scryfall_uri:
+    "https://www.gundam-gcg.com/en/cards/detail.php?detailSearch=EB01-041",
+  image_uris: {
+    small: STRIKE_FREEDOM_GUNDAM_IMG,
+    normal: STRIKE_FREEDOM_GUNDAM_IMG,
+    large: STRIKE_FREEDOM_GUNDAM_IMG,
+    png: STRIKE_FREEDOM_GUNDAM_IMG,
+    art_crop: STRIKE_FREEDOM_GUNDAM_IMG,
+    border_crop: STRIKE_FREEDOM_GUNDAM_IMG,
+  },
+  cmc: 6,
+  type_line: "UNIT",
+  oracle_text:
+    "<High-Maneuver> (This Unit can't be blocked.)\n【Deploy】Choose 1 Unit with 4 or less HP belonging to each enemy player. Return them to their owners' hands.",
+  power: "5",
+  toughness: "5",
+  colors: ["White"],
+  color_identity: ["White"],
+  keywords: ["High-Maneuver"],
+  set: "EB01",
+  set_name: "Eternal Nexus",
+  collector_number: "041",
+  rarity: "lr",
+  distance: 0.03,
+};
+
+const STRIKE_FREEDOM_GUNDAM_P1: ScryfallCardWithDistance = {
+  ...STRIKE_FREEDOM_GUNDAM,
+  id: "EB01-041_p1",
+  oracle_id: "EB01-041_p1",
+  rarity: "sr",
+  distance: 0.05,
+};
+
+const STRIKE_FREEDOM_GUNDAM_P2: ScryfallCardWithDistance = {
+  ...STRIKE_FREEDOM_GUNDAM,
+  id: "EB01-041_p2",
+  oracle_id: "EB01-041_p2",
+  rarity: "sec",
+  distance: 0.06,
+};
+
+const GUNDAM_MOCK_CARDS: ScryfallCardWithDistance[] = [RISING_FREEDOM_GUNDAM];
+
 let mockCardIndex = 0;
 
 export function ScannerDebug() {
@@ -151,13 +286,23 @@ export function ScannerDebug() {
 
   if (!isAdmin) return null;
 
+  const isGundam = activeCollection?.game?.key === "gundam";
+
   const handleSimulateScan = () => {
-    const card = MOCK_CARDS[mockCardIndex % MOCK_CARDS.length];
+    const cards = isGundam ? GUNDAM_MOCK_CARDS : MOCK_CARDS;
+    const card = cards[mockCardIndex % cards.length];
     mockCardIndex++;
     addCard(card);
   };
 
   const handleSimulateMultiMatch = () => {
+    if (isGundam) {
+      addCard(STRIKE_FREEDOM_GUNDAM, STRIKE_FREEDOM_GUNDAM_IMG, [
+        STRIKE_FREEDOM_GUNDAM_P1,
+        STRIKE_FREEDOM_GUNDAM_P2,
+      ]);
+      return;
+    }
     addCard(LIGHTNING_BOLT_M11, FAKE_SCAN_URL, [
       LIGHTNING_BOLT_A25,
       LIGHTNING_BOLT_2X2,

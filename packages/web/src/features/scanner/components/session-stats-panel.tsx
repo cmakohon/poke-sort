@@ -1,9 +1,17 @@
 import { formatUsd } from "@/features/scanner/components/scan-stats";
 import type { ScanStats } from "@/features/scanner/lib/compute-stats";
 
-function StatCell({ label, value }: { label: string; value: string }) {
+function StatCell({
+  label,
+  value,
+  className,
+}: {
+  label: string;
+  value: string;
+  className?: string;
+}) {
   return (
-    <div className="p-3">
+    <div className={`p-3 ${className ?? ""}`}>
       <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">
         {label}
       </p>
@@ -31,11 +39,11 @@ export function SessionStatsPanel({
           <StatCell
             label="Unique"
             value={stats ? String(stats.uniqueCount) : "-"}
+            className={!stats?.hasPricing ? "col-span-2" : undefined}
           />
-          <StatCell
-            label="Value"
-            value={stats ? formatUsd(stats.totalValue) : "-"}
-          />
+          {stats?.hasPricing && (
+            <StatCell label="Value" value={formatUsd(stats.totalValue)} />
+          )}
         </div>
         {stats?.mostValuable && (
           <div className="p-2 border-t border-input">

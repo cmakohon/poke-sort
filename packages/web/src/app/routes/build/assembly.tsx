@@ -155,10 +155,12 @@ const PHASES: Phase[] = [
       {
         key: "wire-servos",
         text: "Wire all 10 servos into PCA9685 channels 0–13 per the channel map.",
+        note: "There are wire channels, that use zip ties, in the side of the base to help keep everything neat.",
       },
       {
         key: "wire-sensors",
         text: "Wire the 4 IR sensors to D2–D5.",
+        note: "For the power and ground, you will have to combine 4 wires into one, either with a breadboard or by twisting and soldering them together.",
       },
       {
         key: "wire-power",

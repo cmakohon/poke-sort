@@ -10,14 +10,23 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useOrg } from "@/features/companies/api/use-organization";
+import { GamesManager } from "@/features/games/components/games-manager";
+import {
   cancelSync,
   createSyncEventSource,
   dumpCards,
   listCards,
+  listSyncSources,
   revectorizeCard,
   startSync,
 } from "@/lib/api/admin";
-import { useOrg } from "@/features/companies/api/use-organization";
 import type { SyncState } from "@magic-vault/shared";
 import {
   IconChevronLeft,
@@ -41,6 +50,13 @@ export default function AdminPage() {
   const [revectorizingIds, setRevectorizingIds] = useState<Set<string>>(
     new Set(),
   );
+  const [syncGameKey, setSyncGameKey] = useState<string | null>("mtg");
+
+  const sourcesQuery = useQuery({
+    queryKey: ["admin", "sync-sources"],
+    queryFn: () => listSyncSources().then((r) => r.data ?? []),
+    staleTime: Infinity,
+  });
 
   useEffect(() => {
     let es: EventSource | null = null;
@@ -165,8 +181,8 @@ export default function AdminPage() {
   return (
     <div className="flex flex-col p-6 max-w-4xl mx-auto w-full h-full overlflow-hidden">
       <div className="rounded-lg rounded-b-none border p-4 flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <div className="flex flex-col gap-0.5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-col gap-0.5 min-w-0">
             <p className="text-sm font-medium">Card Image Vectors</p>
             <p
               className="text-xs font-medium"
@@ -174,24 +190,48 @@ export default function AdminPage() {
             >
               {syncState.status.charAt(0).toUpperCase() +
                 syncState.status.slice(1)}
+              {isRunning &&
+                ` — ${
+                  sourcesQuery.data?.find(
+                    (s) => s.gameKey === syncState.gameKey,
+                  )?.label ?? syncState.gameKey
+                }`}
             </p>
           </div>
-          {isRunning ? (
-            <Button
-              variant="outline"
-              disabled={cancelSyncMutation.isPending}
-              onClick={() => cancelSyncMutation.mutate()}
-            >
-              {cancelSyncMutation.isPending ? "Cancelling..." : "Cancel"}
-            </Button>
-          ) : (
-            <Button
-              disabled={isRunning || startSyncMutation.isPending}
-              onClick={() => startSyncMutation.mutate()}
-            >
-              {startSyncMutation.isPending ? "Starting..." : "Start Sync"}
-            </Button>
-          )}
+          <div className="flex items-center gap-2 shrink-0">
+            {!isRunning && (
+              <Select value={syncGameKey} onValueChange={setSyncGameKey}>
+                <SelectTrigger className="w-56">
+                  <SelectValue placeholder="Select a game..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {(sourcesQuery.data ?? []).map((source) => (
+                    <SelectItem key={source.gameKey} value={source.gameKey}>
+                      {source.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {isRunning ? (
+              <Button
+                variant="outline"
+                disabled={cancelSyncMutation.isPending}
+                onClick={() => cancelSyncMutation.mutate()}
+              >
+                {cancelSyncMutation.isPending ? "Cancelling..." : "Cancel"}
+              </Button>
+            ) : (
+              <Button
+                disabled={
+                  isRunning || startSyncMutation.isPending || !syncGameKey
+                }
+                onClick={() => startSyncMutation.mutate(syncGameKey!)}
+              >
+                {startSyncMutation.isPending ? "Starting..." : "Start Sync"}
+              </Button>
+            )}
+          </div>
         </div>
 
         {total > 0 && (
@@ -284,7 +324,7 @@ export default function AdminPage() {
                 {card.name}
               </p>
               <p className="text-xs text-muted-foreground uppercase font-mono shrink-0">
-                {card.setCode}
+                {card.gameKey} · {card.setCode}
               </p>
               <p className="text-xs text-muted-foreground tabular-nums shrink-0 hidden sm:block">
                 {new Date(card.updatedAt).toLocaleDateString()}
@@ -336,6 +376,10 @@ export default function AdminPage() {
             </div>
           </div>
         )}
+      </div>
+
+      <div className="mt-4">
+        <GamesManager />
       </div>
 
       <div className="rounded-lg border p-4 flex items-center justify-between mt-4">

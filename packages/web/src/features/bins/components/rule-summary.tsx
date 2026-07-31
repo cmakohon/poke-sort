@@ -1,12 +1,16 @@
+import { useBinConfigs } from "@/features/bins/api/use-bin-configs";
 import {
   BinCondition,
   BinRuleGroup,
-  FIELD_DEFINITIONS,
+  FieldMeta,
   isRuleGroup,
 } from "@magic-vault/shared";
 
-function formatCondition(condition: BinCondition): string {
-  const fieldMeta = FIELD_DEFINITIONS.find((f) => f.field === condition.field);
+function formatCondition(
+  condition: BinCondition,
+  fieldDefinitions: FieldMeta[],
+): string {
+  const fieldMeta = fieldDefinitions.find((f) => f.field === condition.field);
   const fieldLabel = fieldMeta?.label ?? condition.field;
   const opMeta = fieldMeta?.operators.find(
     (o) => o.value === condition.operator,
@@ -32,14 +36,14 @@ function formatCondition(condition: BinCondition): string {
   return `${fieldLabel} ${opLabel} ${valueStr}`;
 }
 
-function formatGroup(group: BinRuleGroup): string {
+function formatGroup(group: BinRuleGroup, fieldDefinitions: FieldMeta[]): string {
   if (group.conditions.length === 0) return "No conditions";
 
   const parts = group.conditions.map((item) => {
     if (isRuleGroup(item)) {
-      return `(${formatGroup(item)})`;
+      return `(${formatGroup(item, fieldDefinitions)})`;
     }
-    return formatCondition(item);
+    return formatCondition(item, fieldDefinitions);
   });
 
   const joiner = group.combinator === "and" ? " AND " : " OR ";
@@ -47,7 +51,8 @@ function formatGroup(group: BinRuleGroup): string {
 }
 
 export function RuleSummary({ rules }: { rules: BinRuleGroup }) {
-  const text = formatGroup(rules);
+  const { fieldDefinitions } = useBinConfigs();
+  const text = formatGroup(rules, fieldDefinitions);
 
   return (
     <p className="text-xs line-clamp-3 wrap-break-words text-muted-foreground truncate">

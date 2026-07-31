@@ -51,8 +51,8 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
       <ScannerIslandProvider>
       <CameraProvider>
         <SerialProvider>
-          <BinConfigsProvider>
-            <CollectionsProvider>
+          <CollectionsProvider>
+            <BinConfigsProvider>
               <CollectionLocksProvider>
               <ModuleConfigsProvider>
                 <FeederConfigProvider>
@@ -67,8 +67,8 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
                 </FeederConfigProvider>
               </ModuleConfigsProvider>
               </CollectionLocksProvider>
-            </CollectionsProvider>
-          </BinConfigsProvider>
+            </BinConfigsProvider>
+          </CollectionsProvider>
         </SerialProvider>
       </CameraProvider>
       </ScannerIslandProvider>

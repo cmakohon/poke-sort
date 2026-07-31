@@ -1,5 +1,6 @@
-import { Search } from "@/features/cards/api/card";
-import { SearchById } from "@/features/cards/api/scryfall";
+import { searchByImage } from "@/features/cards/api/card";
+import { getCardById } from "@/features/cards/api/card-search";
+import { useCollections } from "@/features/collections/api/use-collections";
 import { useCameraContext } from "@/features/scanner/api/use-camera";
 import {
   DETECTION_INTERVAL_MS,
@@ -79,6 +80,7 @@ const CLOSE_MATCH_DELTA = 0.05;
 async function searchCardImage(
   canvas: HTMLCanvasElement,
   contour?: CardContour | null,
+  collectionGuid?: string,
 ): Promise<{
   card: ScryfallCardWithDistance | null;
   alternativeMatches: ScryfallCardWithDistance[];
@@ -89,8 +91,9 @@ async function searchCardImage(
   const blob = await canvasToBlob(warpedCanvas);
   const formData = new FormData();
   formData.append("image", blob, "card.jpg");
+  if (collectionGuid) formData.append("collectionGuid", collectionGuid);
 
-  const { data } = await Search(formData);
+  const { data } = await searchByImage(formData);
   if (!data || data.length === 0)
     return { card: null, alternativeMatches: [], debugImageUrl };
 
@@ -99,7 +102,7 @@ async function searchCardImage(
   );
   const resolved = await Promise.all(
     closeMatches.map((m) =>
-      SearchById(m.scryfallId).then((r) =>
+      getCardById(m.scryfallId, collectionGuid).then((r) =>
         r.data ? { ...r.data, distance: m.distance } : null,
       ),
     ),
@@ -132,9 +135,13 @@ export function useCardScanner({
     retryCamera,
     stopCamera,
   } = useCameraContext();
+  const { activeCollection } = useCollections();
 
   const rotatedRef = useRef(rotated);
   rotatedRef.current = rotated;
+
+  const activeCollectionGuidRef = useRef(activeCollection?.guid);
+  activeCollectionGuidRef.current = activeCollection?.guid;
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const displayCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -220,7 +227,11 @@ export function useCardScanner({
 
       try {
         const { card, alternativeMatches, debugImageUrl } =
-          await searchCardImage(canvas, contour);
+          await searchCardImage(
+            canvas,
+            contour,
+            activeCollectionGuidRef.current,
+          );
         setDebugImageUrl(debugImageUrl);
         debugImageUrlRef.current = debugImageUrl;
 

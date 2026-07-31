@@ -4,11 +4,11 @@ import {
   CONDITION_STRING_MAX_LENGTH,
   ConditionField,
   ConditionOperator,
-  FIELD_DEFINITIONS,
   FieldMeta,
 } from "@magic-vault/shared";
 
 import { Button, buttonVariants } from "@/components/ui/button";
+import { useBinConfigs } from "@/features/bins/api/use-bin-configs";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -27,8 +27,11 @@ import { cn } from "@/lib/utils";
 import { IconChevronDown, IconX } from "@tabler/icons-react";
 import { useCallback } from "react";
 
-function getFieldMeta(field: ConditionField): FieldMeta | undefined {
-  return FIELD_DEFINITIONS.find((f) => f.field === field);
+function getFieldMeta(
+  field: ConditionField,
+  fieldDefinitions: FieldMeta[],
+): FieldMeta | undefined {
+  return fieldDefinitions.find((f) => f.field === field);
 }
 
 function MultiSelect({
@@ -84,11 +87,12 @@ export function ConditionRow({
   onChange,
   onRemove,
 }: ConditionRowProps) {
-  const fieldMeta = getFieldMeta(condition.field);
+  const { fieldDefinitions } = useBinConfigs();
+  const fieldMeta = getFieldMeta(condition.field, fieldDefinitions);
 
   const handleFieldChange = useCallback(
     (field: ConditionField) => {
-      const newMeta = getFieldMeta(field);
+      const newMeta = getFieldMeta(field, fieldDefinitions);
       const defaultOp = newMeta?.operators[0]?.value ?? "equals";
       const defaultValue =
         newMeta?.type === "enum" || newMeta?.type === "set" ? [] : "";
@@ -99,7 +103,7 @@ export function ConditionRow({
         value: defaultValue,
       });
     },
-    [condition, onChange],
+    [condition, onChange, fieldDefinitions],
   );
 
   const handleOperatorChange = useCallback(
@@ -200,7 +204,7 @@ export function ConditionRow({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          {FIELD_DEFINITIONS.map((f) => (
+          {fieldDefinitions.map((f) => (
             <SelectItem key={f.field} value={f.field}>
               {f.label}
             </SelectItem>

@@ -1,11 +1,6 @@
-export type ConditionField =
-  | "rarity"
-  | "color_identity"
-  | "type_line"
-  | "set"
-  | "price_usd"
-  | "cmc"
-  | "name";
+import type { Game } from "./games.interface";
+
+export type ConditionField = string;
 
 export type ConditionOperator =
   | "equals"
@@ -41,6 +36,7 @@ export interface FieldMeta {
   field: ConditionField;
   label: string;
   type: FieldType;
+  path: string;
   operators: { value: ConditionOperator; label: string }[];
   options?: { value: string; label: string }[];
 }
@@ -63,6 +59,7 @@ export interface BinSet {
   name: string;
   isActive: boolean;
   bins: BinConfig[];
+  game: Game | null;
   createdAt: Date;
   updatedAt: Date;
 }

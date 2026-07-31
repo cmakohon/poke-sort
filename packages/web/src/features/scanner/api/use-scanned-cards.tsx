@@ -46,7 +46,7 @@ export function ScannedCardsProvider({
 }) {
   const [cards, setCards] = useState<ScannedCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { configs: binConfigs } = useBinConfigs();
+  const { configs: binConfigs, fieldDefinitions } = useBinConfigs();
   const { sendBin, sendCommand, receiveResponse, isConnected, isReady } =
     useSerial();
   const { activeCollection } = useCollections();
@@ -63,6 +63,7 @@ export function ScannedCardsProvider({
   }, [currentUserId]);
 
   const binConfigsRef = useRef(binConfigs);
+  const fieldDefinitionsRef = useRef(fieldDefinitions);
   const serialRef = useRef({
     sendBin,
     sendCommand,
@@ -86,6 +87,10 @@ export function ScannedCardsProvider({
   useEffect(() => {
     binConfigsRef.current = binConfigs;
   }, [binConfigs]);
+
+  useEffect(() => {
+    fieldDefinitionsRef.current = fieldDefinitions;
+  }, [fieldDefinitions]);
 
   useEffect(() => {
     serialRef.current = {
@@ -242,7 +247,11 @@ export function ScannedCardsProvider({
         return;
       }
 
-      const matchedBin = evaluateCardBin(card, binConfigsRef.current);
+      const matchedBin = evaluateCardBin(
+        card,
+        binConfigsRef.current,
+        fieldDefinitionsRef.current,
+      );
       const record: ScannedCard = {
         scanId: generateScanId(),
         card,
@@ -424,7 +433,11 @@ export function ScannedCardsProvider({
   const correctCard = useCallback((scanId: string, card: ScryfallCard) => {
     const collection = activeCollectionRef.current;
     const corrected: ScryfallCardWithDistance = { ...card, distance: 0 };
-    const matchedBin = evaluateCardBin(corrected, binConfigsRef.current);
+    const matchedBin = evaluateCardBin(
+      corrected,
+      binConfigsRef.current,
+      fieldDefinitionsRef.current,
+    );
     setCards((prev) =>
       prev.map((entry) =>
         entry.scanId === scanId

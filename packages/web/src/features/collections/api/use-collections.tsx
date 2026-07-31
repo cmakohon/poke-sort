@@ -12,7 +12,12 @@ import {
   renameCollection as renameCollectionFn,
 } from "@/features/collections/api/collections";
 import { useOrg } from "@/features/companies/api/use-organization";
-import { createDefaultColorBins, type Collection } from "@magic-vault/shared";
+import {
+  createDefaultCatchAllOnlyBins,
+  createDefaultColorBins,
+  type BinSet,
+  type Collection,
+} from "@magic-vault/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createContext,
@@ -32,7 +37,7 @@ interface CollectionsContextValue {
   isLoading: boolean;
   isActivating: boolean;
   isMutating: boolean;
-  createCollection: (name: string) => Promise<void>;
+  createCollection: (name: string, gameGuid: string) => Promise<void>;
   renameCollection: (guid: string, name: string) => Promise<void>;
   activateCollection: (guid: string) => Promise<void>;
   deleteCollection: (guid: string) => Promise<void>;
@@ -88,25 +93,32 @@ export function CollectionsProvider({
   }
 
   const createMutation = useMutation({
-    mutationFn: createCollectionFn,
-    onSuccess: async (r, name) => {
+    mutationFn: ({ name, gameGuid }: { name: string; gameGuid: string }) =>
+      createCollectionFn(name, gameGuid),
+    onSuccess: async (r, { name }) => {
       if (r.success && r.data) {
         setCollections(r.data);
         const created = r.data.find((c) => c.isActive);
         if (created) setActiveGuid(created.guid);
 
-        // Only spin up a new default rule set when the org has none yet -
-        // otherwise reuse (activate) the existing one instead of creating
-        // a fresh set per collection.
-        const existingSets =
+        const gameGuid = created?.game?.guid;
+        const existingSets: BinSet[] =
           await queryClient.ensureQueryData(binsQueryOptions);
-        if (existingSets.length === 0) {
-          const binsResult = await createSetFn(name, createDefaultColorBins());
+        const sameGameSet = existingSets.find(
+          (s) => (s.game?.guid ?? undefined) === gameGuid,
+        );
+        if (!sameGameSet) {
+          const isMtg = !created?.game || created.game.key === "mtg";
+          const binsResult = await createSetFn(
+            name,
+            isMtg ? createDefaultColorBins() : createDefaultCatchAllOnlyBins(),
+            gameGuid,
+          );
           if (binsResult.success && binsResult.data) {
             queryClient.setQueryData(["bins"], binsResult.data);
           }
         } else {
-          const activateResult = await activateSetFn(existingSets[0].guid);
+          const activateResult = await activateSetFn(sameGameSet.guid);
           if (activateResult.success && activateResult.data) {
             queryClient.setQueryData(["bins"], activateResult.data);
           }
@@ -154,8 +166,8 @@ export function CollectionsProvider({
     emptyMutation.isPending;
 
   const create = useCallback(
-    async (name: string) => {
-      await createMutation.mutateAsync(name);
+    async (name: string, gameGuid: string) => {
+      await createMutation.mutateAsync({ name, gameGuid });
     },
     [createMutation],
   );

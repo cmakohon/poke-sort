@@ -10,6 +10,13 @@ import {
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { DynamicDialog } from "@/components/ui/responsive-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Tooltip,
@@ -19,9 +26,12 @@ import {
 import { collectionsQueryOptions } from "@/features/collections/api/collections";
 import { useCollections } from "@/features/collections/api/use-collections";
 import { useOrg } from "@/features/companies/api/use-organization";
+import { gamesQueryOptions } from "@/features/games/api/games";
 import {
   createCollectionSchema,
+  renameCollectionSchema,
   type CreateCollectionFormValues,
+  type RenameCollectionFormValues,
 } from "@/schemas/collections.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -57,6 +67,8 @@ export default function CollectionsPage() {
     ...collectionsQueryOptions,
     enabled: !!activeOrg,
   });
+  const { data: games = [] } = useQuery(gamesQueryOptions);
+  const activeGames = games.filter((g) => g.isActive);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [renameTarget, setRenameTarget] = useState<{
@@ -74,12 +86,12 @@ export default function CollectionsPage() {
 
   const createForm = useForm<CreateCollectionFormValues>({
     resolver: zodResolver(createCollectionSchema),
-    defaultValues: { name: "" },
+    defaultValues: { name: "", gameGuid: "" },
     mode: "onChange",
   });
 
-  const renameForm = useForm<CreateCollectionFormValues>({
-    resolver: zodResolver(createCollectionSchema),
+  const renameForm = useForm<RenameCollectionFormValues>({
+    resolver: zodResolver(renameCollectionSchema),
     defaultValues: { name: renameTarget?.name ?? "" },
     mode: "onChange",
   });
@@ -96,7 +108,7 @@ export default function CollectionsPage() {
         });
         return;
       }
-      await createCollection(values.name);
+      await createCollection(values.name, values.gameGuid);
       createForm.reset();
       setCreateOpen(false);
     },
@@ -104,7 +116,7 @@ export default function CollectionsPage() {
   );
 
   const handleRename = useCallback(
-    async (values: CreateCollectionFormValues) => {
+    async (values: RenameCollectionFormValues) => {
       if (!renameTarget) return;
       const isDuplicate = collections.some(
         (c) =>
@@ -157,12 +169,16 @@ export default function CollectionsPage() {
           open={createOpen}
           onOpenChange={(open) => {
             setCreateOpen(open);
-            if (!open) createForm.reset();
+            if (open) {
+              createForm.reset({ name: "", gameGuid: activeGames[0]?.guid ?? "" });
+            } else {
+              createForm.reset();
+            }
           }}
           title="New Collection"
           description="Create a new collection to scan cards into."
           trigger={
-            <Button disabled={isMutating}>
+            <Button disabled={isMutating || activeGames.length === 0}>
               <IconPlus className="size-4" />
               New Collection
             </Button>
@@ -183,7 +199,7 @@ export default function CollectionsPage() {
           }
           footerClassName="flex-col-reverse md:flex-row"
         >
-          <form onSubmit={createForm.handleSubmit(handleCreate)}>
+          <form onSubmit={createForm.handleSubmit(handleCreate)} className="flex flex-col gap-4">
             <Controller
               name="name"
               control={createForm.control}
@@ -199,6 +215,30 @@ export default function CollectionsPage() {
                     aria-invalid={fieldState.invalid}
                     autoFocus
                   />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
+                </Field>
+              )}
+            />
+            <Controller
+              name="gameGuid"
+              control={createForm.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid || undefined}>
+                  <FieldLabel htmlFor="new-collection-game">Game</FieldLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger id="new-collection-game">
+                      <SelectValue placeholder="Select a game..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {activeGames.map((game) => (
+                        <SelectItem key={game.guid} value={game.guid}>
+                          {game.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />
                   )}
@@ -246,6 +286,7 @@ export default function CollectionsPage() {
                 <p className="text-xs text-muted-foreground">
                   {collection.cardCount}{" "}
                   {collection.cardCount === 1 ? "card" : "cards"} ·{" "}
+                  {collection.game ? collection.game.name : "No game"} ·{" "}
                   {new Date(collection.createdAt).toLocaleDateString()}
                 </p>
               </div>

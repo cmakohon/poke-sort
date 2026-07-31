@@ -36,45 +36,49 @@ export function ScanStats() {
 
   const visibleSets = expandedSets ? stats.sets : stats.sets.slice(0, 5);
 
+  const statCards: { label: string; value: string; indicator?: boolean }[] = [
+    { label: "Total Cards", value: String(stats.totalCount) },
+    { label: "Unique", value: String(stats.uniqueCount) },
+  ];
+  if (stats.hasPricing) {
+    statCards.push(
+      { label: "Total Value", value: formatUsd(stats.totalValue) },
+      { label: "Avg Value", value: formatUsd(stats.avgValue) },
+    );
+  }
+  statCards.push(
+    {
+      label: "Session Time",
+      value: formatElapsed(elapsedMs),
+      indicator: isTimerActive,
+    },
+    {
+      label: "Cards / hr",
+      value:
+        elapsedMs > 0
+          ? String(Math.round((cards.length / elapsedMs) * 3_600_000))
+          : "-",
+    },
+  );
+
   return (
     <ScrollArea className="min-h-0 rounded-lg">
       <div className="flex flex-col gap-2 text-sm">
         <div className="rounded-lg bg-input/20 dark:bg-input/30 border border-input">
           <div className="grid grid-cols-2">
-            <StatCard
-              label="Total Cards"
-              value={String(stats.totalCount)}
-              className="border-r border-b border-input"
-            />
-            <StatCard
-              label="Unique"
-              value={String(stats.uniqueCount)}
-              className="border-b border-input"
-            />
-            <StatCard
-              label="Total Value"
-              value={formatUsd(stats.totalValue)}
-              className="border-r border-b border-input"
-            />
-            <StatCard
-              label="Avg Value"
-              value={formatUsd(stats.avgValue)}
-              className="border-b border-input"
-            />
-            <StatCard
-              label="Session Time"
-              value={formatElapsed(elapsedMs)}
-              className="border-r border-input"
-              indicator={isTimerActive}
-            />
-            <StatCard
-              label="Cards / hr"
-              value={
-                elapsedMs > 0
-                  ? String(Math.round((cards.length / elapsedMs) * 3_600_000))
-                  : "-"
-              }
-            />
+            {statCards.map((card, i) => (
+              <StatCard
+                key={card.label}
+                label={card.label}
+                value={card.value}
+                indicator={card.indicator}
+                className={cn(
+                  i % 2 === 0 && "border-r",
+                  i < statCards.length - 2 && "border-b",
+                  "border-input",
+                )}
+              />
+            ))}
           </div>
           {stats.mostValuable && (
             <div className="p-2 border-t border-input">
@@ -92,70 +96,74 @@ export function ScanStats() {
             </div>
           )}
         </div>
-        <div className="rounded-lg bg-input/20 dark:bg-input/30 border border-input p-2">
-          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
-            By Rarity
-          </p>
-          <div className="flex flex-col gap-1">
-            {stats.rarities.map((r) => {
-              const active = filters.rarities.includes(r.key);
-              return (
-                <button
-                  key={r.key}
-                  type="button"
-                  onClick={() => toggleRarity(r.key)}
-                  className={cn(
-                    "flex items-center justify-between text-xs rounded px-1 -mx-1 py-0.5 cursor-pointer transition-colors",
-                    active ? "bg-primary/15" : "hover:bg-muted",
-                  )}
-                >
-                  <div className="flex items-center gap-1.5">
-                    <div
-                      className="size-2.5 rounded-full"
-                      style={{ backgroundColor: `var(--${r.key})` }}
-                    />
-                    <span className={active ? "font-medium" : undefined}>
-                      {r.label}
-                    </span>
-                  </div>
-                  <span className="text-muted-foreground">{r.count}</span>
-                </button>
-              );
-            })}
+        {stats.rarities.length > 0 && (
+          <div className="rounded-lg bg-input/20 dark:bg-input/30 border border-input p-2">
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
+              By Rarity
+            </p>
+            <div className="flex flex-col gap-1">
+              {stats.rarities.map((r) => {
+                const active = filters.rarities.includes(r.key);
+                return (
+                  <button
+                    key={r.key}
+                    type="button"
+                    onClick={() => toggleRarity(r.key)}
+                    className={cn(
+                      "flex items-center justify-between text-xs rounded px-1 -mx-1 py-0.5 cursor-pointer transition-colors",
+                      active ? "bg-primary/15" : "hover:bg-muted",
+                    )}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <div
+                        className="size-2.5 rounded-full"
+                        style={{ backgroundColor: `var(--${r.key})` }}
+                      />
+                      <span className={active ? "font-medium" : undefined}>
+                        {r.label}
+                      </span>
+                    </div>
+                    <span className="text-muted-foreground">{r.count}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
-        <div className="rounded-lg bg-input/20 dark:bg-input/30 border border-input p-2">
-          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
-            By Color
-          </p>
-          <div className="flex flex-col gap-1">
-            {stats.colors.map((c) => {
-              const active = filters.colors.includes(c.key);
-              return (
-                <button
-                  key={c.key}
-                  type="button"
-                  onClick={() => toggleColor(c.key)}
-                  className={cn(
-                    "flex items-center justify-between text-xs rounded px-1 -mx-1 py-0.5 cursor-pointer transition-colors",
-                    active ? "bg-primary/15" : "hover:bg-muted",
-                  )}
-                >
-                  <div className="flex items-center gap-1.5">
-                    <div
-                      className="size-2.5 rounded-full border border-border"
-                      style={{ backgroundColor: c.bg }}
-                    />
-                    <span className={active ? "font-medium" : undefined}>
-                      {c.label}
-                    </span>
-                  </div>
-                  <span className="text-muted-foreground">{c.count}</span>
-                </button>
-              );
-            })}
+        )}
+        {stats.colors.length > 0 && (
+          <div className="rounded-lg bg-input/20 dark:bg-input/30 border border-input p-2">
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
+              By Color
+            </p>
+            <div className="flex flex-col gap-1">
+              {stats.colors.map((c) => {
+                const active = filters.colors.includes(c.key);
+                return (
+                  <button
+                    key={c.key}
+                    type="button"
+                    onClick={() => toggleColor(c.key)}
+                    className={cn(
+                      "flex items-center justify-between text-xs rounded px-1 -mx-1 py-0.5 cursor-pointer transition-colors",
+                      active ? "bg-primary/15" : "hover:bg-muted",
+                    )}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <div
+                        className="size-2.5 rounded-full border border-border"
+                        style={{ backgroundColor: c.bg }}
+                      />
+                      <span className={active ? "font-medium" : undefined}>
+                        {c.label}
+                      </span>
+                    </div>
+                    <span className="text-muted-foreground">{c.count}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
         <div className="rounded-lg bg-input/20 dark:bg-input/30 border border-input p-2">
           <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
             By Set

@@ -3,11 +3,13 @@ import type {
   BinConfig,
   BinRuleGroup,
   BinSet,
+  FieldMeta,
 } from "@magic-vault/shared";
 
 export interface BinConfigsContextValue {
   configs: BinConfig[];
   sets: BinSet[];
+  fieldDefinitions: FieldMeta[];
   isPending: boolean;
   isActivating: boolean;
   isPresetMutating: boolean;

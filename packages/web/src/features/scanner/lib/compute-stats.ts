@@ -2,7 +2,7 @@ import { RARITY_LABELS, RARITY_ORDER } from "@/features/scanner/constants";
 import type { SetStats } from "@/features/scanner/types";
 import type { ScannedCard } from "@magic-vault/shared";
 
-const COLOR_LABELS: Record<string, { label: string; bg: string }> = {
+const KNOWN_COLOR_SWATCHES: Record<string, { label: string; bg: string }> = {
   W: { label: "White", bg: "#F9FAF4" },
   U: { label: "Blue", bg: "#0E68AB" },
   B: { label: "Black", bg: "#150B00" },
@@ -11,13 +11,31 @@ const COLOR_LABELS: Record<string, { label: string; bg: string }> = {
   C: { label: "Colorless", bg: "#94979A" },
 };
 
-const COLOR_ORDER = ["W", "U", "B", "R", "G", "C"] as const;
+function capitalize(value: string): string {
+  return value.length > 0
+    ? value.charAt(0).toUpperCase() + value.slice(1)
+    : value;
+}
+
+function sortRarities<T extends { key: string; count: number }>(
+  entries: T[],
+): T[] {
+  return [...entries].sort((a, b) => {
+    const orderA = RARITY_ORDER.indexOf(a.key);
+    const orderB = RARITY_ORDER.indexOf(b.key);
+    if (orderA !== -1 && orderB !== -1) return orderA - orderB;
+    if (orderA !== -1) return -1;
+    if (orderB !== -1) return 1;
+    return b.count - a.count;
+  });
+}
 
 export interface ScanStats {
   totalCount: number;
   uniqueCount: number;
   totalValue: number;
   avgValue: number;
+  hasPricing: boolean;
   mostValuable: { name: string; price: number } | null;
   sets: SetStats[];
   rarities: { key: string; label: string; count: number }[];
@@ -55,13 +73,19 @@ export function computeStats(cards: ScannedCard[]): ScanStats | null {
       existing.count++;
       existing.value += price;
     } else {
-      setMap.set(c.set, { code: c.set, name: c.set_name, count: 1, value: price });
+      setMap.set(c.set, {
+        code: c.set,
+        name: c.set_name,
+        count: 1,
+        value: price,
+      });
     }
 
-    rarityMap.set(c.rarity, (rarityMap.get(c.rarity) ?? 0) + 1);
+    if (c.rarity) {
+      rarityMap.set(c.rarity, (rarityMap.get(c.rarity) ?? 0) + 1);
+    }
 
-    const colors = c.color_identity.length > 0 ? c.color_identity : ["C"];
-    for (const color of colors) {
+    for (const color of c.color_identity) {
       colorMap.set(color, (colorMap.get(color) ?? 0) + 1);
     }
   }
@@ -71,19 +95,25 @@ export function computeStats(cards: ScannedCard[]): ScanStats | null {
     uniqueCount: uniqueCards.size,
     totalValue,
     avgValue: priceableCount > 0 ? totalValue / priceableCount : 0,
+    hasPricing: priceableCount > 0,
     mostValuable,
     sets: Array.from(setMap.values()).sort(
       (a, b) => b.value - a.value || b.count - a.count,
     ),
-    rarities: RARITY_ORDER.filter((r) => rarityMap.has(r)).map((r) => ({
-      key: r,
-      label: RARITY_LABELS[r] ?? r,
-      count: rarityMap.get(r) ?? 0,
-    })),
-    colors: COLOR_ORDER.filter((c) => colorMap.has(c)).map((c) => ({
-      key: c,
-      ...COLOR_LABELS[c],
-      count: colorMap.get(c) ?? 0,
-    })),
+    rarities: sortRarities(
+      Array.from(rarityMap.entries()).map(([key, count]) => ({
+        key,
+        label: RARITY_LABELS[key] ?? capitalize(key),
+        count,
+      })),
+    ),
+    colors: Array.from(colorMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([key, count]) => ({
+        key,
+        label: KNOWN_COLOR_SWATCHES[key]?.label ?? key,
+        bg: KNOWN_COLOR_SWATCHES[key]?.bg ?? key.toLowerCase(),
+        count,
+      })),
   };
 }
