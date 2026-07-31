@@ -1,4 +1,7 @@
+import { IconBrandDiscord } from "@tabler/icons-react";
 import { Link } from "react-router-dom";
+
+const DISCORD_URL = "https://discord.gg/fYvw5PcvGg";
 
 export function LandingFooter() {
   return (
@@ -14,7 +17,10 @@ export function LandingFooter() {
         </Link>
 
         <nav className="flex items-center gap-5 text-xs text-muted-foreground">
-          <a href="#features" className="transition-colors hover:text-foreground">
+          <a
+            href="#features"
+            className="transition-colors hover:text-foreground"
+          >
             Features
           </a>
           <a
@@ -32,14 +38,28 @@ export function LandingFooter() {
           <Link to="/build" className="transition-colors hover:text-foreground">
             Build
           </Link>
-          <Link to="/auth/sign-in" className="transition-colors hover:text-foreground">
+          <Link
+            to="/auth/sign-in"
+            className="transition-colors hover:text-foreground"
+          >
             Sign in
           </Link>
         </nav>
 
-        <p className="text-xs text-muted-foreground">
-          © {new Date().getFullYear()} Magic Vault
-        </p>
+        <div className="flex items-center gap-4">
+          <a
+            href={DISCORD_URL}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Join the Discord"
+            className="text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <IconBrandDiscord size={18} />
+          </a>
+          <p className="text-xs text-muted-foreground">
+            © {new Date().getFullYear()} Magic Vault
+          </p>
+        </div>
       </div>
     </footer>
   );

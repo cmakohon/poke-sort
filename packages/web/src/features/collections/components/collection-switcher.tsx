@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
@@ -162,6 +163,11 @@ export function CollectionSwitcher() {
                 <span className="truncate">
                   {activeCollection?.name ?? "No collection"}
                 </span>
+                {activeCollection?.game && (
+                  <Badge variant="secondary" className="shrink-0">
+                    {activeCollection.game.name}
+                  </Badge>
+                )}
               </span>
             </SelectValue>
           </SelectTrigger>
@@ -180,6 +186,11 @@ export function CollectionSwitcher() {
                       size={11}
                       className="ml-1 shrink-0 text-muted-foreground"
                     />
+                  )}
+                  {c.game && (
+                    <Badge variant="outline" className="ml-1.5 shrink-0">
+                      {c.game.name}
+                    </Badge>
                   )}
                   <span className="ml-auto pl-2 pr-6 pt-0.5 text-xs text-muted-foreground tabular-nums">
                     {c.cardCount}

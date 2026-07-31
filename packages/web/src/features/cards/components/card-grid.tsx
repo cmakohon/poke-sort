@@ -15,7 +15,7 @@ import { useScannerIsland } from "@/features/scanner/api/use-scanner-island";
 import { ScannerControls } from "@/features/scanner/components/scanner-controls";
 import { ScannerDebug } from "@/features/scanner/components/scanner-debug";
 
-import { IconFolders } from "@tabler/icons-react";
+import { IconBolt, IconFolders } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -35,6 +35,8 @@ export function CardGrid() {
     markDownloaded,
     isLoading,
     elapsedMs,
+    autoFeed,
+    setAutoFeed,
   } = useScannedCards();
   const [summaryOpen, setSummaryOpen] = useState(false);
   const scanner = useScannerIsland();
@@ -185,12 +187,22 @@ export function CardGrid() {
                 onResume={scanner.handleResume}
               />
               {scanner.isConnected && (
-                <Button
-                  onClick={scanner.handleFeed}
-                  disabled={!scanner.isReady || scanner.isFeeding}
-                >
-                  {scanner.isFeeding ? "Feeding…" : "Feed"}
-                </Button>
+                <>
+                  <Button
+                    onClick={scanner.handleFeed}
+                    disabled={!scanner.isReady || scanner.isFeeding}
+                  >
+                    {scanner.isFeeding ? "Feeding…" : "Feed"}
+                  </Button>
+                  <Button
+                    variant={autoFeed ? "default" : "outline"}
+                    size="icon"
+                    onClick={() => setAutoFeed(!autoFeed)}
+                    title={autoFeed ? "Auto-feed on" : "Auto-feed off"}
+                  >
+                    <IconBolt />
+                  </Button>
+                </>
               )}
               <ScannerDebug />
             </div>
@@ -292,12 +304,22 @@ export function CardGrid() {
                   onResume={scanner.handleResume}
                 />
                 {scanner.isConnected && (
-                  <Button
-                    onClick={scanner.handleFeed}
-                    disabled={!scanner.isReady || scanner.isFeeding}
-                  >
-                    {scanner.isFeeding ? "Feeding…" : "Feed"}
-                  </Button>
+                  <>
+                    <Button
+                      onClick={scanner.handleFeed}
+                      disabled={!scanner.isReady || scanner.isFeeding}
+                    >
+                      {scanner.isFeeding ? "Feeding…" : "Feed"}
+                    </Button>
+                    <Button
+                      variant={autoFeed ? "default" : "outline"}
+                      size="icon"
+                      onClick={() => setAutoFeed(!autoFeed)}
+                      title={autoFeed ? "Auto-feed on" : "Auto-feed off"}
+                    >
+                      <IconBolt />
+                    </Button>
+                  </>
                 )}
                 <ScannerDebug />
               </>
