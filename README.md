@@ -1,8 +1,9 @@
 # Magic Vault
 
-A trading card scanner and physical sorter — Magic: The Gathering out of the box, extensible to other TCGs via pluggable per-game card-search adapters. A webcam identifies cards via AI image embeddings, a rule engine decides which bin each card belongs in, and an Arduino-driven feeder and servo mechanism physically routes the card there.
+A TCG card scanner and physical sorter. A webcam identifies cards via AI image embeddings, a rule engine decides which bin each card belongs in, and an Arduino-driven feeder and servo mechanism physically routes the card there.
 
 ## MakerWorld
+
 https://makerworld.com/en/models/3066180-tcg-card-sorting-machine#profileId-3451252
 
 ## How it works
