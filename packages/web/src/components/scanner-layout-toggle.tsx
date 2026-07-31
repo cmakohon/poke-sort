@@ -36,12 +36,16 @@ export function ScannerLayoutToggle() {
     onMutate: async (scannerLayout) => {
       await queryClient.cancelQueries({ queryKey: queryOpts.queryKey });
       const previous = queryClient.getQueryData(queryOpts.queryKey);
-      queryClient.setQueryData(queryOpts.queryKey, (old: typeof data): typeof data => ({
-        primaryColor: old?.primaryColor ?? null,
-        scannerLayout,
-        discordWebhookUrl: old?.discordWebhookUrl ?? null,
-        scanRegion: old?.scanRegion ?? DEFAULT_SCAN_REGION,
-      }));
+      queryClient.setQueryData(
+        queryOpts.queryKey,
+        (old: typeof data): typeof data => ({
+          primaryColor: old?.primaryColor ?? null,
+          scannerLayout,
+          discordWebhookUrl: old?.discordWebhookUrl ?? null,
+          discordNotifyOnScan: old?.discordNotifyOnScan ?? false,
+          scanRegion: old?.scanRegion ?? DEFAULT_SCAN_REGION,
+        }),
+      );
       return { previous };
     },
     onError: (_err, _vars, ctx) => {

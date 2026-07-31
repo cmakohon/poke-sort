@@ -6,10 +6,14 @@ export interface OrgSettings {
   primaryColor: string | null;
   scannerLayout: "horizontal" | "vertical";
   discordWebhookUrl: string | null;
+  discordNotifyOnScan: boolean;
   scanRegion: ScanRegion;
 }
 
-export async function getOrgSettings(): Promise<{ success: boolean; data?: OrgSettings }> {
+export async function getOrgSettings(): Promise<{
+  success: boolean;
+  data?: OrgSettings;
+}> {
   return apiGet("/api/org-settings");
 }
 
@@ -29,6 +33,7 @@ export const orgSettingsQueryOptions = (orgId: string | undefined) =>
             primaryColor: null,
             scannerLayout: "horizontal" as const,
             discordWebhookUrl: null,
+            discordNotifyOnScan: false,
             scanRegion: DEFAULT_SCAN_REGION,
           },
       ),
