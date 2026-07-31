@@ -260,6 +260,11 @@ export const orgSettings = pgTable(
     primaryColor: text("primary_color"),
     scannerLayout: text("scanner_layout"),
     discordWebhookUrl: text("discord_webhook_url"),
+    // Scan region calibration, stored as whole percent to avoid float
+    // precision issues; converted to 0-1 fractions at the API boundary.
+    scanCoverage: integer("scan_coverage"),
+    scanOffsetX: integer("scan_offset_x"),
+    scanOffsetY: integer("scan_offset_y"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },

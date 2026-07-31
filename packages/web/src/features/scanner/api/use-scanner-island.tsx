@@ -14,6 +14,7 @@ export interface ScannerIslandState {
   isFeeding: boolean;
   handleForceAddDuplicate: () => void;
   handleForceScan: () => void;
+  handleSkipDuplicate: () => void;
   handlePause: () => void;
   handleResume: () => void;
   handleFeed: () => void;

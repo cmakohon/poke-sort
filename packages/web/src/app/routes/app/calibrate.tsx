@@ -19,6 +19,7 @@ import { FeederCalibrationPanel } from "@/features/calibration/components/feeder
 import { IrSensorPanel } from "@/features/calibration/components/ir-sensor-panel";
 import { LedControls } from "@/features/calibration/components/led-controls";
 import { ModuleCalibrationGrid } from "@/features/calibration/components/module-calibration-grid";
+import { ScanRegionCalibrationPanel } from "@/features/calibration/components/scan-region-calibration-panel";
 import { IconClockHour3, IconDeviceUsb, IconDeviceUsbFilled } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -216,6 +217,11 @@ export default function CalibratePage() {
         onFeed={handleFeed}
         onSampleRun={handleSampleRun}
       />
+
+      <div className="flex flex-col gap-2">
+        <Label>Scan Region</Label>
+        <ScanRegionCalibrationPanel />
+      </div>
 
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">

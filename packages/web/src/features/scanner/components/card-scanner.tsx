@@ -25,7 +25,14 @@ export function CardScanner({ className, compact }: CardScannerProps) {
   const navigate = useNavigate();
   const { isAdmin } = useRole();
   const isMobile = useIsMobile();
-  const { addCard, sendCatchAllBin, autoFeed, setAutoFeed } = useScannedCards();
+  const {
+    addCard,
+    sendCatchAllBin,
+    autoFeed,
+    setAutoFeed,
+    registerCardArrivedHook,
+    registerPauseHook,
+  } = useScannedCards();
   const registerIsland = useRegisterScannerIsland();
   const {
     isConnected,
@@ -46,9 +53,10 @@ export function CardScanner({ className, compact }: CardScannerProps) {
     videoRef,
     displayCanvasRef,
     overlayCanvasRef,
-    processingCanvasRef,
+    captureCard,
     handleForceAddDuplicate,
     handleForceScan,
+    handleSkipDuplicate: handleSkipDuplicateFromScanner,
     handlePause,
     handleResume,
     handleRetryError,
@@ -137,6 +145,7 @@ export function CardScanner({ className, compact }: CardScannerProps) {
       try {
         const parsed = JSON.parse(response) as Record<string, unknown>;
         if (parsed.empty) {
+          handlePause();
           toast.error("Feeder empty", {
             description:
               "No cards remaining in the hopper. Add more cards to continue.",
@@ -159,6 +168,9 @@ export function CardScanner({ className, compact }: CardScannerProps) {
             sent: true,
             response: parsed,
           });
+        } else {
+          // Feeder confirmed a card reached module 1 - capture it now.
+          captureCard();
         }
       } catch {
         toast.error("Feed error", {
@@ -169,7 +181,23 @@ export function CardScanner({ className, compact }: CardScannerProps) {
     } finally {
       setIsFeeding(false);
     }
-  }, [sendCommand, receiveResponse]);
+  }, [sendCommand, receiveResponse, captureCard, handlePause]);
+
+  // Skipping a duplicate means routing the physical card to the catch-all
+  // bin (it was never sent anywhere since sendBin is only called on
+  // add/add-again) and resetting the scanner to continue.
+  const handleSkipDuplicate = useCallback(() => {
+    sendCatchAllBin();
+    handleSkipDuplicateFromScanner();
+  }, [sendCatchAllBin, handleSkipDuplicateFromScanner]);
+
+  useEffect(() => {
+    return registerCardArrivedHook(captureCard);
+  }, [registerCardArrivedHook, captureCard]);
+
+  useEffect(() => {
+    return registerPauseHook(handlePause);
+  }, [registerPauseHook, handlePause]);
 
   useEffect(() => {
     registerIsland({
@@ -180,6 +208,7 @@ export function CardScanner({ className, compact }: CardScannerProps) {
       isFeeding,
       handleForceAddDuplicate,
       handleForceScan,
+      handleSkipDuplicate,
       handlePause: () => {
         setAutoFeed(false);
         handlePause();
@@ -195,6 +224,7 @@ export function CardScanner({ className, compact }: CardScannerProps) {
     isFeeding,
     handleForceAddDuplicate,
     handleForceScan,
+    handleSkipDuplicate,
     handlePause,
     handleResume,
     handleFeed,
@@ -230,7 +260,6 @@ export function CardScanner({ className, compact }: CardScannerProps) {
         )}
       >
         <video ref={videoRef} className="hidden" playsInline muted />
-        <canvas ref={processingCanvasRef} className="hidden" />
         <canvas
           ref={displayCanvasRef}
           className={cn("absolute", !isMobile && "rotate-90")}

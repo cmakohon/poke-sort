@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCardFilterSort } from "@/features/cards/api/use-card-filter-sort";
 import { useCardFilters } from "@/features/cards/api/use-card-filters";
+import { useBinConfigs } from "@/features/bins/api/use-bin-configs";
 import { CardDetailPanel } from "@/features/cards/components/card-detail-panel";
 import { CardToolbar } from "@/features/cards/components/card-toolbar";
 import { ScannedCardItem } from "@/features/cards/components/scanned-card-item";
@@ -53,14 +54,16 @@ export function CardGrid() {
   });
   const viewers = viewersRaw?.filter((v) => v.userId !== currentUserId);
   const { filters, setFilters } = useCardFilters();
+  const { fieldDefinitions } = useBinConfigs();
   const {
     filteredAndSorted,
     searchQuery,
     setSearchQuery,
     sortKey,
     setSortKey,
+    sortableFields,
     activeFilterCount,
-  } = useCardFilterSort(cards, { filters, setFilters });
+  } = useCardFilterSort(cards, fieldDefinitions, { filters, setFilters });
   const stats = useMemo(() => computeStats(cards), [cards]);
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -185,6 +188,7 @@ export function CardGrid() {
                 status={scanner.status}
                 onForceAddDuplicate={scanner.handleForceAddDuplicate}
                 onForceScan={scanner.handleForceScan}
+                onSkipDuplicate={scanner.handleSkipDuplicate}
                 onPause={scanner.handlePause}
                 onResume={scanner.handleResume}
               />
@@ -250,6 +254,7 @@ export function CardGrid() {
           onSearchChange={setSearchQuery}
           sortKey={sortKey}
           onSortChange={setSortKey}
+          sortableFields={sortableFields}
           onExport={() => setSummaryOpen(true)}
           collectionName={activeCollection?.name}
           onClearAll={handleClearSession}
@@ -304,6 +309,7 @@ export function CardGrid() {
                   status={scanner.status}
                   onForceAddDuplicate={scanner.handleForceAddDuplicate}
                   onForceScan={scanner.handleForceScan}
+                  onSkipDuplicate={scanner.handleSkipDuplicate}
                   onPause={scanner.handlePause}
                   onResume={scanner.handleResume}
                 />

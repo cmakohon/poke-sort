@@ -12,6 +12,21 @@ export interface CardContour {
   bottomLeft: Point;
 }
 
+// Describes the fixed scan box used in place of per-frame card detection -
+// a fraction of the frame's limiting dimension the box covers, plus a
+// fractional offset from center. Calibrated per-org to match camera mounting.
+export interface ScanRegion {
+  coverage: number; // 0-1
+  offsetX: number; // -0.5 to 0.5
+  offsetY: number; // -0.5 to 0.5
+}
+
+export const DEFAULT_SCAN_REGION: ScanRegion = {
+  coverage: 0.85,
+  offsetX: 0,
+  offsetY: 0,
+};
+
 export interface DetectionResult {
   detected: boolean;
   contour: CardContour | null;

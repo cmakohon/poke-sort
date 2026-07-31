@@ -12,14 +12,23 @@ import {
 import { WatcherStack } from "@/components/ui/watcher-stack";
 import { CardFilterPopover } from "@/features/cards/components/card-filter-popover";
 import type { CardToolbarProps } from "@/features/cards/types";
+import type { FieldMeta } from "@magic-vault/shared";
 import { IconCheckbox, IconDownload, IconTrash } from "@tabler/icons-react";
-import { useState } from "react";
+import { Fragment, useState } from "react";
+
+// Numeric/enum fields both have a defined "low to high" order (a numeric
+// value, or a field's own `options` order); string fields sort
+// alphabetically. See compareByField in use-card-filter-sort.ts.
+function sortLabels(type: FieldMeta["type"]): [asc: string, desc: string] {
+  return type === "string" ? ["A-Z", "Z-A"] : ["Low-High", "High-Low"];
+}
 
 export function CardToolbar({
   searchQuery,
   onSearchChange,
   sortKey,
   onSortChange,
+  sortableFields,
   onExport,
   onClearAll,
   hasCards,
@@ -62,18 +71,19 @@ export function CardToolbar({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="scan-desc">Scan Order</SelectItem>
-          <SelectItem value="name-asc">Name (A-Z)</SelectItem>
-          <SelectItem value="name-desc">Name (Z-A)</SelectItem>
-          <SelectItem value="set-asc">Set (A-Z)</SelectItem>
-          <SelectItem value="set-desc">Set (Z-A)</SelectItem>
-          <SelectItem value="rarity-asc">Rarity (Low-High)</SelectItem>
-          <SelectItem value="rarity-desc">Rarity (High-Low)</SelectItem>
-          <SelectItem value="price-asc">Price (Low-High)</SelectItem>
-          <SelectItem value="price-desc">Price (High-Low)</SelectItem>
-          <SelectItem value="cmc-asc">Mana Value (Low-High)</SelectItem>
-          <SelectItem value="cmc-desc">Mana Value (High-Low)</SelectItem>
-          <SelectItem value="edhrec-asc">Rank (Best First)</SelectItem>
-          <SelectItem value="edhrec-desc">Rank (Worst First)</SelectItem>
+          {sortableFields.map((field) => {
+            const [asc, desc] = sortLabels(field.type);
+            return (
+              <Fragment key={field.field}>
+                <SelectItem value={`${field.field}-asc`}>
+                  {field.label} ({asc})
+                </SelectItem>
+                <SelectItem value={`${field.field}-desc`}>
+                  {field.label} ({desc})
+                </SelectItem>
+              </Fragment>
+            );
+          })}
         </SelectContent>
       </Select>
       <CardFilterPopover

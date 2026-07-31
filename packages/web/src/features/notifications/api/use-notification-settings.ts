@@ -3,6 +3,7 @@ import {
   saveOrgSettings,
 } from "@/features/companies/api/org-settings";
 import { useOrg } from "@/features/companies/api/use-organization";
+import { DEFAULT_SCAN_REGION } from "@magic-vault/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { NotificationTestType } from "./notification-settings";
@@ -25,6 +26,7 @@ export function useNotificationSettings() {
       queryClient.setQueryData(queryOpts.queryKey, (old: typeof data): typeof data => ({
         primaryColor: old?.primaryColor ?? null,
         scannerLayout: old?.scannerLayout ?? "horizontal",
+        scanRegion: old?.scanRegion ?? DEFAULT_SCAN_REGION,
         discordWebhookUrl,
       }));
       return { previous };

@@ -14,6 +14,7 @@ import { SessionErrorsPanel } from "@/features/scanner/components/session-errors
 import { SessionStatsPanel } from "@/features/scanner/components/session-stats-panel";
 import { computeStats } from "@/features/scanner/lib/compute-stats";
 import { useIsMobile } from "@/hooks/use-is-mobile";
+import { FIELD_DEFINITIONS } from "@magic-vault/shared";
 import { IconCards, IconLoader2, IconWifiOff } from "@tabler/icons-react";
 import { AnimatePresence } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -75,7 +76,7 @@ function CardGrid({
 
 export default function MonitorPage() {
   const { collectionGuid } = useParams<{ collectionGuid: string }>();
-  const { cards, viewers, errors, status } = useSessionMonitor(collectionGuid);
+  const { collection, cards, viewers, errors, status } = useSessionMonitor(collectionGuid);
   const { locks, currentUserId } = useCollectionLocks();
   const isMobile = useIsMobile();
 
@@ -87,16 +88,20 @@ export default function MonitorPage() {
     (v) => v.userId !== scannerUserId && v.userId !== currentUserId,
   );
   const stats = useMemo(() => computeStats(cards), [cards]);
+  // The monitored session's own game, not the viewer's active collection -
+  // this page can be watching someone else's scan entirely.
+  const fieldDefinitions = collection?.game?.fieldDefinitions ?? FIELD_DEFINITIONS;
   const {
     filteredAndSorted,
     searchQuery,
     setSearchQuery,
     sortKey,
     setSortKey,
+    sortableFields,
     filters,
     setFilters,
     activeFilterCount,
-  } = useCardFilterSort(cards);
+  } = useCardFilterSort(cards, fieldDefinitions);
 
   const [newestScanId, setNewestScanId] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -160,6 +165,7 @@ export default function MonitorPage() {
                   onSearchChange={setSearchQuery}
                   sortKey={sortKey}
                   onSortChange={setSortKey}
+                  sortableFields={sortableFields}
                   hasCards={filteredAndSorted.length > 0}
                   activeFilters={filters}
                   onFiltersChange={setFilters}
@@ -202,6 +208,7 @@ export default function MonitorPage() {
             onSearchChange={setSearchQuery}
             sortKey={sortKey}
             onSortChange={setSortKey}
+            sortableFields={sortableFields}
             hasCards={filteredAndSorted.length > 0}
             activeFilters={filters}
             onFiltersChange={setFilters}

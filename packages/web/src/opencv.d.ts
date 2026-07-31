@@ -5,6 +5,8 @@ declare const cv: any;
 declare namespace cv {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   type Mat = any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  type MatVector = any;
 }
 
 interface Window {

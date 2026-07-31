@@ -4,6 +4,7 @@ import {
 } from "@/features/companies/api/org-settings";
 import { useOrg } from "@/features/companies/api/use-organization";
 import { cn } from "@/lib/utils";
+import { DEFAULT_SCAN_REGION } from "@magic-vault/shared";
 import { IconLayoutColumns, IconLayoutRows } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -39,6 +40,7 @@ export function ScannerLayoutToggle() {
         primaryColor: old?.primaryColor ?? null,
         scannerLayout,
         discordWebhookUrl: old?.discordWebhookUrl ?? null,
+        scanRegion: old?.scanRegion ?? DEFAULT_SCAN_REGION,
       }));
       return { previous };
     },

@@ -75,6 +75,8 @@ export function ScannedCardsProvider({
   const prevCollectionGuidRef = useRef<string | undefined>(undefined);
   const [autoFeed, setAutoFeedState] = useState(true);
   const autoFeedRef = useRef(true);
+  const cardArrivedHookRef = useRef<(() => void) | null>(null);
+  const pauseHookRef = useRef<(() => void) | null>(null);
   const [timerTrigger, setTimerTrigger] = useState<number | undefined>(
     undefined,
   );
@@ -105,6 +107,20 @@ export function ScannedCardsProvider({
   const setAutoFeed = useCallback((enabled: boolean) => {
     autoFeedRef.current = enabled;
     setAutoFeedState(enabled);
+  }, []);
+
+  const registerCardArrivedHook = useCallback((fn: () => void) => {
+    cardArrivedHookRef.current = fn;
+    return () => {
+      if (cardArrivedHookRef.current === fn) cardArrivedHookRef.current = null;
+    };
+  }, []);
+
+  const registerPauseHook = useCallback((fn: () => void) => {
+    pauseHookRef.current = fn;
+    return () => {
+      if (pauseHookRef.current === fn) pauseHookRef.current = null;
+    };
   }, []);
 
   const triggerAutoFeed = useCallback(async () => {
@@ -143,6 +159,7 @@ export function ScannedCardsProvider({
       if (parsed.empty) {
         autoFeedRef.current = false;
         setAutoFeedState(false);
+        pauseHookRef.current?.();
         toast.error("Feeder empty", {
           description:
             "No cards remaining in the hopper. Add more cards to continue.",
@@ -167,6 +184,9 @@ export function ScannedCardsProvider({
           sent: true,
           response: parsed,
         });
+      } else {
+        // Feeder confirmed a card reached module 1 - capture it now.
+        cardArrivedHookRef.current?.();
       }
     } catch {
       autoFeedRef.current = false;
@@ -318,6 +338,7 @@ export function ScannedCardsProvider({
             });
             autoFeedRef.current = false;
             setAutoFeedState(false);
+            pauseHookRef.current?.();
             return;
           }
           if (res.error) {
@@ -384,6 +405,7 @@ export function ScannedCardsProvider({
           });
           autoFeedRef.current = false;
           setAutoFeedState(false);
+          pauseHookRef.current?.();
           return;
         }
         if (res.error) {
@@ -506,6 +528,8 @@ export function ScannedCardsProvider({
         elapsedMs,
         isTimerActive,
         setAutoFeed,
+        registerCardArrivedHook,
+        registerPauseHook,
         addCard,
         sendCatchAllBin,
         removeCard,

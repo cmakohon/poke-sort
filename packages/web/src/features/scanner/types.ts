@@ -36,6 +36,10 @@ export interface ScannedCardsContextValue {
   setAutoFeed: (enabled: boolean) => void;
   addCard: (card: ScryfallCardWithDistance, capturedImageUrl?: string, alternativeMatches?: ScryfallCardWithDistance[]) => void;
   sendCatchAllBin: () => void;
+  /** Registers the callback fired once a `{"feeder": true}` round trip confirms a card has arrived at module 1 - the signal used to trigger the next capture instead of continuous vision polling. Returns an unregister function. */
+  registerCardArrivedHook: (fn: () => void) => () => void;
+  /** Registers the callback fired whenever a feeder/bin response reports the hopper is empty, so the scanner UI can pause itself. Returns an unregister function. */
+  registerPauseHook: (fn: () => void) => () => void;
   removeCard: (scanId: string) => void;
   removeCards: (scanIds: string[]) => void;
   correctCard: (scanId: string, card: ScryfallCard) => void;
@@ -64,6 +68,7 @@ export interface ScannerControlsProps {
   duplicateCardName?: string;
   onForceAddDuplicate: () => void;
   onForceScan: () => void;
+  onSkipDuplicate: () => void;
   onPause: () => void;
   onResume: () => void;
 }
