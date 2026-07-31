@@ -1,6 +1,6 @@
 # Magic Vault
 
-A Magic: The Gathering card scanner and physical sorter. A webcam identifies cards via AI image embeddings, a rule engine decides which bin each card belongs in, and an Arduino-driven feeder and servo mechanism physically routes the card there.
+A trading card scanner and physical sorter — Magic: The Gathering out of the box, extensible to other TCGs via pluggable per-game card-search adapters. A webcam identifies cards via AI image embeddings, a rule engine decides which bin each card belongs in, and an Arduino-driven feeder and servo mechanism physically routes the card there.
 
 ## MakerWorld
 https://makerworld.com/en/models/3066180-tcg-card-sorting-machine#profileId-3451252
@@ -16,13 +16,15 @@ https://makerworld.com/en/models/3066180-tcg-card-sorting-machine#profileId-3451
 
 ## Features
 
-- Live webcam scanning with automatic card detection and identification
-- Rule-based sort bins, grouped by collection, with and/or rule trees across card fields (color, rarity, price, set, etc.)
+- Live webcam scanning with automatic card detection and identification; captures wait for the card to physically settle at the sensor before the shot is taken
+- Multi-TCG support — pluggable card-search adapters per game (Scryfall/MTG built in, plus Gundam Card Game), with each game's own admin-configurable field definitions driving sorting, filtering, and bin rules
+- Rule-based sort bins, grouped by collection, with and/or rule trees across each game's own card fields (color, rarity, price, set, etc.)
+- Card grid sorting (by name, price, rarity, etc.) adapts automatically to whichever game a collection uses
 - Multiple collections per organization, each with their own bin configuration and card history
 - Remote monitoring — watch an in-progress scan session live from another device
-- Discord notifications for scan events, configurable per organization
+- Discord notifications for sorter errors/jams, plus an optional per-card-scanned notification with the card's image, name, price, collection/game, and a link to watch the session live
 - Per-organization branding and scanner layout settings
-- Feeder and servo calibration tools
+- Feeder, servo, and camera scan-region calibration tools — the camera's capture region can be dragged/resized live against the feed to match different webcam mountings and fields of view
 - In-app hardware build guide (`/build`) with bill of materials, wiring diagrams, and assembly instructions
 
 ## Stack
@@ -61,7 +63,7 @@ Root `.env` (read by the server):
 DATABASE_URL=
 NEON_AUTH_URL=
 PORT=            # optional, defaults to 3001
-WEB_URL=         # optional, used for CORS
+WEB_URL=         # optional, used for CORS and to build absolute links (Discord monitor-page links) - must be publicly reachable for those links/images to work outside your own machine
 ```
 
 `packages/web/.env`:
