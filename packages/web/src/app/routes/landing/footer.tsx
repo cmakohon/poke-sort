@@ -1,7 +1,6 @@
+import { DISCORD_URL } from "@/lib/links";
 import { IconBrandDiscord } from "@tabler/icons-react";
 import { Link } from "react-router-dom";
-
-const DISCORD_URL = "https://discord.gg/fYvw5PcvGg";
 
 export function LandingFooter() {
   return (

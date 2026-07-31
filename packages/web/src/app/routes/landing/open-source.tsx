@@ -1,4 +1,5 @@
 import { buttonVariants } from "@/components/ui/button";
+import { DISCORD_URL, MODEL_URL, REPO_URL } from "@/lib/links";
 import { cn } from "@/lib/utils";
 import {
   IconBrandDiscord,
@@ -7,10 +8,6 @@ import {
   IconDownload,
 } from "@tabler/icons-react";
 import { Link } from "react-router-dom";
-
-const REPO_URL = "https://github.com/dishwasher-detergent/mault";
-const MODEL_URL = `${REPO_URL}/tree/master/3d%20model`;
-const DISCORD_URL = "https://discord.gg/fYvw5PcvGg";
 
 export function LandingOpenSource() {
   return (
