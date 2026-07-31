@@ -22,6 +22,7 @@ import {
   IconFolders,
   IconLayoutSidebarLeftCollapse,
   IconLayoutSidebarLeftExpand,
+  IconPigFilled,
   IconSettings,
   IconWifi,
 } from "@tabler/icons-react";
@@ -272,11 +273,16 @@ export function AppNav() {
       <Tooltip>
         <TooltipTrigger
           className={cn(
-            "bg-primary grid place-items-center rounded-lg text-primary-foreground font-bold font-heading cursor-default text-sm shrink-0",
-            expanded ? "h-8 mx-2" : "size-8",
+            "flex items-center gap-2 cursor-default shrink-0",
+            expanded ? "h-8 mx-2" : "size-8 justify-center",
           )}
         >
-          {expanded ? "Magic Vault" : "MV"}
+          <span className="bg-primary grid size-8 shrink-0 place-items-center rounded-lg text-primary-foreground">
+            <IconPigFilled className="size-4" />
+          </span>
+          {expanded && (
+            <span className="font-bold font-heading text-sm">Magic Vault</span>
+          )}
         </TooltipTrigger>
         <TooltipContent side="right">v{__APP_VERSION__}</TooltipContent>
       </Tooltip>
