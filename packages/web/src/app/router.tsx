@@ -8,6 +8,7 @@ import AppLayout from "@/app/routes/app/layout";
 import MonitorPage from "@/app/routes/app/monitor";
 import MonitorSessionsPage from "@/app/routes/app/monitor-sessions";
 import SettingsPage from "@/app/routes/app/settings";
+import VerifyEmailPage from "@/app/routes/app/verify-email";
 import AuthPage from "@/app/routes/auth";
 import BuildGuidePage from "@/app/routes/build";
 import LandingPage from "@/app/routes/index";
@@ -56,6 +57,10 @@ export const router = createBrowserRouter([
   {
     element: <AuthGuard />,
     children: [
+      {
+        path: "/app/verify-email",
+        element: <VerifyEmailPage />,
+      },
       {
         element: <AppLayout />,
         children: [

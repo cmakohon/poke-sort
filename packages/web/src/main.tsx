@@ -1,4 +1,5 @@
 import { router } from "@/app/router";
+import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "@/index.css";
 import { neon } from "@/lib/auth/client";
@@ -19,6 +20,7 @@ createRoot(document.getElementById("root")!).render(
     >
       <TooltipProvider>
         <RouterProvider router={router} />
+        <Toaster />
       </TooltipProvider>
     </NeonAuthUIProvider>
   </StrictMode>,

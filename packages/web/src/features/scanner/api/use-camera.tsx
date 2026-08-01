@@ -3,6 +3,7 @@ import type {
   CameraStatus,
   ZoomRange,
 } from "@/features/scanner/types";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 import {
   createContext,
   useCallback,
@@ -50,6 +51,7 @@ async function acquireStream(deviceId?: string): Promise<MediaStream> {
 }
 
 export function CameraProvider({ children }: { children: React.ReactNode }) {
+  const isMobile = useIsMobile();
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [status, setStatus] = useState<CameraStatus>("idle");
   const [errorMessage, setErrorMessage] = useState("");
@@ -125,6 +127,10 @@ export function CameraProvider({ children }: { children: React.ReactNode }) {
   }, [startCamera, stopCamera]);
 
   useEffect(() => {
+    // Mobile is redirected to the read-only monitor view and never scans -
+    // don't prompt for camera access it'll never use.
+    if (isMobile) return;
+
     startCamera();
 
     return () => {
@@ -133,7 +139,7 @@ export function CameraProvider({ children }: { children: React.ReactNode }) {
         streamRef.current = null;
       }
     };
-  }, [startCamera]);
+  }, [startCamera, isMobile]);
 
   return (
     <CameraContext value={{ stream, status, errorMessage, zoom, zoomRange, cameras, selectedCameraId, setZoom, selectCamera, retryCamera, stopCamera }}>

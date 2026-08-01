@@ -26,7 +26,7 @@ export function GameFieldDefinitionsEditor() {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between sticky top-0 z-10 bg-popover pb-1">
         <p className="text-sm font-medium">Field definitions</p>
         <Button
           type="button"

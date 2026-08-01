@@ -1,14 +1,15 @@
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { FieldMeta, Game } from "@magic-vault/shared";
@@ -122,66 +123,70 @@ export function GameFormDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
+    <Drawer open={open} onOpenChange={onOpenChange} direction="right">
+      <DrawerContent className="sm:max-w-2xl flex flex-col">
         <FormProvider {...form}>
           <form
             onSubmit={handleSubmit(handleFormSubmit)}
-            className="flex flex-col gap-4"
+            className="flex flex-col min-h-0 flex-1 overflow-hidden"
           >
-            <DialogHeader>
-              <DialogTitle>
+            <DrawerHeader>
+              <DrawerTitle>
                 {game ? `Edit ${game.name}` : "Add game"}
-              </DialogTitle>
-              <DialogDescription>
+              </DrawerTitle>
+              <DrawerDescription>
                 Define how cards for this game are fetched and which fields
                 bin rules can filter on.
-              </DialogDescription>
-            </DialogHeader>
+              </DrawerDescription>
+            </DrawerHeader>
 
-            <div className="grid grid-cols-2 gap-3">
-              <Field data-invalid={!!errors.key}>
-                <FieldLabel>Key</FieldLabel>
+            <div className="flex flex-col gap-4 px-4 shrink-0">
+              <div className="grid grid-cols-2 gap-3">
+                <Field data-invalid={!!errors.key}>
+                  <FieldLabel>Key</FieldLabel>
+                  <Input
+                    placeholder="pokemon"
+                    {...register("key")}
+                    disabled={!!game}
+                  />
+                  <FieldError errors={[errors.key]} />
+                </Field>
+                <Field data-invalid={!!errors.name}>
+                  <FieldLabel>Name</FieldLabel>
+                  <Input placeholder="Pokémon" {...register("name")} />
+                  <FieldError errors={[errors.name]} />
+                </Field>
+              </div>
+
+              <Field data-invalid={!!errors.dataSourceUrl}>
+                <FieldLabel>Data source URL</FieldLabel>
                 <Input
-                  placeholder="pokemon"
-                  {...register("key")}
-                  disabled={!!game}
+                  placeholder="https://api.pokemontcg.io/v2/cards"
+                  {...register("dataSourceUrl")}
                 />
-                <FieldError errors={[errors.key]} />
+                <FieldError errors={[errors.dataSourceUrl]} />
               </Field>
-              <Field data-invalid={!!errors.name}>
-                <FieldLabel>Name</FieldLabel>
-                <Input placeholder="Pokémon" {...register("name")} />
-                <FieldError errors={[errors.name]} />
+
+              <Field orientation="horizontal">
+                <FieldLabel>Active</FieldLabel>
+                <Controller
+                  control={control}
+                  name="isActive"
+                  render={({ field }) => (
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  )}
+                />
               </Field>
             </div>
 
-            <Field data-invalid={!!errors.dataSourceUrl}>
-              <FieldLabel>Data source URL</FieldLabel>
-              <Input
-                placeholder="https://api.pokemontcg.io/v2/cards"
-                {...register("dataSourceUrl")}
-              />
-              <FieldError errors={[errors.dataSourceUrl]} />
-            </Field>
+            <ScrollArea className="flex-1 min-h-0 overflow-y-auto px-4 mt-4">
+              <GameFieldDefinitionsEditor />
+            </ScrollArea>
 
-            <Field orientation="horizontal">
-              <FieldLabel>Active</FieldLabel>
-              <Controller
-                control={control}
-                name="isActive"
-                render={({ field }) => (
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                )}
-              />
-            </Field>
-
-            <GameFieldDefinitionsEditor />
-
-            <DialogFooter>
+            <DrawerFooter className="shrink-0 flex-row justify-end">
               <Button
                 type="button"
                 variant="outline"
@@ -196,10 +201,10 @@ export function GameFormDialog({
                     ? "Save changes"
                     : "Create game"}
               </Button>
-            </DialogFooter>
+            </DrawerFooter>
           </form>
         </FormProvider>
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 }

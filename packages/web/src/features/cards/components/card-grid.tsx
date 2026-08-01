@@ -1,9 +1,9 @@
 import { DeleteDialog } from "@/components/delete-dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useBinConfigs } from "@/features/bins/api/use-bin-configs";
 import { useCardFilterSort } from "@/features/cards/api/use-card-filter-sort";
 import { useCardFilters } from "@/features/cards/api/use-card-filters";
-import { useBinConfigs } from "@/features/bins/api/use-bin-configs";
 import { CardDetailPanel } from "@/features/cards/components/card-detail-panel";
 import { CardToolbar } from "@/features/cards/components/card-toolbar";
 import { ScannedCardItem } from "@/features/cards/components/scanned-card-item";
@@ -289,7 +289,7 @@ export function CardGrid() {
         </div>
       )}
       <div className="p-2 flex-1">
-        <div className="grid grid-cols-3 @md:grid-cols-4 @4xl:grid-cols-6 @5xl:grid-cols-8 gap-2">
+        <div className="grid grid-cols-3 @md:grid-cols-4 @4xl:grid-cols-6 gap-2">
           <AnimatePresence initial={false}>
             {filteredAndSorted.map((card) => (
               <ScannedCardItem

@@ -64,7 +64,7 @@ export function BinLocationDiagram({
   const catchAllBin = configs.find((c) => c.isCatchAll)?.binNumber;
 
   return (
-    <div className="overflow-hidden">
+    <div className="overflow-hidden rounded-lg">
       {MODULES.map(({ module, left, right }) => (
         <div key={module} className="grid grid-cols-2">
           <BinCell
