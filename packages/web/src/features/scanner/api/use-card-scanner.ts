@@ -1,8 +1,8 @@
 import { searchByImage } from "@/features/cards/api/card";
 import { getCardById } from "@/features/cards/api/card-search";
+import { useCollections } from "@/features/collections/api/use-collections";
 import { orgSettingsQueryOptions } from "@/features/companies/api/org-settings";
 import { useOrg } from "@/features/companies/api/use-organization";
-import { useCollections } from "@/features/collections/api/use-collections";
 import { useCameraContext } from "@/features/scanner/api/use-camera";
 import {
   CARD_SETTLE_DELAY_MS,
@@ -18,9 +18,9 @@ import {
   DEFAULT_SCAN_REGION,
   type CardContour,
   type CardScannerProps,
+  type PlayingCardWithDistance,
   type ScanRegion,
   type ScannerStatus,
-  type ScryfallCardWithDistance,
 } from "@magic-vault/shared";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -63,8 +63,8 @@ async function searchCardImage(
   contour?: CardContour | null,
   collectionGuid?: string,
 ): Promise<{
-  card: ScryfallCardWithDistance | null;
-  alternativeMatches: ScryfallCardWithDistance[];
+  card: PlayingCardWithDistance | null;
+  alternativeMatches: PlayingCardWithDistance[];
   debugImageUrl: string;
 }> {
   const warpedCanvas = contour ? extractCardImage(canvas, contour) : canvas;
@@ -89,7 +89,7 @@ async function searchCardImage(
     ),
   );
 
-  const cards = resolved.filter(Boolean) as ScryfallCardWithDistance[];
+  const cards = resolved.filter(Boolean) as PlayingCardWithDistance[];
   if (cards.length === 0)
     return { card: null, alternativeMatches: [], debugImageUrl };
 
@@ -122,14 +122,15 @@ export function useCardScanner({
   } = useCameraContext();
   const { activeCollection } = useCollections();
   const { activeOrg } = useOrg();
-  const { data: orgSettingsData } = useQuery(orgSettingsQueryOptions(activeOrg?.id));
+  const { data: orgSettingsData } = useQuery(
+    orgSettingsQueryOptions(activeOrg?.id),
+  );
 
   const rotatedRef = useRef(rotated);
   rotatedRef.current = rotated;
 
-  // Calibrated per-org (see calibration screen); falls back to the default
-  // centered box when unset or when a caller passes an explicit override.
-  const scanRegion = scanRegionProp ?? orgSettingsData?.scanRegion ?? DEFAULT_SCAN_REGION;
+  const scanRegion =
+    scanRegionProp ?? orgSettingsData?.scanRegion ?? DEFAULT_SCAN_REGION;
   const scanRegionRef = useRef(scanRegion);
   scanRegionRef.current = scanRegion;
 
@@ -152,7 +153,7 @@ export function useCardScanner({
   const [status, setStatus] = useState<ScannerStatus>("initializing");
   const [errorMessage, setErrorMessage] = useState("");
   const [duplicateCard, setDuplicateCard] =
-    useState<ScryfallCardWithDistance | null>(null);
+    useState<PlayingCardWithDistance | null>(null);
   const [debugImageUrl, setDebugImageUrl] = useState<string | null>(null);
   const debugImageUrlRef = useRef<string | null>(null);
   const [allowDuplicates, setAllowDuplicates] = useState(true);
@@ -296,22 +297,20 @@ export function useCardScanner({
           }
         }
 
-        // Draw the static scan-region guide box once - it doesn't move, so
-        // there's no need to redraw it every frame like the old per-frame
-        // detection overlay did.
         const overlayCtx = overlayCanvasRef.current?.getContext("2d");
         if (overlayCtx) {
           overlayCtx.clearRect(0, 0, videoWidth, videoHeight);
           drawDetectionOverlay(overlayCtx, {
             detected: true,
-            contour: getDefaultCardContour(videoWidth, videoHeight, scanRegionRef.current),
+            contour: getDefaultCardContour(
+              videoWidth,
+              videoHeight,
+              scanRegionRef.current,
+            ),
             confidence: 1,
           });
         }
 
-        // Scale display/overlay canvases to fill the container (contain, no squish).
-        // When rotated 90° via CSS the visual dimensions are transposed, so we swap
-        // videoWidth/videoHeight in the scale calculation.
         const container = displayCanvasRef.current?.parentElement;
         if (container) {
           const cw = container.clientWidth;
@@ -356,10 +355,6 @@ export function useCardScanner({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stream]);
 
-  // Redraws the static scan-region box when the calibrated region changes
-  // (e.g. live preview on the calibration screen, which passes a draft
-  // scanRegion as sliders move). No-op until the stream-attach effect above
-  // has sized the canvases at least once.
   useEffect(() => {
     const canvas = displayCanvasRef.current;
     const overlayCtx = overlayCanvasRef.current?.getContext("2d");
@@ -384,8 +379,6 @@ export function useCardScanner({
     }
   }, [duplicateCard, updateStatus]);
 
-  // Manual override / jam-recovery trigger - scans right now regardless of
-  // duplicate state, using the fixed scan region.
   const handleForceScan = useCallback(() => {
     if (
       isCapturingRef.current ||
@@ -405,15 +398,6 @@ export function useCardScanner({
     );
   }, [updateStatus, performCapture]);
 
-  // Normal capture trigger - fired once the module 1 IR sensor confirms a
-  // card has arrived (see registerCardArrivedHook in use-scanned-cards.tsx
-  // and the manual "Feed" handler in card-scanner.tsx). Unlike
-  // handleForceScan, this respects duplicate checking since it's the
-  // expected per-card path, not an override.
-  //
-  // The card is still sliding into place when the sensor first trips, so the
-  // actual frame grab is deferred by CARD_SETTLE_DELAY_MS to let it come to
-  // rest under the camera before performCapture reads the canvas.
   const captureCard = useCallback(() => {
     if (
       isCapturingRef.current ||
@@ -426,16 +410,17 @@ export function useCardScanner({
 
     isCapturingRef.current = true;
     updateStatus("searching");
-    const contour = getDefaultCardContour(canvas.width, canvas.height, scanRegionRef.current);
+    const contour = getDefaultCardContour(
+      canvas.width,
+      canvas.height,
+      scanRegionRef.current,
+    );
     settleTimeoutRef.current = setTimeout(() => {
       settleTimeoutRef.current = null;
       performCapture(true, contour);
     }, CARD_SETTLE_DELAY_MS);
   }, [updateStatus, performCapture]);
 
-  // Declines a duplicate match without adding it. Ejecting the physical
-  // card to the catch-all bin is composed by the caller (card-scanner.tsx),
-  // which has access to useScannedCards' sendCatchAllBin.
   const handleSkipDuplicate = useCallback(() => {
     setDuplicateCard(null);
     updateStatus("scanning");

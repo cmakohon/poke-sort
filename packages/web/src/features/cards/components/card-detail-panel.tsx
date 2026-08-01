@@ -20,8 +20,8 @@ import {
   getCardFaceName,
   getCardImageUris,
   QUERY_MIN_LENGTH,
-  type ScryfallCard,
-  type ScryfallCardWithDistance,
+  type PlayingCard,
+  type PlayingCardWithDistance,
 } from "@magic-vault/shared";
 import {
   IconCheck,
@@ -49,8 +49,8 @@ interface CardDetailPanelProps {
   scanId?: string;
   onClose: () => void;
   onRemove?: () => void;
-  currentCard?: ScryfallCardWithDistance;
-  alternativeMatches?: ScryfallCardWithDistance[];
+  currentCard?: PlayingCardWithDistance;
+  alternativeMatches?: PlayingCardWithDistance[];
   capturedImageUrl?: string;
   isFoil?: boolean;
   binNumber?: number;
@@ -84,7 +84,7 @@ export function CardDetailPanel({
   const [selectedSet, setSelectedSet] = useState<string | null>("all");
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
 
-  const [candidates, setCandidates] = useState<ScryfallCardWithDistance[]>([]);
+  const [candidates, setCandidates] = useState<PlayingCardWithDistance[]>([]);
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
   const prevScanIdRef = useRef<string | undefined>(undefined);
 
@@ -96,7 +96,7 @@ export function CardDetailPanel({
     if (scanId !== prevScanIdRef.current) {
       prevScanIdRef.current = scanId;
       const ids = new Set<string>();
-      const all: ScryfallCardWithDistance[] = [];
+      const all: PlayingCardWithDistance[] = [];
       for (const c of [currentCard, ...(alternativeMatches ?? [])]) {
         if (!ids.has(c.id)) {
           ids.add(c.id);
@@ -143,7 +143,7 @@ export function CardDetailPanel({
   };
 
   const handleSelect = useCallback(
-    (card: ScryfallCard) => {
+    (card: PlayingCard) => {
       if (scanId) correctCard(scanId, card);
       else addCard({ ...card, distance: 0 });
       onClose();
@@ -152,7 +152,7 @@ export function CardDetailPanel({
   );
 
   const handleSelectCandidate = useCallback(
-    (card: ScryfallCardWithDistance) => {
+    (card: PlayingCardWithDistance) => {
       setSelectedId(card.id);
       if (scanId) correctCard(scanId, card);
     },

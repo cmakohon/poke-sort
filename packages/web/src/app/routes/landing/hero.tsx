@@ -1,6 +1,6 @@
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { ScryfallCard } from "@magic-vault/shared";
+import type { PlayingCard } from "@magic-vault/shared";
 import { getCardFaceName, getCardImageUris } from "@magic-vault/shared";
 import { IconArrowRight } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
@@ -10,7 +10,7 @@ const CARD_COUNT = 6;
 const KNOWN_RARITIES = ["common", "uncommon", "rare", "mythic"];
 
 function useRandomCards(count: number) {
-  const [cards, setCards] = useState<ScryfallCard[]>([]);
+  const [cards, setCards] = useState<PlayingCard[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -18,14 +18,12 @@ function useRandomCards(count: number) {
     Promise.all(
       Array.from({ length: count }, () =>
         fetch("https://api.scryfall.com/cards/random")
-          .then((res) =>
-            res.ok ? (res.json() as Promise<ScryfallCard>) : null,
-          )
+          .then((res) => (res.ok ? (res.json() as Promise<PlayingCard>) : null))
           .catch(() => null),
       ),
     ).then((results) => {
       if (cancelled) return;
-      setCards(results.filter((card): card is ScryfallCard => !!card));
+      setCards(results.filter((card): card is PlayingCard => !!card));
     });
 
     return () => {

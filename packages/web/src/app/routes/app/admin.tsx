@@ -22,6 +22,7 @@ import {
   cancelSync,
   createSyncEventSource,
   dumpCards,
+  listCardGameKeys,
   listCards,
   listSyncSources,
   revectorizeCard,
@@ -36,11 +37,16 @@ import {
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { DEFAULT_SYNC_STATE, STATUS_COLORS } from "./admin.constants";
+import {
+  DEFAULT_SYNC_STATE,
+  formatDuration,
+  STATUS_COLORS,
+} from "./admin.constants";
 
 export default function AdminPage() {
   const { activeOrg } = useOrg();
   const [syncState, setSyncState] = useState<SyncState>(DEFAULT_SYNC_STATE);
+  const [now, setNow] = useState(() => Date.now());
   const [dumpOpen, setDumpOpen] = useState(false);
   const logRef = useRef<HTMLDivElement>(null);
   const [cardSearch, setCardSearch] = useState("");
@@ -50,12 +56,19 @@ export default function AdminPage() {
   const [revectorizingIds, setRevectorizingIds] = useState<Set<string>>(
     new Set(),
   );
-  const [syncGameKey, setSyncGameKey] = useState<string | null>("mtg");
+  const [syncGameKey, setSyncGameKey] = useState<string | null>(null);
+  const [dumpGameKey, setDumpGameKey] = useState<string>("__all__");
 
   const sourcesQuery = useQuery({
     queryKey: ["admin", "sync-sources"],
     queryFn: () => listSyncSources().then((r) => r.data ?? []),
     staleTime: Infinity,
+  });
+
+  const cardGamesQuery = useQuery({
+    queryKey: ["admin", "cards", "games"],
+    queryFn: () => listCardGameKeys().then((r) => r.data ?? []),
+    staleTime: 30_000,
   });
 
   useEffect(() => {
@@ -116,6 +129,12 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
+    if (syncState.status !== "running") return;
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, [syncState.status]);
+
+  useEffect(() => {
     if (logRef.current) {
       logRef.current.scrollTop = logRef.current.scrollHeight;
     }
@@ -161,10 +180,12 @@ export default function AdminPage() {
   const startSyncMutation = useMutation({ mutationFn: startSync });
   const cancelSyncMutation = useMutation({ mutationFn: cancelSync });
   const dumpMutation = useMutation({
-    mutationFn: dumpCards,
-    onSuccess: () => {
+    mutationFn: (gameKey?: string) => dumpCards(gameKey),
+    onSuccess: (result) => {
       setDumpOpen(false);
-      toast.success("Card database cleared");
+      toast.success(result.message);
+      cardsQuery.refetch();
+      cardGamesQuery.refetch();
     },
     onError: (err) => {
       toast.error(
@@ -176,6 +197,13 @@ export default function AdminPage() {
   const total = syncState.total;
   const done = syncState.processed + syncState.skipped;
   const progress = total > 0 ? Math.min(100, (done / total) * 100) : 0;
+  const elapsedMs = syncState.startedAt
+    ? now - new Date(syncState.startedAt).getTime()
+    : 0;
+  const etaMs =
+    done > 0 && total > done
+      ? (elapsedMs / done) * (total - done)
+      : null;
   const isRunning = syncState.status === "running";
 
   return (
@@ -248,6 +276,9 @@ export default function AdminPage() {
               </span>
               <span>{syncState.processed} vectorized</span>
               <span>{syncState.skipped} skipped</span>
+              {isRunning && etaMs !== null && (
+                <span>~{formatDuration(etaMs)} remaining</span>
+              )}
               {syncState.errors > 0 && (
                 <span className="text-red-500">{syncState.errors} errors</span>
               )}
@@ -382,38 +413,61 @@ export default function AdminPage() {
         <GamesManager />
       </div>
 
-      <div className="rounded-lg border p-4 flex items-center justify-between mt-4">
-        <div className="flex flex-col gap-0.5">
+      <div className="rounded-lg border p-4 flex items-center justify-between mt-4 gap-3">
+        <div className="flex flex-col gap-0.5 min-w-0">
           <p className="text-sm font-medium">Dump Card Database</p>
           <p className="text-xs text-muted-foreground">
-            Permanently delete all card image vectors
+            Permanently delete card image vectors, for one game or all of them
           </p>
         </div>
-        <Dialog open={dumpOpen} onOpenChange={setDumpOpen}>
-          <DialogTrigger
-            render={<Button variant="destructive" disabled={isRunning} />}
+        <div className="flex items-center gap-2 shrink-0">
+          <Select
+            value={dumpGameKey}
+            onValueChange={(value) => setDumpGameKey(value ?? "__all__")}
           >
-            Dump
-          </DialogTrigger>
-          <DialogContent showCloseButton={false}>
-            <DialogHeader>
-              <DialogTitle>Dump card database</DialogTitle>
-              <DialogDescription>
-                This will permanently delete all card image vectors and cannot
-                be undone. Are you sure?
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter showCloseButton>
-              <Button
-                variant="destructive"
-                disabled={dumpMutation.isPending}
-                onClick={() => dumpMutation.mutate()}
-              >
-                {dumpMutation.isPending ? "Dumping..." : "Dump"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Select scope..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">All games</SelectItem>
+              {(cardGamesQuery.data ?? []).map((g) => (
+                <SelectItem key={g.gameKey} value={g.gameKey}>
+                  {g.gameKey} ({g.count})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Dialog open={dumpOpen} onOpenChange={setDumpOpen}>
+            <DialogTrigger
+              render={<Button variant="destructive" disabled={isRunning} />}
+            >
+              Dump
+            </DialogTrigger>
+            <DialogContent showCloseButton={false}>
+              <DialogHeader>
+                <DialogTitle>Dump card database</DialogTitle>
+                <DialogDescription>
+                  {dumpGameKey === "__all__"
+                    ? "This will permanently delete all card image vectors and cannot be undone. Are you sure?"
+                    : `This will permanently delete all "${dumpGameKey}" card image vectors and cannot be undone. Are you sure?`}
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter showCloseButton>
+                <Button
+                  variant="destructive"
+                  disabled={dumpMutation.isPending}
+                  onClick={() =>
+                    dumpMutation.mutate(
+                      dumpGameKey === "__all__" ? undefined : dumpGameKey,
+                    )
+                  }
+                >
+                  {dumpMutation.isPending ? "Dumping..." : "Dump"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
     </div>
   );

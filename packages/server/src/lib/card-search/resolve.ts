@@ -1,13 +1,14 @@
 import { authQuery, db } from "../../db";
 import { gundamAdapter } from "../gundam/search";
-import { SCRYFALL_DEFAULT_URL, scryfallAdapter } from "../scryfall/search";
+import { pokemonAdapter } from "../pokemon/search";
+import { scryfallAdapter } from "../scryfall/search";
 import type { CardSearchAdapter } from "./types";
 
 const ADAPTERS_BY_GAME_KEY: Record<string, CardSearchAdapter> = {
+  mtg: scryfallAdapter,
   gundam: gundamAdapter,
+  pokemon: pokemonAdapter,
 };
-
-const DEFAULT_GAME_KEY = "mtg";
 
 async function findCollectionGame(jwtClaims: string, collectionGuid: string) {
   return authQuery(jwtClaims, async (tx) => {
@@ -25,10 +26,10 @@ async function findCollectionGame(jwtClaims: string, collectionGuid: string) {
 export async function resolveGameKey(
   jwtClaims: string,
   collectionGuid: string | undefined,
-): Promise<string> {
-  if (!collectionGuid) return DEFAULT_GAME_KEY;
+): Promise<string | null> {
+  if (!collectionGuid) return null;
   const game = await findCollectionGame(jwtClaims, collectionGuid);
-  return game?.key ?? DEFAULT_GAME_KEY;
+  return game?.key ?? null;
 }
 
 export async function resolveGameDataSourceUrl(
@@ -45,15 +46,17 @@ export async function resolveGameDataSourceUrl(
 export async function resolveCardSearch(
   jwtClaims: string,
   collectionGuid: string | undefined,
-): Promise<{ adapter: CardSearchAdapter; baseUrl: string }> {
-  const game = collectionGuid
-    ? await findCollectionGame(jwtClaims, collectionGuid)
-    : null;
-  const gameKey = game?.key ?? DEFAULT_GAME_KEY;
-  const adapter = ADAPTERS_BY_GAME_KEY[gameKey] ?? scryfallAdapter;
+): Promise<{ adapter: CardSearchAdapter; baseUrl: string } | null> {
+  if (!collectionGuid) return null;
+  const game = await findCollectionGame(jwtClaims, collectionGuid);
+  if (!game) return null;
+
+  const adapter = ADAPTERS_BY_GAME_KEY[game.key];
+  if (!adapter) return null;
+
   const baseUrl =
-    game?.dataSourceUrl ||
-    (await resolveGameDataSourceUrl(gameKey, SCRYFALL_DEFAULT_URL));
+    game.dataSourceUrl ||
+    (await resolveGameDataSourceUrl(game.key, adapter.defaultUrl));
 
   return { adapter, baseUrl };
 }

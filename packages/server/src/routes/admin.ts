@@ -1,4 +1,4 @@
-import { count, ilike } from "drizzle-orm";
+import { count, eq, ilike } from "drizzle-orm";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { db } from "../db";
@@ -57,14 +57,17 @@ router.get("/sync/sources", requireAuth, requireRole("admin"), (c) => {
 
 // POST /admin/sync
 router.post("/sync", requireAuth, requireRole("admin"), async (c) => {
-  let gameKey = "mtg";
+  let gameKey: string | undefined;
   try {
     const body = await c.req.json<{ gameKey?: string }>();
-    if (body.gameKey) gameKey = body.gameKey;
+    gameKey = body.gameKey;
   } catch {
-    // no/invalid body - fall back to mtg
+    // no/invalid body
   }
 
+  if (!gameKey) {
+    return c.json({ success: false, message: "gameKey is required." }, 400);
+  }
   if (!SYNC_SOURCES[gameKey]) {
     return c.json({ success: false, message: `Unknown sync source: ${gameKey}` }, 400);
   }
@@ -123,7 +126,13 @@ router.post(
       where: (t, { eq }) => eq(t.scryfallId, scryfallId),
       columns: { gameKey: true },
     });
-    const gameKey = existing?.gameKey ?? "mtg";
+    if (!existing) {
+      return c.json(
+        { success: false, message: `Card ${scryfallId} not found in database.` },
+        404,
+      );
+    }
+    const gameKey = existing.gameKey;
     const source = SYNC_SOURCES[gameKey];
     if (!source) {
       return c.json({ success: false, message: `Unknown sync source: ${gameKey}` }, 400);
@@ -163,13 +172,37 @@ router.post(
   },
 );
 
-// POST /admin/cards/dump — delete all card vectors
+// GET /admin/cards/games — distinct game keys currently in the card database, with counts
+router.get("/cards/games", requireAuth, requireRole("admin"), async (c) => {
+  const rows = await db
+    .select({ gameKey: cardImageVectors.gameKey, count: count() })
+    .from(cardImageVectors)
+    .groupBy(cardImageVectors.gameKey)
+    .orderBy(cardImageVectors.gameKey);
+
+  return c.json({ success: true, data: rows });
+});
+
+// POST /admin/cards/dump — delete card vectors, either all of them or just one game's
 router.post("/cards/dump", requireAuth, requireRole("admin"), async (c) => {
   if (getStatus().status === "running") {
     return c.json(
       { success: false, message: "Cannot dump while sync is running" },
       409,
     );
+  }
+
+  let gameKey: string | undefined;
+  try {
+    const body = await c.req.json<{ gameKey?: string }>();
+    if (body.gameKey) gameKey = body.gameKey;
+  } catch {
+    // no/invalid body - dump everything
+  }
+
+  if (gameKey) {
+    await db.delete(cardImageVectors).where(eq(cardImageVectors.gameKey, gameKey));
+    return c.json({ success: true, message: `Cleared "${gameKey}" cards` });
   }
 
   await db.delete(cardImageVectors);

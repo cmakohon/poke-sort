@@ -54,12 +54,14 @@ const BinConfigsContext = createContext<BinConfigsContextValue | null>(null);
 
 export function BinConfigsProvider({
   children,
+  collectionGuid,
 }: {
   children: React.ReactNode;
+  collectionGuid?: string;
 }) {
   const queryClient = useQueryClient();
   const { activeOrg } = useOrg();
-  const { activeCollection } = useCollections();
+  const { activeCollection, collections } = useCollections();
   const [selectedBin, setSelectedBin] = useState(1);
 
   const { data: allSets = [] } = useQuery({
@@ -67,9 +69,13 @@ export function BinConfigsProvider({
     enabled: !!activeOrg,
   });
 
-  const activeGameGuid = activeCollection?.game?.guid;
+  const targetCollection = collectionGuid
+    ? (collections.find((c) => c.guid === collectionGuid) ?? null)
+    : activeCollection;
+
+  const activeGameGuid = targetCollection?.game?.guid;
   const fieldDefinitions =
-    activeCollection?.game?.fieldDefinitions ?? FIELD_DEFINITIONS;
+    targetCollection?.game?.fieldDefinitions ?? FIELD_DEFINITIONS;
 
   const sets = useMemo(
     () => allSets.filter((s) => matchesGame(s, activeGameGuid)),

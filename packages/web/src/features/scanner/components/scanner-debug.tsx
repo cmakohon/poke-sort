@@ -12,7 +12,7 @@ import { useCollections } from "@/features/collections/api/use-collections";
 import { useScannedCards } from "@/features/scanner/api/use-scanned-cards";
 import { useRole } from "@/hooks/use-role";
 import { apiPost } from "@/lib/api/client";
-import type { ScryfallCardWithDistance } from "@magic-vault/shared";
+import type { PlayingCardWithDistance } from "@magic-vault/shared";
 import {
   IconAlertTriangle,
   IconBug,
@@ -22,7 +22,7 @@ import {
 
 // All three use real M11 image URLs so they actually render.
 // set/collector differ to simulate a realistic multi-printing scenario.
-const LIGHTNING_BOLT_M11: ScryfallCardWithDistance = {
+const LIGHTNING_BOLT_M11: PlayingCardWithDistance = {
   object: "card",
   id: "e3285e6b-3e79-4d7c-bf96-d920f973b122",
   oracle_id: "e3285e6b-0000-0000-0000-000000000000",
@@ -97,7 +97,7 @@ const LIGHTNING_BOLT_M11: ScryfallCardWithDistance = {
   purchase_uris: undefined,
 };
 
-const LIGHTNING_BOLT_A25: ScryfallCardWithDistance = {
+const LIGHTNING_BOLT_A25: PlayingCardWithDistance = {
   ...LIGHTNING_BOLT_M11,
   id: "debug-bolt-a25",
   released_at: "2018-03-16",
@@ -117,7 +117,7 @@ const LIGHTNING_BOLT_A25: ScryfallCardWithDistance = {
   distance: 0.05,
 };
 
-const LIGHTNING_BOLT_2X2: ScryfallCardWithDistance = {
+const LIGHTNING_BOLT_2X2: PlayingCardWithDistance = {
   ...LIGHTNING_BOLT_M11,
   id: "debug-bolt-2x2",
   released_at: "2022-07-08",
@@ -137,7 +137,7 @@ const LIGHTNING_BOLT_2X2: ScryfallCardWithDistance = {
   distance: 0.06,
 };
 
-const MOCK_CARDS: ScryfallCardWithDistance[] = [LIGHTNING_BOLT_M11];
+const MOCK_CARDS: PlayingCardWithDistance[] = [LIGHTNING_BOLT_M11];
 
 const FAKE_SCAN_URL =
   "https://cards.scryfall.io/art_crop/front/e/3/e3285e6b-3e79-4d7c-bf96-d920f973b122.jpg";
@@ -150,7 +150,7 @@ const RISING_FREEDOM_GUNDAM_IMG = proxiedImageUrl(
   "https://www.gundam-gcg.com/en/images/cards/card/EB01-039.webp?260715",
 );
 
-const RISING_FREEDOM_GUNDAM: ScryfallCardWithDistance = {
+const RISING_FREEDOM_GUNDAM: PlayingCardWithDistance = {
   object: "card",
   id: "EB01-039",
   oracle_id: "EB01-039",
@@ -228,7 +228,7 @@ const STRIKE_FREEDOM_GUNDAM_IMG = proxiedImageUrl(
   "https://www.gundam-gcg.com/en/images/cards/card/EB01-041.webp?260715",
 );
 
-const STRIKE_FREEDOM_GUNDAM: ScryfallCardWithDistance = {
+const STRIKE_FREEDOM_GUNDAM: PlayingCardWithDistance = {
   ...RISING_FREEDOM_GUNDAM,
   id: "EB01-041",
   oracle_id: "EB01-041",
@@ -259,7 +259,7 @@ const STRIKE_FREEDOM_GUNDAM: ScryfallCardWithDistance = {
   distance: 0.03,
 };
 
-const STRIKE_FREEDOM_GUNDAM_P1: ScryfallCardWithDistance = {
+const STRIKE_FREEDOM_GUNDAM_P1: PlayingCardWithDistance = {
   ...STRIKE_FREEDOM_GUNDAM,
   id: "EB01-041_p1",
   oracle_id: "EB01-041_p1",
@@ -267,7 +267,7 @@ const STRIKE_FREEDOM_GUNDAM_P1: ScryfallCardWithDistance = {
   distance: 0.05,
 };
 
-const STRIKE_FREEDOM_GUNDAM_P2: ScryfallCardWithDistance = {
+const STRIKE_FREEDOM_GUNDAM_P2: PlayingCardWithDistance = {
   ...STRIKE_FREEDOM_GUNDAM,
   id: "EB01-041_p2",
   oracle_id: "EB01-041_p2",
@@ -275,7 +275,100 @@ const STRIKE_FREEDOM_GUNDAM_P2: ScryfallCardWithDistance = {
   distance: 0.06,
 };
 
-const GUNDAM_MOCK_CARDS: ScryfallCardWithDistance[] = [RISING_FREEDOM_GUNDAM];
+const GUNDAM_MOCK_CARDS: PlayingCardWithDistance[] = [RISING_FREEDOM_GUNDAM];
+
+const PIKACHU_IMG = proxiedImageUrl(
+  "https://assets.tcgdex.net/en/base/base1/58/high.webp",
+);
+
+const PIKACHU_BASE1: PlayingCardWithDistance = {
+  object: "card",
+  id: "base1-58",
+  oracle_id: "base1-58",
+  name: "Pikachu",
+  lang: "en",
+  released_at: "",
+  uri: "",
+  scryfall_uri: "https://tcgdex.dev/cards/base1-58",
+  layout: "normal",
+  highres_image: true,
+  image_status: "highres_scan",
+  image_uris: {
+    small: PIKACHU_IMG,
+    normal: PIKACHU_IMG,
+    large: PIKACHU_IMG,
+    png: PIKACHU_IMG,
+    art_crop: PIKACHU_IMG,
+    border_crop: PIKACHU_IMG,
+  },
+  cmc: 1,
+  type_line: "Pokemon - Basic",
+  oracle_text:
+    "When several of these Pokémon gather, their electricity can cause lightning storms.\n\nGnaw (10)\nThunder Jolt (30) Flip a coin. If tails, Pikachu does 10 damage to itself.",
+  power: undefined,
+  toughness: "40",
+  colors: ["Lightning"],
+  color_identity: ["Lightning"],
+  keywords: [],
+  set: "base1",
+  set_name: "Base Set",
+  collector_number: "58",
+  rarity: "common",
+  artist: "Mitsuhiro Arita",
+  border_color: "black",
+  frame: "2015",
+  reserved: false,
+  foil: false,
+  nonfoil: true,
+  legalities: {} as never,
+  prices: {
+    usd: null,
+    usd_foil: null,
+    usd_etched: null,
+    eur: null,
+    eur_foil: null,
+    tix: null,
+  },
+  distance: 0.03,
+  games: [],
+  game_changer: false,
+  finishes: ["nonfoil"],
+  oversized: false,
+  promo: false,
+  reprint: false,
+  variation: false,
+  set_id: "base1",
+  set_type: "expansion",
+  set_uri: "",
+  set_search_uri: "",
+  scryfall_set_uri: "",
+  rulings_uri: "",
+  prints_search_uri: "",
+  digital: false,
+  artist_ids: [],
+  full_art: false,
+  textless: false,
+  booster: false,
+  story_spotlight: false,
+  related_uris: undefined,
+  purchase_uris: undefined,
+};
+
+const PIKACHU_BASE1_SHADOWLESS: PlayingCardWithDistance = {
+  ...PIKACHU_BASE1,
+  id: "base1-58_shadowless",
+  oracle_id: "base1-58_shadowless",
+  distance: 0.04,
+};
+
+const PIKACHU_BASE1_1ST_EDITION: PlayingCardWithDistance = {
+  ...PIKACHU_BASE1,
+  id: "base1-58_1st",
+  oracle_id: "base1-58_1st",
+  distance: 0.06,
+};
+
+const POKEMON_MOCK_CARDS: PlayingCardWithDistance[] = [PIKACHU_BASE1];
 
 let mockCardIndex = 0;
 
@@ -287,9 +380,14 @@ export function ScannerDebug() {
   if (!isAdmin) return null;
 
   const isGundam = activeCollection?.game?.key === "gundam";
+  const isPokemon = activeCollection?.game?.key === "pokemon";
 
   const handleSimulateScan = () => {
-    const cards = isGundam ? GUNDAM_MOCK_CARDS : MOCK_CARDS;
+    const cards = isGundam
+      ? GUNDAM_MOCK_CARDS
+      : isPokemon
+        ? POKEMON_MOCK_CARDS
+        : MOCK_CARDS;
     const card = cards[mockCardIndex % cards.length];
     mockCardIndex++;
     addCard(card);
@@ -300,6 +398,13 @@ export function ScannerDebug() {
       addCard(STRIKE_FREEDOM_GUNDAM, STRIKE_FREEDOM_GUNDAM_IMG, [
         STRIKE_FREEDOM_GUNDAM_P1,
         STRIKE_FREEDOM_GUNDAM_P2,
+      ]);
+      return;
+    }
+    if (isPokemon) {
+      addCard(PIKACHU_BASE1, PIKACHU_IMG, [
+        PIKACHU_BASE1_SHADOWLESS,
+        PIKACHU_BASE1_1ST_EDITION,
       ]);
       return;
     }

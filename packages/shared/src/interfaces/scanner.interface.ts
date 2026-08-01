@@ -1,4 +1,4 @@
-import type { ScryfallCardWithDistance } from "./scryfall.interface";
+import type { PlayingCardWithDistance } from "./scryfall.interface";
 
 export interface Point {
   x: number;
@@ -12,9 +12,6 @@ export interface CardContour {
   bottomLeft: Point;
 }
 
-// Describes the fixed scan box used in place of per-frame card detection -
-// a fraction of the frame's limiting dimension the box covers, plus a
-// fractional offset from center. Calibrated per-org to match camera mounting.
 export interface ScanRegion {
   coverage: number; // 0-1
   offsetX: number; // -0.5 to 0.5
@@ -45,7 +42,10 @@ export type ScannerStatus =
   | "error";
 
 export interface CardScannerProps {
-  onSearchResults?: (matches: ScryfallCardWithDistance[], capturedImageUrl?: string) => void;
+  onSearchResults?: (
+    matches: PlayingCardWithDistance[],
+    capturedImageUrl?: string,
+  ) => void;
   onNoMatch?: () => void;
   onManualAdd?: () => void;
   onError?: (error: string) => void;
@@ -61,11 +61,11 @@ export interface CardMatch {
 
 export interface ScannedCard {
   scanId: string;
-  card: ScryfallCardWithDistance;
+  card: PlayingCardWithDistance;
   scannedAt: number;
   binNumber?: number;
   capturedImageUrl?: string;
-  alternativeMatches?: ScryfallCardWithDistance[];
+  alternativeMatches?: PlayingCardWithDistance[];
   isFoil?: boolean;
   isDownloaded?: boolean;
 }

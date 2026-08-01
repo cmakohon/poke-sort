@@ -1,7 +1,7 @@
 import type {
   FieldMeta,
+  PlayingCardWithDistance,
   ScannedCard,
-  ScryfallCardWithDistance,
 } from "@magic-vault/shared";
 import { getByPath } from "@magic-vault/shared";
 
@@ -13,10 +13,10 @@ function csvEscape(val: string): string {
 
 function groupByCardId(
   cards: ScannedCard[],
-): Map<string, { card: ScryfallCardWithDistance; quantity: number }> {
+): Map<string, { card: PlayingCardWithDistance; quantity: number }> {
   const grouped = new Map<
     string,
-    { card: ScryfallCardWithDistance; quantity: number }
+    { card: PlayingCardWithDistance; quantity: number }
   >();
   for (const entry of cards) {
     const existing = grouped.get(entry.card.id);
@@ -30,11 +30,11 @@ function groupByCardIdAndFoil(
   cards: ScannedCard[],
 ): Map<
   string,
-  { card: ScryfallCardWithDistance; quantity: number; isFoil: boolean }
+  { card: PlayingCardWithDistance; quantity: number; isFoil: boolean }
 > {
   const grouped = new Map<
     string,
-    { card: ScryfallCardWithDistance; quantity: number; isFoil: boolean }
+    { card: PlayingCardWithDistance; quantity: number; isFoil: boolean }
   >();
   for (const entry of cards) {
     const isFoil = !!entry.isFoil;

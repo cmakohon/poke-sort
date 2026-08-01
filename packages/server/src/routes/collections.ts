@@ -1,8 +1,8 @@
 import type {
   Collection,
   FieldMeta,
+  PlayingCardWithDistance,
   ScannedCard,
-  ScryfallCardWithDistance,
 } from "@magic-vault/shared";
 import { count, desc, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
@@ -82,15 +82,14 @@ function toScannedCard(row: {
 }): ScannedCard {
   return {
     scanId: row.guid!,
-    card: row.card as ScryfallCardWithDistance,
+    card: row.card as PlayingCardWithDistance,
     scannedAt: row.scannedAt.getTime(),
     binNumber: row.binNumber ?? undefined,
     capturedImageUrl: row.capturedImageDataUrl ?? undefined,
     isFoil: row.isFoil ?? undefined,
     isDownloaded: row.isDownloaded ?? undefined,
     alternativeMatches:
-      (row.alternativeMatches as ScryfallCardWithDistance[] | null) ??
-      undefined,
+      (row.alternativeMatches as PlayingCardWithDistance[] | null) ?? undefined,
   };
 }
 
@@ -459,55 +458,55 @@ router.post("/:guid/cards", requireAuth, requireOrg, async (c) => {
             gameName: undefined,
           };
 
-      await tx
-        .insert(collectionCards)
-        .values({
-          guid: scanId,
-          collectionId: collection.id,
-          scryfallId: (card as ScryfallCardWithDistance).id,
-          card,
-          scannedAt: new Date(scannedAt),
-          binNumber: binNumber ?? null,
-          capturedImageDataUrl: capturedImageUrl ?? null,
-          isFoil: isFoil ?? false,
-          alternativeMatches: alternativeMatches?.length
-            ? alternativeMatches
-            : null,
-          orgId,
-        })
-        .onConflictDoNothing();
-
-      await tx
-        .update(collections)
-        .set({ updatedAt: new Date() })
-        .where(eq(collections.id, collection.id));
-
-      const game = collection.gameId
-        ? await tx.query.games.findFirst({
-            where: (t, { eq }) => eq(t.id, collection.gameId!),
-            columns: { fieldDefinitions: true, name: true },
-          })
-        : null;
-
-      return {
-        result: {
-          success: true,
-          data: {
-            scanId,
+        await tx
+          .insert(collectionCards)
+          .values({
+            guid: scanId,
+            collectionId: collection.id,
+            scryfallId: (card as PlayingCardWithDistance).id,
             card,
-            scannedAt,
-            binNumber,
-            capturedImageUrl,
-            isFoil,
-            alternativeMatches,
-          } as ScannedCard,
-        },
-        fieldDefinitions:
-          (game?.fieldDefinitions as FieldMeta[] | undefined) ?? undefined,
-        collectionName: collection.name,
-        gameName: game?.name,
-      };
-    });
+            scannedAt: new Date(scannedAt),
+            binNumber: binNumber ?? null,
+            capturedImageDataUrl: capturedImageUrl ?? null,
+            isFoil: isFoil ?? false,
+            alternativeMatches: alternativeMatches?.length
+              ? alternativeMatches
+              : null,
+            orgId,
+          })
+          .onConflictDoNothing();
+
+        await tx
+          .update(collections)
+          .set({ updatedAt: new Date() })
+          .where(eq(collections.id, collection.id));
+
+        const game = collection.gameId
+          ? await tx.query.games.findFirst({
+              where: (t, { eq }) => eq(t.id, collection.gameId!),
+              columns: { fieldDefinitions: true, name: true },
+            })
+          : null;
+
+        return {
+          result: {
+            success: true,
+            data: {
+              scanId,
+              card,
+              scannedAt,
+              binNumber,
+              capturedImageUrl,
+              isFoil,
+              alternativeMatches,
+            } as ScannedCard,
+          },
+          fieldDefinitions:
+            (game?.fieldDefinitions as FieldMeta[] | undefined) ?? undefined,
+          collectionName: collection.name,
+          gameName: game?.name,
+        };
+      });
     if (result.success) {
       emitToSession(guid, "card_added", result.data);
 
@@ -520,7 +519,7 @@ router.post("/:guid/cards", requireAuth, requireOrg, async (c) => {
           if (row?.discordNotifyOnScan) {
             void sendDiscordNotification(
               orgId,
-              buildCardScannedEmbed(card as ScryfallCardWithDistance, {
+              buildCardScannedEmbed(card as PlayingCardWithDistance, {
                 isFoil,
                 fieldDefinitions,
                 collectionName,
@@ -549,7 +548,7 @@ router.post("/:guid/cards", requireAuth, requireOrg, async (c) => {
 router.put("/:guid/cards/:scanId", requireAuth, requireOrg, async (c) => {
   const { guid, scanId } = c.req.param();
   const { card, binNumber, isFoil } = await c.req.json<{
-    card?: ScryfallCardWithDistance;
+    card?: PlayingCardWithDistance;
     binNumber?: number;
     isFoil?: boolean;
   }>();
@@ -584,7 +583,7 @@ router.put("/:guid/cards/:scanId", requireAuth, requireOrg, async (c) => {
         success: true,
         data: toScannedCard({
           guid: scanId,
-          card: (card ?? existing.card) as ScryfallCardWithDistance,
+          card: (card ?? existing.card) as PlayingCardWithDistance,
           scannedAt: existing.scannedAt,
           binNumber:
             card !== undefined ? (binNumber ?? null) : existing.binNumber,

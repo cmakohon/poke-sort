@@ -4,7 +4,7 @@ import {
   getCardFaceName,
   getCardImageUris,
   type FieldMeta,
-  type ScryfallCard,
+  type PlayingCard,
 } from "@magic-vault/shared";
 import { eq } from "drizzle-orm";
 import { db } from "../db";
@@ -21,15 +21,6 @@ type DiscordEmbed = {
 
 const CARD_SCANNED_COLOR = 0x5865f2; // Discord blurple
 
-// Adapters that can't hotlink their source images (e.g. Gundam - see
-// lib/gundam/search.ts) route them through our own /cards/image-proxy so the
-// web app's <img> tags work. Discord's embed fetcher has no such problem -
-// it's not a browser, so CORS/hotlink protection aimed at browsers doesn't
-// apply to it - and depending on our own proxy would mean the image only
-// renders if WEB_URL is actually reachable from Discord's servers, which it
-// isn't in local dev (WEB_URL=http://localhost:5173). The original upstream
-// URL is right there in the proxy's own query string, so unwrap it and hand
-// Discord that directly instead.
 function resolveImageUrl(url: string): string {
   const proxied = url.match(/\/cards\/image-proxy\?url=([^&]+)/);
   if (proxied) {
@@ -45,7 +36,7 @@ function resolveImageUrl(url: string): string {
 }
 
 function findPrice(
-  card: ScryfallCard,
+  card: PlayingCard,
   fieldDefinitions: FieldMeta[],
 ): string | null {
   if (card.prices?.usd) return card.prices.usd;
@@ -66,13 +57,11 @@ export interface CardScannedEmbedOptions {
   fieldDefinitions?: FieldMeta[];
   collectionName?: string;
   gameName?: string;
-  // Used to link the embed title to the live monitor page for this
-  // collection (see app/routes/app/monitor.tsx) - omitted if unknown.
   collectionGuid?: string;
 }
 
 export function buildCardScannedEmbed(
-  card: ScryfallCard,
+  card: PlayingCard,
   options: CardScannedEmbedOptions = {},
 ): DiscordEmbed {
   const {

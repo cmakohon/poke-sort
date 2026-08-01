@@ -1,4 +1,4 @@
-import type { ScryfallCard } from "./scryfall.interface";
+import type { PlayingCard } from "./scryfall.interface";
 
 export interface SearchCardMatch {
   id: string;
@@ -7,12 +7,17 @@ export interface SearchCardMatch {
 }
 
 export interface ScryfallListResponse {
-  data: ScryfallCard[];
+  data: PlayingCard[];
   has_more: boolean;
   next_page?: string;
 }
 
-export type SyncStatus = "idle" | "running" | "completed" | "failed" | "cancelled";
+export type SyncStatus =
+  | "idle"
+  | "running"
+  | "completed"
+  | "failed"
+  | "cancelled";
 
 export interface SyncState {
   status: SyncStatus;

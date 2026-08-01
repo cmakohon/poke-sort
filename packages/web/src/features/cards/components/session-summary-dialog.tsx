@@ -78,7 +78,7 @@ export function SessionSummaryDialog({
   const { activeCollection } = useCollections();
   const { fieldDefinitions } = useBinConfigs();
 
-  const isMtg = !activeCollection?.game || activeCollection.game.key === "mtg";
+  const isMtg = activeCollection?.game?.key === "mtg";
   const exportOptions: ExportOption[] = isMtg
     ? [
         { key: "manabox", label: "Manabox", fn: exportToManabox },

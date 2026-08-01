@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { cardImageVectors } from "../db/schema";
 import { gundamSyncSource } from "./gundam/sync";
+import { pokemonSyncSource } from "./pokemon/sync";
 import { scryfallSyncSource } from "./scryfall/sync";
 import type { SyncSource } from "./card-search/sync-types";
 import { resolveGameDataSourceUrl } from "./card-search/resolve";
@@ -12,13 +13,14 @@ import { vectorizeImageFromBuffer } from "./vectorize";
 export const SYNC_SOURCES: Record<string, SyncSource> = {
   mtg: scryfallSyncSource,
   gundam: gundamSyncSource,
+  pokemon: pokemonSyncSource,
 };
 
 type SseWriter = (event: string, data: unknown) => void;
 
 let state: SyncState = {
   status: "idle",
-  gameKey: "mtg",
+  gameKey: "",
   total: 0,
   processed: 0,
   skipped: 0,
@@ -61,7 +63,7 @@ export function cancelSync(): void {
   }
 }
 
-export function startSync(orgId?: string, gameKey: string = "mtg"): void {
+export function startSync(orgId: string | undefined, gameKey: string): void {
   if (state.status === "running") return;
 
   const source = SYNC_SOURCES[gameKey];

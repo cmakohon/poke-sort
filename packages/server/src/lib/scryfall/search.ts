@@ -1,4 +1,4 @@
-import type { Result, ScryfallCard } from "@magic-vault/shared";
+import type { PlayingCard, Result } from "@magic-vault/shared";
 import { QUERY_MIN_LENGTH } from "@magic-vault/shared";
 import type { CardSearchAdapter } from "../card-search/types";
 
@@ -12,7 +12,7 @@ export const SCRYFALL_HEADERS = {
 export async function Search(
   query: string,
   baseUrl: string = SCRYFALL_DEFAULT_URL,
-): Promise<Result<ScryfallCard[]>> {
+): Promise<Result<PlayingCard[]>> {
   if (!query || query.trim().length < QUERY_MIN_LENGTH) {
     return {
       message: `Your query must be greater than ${QUERY_MIN_LENGTH}`,
@@ -40,7 +40,7 @@ export async function Search(
     };
   }
 
-  const data = (await response.json()) as { data: ScryfallCard[] };
+  const data = (await response.json()) as { data: PlayingCard[] };
 
   return {
     message: "Cards successfully retrieved.",
@@ -52,7 +52,7 @@ export async function Search(
 export async function SearchById(
   id: string,
   baseUrl: string = SCRYFALL_DEFAULT_URL,
-): Promise<Result<ScryfallCard>> {
+): Promise<Result<PlayingCard>> {
   const response = await fetch(`${baseUrl}/${id}`, {
     headers: SCRYFALL_HEADERS,
   });
@@ -71,4 +71,8 @@ export async function SearchById(
   };
 }
 
-export const scryfallAdapter: CardSearchAdapter = { search: Search, searchById: SearchById };
+export const scryfallAdapter: CardSearchAdapter = {
+  defaultUrl: SCRYFALL_DEFAULT_URL,
+  search: Search,
+  searchById: SearchById,
+};

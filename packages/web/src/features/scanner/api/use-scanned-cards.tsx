@@ -1,7 +1,7 @@
 import {
+  type PlayingCard,
+  type PlayingCardWithDistance,
   type ScannedCard,
-  type ScryfallCard,
-  type ScryfallCardWithDistance,
   evaluateCardBin,
   getCatchAllBin,
 } from "@magic-vault/shared";
@@ -24,7 +24,7 @@ import { reportSerialEvent } from "@/features/notifications/api/notification-set
 import { useScanTimer } from "@/features/scanner/api/use-scan-timer";
 import { useSerial } from "@/features/scanner/api/use-serial";
 import type { ScannedCardsContextValue } from "@/features/scanner/types";
-import { generateScanId } from "@/lib/idb";
+import { generateScanId } from "@/lib/utils";
 import {
   createContext,
   useCallback,
@@ -185,7 +185,6 @@ export function ScannedCardsProvider({
           response: parsed,
         });
       } else {
-        // Feeder confirmed a card reached module 1 - capture it now.
         cardArrivedHookRef.current?.();
       }
     } catch {
@@ -208,7 +207,6 @@ export function ScannedCardsProvider({
     activeCollectionRef.current = activeCollection;
   }, [activeCollection]);
 
-  // Release lock on unmount
   useEffect(() => {
     return () => {
       const guid = activeCollectionRef.current?.guid;
@@ -216,7 +214,6 @@ export function ScannedCardsProvider({
     };
   }, []);
 
-  // Reload cards when active collection changes
   useEffect(() => {
     if (!activeCollection) {
       setCards([]);
@@ -246,9 +243,9 @@ export function ScannedCardsProvider({
 
   const addCard = useCallback(
     (
-      card: ScryfallCardWithDistance,
+      card: PlayingCardWithDistance,
       capturedImageUrl?: string,
-      alternativeMatches?: ScryfallCardWithDistance[],
+      alternativeMatches?: PlayingCardWithDistance[],
     ) => {
       const collection = activeCollectionRef.current;
       if (!collection) {
@@ -283,11 +280,8 @@ export function ScannedCardsProvider({
           : undefined,
       };
 
-      // Optimistic update
       setCards((prev) => [record, ...prev]);
       setTimerTrigger(record.scannedAt);
-
-      // Persist to server - rollback if collection is locked by another user
       addCollectionCard(collection.guid, record)
         .then((result) => {
           if (!result.success) {
@@ -452,9 +446,9 @@ export function ScannedCardsProvider({
     }
   }, []);
 
-  const correctCard = useCallback((scanId: string, card: ScryfallCard) => {
+  const correctCard = useCallback((scanId: string, card: PlayingCard) => {
     const collection = activeCollectionRef.current;
-    const corrected: ScryfallCardWithDistance = { ...card, distance: 0 };
+    const corrected: PlayingCardWithDistance = { ...card, distance: 0 };
     const matchedBin = evaluateCardBin(
       corrected,
       binConfigsRef.current,

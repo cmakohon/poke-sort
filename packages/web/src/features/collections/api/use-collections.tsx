@@ -108,7 +108,7 @@ export function CollectionsProvider({
           (s) => (s.game?.guid ?? undefined) === gameGuid,
         );
         if (!sameGameSet) {
-          const isMtg = !created?.game || created.game.key === "mtg";
+          const isMtg = created?.game?.key === "mtg";
           const binsResult = await createSetFn(
             name,
             isMtg ? createDefaultColorBins() : createDefaultCatchAllOnlyBins(),
