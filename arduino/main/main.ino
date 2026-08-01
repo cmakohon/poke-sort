@@ -124,20 +124,27 @@ void settleAndStopFeeder() {
 
 // Runs the feeder in short pulses, checking module 1 IR between each stop.
 // Keeps feeding (see settleAndStopFeeder) once a card is detected. Returns
-// FEED_EMPTY only if there was nothing to feed in the first place (hopper
-// already empty before the motor started) — once feeding is underway, the
-// hopper going empty is normal (it just means this is the last card) and
-// must NOT abort the feed; only the module 1 sensor or the overall
-// feederConfig.duration timeout should stop it. If pulseDuration is 0, the
-// motor runs continuously (no pulse/pause cycling) while IR is polled
-// throughout.
+// FEED_EMPTY only if there was nothing to feed AND no card already waiting
+// at module 1 - once feeding is underway, the hopper going empty is normal
+// (it just means this is the last card) and must NOT abort the feed; only
+// the module 1 sensor or the overall feederConfig.duration timeout should
+// stop it. If pulseDuration is 0, the motor runs continuously (no
+// pulse/pause cycling) while IR is polled throughout.
+//
+// routeCard() calls this again as a presence check right before routing,
+// after the card has already been fed. For the last card in the hopper,
+// hopperHasCards() is false by then even though the card is sitting right
+// at the sensor - so the module 1 check must come before the hopper check,
+// or routeCard() wrongly reports the feeder empty instead of routing the
+// card that's already there.
 FeedResult runFeeder() {
   unsigned long start = millis();
+
+  if (digitalRead(irPin(1)) == LOW) return FEED_DETECTED;
 
   if (!hopperHasCards()) return FEED_EMPTY;
 
   if (feederConfig.pulseDuration <= 0) {
-    if (digitalRead(irPin(1)) == LOW) return FEED_DETECTED;
     setServoPosition(FEEDER_CHANNEL, feederConfig.speed);
     while (millis() - start < (unsigned long)feederConfig.duration) {
       if (digitalRead(irPin(1)) == LOW) {
@@ -400,6 +407,22 @@ void handleCommand(const String& json) {
   if (doc["neutral"].is<bool>() && doc["neutral"].as<bool>()) {
     setAllNeutral();
     Serial.println("{\"status\":\"ok\"}");
+    return;
+  }
+
+  // {"clearDevice": true} — opens every module's bottom trapdoor at once so
+  // any card resting in the mechanism drops through to the catch-all area,
+  // then returns everything to neutral. Unlike bin 7 routing, this doesn't
+  // call runFeeder() first - it's meant to flush out whatever's physically
+  // stuck regardless of feeder/hopper state.
+  if (doc["clearDevice"].is<bool>() && doc["clearDevice"].as<bool>()) {
+    for (int m = 1; m <= NUM_MODULES; m++) {
+      setServoPosition(getChannel(m, 0), moduleConfig[m - 1].bottomOpen);
+    }
+    delay(DELAY_PUSH);
+    setAllNeutral();
+    delay(200);
+    Serial.println("{\"status\":\"cleared\"}");
     return;
   }
 

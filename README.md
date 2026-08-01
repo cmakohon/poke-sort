@@ -8,8 +8,8 @@ https://makerworld.com/en/models/3066180-tcg-card-sorting-machine#profileId-3451
 
 ## How it works
 
-1. A feeder mechanism (continuous-rotation servo + roller) pulls a card from the hopper into view of the webcam
-2. OpenCV.js detects and extracts the card image in-browser
+1. A feeder mechanism (continuous-rotation servo + roller) pulls a card from the hopper into view of the webcam, into a fixed, per-camera-calibrated scan region (see calibration screen)
+2. The browser crops that region to a straightened card image (plain Canvas 2D — no computer vision needed, since the camera mounting and card size are fixed and calibrated ahead of time)
 3. The image is sent to the server for embedding search (Hugging Face SigLIP)
 4. PostgreSQL vector similarity search (pgvector) identifies the card
 5. Configurable, per-collection bin rules decide which bin the card should go to

@@ -44,6 +44,7 @@ export function CardScanner({ className, compact }: CardScannerProps) {
     receiveResponse,
   } = useSerial();
   const [isFeeding, setIsFeeding] = useState(false);
+  const [isClearingDevice, setIsClearingDevice] = useState(false);
   const { hasCatchAll } = useBinConfigs();
   const {
     status,
@@ -183,6 +184,35 @@ export function CardScanner({ className, compact }: CardScannerProps) {
     }
   }, [sendCommand, receiveResponse, captureCard, handlePause]);
 
+  // Opens every module's bottom paddle at once so any card resting in the
+  // mechanism (jammed, stuck between modules, etc.) drops through to the
+  // catch-all area - a manual "flush the device" escape hatch, independent
+  // of the normal feed/route flow.
+  const handleClearDevice = useCallback(async () => {
+    setIsClearingDevice(true);
+    try {
+      const sent = await sendCommand(JSON.stringify({ clearDevice: true }));
+      if (!sent) {
+        toast.error("Clear failed", {
+          description: "Could not send command to the device.",
+        });
+        return;
+      }
+      const response = await receiveResponse(10000);
+      if (!response) {
+        toast.error("Clear timeout", {
+          description: "Device did not respond in time.",
+        });
+        return;
+      }
+      toast.success("Device cleared", {
+        description: "All bottom paddles were opened to drop any stuck cards.",
+      });
+    } finally {
+      setIsClearingDevice(false);
+    }
+  }, [sendCommand, receiveResponse]);
+
   // Skipping a duplicate means routing the physical card to the catch-all
   // bin (it was never sent anywhere since sendBin is only called on
   // add/add-again) and resetting the scanner to continue.
@@ -206,6 +236,7 @@ export function CardScanner({ className, compact }: CardScannerProps) {
       isConnected,
       isReady,
       isFeeding,
+      isClearingDevice,
       handleForceAddDuplicate,
       handleForceScan,
       handleSkipDuplicate,
@@ -215,6 +246,7 @@ export function CardScanner({ className, compact }: CardScannerProps) {
       },
       handleResume,
       handleFeed,
+      handleClearDevice,
     });
   }, [
     status,
@@ -222,12 +254,14 @@ export function CardScanner({ className, compact }: CardScannerProps) {
     isConnected,
     isReady,
     isFeeding,
+    isClearingDevice,
     handleForceAddDuplicate,
     handleForceScan,
     handleSkipDuplicate,
     handlePause,
     handleResume,
     handleFeed,
+    handleClearDevice,
     setAutoFeed,
     registerIsland,
   ]);

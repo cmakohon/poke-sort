@@ -17,7 +17,7 @@ import { ScannerControls } from "@/features/scanner/components/scanner-controls"
 import { ScannerDebug } from "@/features/scanner/components/scanner-debug";
 import { computeStats } from "@/features/scanner/lib/compute-stats";
 
-import { IconBolt, IconFolders } from "@tabler/icons-react";
+import { IconArrowBarToDown, IconBolt, IconFolders } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -208,6 +208,15 @@ export function CardGrid() {
                   >
                     <IconBolt />
                   </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={scanner.handleClearDevice}
+                    disabled={!scanner.isReady || scanner.isClearingDevice}
+                    title="Clear device (opens all bottom paddles)"
+                  >
+                    <IconArrowBarToDown />
+                  </Button>
                 </>
               )}
               <ScannerDebug />
@@ -328,6 +337,15 @@ export function CardGrid() {
                       title={autoFeed ? "Auto-feed on" : "Auto-feed off"}
                     >
                       <IconBolt />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={scanner.handleClearDevice}
+                      disabled={!scanner.isReady || scanner.isClearingDevice}
+                      title="Clear device (opens all bottom paddles)"
+                    >
+                      <IconArrowBarToDown />
                     </Button>
                   </>
                 )}
