@@ -137,7 +137,9 @@ async function _loadCollections(
 router.get("/", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
   try {
-    const result = await authQuery(c.get("jwtClaims"), (tx) => _loadCollections(tx, orgId));
+    const result = await authQuery(c.get("jwtClaims"), (tx) =>
+      _loadCollections(tx, orgId),
+    );
     return c.json(result);
   } catch (err) {
     console.error(err);
@@ -169,7 +171,10 @@ router.get("/lock-events", async (c) => {
     // Send current lock state as initial event
     try {
       const guids = await authQuery(jwtClaims, async (tx) =>
-        tx.select({ guid: collections.guid }).from(collections).where(eq(collections.orgId, orgId)),
+        tx
+          .select({ guid: collections.guid })
+          .from(collections)
+          .where(eq(collections.orgId, orgId)),
       );
       const initial = getLocksForGuids(
         guids.map((r) => r.guid!).filter(Boolean),
@@ -198,7 +203,10 @@ router.get("/locks", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
   try {
     const guids = await authQuery(c.get("jwtClaims"), async (tx) =>
-      tx.select({ guid: collections.guid }).from(collections).where(eq(collections.orgId, orgId)),
+      tx
+        .select({ guid: collections.guid })
+        .from(collections)
+        .where(eq(collections.orgId, orgId)),
     );
     const data = getLocksForGuids(guids.map((r) => r.guid!).filter(Boolean));
     return c.json({ success: true, data });
@@ -213,7 +221,10 @@ router.get("/live", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
   try {
     const allCollections = await authQuery(c.get("jwtClaims"), async (tx) => {
-      return tx.select({ guid: collections.guid }).from(collections).where(eq(collections.orgId, orgId));
+      return tx
+        .select({ guid: collections.guid })
+        .from(collections)
+        .where(eq(collections.orgId, orgId));
     });
 
     const live: Record<string, number> = {};
@@ -234,7 +245,10 @@ router.get("/live", requireAuth, requireOrg, async (c) => {
 router.get("/viewers", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
   const allCollections = await authQuery(c.get("jwtClaims"), async (tx) =>
-    tx.select({ guid: collections.guid }).from(collections).where(eq(collections.orgId, orgId)),
+    tx
+      .select({ guid: collections.guid })
+      .from(collections)
+      .where(eq(collections.orgId, orgId)),
   );
   const result: Record<string, ReturnType<typeof getSessionViewers>> = {};
   for (const { guid } of allCollections) {
@@ -272,7 +286,9 @@ router.post("/", requireAuth, requireOrg, async (c) => {
       await tx
         .update(collections)
         .set({ isActive: false })
-        .where(and(eq(collections.isActive, true), eq(collections.orgId, orgId)));
+        .where(
+          and(eq(collections.isActive, true), eq(collections.orgId, orgId)),
+        );
 
       await tx
         .insert(collections)
@@ -327,7 +343,9 @@ router.put("/:guid/active", requireAuth, requireOrg, async (c) => {
       await tx
         .update(collections)
         .set({ isActive: false })
-        .where(and(eq(collections.isActive, true), eq(collections.orgId, orgId)));
+        .where(
+          and(eq(collections.isActive, true), eq(collections.orgId, orgId)),
+        );
       await tx
         .update(collections)
         .set({ isActive: true, updatedAt: new Date() })
@@ -652,7 +670,12 @@ router.post("/:guid/cards/remove-bulk", requireAuth, requireOrg, async (c) => {
       for (const scanId of scanIds) {
         await tx
           .delete(collectionCards)
-          .where(and(eq(collectionCards.guid, scanId), eq(collectionCards.orgId, orgId)));
+          .where(
+            and(
+              eq(collectionCards.guid, scanId),
+              eq(collectionCards.orgId, orgId),
+            ),
+          );
       }
       return { success: true, data: null };
     });
@@ -679,7 +702,12 @@ router.post(
           await tx
             .update(collectionCards)
             .set({ isDownloaded: true })
-            .where(and(eq(collectionCards.guid, scanId), eq(collectionCards.orgId, orgId)));
+            .where(
+              and(
+                eq(collectionCards.guid, scanId),
+                eq(collectionCards.orgId, orgId),
+              ),
+            );
         }
         return { success: true, data: null };
       });
@@ -698,7 +726,14 @@ router.delete("/:guid/cards/:scanId", requireAuth, requireOrg, async (c) => {
   const { guid, scanId } = c.req.param();
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
-      await tx.delete(collectionCards).where(and(eq(collectionCards.guid, scanId), eq(collectionCards.orgId, orgId)));
+      await tx
+        .delete(collectionCards)
+        .where(
+          and(
+            eq(collectionCards.guid, scanId),
+            eq(collectionCards.orgId, orgId),
+          ),
+        );
       return { success: true, data: null };
     });
     if (result.success) emitToSession(guid, "card_removed", { scanId });

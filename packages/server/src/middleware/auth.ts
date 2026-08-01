@@ -102,6 +102,10 @@ export const requireOrg = createMiddleware<AppEnv>(async (c, next) => {
 
   c.set("orgId", orgId);
   c.set("orgRole", member.role as OrgRole);
+  c.set(
+    "jwtClaims",
+    JSON.stringify({ sub: userId, role: "authenticated", org_id: orgId }),
+  );
   await next();
 });
 
