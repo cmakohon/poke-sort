@@ -40,9 +40,12 @@ function buildConfigs(rows: CalibRow[]): ModuleConfig[] {
 
 // GET /modules
 router.get("/", requireAuth, requireOrg, async (c) => {
+  const orgId = c.get("orgId");
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
-      const rows = await tx.query.moduleConfigs.findMany();
+      const rows = await tx.query.moduleConfigs.findMany({
+        where: (t, { eq }) => eq(t.orgId, orgId),
+      });
       return { success: true, message: "Loaded module configs.", data: buildConfigs(rows) };
     });
     return c.json(result);
@@ -69,7 +72,9 @@ router.put("/:moduleNumber", requireAuth, requireOrg, async (c) => {
 
       await tx.insert(moduleConfigAudit).values({ moduleNumber, ...calibration, orgId });
 
-      const rows = await tx.query.moduleConfigs.findMany();
+      const rows = await tx.query.moduleConfigs.findMany({
+        where: (t, { eq }) => eq(t.orgId, orgId),
+      });
       return { success: true, message: "Saved module config.", data: buildConfigs(rows) };
     });
     return c.json(result);
@@ -81,9 +86,11 @@ router.put("/:moduleNumber", requireAuth, requireOrg, async (c) => {
 
 // GET /modules/history
 router.get("/history", requireAuth, requireOrg, async (c) => {
+  const orgId = c.get("orgId");
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
       const rows = await tx.query.moduleConfigAudit.findMany({
+        where: (t, { eq }) => eq(t.orgId, orgId),
         orderBy: (t, { desc }) => [desc(t.createdAt)],
         limit: 30,
       });
@@ -120,7 +127,7 @@ router.post("/history/:guid/revert", requireAuth, requireOrg, async (c) => {
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
       const entry = await tx.query.moduleConfigAudit.findFirst({
-        where: (t, { eq }) => eq(t.guid, guid),
+        where: (t, { eq, and }) => and(eq(t.guid, guid), eq(t.orgId, orgId)),
       });
       if (!entry) return { success: false, message: "Audit record not found." };
 
@@ -144,7 +151,9 @@ router.post("/history/:guid/revert", requireAuth, requireOrg, async (c) => {
 
       await tx.insert(moduleConfigAudit).values({ moduleNumber: entry.moduleNumber, ...calibration, orgId });
 
-      const rows = await tx.query.moduleConfigs.findMany();
+      const rows = await tx.query.moduleConfigs.findMany({
+        where: (t, { eq }) => eq(t.orgId, orgId),
+      });
       return { success: true, message: "Reverted module config.", data: buildConfigs(rows) };
     });
     return c.json(result);

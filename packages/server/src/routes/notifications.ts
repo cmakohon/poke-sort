@@ -13,9 +13,12 @@ const router = new Hono<AppEnv>();
 
 // GET /notifications
 router.get("/", requireAuth, requireOrg, async (c) => {
+  const orgId = c.get("orgId");
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
-      const row = await tx.query.notificationSettings.findFirst();
+      const row = await tx.query.notificationSettings.findFirst({
+        where: (t, { eq }) => eq(t.orgId, orgId),
+      });
       const settings: NotificationSettings = {
         discordWebhookUrl: row?.discordWebhookUrl ?? null,
       };
@@ -48,7 +51,9 @@ router.put("/", requireAuth, requireOrg, async (c) => {
             updatedAt: new Date(),
           },
         });
-      const row = await tx.query.notificationSettings.findFirst();
+      const row = await tx.query.notificationSettings.findFirst({
+        where: (t, { eq }) => eq(t.orgId, orgId),
+      });
       const saved: NotificationSettings = {
         discordWebhookUrl: row?.discordWebhookUrl ?? null,
       };

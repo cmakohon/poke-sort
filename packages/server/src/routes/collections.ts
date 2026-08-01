@@ -4,7 +4,7 @@ import type {
   PlayingCardWithDistance,
   ScannedCard,
 } from "@magic-vault/shared";
-import { count, desc, eq, sql } from "drizzle-orm";
+import { and, count, desc, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { authQuery, db, type Transaction } from "../db";
@@ -95,6 +95,7 @@ function toScannedCard(row: {
 
 async function _loadCollections(
   tx: Transaction,
+  orgId: string,
 ): Promise<{ success: true; data: Collection[] }> {
   const rows = await tx
     .select({
@@ -117,6 +118,7 @@ async function _loadCollections(
     .from(collections)
     .leftJoin(collectionCards, eq(collectionCards.collectionId, collections.id))
     .leftJoin(games, eq(games.id, collections.gameId))
+    .where(eq(collections.orgId, orgId))
     .groupBy(
       collections.id,
       collections.guid,
@@ -133,8 +135,9 @@ async function _loadCollections(
 
 // GET /collections
 router.get("/", requireAuth, requireOrg, async (c) => {
+  const orgId = c.get("orgId");
   try {
-    const result = await authQuery(c.get("jwtClaims"), _loadCollections);
+    const result = await authQuery(c.get("jwtClaims"), (tx) => _loadCollections(tx, orgId));
     return c.json(result);
   } catch (err) {
     console.error(err);
@@ -166,7 +169,7 @@ router.get("/lock-events", async (c) => {
     // Send current lock state as initial event
     try {
       const guids = await authQuery(jwtClaims, async (tx) =>
-        tx.select({ guid: collections.guid }).from(collections),
+        tx.select({ guid: collections.guid }).from(collections).where(eq(collections.orgId, orgId)),
       );
       const initial = getLocksForGuids(
         guids.map((r) => r.guid!).filter(Boolean),
@@ -192,9 +195,10 @@ router.get("/lock-events", async (c) => {
 
 // GET /collections/locks — returns { [guid]: ScanLock } for collections currently locked by a scanner
 router.get("/locks", requireAuth, requireOrg, async (c) => {
+  const orgId = c.get("orgId");
   try {
     const guids = await authQuery(c.get("jwtClaims"), async (tx) =>
-      tx.select({ guid: collections.guid }).from(collections),
+      tx.select({ guid: collections.guid }).from(collections).where(eq(collections.orgId, orgId)),
     );
     const data = getLocksForGuids(guids.map((r) => r.guid!).filter(Boolean));
     return c.json({ success: true, data });
@@ -206,9 +210,10 @@ router.get("/locks", requireAuth, requireOrg, async (c) => {
 
 // GET /collections/live — returns { [guid]: monitorCount } for sessions with active monitors
 router.get("/live", requireAuth, requireOrg, async (c) => {
+  const orgId = c.get("orgId");
   try {
     const allCollections = await authQuery(c.get("jwtClaims"), async (tx) => {
-      return tx.select({ guid: collections.guid }).from(collections);
+      return tx.select({ guid: collections.guid }).from(collections).where(eq(collections.orgId, orgId));
     });
 
     const live: Record<string, number> = {};
@@ -227,8 +232,9 @@ router.get("/live", requireAuth, requireOrg, async (c) => {
 
 // GET /collections/viewers — viewers for all collections { [guid]: ViewerInfo[] }
 router.get("/viewers", requireAuth, requireOrg, async (c) => {
+  const orgId = c.get("orgId");
   const allCollections = await authQuery(c.get("jwtClaims"), async (tx) =>
-    tx.select({ guid: collections.guid }).from(collections),
+    tx.select({ guid: collections.guid }).from(collections).where(eq(collections.orgId, orgId)),
   );
   const result: Record<string, ReturnType<typeof getSessionViewers>> = {};
   for (const { guid } of allCollections) {
@@ -266,13 +272,13 @@ router.post("/", requireAuth, requireOrg, async (c) => {
       await tx
         .update(collections)
         .set({ isActive: false })
-        .where(eq(collections.isActive, true));
+        .where(and(eq(collections.isActive, true), eq(collections.orgId, orgId)));
 
       await tx
         .insert(collections)
         .values({ name, isActive: true, orgId, gameId });
 
-      return _loadCollections(tx);
+      return _loadCollections(tx, orgId);
     });
     return c.json(result);
   } catch (err) {
@@ -283,12 +289,13 @@ router.post("/", requireAuth, requireOrg, async (c) => {
 
 // PUT /collections/:guid — rename
 router.put("/:guid", requireAuth, requireOrg, async (c) => {
+  const orgId = c.get("orgId");
   const guid = c.req.param("guid");
   const { name } = await c.req.json<{ name: string }>();
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
       const target = await tx.query.collections.findFirst({
-        where: (t, { eq }) => eq(t.guid, guid),
+        where: (t, { eq, and }) => and(eq(t.guid, guid), eq(t.orgId, orgId)),
         columns: { id: true },
       });
       if (!target) return { success: false, message: "Collection not found." };
@@ -296,7 +303,7 @@ router.put("/:guid", requireAuth, requireOrg, async (c) => {
         .update(collections)
         .set({ name, updatedAt: new Date() })
         .where(eq(collections.id, target.id));
-      return _loadCollections(tx);
+      return _loadCollections(tx, orgId);
     });
     return c.json(result);
   } catch (err) {
@@ -307,11 +314,12 @@ router.put("/:guid", requireAuth, requireOrg, async (c) => {
 
 // PUT /collections/:guid/active — activate
 router.put("/:guid/active", requireAuth, requireOrg, async (c) => {
+  const orgId = c.get("orgId");
   const guid = c.req.param("guid");
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
       const target = await tx.query.collections.findFirst({
-        where: (t, { eq }) => eq(t.guid, guid),
+        where: (t, { eq, and }) => and(eq(t.guid, guid), eq(t.orgId, orgId)),
         columns: { id: true },
       });
       if (!target) return { success: false, message: "Collection not found." };
@@ -319,13 +327,13 @@ router.put("/:guid/active", requireAuth, requireOrg, async (c) => {
       await tx
         .update(collections)
         .set({ isActive: false })
-        .where(eq(collections.isActive, true));
+        .where(and(eq(collections.isActive, true), eq(collections.orgId, orgId)));
       await tx
         .update(collections)
         .set({ isActive: true, updatedAt: new Date() })
         .where(eq(collections.id, target.id));
 
-      return _loadCollections(tx);
+      return _loadCollections(tx, orgId);
     });
     return c.json(result);
   } catch (err) {
@@ -336,11 +344,12 @@ router.put("/:guid/active", requireAuth, requireOrg, async (c) => {
 
 // DELETE /collections/:guid
 router.delete("/:guid", requireAuth, requireOrg, async (c) => {
+  const orgId = c.get("orgId");
   const guid = c.req.param("guid");
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
       const target = await tx.query.collections.findFirst({
-        where: (t, { eq }) => eq(t.guid, guid),
+        where: (t, { eq, and }) => and(eq(t.guid, guid), eq(t.orgId, orgId)),
         columns: { id: true, isActive: true },
       });
       if (!target) return { success: false, message: "Collection not found." };
@@ -351,6 +360,7 @@ router.delete("/:guid", requireAuth, requireOrg, async (c) => {
       // if we deleted the active one, activate the most recent remaining
       if (target.isActive) {
         const next = await tx.query.collections.findFirst({
+          where: (t, { eq }) => eq(t.orgId, orgId),
           orderBy: (t, { desc }) => [desc(t.updatedAt)],
           columns: { id: true },
         });
@@ -362,7 +372,7 @@ router.delete("/:guid", requireAuth, requireOrg, async (c) => {
         }
       }
 
-      return _loadCollections(tx);
+      return _loadCollections(tx, orgId);
     });
     return c.json(result);
   } catch (err) {
@@ -373,11 +383,12 @@ router.delete("/:guid", requireAuth, requireOrg, async (c) => {
 
 // GET /collections/:guid/cards
 router.get("/:guid/cards", requireAuth, requireOrg, async (c) => {
+  const orgId = c.get("orgId");
   const guid = c.req.param("guid");
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
       const collection = await tx.query.collections.findFirst({
-        where: (t, { eq }) => eq(t.guid, guid),
+        where: (t, { eq, and }) => and(eq(t.guid, guid), eq(t.orgId, orgId)),
         columns: { id: true },
       });
       if (!collection)
@@ -447,7 +458,7 @@ router.post("/:guid/cards", requireAuth, requireOrg, async (c) => {
         gameName: string | undefined;
       }>(c.get("jwtClaims"), async (tx) => {
         const collection = await tx.query.collections.findFirst({
-          where: (t, { eq }) => eq(t.guid, guid),
+          where: (t, { eq, and }) => and(eq(t.guid, guid), eq(t.orgId, orgId)),
           columns: { id: true, gameId: true, name: true },
         });
         if (!collection)
@@ -546,6 +557,7 @@ router.post("/:guid/cards", requireAuth, requireOrg, async (c) => {
 
 // PUT /collections/:guid/cards/:scanId — update card (correction and/or foil status)
 router.put("/:guid/cards/:scanId", requireAuth, requireOrg, async (c) => {
+  const orgId = c.get("orgId");
   const { guid, scanId } = c.req.param();
   const { card, binNumber, isFoil } = await c.req.json<{
     card?: PlayingCardWithDistance;
@@ -555,7 +567,7 @@ router.put("/:guid/cards/:scanId", requireAuth, requireOrg, async (c) => {
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
       const existing = await tx.query.collectionCards.findFirst({
-        where: (t, { eq }) => eq(t.guid, scanId),
+        where: (t, { eq, and }) => and(eq(t.guid, scanId), eq(t.orgId, orgId)),
         columns: {
           id: true,
           scannedAt: true,
@@ -605,11 +617,12 @@ router.put("/:guid/cards/:scanId", requireAuth, requireOrg, async (c) => {
 
 // DELETE /collections/:guid/cards — clear all cards in collection
 router.delete("/:guid/cards", requireAuth, requireOrg, async (c) => {
+  const orgId = c.get("orgId");
   const guid = c.req.param("guid");
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
       const collection = await tx.query.collections.findFirst({
-        where: (t, { eq }) => eq(t.guid, guid),
+        where: (t, { eq, and }) => and(eq(t.guid, guid), eq(t.orgId, orgId)),
         columns: { id: true },
       });
       if (!collection)
@@ -631,6 +644,7 @@ router.delete("/:guid/cards", requireAuth, requireOrg, async (c) => {
 
 // POST /collections/:guid/cards/remove-bulk — remove multiple cards
 router.post("/:guid/cards/remove-bulk", requireAuth, requireOrg, async (c) => {
+  const orgId = c.get("orgId");
   const guid = c.req.param("guid");
   const { scanIds } = await c.req.json<{ scanIds: string[] }>();
   try {
@@ -638,7 +652,7 @@ router.post("/:guid/cards/remove-bulk", requireAuth, requireOrg, async (c) => {
       for (const scanId of scanIds) {
         await tx
           .delete(collectionCards)
-          .where(eq(collectionCards.guid, scanId));
+          .where(and(eq(collectionCards.guid, scanId), eq(collectionCards.orgId, orgId)));
       }
       return { success: true, data: null };
     });
@@ -656,6 +670,7 @@ router.post(
   requireAuth,
   requireOrg,
   async (c) => {
+    const orgId = c.get("orgId");
     const guid = c.req.param("guid");
     const { scanIds } = await c.req.json<{ scanIds: string[] }>();
     try {
@@ -664,7 +679,7 @@ router.post(
           await tx
             .update(collectionCards)
             .set({ isDownloaded: true })
-            .where(eq(collectionCards.guid, scanId));
+            .where(and(eq(collectionCards.guid, scanId), eq(collectionCards.orgId, orgId)));
         }
         return { success: true, data: null };
       });
@@ -679,10 +694,11 @@ router.post(
 
 // DELETE /collections/:guid/cards/:scanId — remove one card
 router.delete("/:guid/cards/:scanId", requireAuth, requireOrg, async (c) => {
+  const orgId = c.get("orgId");
   const { guid, scanId } = c.req.param();
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
-      await tx.delete(collectionCards).where(eq(collectionCards.guid, scanId));
+      await tx.delete(collectionCards).where(and(eq(collectionCards.guid, scanId), eq(collectionCards.orgId, orgId)));
       return { success: true, data: null };
     });
     if (result.success) emitToSession(guid, "card_removed", { scanId });
@@ -751,7 +767,7 @@ router.get("/:guid/stream", async (c) => {
     try {
       const initial = await authQuery(jwtClaims, async (tx) => {
         const collection = await tx.query.collections.findFirst({
-          where: (t, { eq }) => eq(t.guid, guid),
+          where: (t, { eq, and }) => and(eq(t.guid, guid), eq(t.orgId, orgId)),
           columns: {
             id: true,
             guid: true,
