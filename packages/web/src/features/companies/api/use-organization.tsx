@@ -18,7 +18,7 @@ export function useOrg() {
     async (orgId: string) => {
       localStorage.setItem(ORG_KEY, orgId);
       await neon.auth.organization.setActive({ organizationId: orgId });
-      queryClient.removeQueries({
+      await queryClient.invalidateQueries({
         predicate: (query) => query.queryKey[0] !== "games",
       });
     },
