@@ -79,14 +79,14 @@ export default function App() {
 
   return (
     <div className="grid grid-cols-12 flex-1 min-h-0 overflow-hidden">
-      <section className="col-span-4 lg:col-span-3 xl:col-span-4 2xl:col-span-3 overflow-hidden flex flex-col h-full p-2 border-r gap-2 bg-sidebar/70">
+      <section className="col-span-4 lg:col-span-3 xl:col-span-4 2xl:col-span-2 overflow-hidden flex flex-col h-full p-2 border-r gap-2 bg-sidebar/70">
         <CollectionSwitcher />
         <PresetSelector readOnly />
         <CardScanner className="flex-none" />
         <ScannerDebug />
         <ScanStats />
       </section>
-      <section className="col-span-8 lg:col-span-9 xl:col-span-8 2xl:col-span-9 overflow-y-auto h-full @container flex flex-col">
+      <section className="col-span-8 lg:col-span-9 xl:col-span-8 2xl:col-span-10 overflow-y-auto h-full @container flex flex-col">
         <CardGrid />
       </section>
     </div>
