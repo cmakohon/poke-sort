@@ -37,7 +37,7 @@ const GROUPS: Group[] = [
         qty: "1",
         part: "Adafruit PCA9685 16-channel 12-bit PWM/servo driver",
         notes: "I²C servo driver - drives all 10 servos",
-        buyUrl: "https://www.amazon.com/dp/B07L2SF3R4",
+        buyUrl: "https://www.amazon.com/dp/B0CNVBWX2M",
       },
       {
         key: "sg90-positional",
@@ -208,6 +208,14 @@ const GROUPS: Group[] = [
         part: "22–26 AWG hookup wire",
         notes: "IR sensor",
         buyUrl: "https://www.amazon.com/dp/B07G2LRX68",
+      },
+      {
+        key: "dupont-connectors",
+        qty: "~50",
+        part: "Dupont Connectors",
+        notes:
+          "These are only needed if you are connecting your own Dupont connectors to the IR sensor wires; otherwise, you can solder directly to the sensor pads",
+        buyUrl: "https://www.amazon.com/dp/B07QGBKFYZ",
       },
     ],
   },
