@@ -1,3 +1,4 @@
+import { DISCORD_URL } from "@/lib/links";
 import { cn } from "@/lib/utils";
 import {
   IconAdjustmentsHorizontal,
@@ -292,6 +293,18 @@ export function BuildAssembly() {
       <p className="mt-3 max-w-2xl text-sm/relaxed text-muted-foreground">
         Eight phases, structural work first. Checkboxes are saved in this
         browser, so you can close the tab mid-build and pick back up later.
+      </p>
+      <p className="mt-2 max-w-2xl text-sm/relaxed text-muted-foreground">
+        Stuck on a step?{" "}
+        <a
+          href={DISCORD_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="underline underline-offset-2 hover:text-foreground"
+        >
+          Join the Discord
+        </a>{" "}
+        if you need help.
       </p>
 
       <div className="mt-6">

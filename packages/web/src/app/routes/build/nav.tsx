@@ -1,8 +1,9 @@
 import { ThemeToggle } from "@/components/theme-toggle";
 import { buttonVariants } from "@/components/ui/button";
 import { neon } from "@/lib/auth/client";
+import { DISCORD_URL } from "@/lib/links";
 import { cn } from "@/lib/utils";
-import { IconPigFilled } from "@tabler/icons-react";
+import { IconBrandDiscord, IconPigFilled } from "@tabler/icons-react";
 import { Link } from "react-router-dom";
 
 export function BuildNav() {
@@ -48,6 +49,15 @@ export function BuildNav() {
         </nav>
 
         <div className="flex items-center gap-2">
+          <a
+            href={DISCORD_URL}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Join the Discord"
+            className="text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <IconBrandDiscord size={18} />
+          </a>
           <ThemeToggle />
           {isSignedIn ? (
             <Link
