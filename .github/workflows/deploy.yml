@@ -23,6 +23,21 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Detect changed packages
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            web:
+              - 'packages/web/**'
+              - 'packages/shared/**'
+              - 'Dockerfile.web'
+            server:
+              - 'packages/server/**'
+              - 'packages/shared/**'
+              - 'drizzle/**'
+              - 'Dockerfile.server'
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -37,20 +52,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Bump version
-        run: node scripts/version-bump.mjs patch
-
-      - name: Read new version
-        id: version
-        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
-
-      - name: Commit and push version bump
+      - name: Trigger Coolify deployment (web)
+        if: steps.changes.outputs.web == 'true'
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add package.json packages/web/package.json packages/server/package.json packages/shared/package.json
-          git commit -m "chore: bump version to v${{ steps.version.outputs.version }} [skip ci]"
-          git push origin HEAD:master
+          curl -sf --request GET "${{ secrets.COOLIFY_WEBHOOK_WEB }}" \
+            --header "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}"
+
+      - name: Trigger Coolify deployment (server)
+        if: steps.changes.outputs.server == 'true'
+        run: |
+          curl -sf --request GET "${{ secrets.COOLIFY_WEBHOOK_SERVER }}" \
+            --header "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}"
 
       - name: Notify Discord (success)
         if: success()
@@ -60,7 +72,7 @@ jobs:
             -d "{
               \"embeds\": [{
                 \"title\": \"Magic Vault deployed - v${{ steps.version.outputs.version }}\",
-                \"description\": \"Database schema pushed to production and version bumped.\",
+                \"description\": \"Version bumped.${{ steps.changes.outputs.web == 'true' && ' Web redeployed.' || '' }}${{ steps.changes.outputs.server == 'true' && ' Server redeployed.' || '' }}\",
                 \"color\": 5763719,
                 \"url\": \"https://github.com/${{ github.repository }}/commit/${{ github.sha }}\",
                 \"fields\": [
