@@ -52,11 +52,35 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Set up Docker Buildx
+        if: steps.changes.outputs.web == 'true' || steps.changes.outputs.server == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build web image
+        if: steps.changes.outputs.web == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.web
+          push: false
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
       - name: Trigger Coolify deployment (web)
         if: steps.changes.outputs.web == 'true'
         run: |
           curl -sf --request GET "${{ secrets.COOLIFY_WEBHOOK_WEB }}" \
             --header "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}"
+
+      - name: Build server image
+        if: steps.changes.outputs.server == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.server
+          push: false
+          cache-from: type=gha,scope=server
+          cache-to: type=gha,mode=max,scope=server
 
       - name: Trigger Coolify deployment (server)
         if: steps.changes.outputs.server == 'true'
