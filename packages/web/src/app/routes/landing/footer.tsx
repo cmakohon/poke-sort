@@ -56,7 +56,7 @@ export function LandingFooter() {
             <IconBrandDiscord size={18} />
           </a>
           <p className="text-xs text-muted-foreground">
-            © {new Date().getFullYear()} Magic Vault
+            © {new Date().getFullYear()} Magic Vault · v{__APP_VERSION__}
           </p>
         </div>
       </div>

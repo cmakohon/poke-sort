@@ -38,6 +38,23 @@ jobs:
               - 'drizzle/**'
               - 'Dockerfile.server'
 
+      - name: Get PR info
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_JSON=$(gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/pulls" --jq '.[0] // {}')
+          TITLE=$(jq -r '.title // empty' <<< "$PR_JSON")
+          if [ -z "$TITLE" ]; then
+            TITLE=$(git log -1 --format=%s)
+          fi
+          echo "url=$(jq -r '.html_url // empty' <<< "$PR_JSON")" >> "$GITHUB_OUTPUT"
+          {
+            echo "title<<PR_TITLE_EOF"
+            echo "$TITLE"
+            echo "PR_TITLE_EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Set up Docker Buildx
         if: steps.changes.outputs.web == 'true' || steps.changes.outputs.server == 'true'
         uses: docker/setup-buildx-action@v3
@@ -76,42 +93,77 @@ jobs:
 
       - name: Notify Discord (success)
         if: success()
-        run: |
-          curl -sf -X POST "$DISCORD_WEBHOOK_URL" \
-            -H "Content-Type: application/json" \
-            -d "{
-              \"embeds\": [{
-                \"title\": \"Magic Vault deployed - v${{ steps.version.outputs.version }}\",
-                \"description\": \"Version bumped.${{ steps.changes.outputs.web == 'true' && ' Web redeployed.' || '' }}${{ steps.changes.outputs.server == 'true' && ' Server redeployed.' || '' }}\",
-                \"color\": 5763719,
-                \"url\": \"https://github.com/${{ github.repository }}/commit/${{ github.sha }}\",
-                \"fields\": [
-                  { \"name\": \"Commit\", \"value\": \"[\`${GITHUB_SHA::7}\`](https://github.com/${{ github.repository }}/commit/${{ github.sha }})\", \"inline\": true },
-                  { \"name\": \"Author\", \"value\": \"${{ github.actor }}\", \"inline\": true }
-                ],
-                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
-              }]
-            }"
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_DEPLOY_WEBHOOK_URL }}
+          PR_TITLE: ${{ steps.pr.outputs.title }}
+          PR_URL: ${{ steps.pr.outputs.url }}
+        run: |
+          REDEPLOYED="None"
+          if [ "${{ steps.changes.outputs.web }}" = "true" ] && [ "${{ steps.changes.outputs.server }}" = "true" ]; then
+            REDEPLOYED="Web, Server"
+          elif [ "${{ steps.changes.outputs.web }}" = "true" ]; then
+            REDEPLOYED="Web"
+          elif [ "${{ steps.changes.outputs.server }}" = "true" ]; then
+            REDEPLOYED="Server"
+          fi
+
+          COMMIT_URL="https://github.com/${{ github.repository }}/commit/${{ github.sha }}"
+          LINK_URL="${PR_URL:-$COMMIT_URL}"
+
+          PAYLOAD=$(jq -n \
+            --arg title "$PR_TITLE" \
+            --arg url "$LINK_URL" \
+            --arg commit "${GITHUB_SHA::7}" \
+            --arg commit_url "$COMMIT_URL" \
+            --arg author "${{ github.actor }}" \
+            --arg redeployed "$REDEPLOYED" \
+            --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{
+              embeds: [{
+                title: $title,
+                description: "Magic Vault deployed",
+                color: 5763719,
+                url: $url,
+                fields: [
+                  { name: "Commit", value: ("[`" + $commit + "`](" + $commit_url + ")"), inline: true },
+                  { name: "Author", value: $author, inline: true },
+                  { name: "Redeployed", value: $redeployed, inline: true }
+                ],
+                timestamp: $ts
+              }]
+            }')
+
+          curl -sf -X POST "$DISCORD_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD"
 
       - name: Notify Discord (failure)
         if: failure()
-        run: |
-          curl -sf -X POST "$DISCORD_WEBHOOK_URL" \
-            -H "Content-Type: application/json" \
-            -d "{
-              \"embeds\": [{
-                \"title\": \"Magic Vault deploy failed\",
-                \"description\": \"The deploy workflow failed on master. Check the run log.\",
-                \"color\": 15548997,
-                \"url\": \"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\",
-                \"fields\": [
-                  { \"name\": \"Commit\", \"value\": \"[\`${GITHUB_SHA::7}\`](https://github.com/${{ github.repository }}/commit/${{ github.sha }})\", \"inline\": true },
-                  { \"name\": \"Author\", \"value\": \"${{ github.actor }}\", \"inline\": true }
-                ],
-                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
-              }]
-            }"
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_DEPLOY_WEBHOOK_URL }}
+          PR_TITLE: ${{ steps.pr.outputs.title }}
+        run: |
+          PAYLOAD=$(jq -n \
+            --arg title "${PR_TITLE:-Magic Vault deploy failed}" \
+            --arg url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --arg commit "${GITHUB_SHA::7}" \
+            --arg commit_url "https://github.com/${{ github.repository }}/commit/${{ github.sha }}" \
+            --arg author "${{ github.actor }}" \
+            --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{
+              embeds: [{
+                title: $title,
+                description: "Deploy failed - check the run log.",
+                color: 15548997,
+                url: $url,
+                fields: [
+                  { name: "Commit", value: ("[`" + $commit + "`](" + $commit_url + ")"), inline: true },
+                  { name: "Author", value: $author, inline: true }
+                ],
+                timestamp: $ts
+              }]
+            }')
+
+          curl -sf -X POST "$DISCORD_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD"
