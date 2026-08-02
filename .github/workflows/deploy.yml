@@ -1,0 +1,95 @@
+name: Deploy
+
+on:
+  push:
+    branches: [master]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: deploy-master
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://mault.xyz
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Bump version
+        run: node scripts/version-bump.mjs patch
+
+      - name: Read new version
+        id: version
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Commit and push version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json packages/web/package.json packages/server/package.json packages/shared/package.json
+          git commit -m "chore: bump version to v${{ steps.version.outputs.version }} [skip ci]"
+          git push origin HEAD:master
+
+      - name: Notify Discord (success)
+        if: success()
+        run: |
+          curl -sf -X POST "$DISCORD_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"Magic Vault deployed - v${{ steps.version.outputs.version }}\",
+                \"description\": \"Database schema pushed to production and version bumped.\",
+                \"color\": 5763719,
+                \"url\": \"https://github.com/${{ github.repository }}/commit/${{ github.sha }}\",
+                \"fields\": [
+                  { \"name\": \"Commit\", \"value\": \"[\`${GITHUB_SHA::7}\`](https://github.com/${{ github.repository }}/commit/${{ github.sha }})\", \"inline\": true },
+                  { \"name\": \"Author\", \"value\": \"${{ github.actor }}\", \"inline\": true }
+                ],
+                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
+              }]
+            }"
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_DEPLOY_WEBHOOK_URL }}
+
+      - name: Notify Discord (failure)
+        if: failure()
+        run: |
+          curl -sf -X POST "$DISCORD_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"Magic Vault deploy failed\",
+                \"description\": \"The deploy workflow failed on master. Check the run log.\",
+                \"color\": 15548997,
+                \"url\": \"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\",
+                \"fields\": [
+                  { \"name\": \"Commit\", \"value\": \"[\`${GITHUB_SHA::7}\`](https://github.com/${{ github.repository }}/commit/${{ github.sha }})\", \"inline\": true },
+                  { \"name\": \"Author\", \"value\": \"${{ github.actor }}\", \"inline\": true }
+                ],
+                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
+              }]
+            }"
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_DEPLOY_WEBHOOK_URL }}
