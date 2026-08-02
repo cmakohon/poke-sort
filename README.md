@@ -9,7 +9,7 @@ https://makerworld.com/en/models/3066180-tcg-card-sorting-machine#profileId-3451
 ## How it works
 
 1. A feeder mechanism (continuous-rotation servo + roller) pulls a card from the hopper into view of the webcam, into a fixed, per-camera-calibrated scan region (see calibration screen)
-2. The browser crops that region to a straightened card image (plain Canvas 2D — no computer vision needed, since the camera mounting and card size are fixed and calibrated ahead of time)
+2. The browser crops that region to a straightened card image (plain Canvas 2D, no computer vision needed, since the camera mounting and card size are fixed and calibrated ahead of time)
 3. The image is sent to the server for embedding search (Hugging Face SigLIP)
 4. PostgreSQL vector similarity search (pgvector) identifies the card
 5. Configurable, per-collection bin rules decide which bin the card should go to
@@ -18,31 +18,31 @@ https://makerworld.com/en/models/3066180-tcg-card-sorting-machine#profileId-3451
 ## Features
 
 - Live webcam scanning with automatic card detection and identification; captures wait for the card to physically settle at the sensor before the shot is taken
-- Multi-TCG support — pluggable card-search adapters per game (Scryfall/MTG built in, plus Gundam Card Game), with each game's own admin-configurable field definitions driving sorting, filtering, and bin rules
+- Multi-TCG support: pluggable card-search adapters per game (Scryfall/MTG built in, plus Gundam Card Game), with each game's own admin-configurable field definitions driving sorting, filtering, and bin rules
 - Rule-based sort bins, grouped by collection, with and/or rule trees across each game's own card fields (color, rarity, price, set, etc.)
 - Card grid sorting (by name, price, rarity, etc.) adapts automatically to whichever game a collection uses
 - Multiple collections per organization, each with their own bin configuration and card history
-- Remote monitoring — watch an in-progress scan session live from another device
+- Remote monitoring: watch an in-progress scan session live from another device
 - Discord notifications for sorter errors/jams, plus an optional per-card-scanned notification with the card's image, name, price, collection/game, and a link to watch the session live
 - Per-organization branding and scanner layout settings
-- Feeder, servo, and camera scan-region calibration tools — the camera's capture region can be dragged/resized live against the feed to match different webcam mountings and fields of view
+- Feeder, servo, and camera scan-region calibration tools: the camera's capture region can be dragged/resized live against the feed to match different webcam mountings and fields of view
 - In-app hardware build guide (`/build`) with bill of materials, wiring diagrams, and assembly instructions
 
 ## Stack
 
-- **Web** — React 19, Vite, React Router v7, Tailwind CSS 4, TanStack Query
-- **Server** — Hono 4, Drizzle ORM, Neon PostgreSQL (pgvector)
-- **Auth** — Neon Auth (JWT), backed by Better Auth on the client
-- **Hardware** — Arduino Uno R4 via Web Serial API (9600 baud), PCA9685 servo driver
-- **Monorepo** — Turborepo + pnpm workspaces
+- **Web**: React 19, Vite, React Router v7, Tailwind CSS 4, TanStack Query
+- **Server**: Hono 4, Drizzle ORM, Neon PostgreSQL (pgvector)
+- **Auth**: Neon Auth (JWT), backed by Better Auth on the client
+- **Hardware**: Arduino Uno R4 via Web Serial API (9600 baud), PCA9685 servo driver
+- **Monorepo**: Turborepo + pnpm workspaces
 
 ## Project structure
 
 ```
 packages/
-├── shared/   @magic-vault/shared — types, constants, evaluate-bin rule engine
-├── server/   @magic-vault/server — Hono API, Drizzle schema/db, auth middleware
-└── web/      @magic-vault/web    — React SPA (scanner, bins, collections, admin, build guide)
+├── shared/   @magic-vault/shared - types, constants, evaluate-bin rule engine
+├── server/   @magic-vault/server - Hono API, Drizzle schema/db, auth middleware
+└── web/      @magic-vault/web    - React SPA (scanner, bins, collections, admin, build guide)
 arduino/      Arduino sketch (arduino/main/main.ino)
 "3d model"/   Printable enclosure/module design (Fusion 360 + .3mf)
 drizzle/      Generated SQL migrations
@@ -58,20 +58,22 @@ pnpm dev        # Vite on :5173, Hono on :3001
 
 ### Environment variables
 
-Root `.env` (read by the server):
+Everything lives in a single root `.env` (Vite is configured to read up from `packages/web`, so there's no separate `packages/web/.env`). Copy `.env.example` to `.env` and fill it in:
 
-```
-DATABASE_URL=
-NEON_AUTH_URL=
-PORT=            # optional, defaults to 3001
-WEB_URL=         # optional, used for CORS and to build absolute links (Discord monitor-page links) - must be publicly reachable for those links/images to work outside your own machine
+```bash
+cp .env.example .env
 ```
 
-`packages/web/.env`:
-
 ```
-VITE_API_URL=
-VITE_APP_ENV=
+# Server
+DATABASE_URL=                 # Neon Postgres connection string
+NEON_AUTH_URL=                # Neon Auth JWKS/auth endpoint
+PORT=                         # optional, defaults to 3001
+WEB_URL=                      # optional, used for CORS and to build absolute links (Discord monitor-page links) - must be publicly reachable for those links/images to work outside your own machine
+
+# Public variables for the React app (baked into the client bundle at build time)
+VITE_API_URL=                 # base URL of the Hono API, e.g. http://localhost:3001
+VITE_APP_ENV=                 # local/developement/QA/production
 VITE_NEON_AUTH_URL=
 VITE_NEON_DATA_API_URL=
 ```
@@ -98,7 +100,7 @@ The full bill of materials, wiring diagrams, and assembly instructions live in t
 - IR sensor for card-feed detection
 - Enclosure and module parts are in `3d model/` (Fusion 360 source + printable `.3mf`)
 
-Upload `arduino/main/main.ino` (requires the ArduinoJson library). It communicates via JSON over USB serial — the web app sends `{"bin": N}` and the Arduino runs the routing sequence.
+Upload `arduino/main/main.ino` (requires the ArduinoJson library). It communicates via JSON over USB serial: the web app sends `{"bin": N}` and the Arduino runs the routing sequence.
 
 ## Webcam
 

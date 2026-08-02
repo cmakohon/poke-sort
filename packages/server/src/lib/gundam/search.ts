@@ -7,7 +7,6 @@ export const GUNDAM_DEFAULT_URL = "https://api.gcgapi.com/v1/cards";
 export const GUNDAM_HEADERS: Record<string, string> = {
   "User-Agent": "MagicVault/1.0",
   Accept: "application/json",
-  ...(process.env.GCG_API_KEY ? { "X-API-Key": process.env.GCG_API_KEY } : {}),
 };
 
 const NOT_LEGAL: PlayingCard["legalities"] = {
