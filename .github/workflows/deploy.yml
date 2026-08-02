@@ -95,6 +95,7 @@ jobs:
         if: success()
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_DEPLOY_WEBHOOK_URL }}
+          DISCORD_ROLE_ID: ${{ secrets.DISCORD_DEPLOYMENTS_ROLE_ID }}
           PR_TITLE: ${{ steps.pr.outputs.title }}
           PR_URL: ${{ steps.pr.outputs.url }}
         run: |
@@ -118,7 +119,10 @@ jobs:
             --arg author "${{ github.actor }}" \
             --arg redeployed "$REDEPLOYED" \
             --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg role_id "$DISCORD_ROLE_ID" \
             '{
+              content: ("<@&" + $role_id + ">"),
+              allowed_mentions: { roles: [$role_id] },
               embeds: [{
                 title: $title,
                 description: "Magic Vault deployed",
@@ -141,6 +145,7 @@ jobs:
         if: failure()
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_DEPLOY_WEBHOOK_URL }}
+          DISCORD_ROLE_ID: ${{ secrets.DISCORD_DEPLOYMENTS_ROLE_ID }}
           PR_TITLE: ${{ steps.pr.outputs.title }}
         run: |
           PAYLOAD=$(jq -n \
@@ -150,7 +155,10 @@ jobs:
             --arg commit_url "https://github.com/${{ github.repository }}/commit/${{ github.sha }}" \
             --arg author "${{ github.actor }}" \
             --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg role_id "$DISCORD_ROLE_ID" \
             '{
+              content: ("<@&" + $role_id + ">"),
+              allowed_mentions: { roles: [$role_id] },
               embeds: [{
                 title: $title,
                 description: "Deploy failed - check the run log.",
