@@ -12,9 +12,14 @@ import {
   type CardContour,
   type ScanRegion,
 } from "@magic-vault/shared";
-import { IconCamera, IconRotate } from "@tabler/icons-react";
+import { IconCameraSpark, IconRotate } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 
 function clampRegion(region: ScanRegion): ScanRegion {
   return {
@@ -80,15 +85,17 @@ export function ScanRegionCalibrationPanel() {
   const { data, isLoading } = useQuery(queryOpts);
   const savedRegion = data?.scanRegion ?? DEFAULT_SCAN_REGION;
 
-  // Draft edits previewed live on the camera feed below; only persisted to
-  // the org on Save. Null means "not yet touched" - fall back to the saved
-  // value (or default) so the panel reflects whatever's actually active.
   const [draft, setDraft] = useState<ScanRegion | null>(null);
   const region = draft ?? savedRegion;
   const regionRef = useRef(region);
   regionRef.current = region;
 
-  const { stream, status: cameraStatus, errorMessage, retryCamera } = useCameraContext();
+  const {
+    stream,
+    status: cameraStatus,
+    errorMessage,
+    retryCamera,
+  } = useCameraContext();
   const isCameraActive = cameraStatus === "ready";
   const [isConnecting, setIsConnecting] = useState(false);
 
@@ -105,7 +112,10 @@ export function ScanRegionCalibrationPanel() {
   const frameRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef(0);
-  const [videoSize, setVideoSize] = useState<{ width: number; height: number } | null>(null);
+  const [videoSize, setVideoSize] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
 
   useEffect(() => {
     if (!stream) return;
@@ -154,7 +164,13 @@ export function ScanRegionCalibrationPanel() {
             ctx.save();
             ctx.translate(c.width / 2, c.height / 2);
             ctx.rotate(Math.PI / 2);
-            ctx.drawImage(video, -videoWidth / 2, -videoHeight / 2, videoWidth, videoHeight);
+            ctx.drawImage(
+              video,
+              -videoWidth / 2,
+              -videoHeight / 2,
+              videoWidth,
+              videoHeight,
+            );
             ctx.restore();
           }
           rafRef.current = requestAnimationFrame(loop);
@@ -208,7 +224,10 @@ export function ScanRegionCalibrationPanel() {
       type: "resize",
       centerClientX,
       centerClientY,
-      startDist: Math.hypot(e.clientX - centerClientX, e.clientY - centerClientY),
+      startDist: Math.hypot(
+        e.clientX - centerClientX,
+        e.clientY - centerClientY,
+      ),
       startCoverage: regionRef.current.coverage,
     };
   };
@@ -232,7 +251,10 @@ export function ScanRegionCalibrationPanel() {
         }),
       );
     } else {
-      const dist = Math.hypot(e.clientX - drag.centerClientX, e.clientY - drag.centerClientY);
+      const dist = Math.hypot(
+        e.clientX - drag.centerClientX,
+        e.clientY - drag.centerClientY,
+      );
       if (drag.startDist > 0) {
         setDraft(
           clampRegion({
@@ -261,8 +283,8 @@ export function ScanRegionCalibrationPanel() {
   return (
     <div className="flex flex-col gap-2">
       <p className="text-xs text-muted-foreground">
-        Drag the box to move it, or drag the handle to resize. Line it up
-        with a card sitting at module 1.
+        Drag the box to move it, or drag the handle to resize. Line it up with a
+        card sitting at module 1.
       </p>
 
       <div className="flex flex-col gap-2 w-full max-w-sm mx-auto md:mx-0">
@@ -272,7 +294,7 @@ export function ScanRegionCalibrationPanel() {
           disabled={isConnecting}
           className="w-full"
         >
-          <IconCamera />
+          <IconCameraSpark />
           {isConnecting
             ? "Connecting…"
             : isCameraActive
@@ -282,13 +304,11 @@ export function ScanRegionCalibrationPanel() {
 
         <div className="relative overflow-hidden bg-background w-full rounded-lg border aspect-[2.5/3.5]">
           <video ref={videoRef} className="hidden" playsInline muted />
-          {/* Sized/positioned in JS to exactly match the canvas's "cover" fit
-              within the outer (fixed card-aspect) container above - the drag
-              box below is a percentage-based child of this same element, so
-              its ratio always matches the canvas's real displayed geometry
-              rather than the outer container's. */}
           <div ref={frameRef} className="absolute">
-            <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+            <canvas
+              ref={canvasRef}
+              className="absolute inset-0 w-full h-full"
+            />
             {box && (
               <div
                 className="absolute rounded-2xl border-[6px] border-primary cursor-move touch-none select-none"
@@ -342,7 +362,8 @@ export function ScanRegionCalibrationPanel() {
         ) : (
           <p className="text-xs text-muted-foreground">
             Saved: {Math.round(savedRegion.coverage * 100)}% coverage,{" "}
-            {Math.round(savedRegion.offsetX * 100)}% / {Math.round(savedRegion.offsetY * 100)}% offset
+            {Math.round(savedRegion.offsetX * 100)}% /{" "}
+            {Math.round(savedRegion.offsetY * 100)}% offset
           </p>
         )}
       </div>
