@@ -9,7 +9,11 @@ import {
 import type { ScanLockInfo } from "@/features/collections/api/use-collection-locks";
 import { useCollectionLocks } from "@/features/collections/api/use-collection-locks";
 import { useOrg } from "@/features/companies/api/use-organization";
-import { IconLoader2, IconLockOpen, IconWifi } from "@tabler/icons-react";
+import {
+  IconHeartRateMonitor,
+  IconLoader2,
+  IconLockOpen,
+} from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -143,7 +147,7 @@ export default function MonitorSessionsPage() {
 
         {!isLoading && sorted.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 gap-2 text-muted-foreground">
-            <IconWifi className="size-8" />
+            <IconHeartRateMonitor className="size-8" />
             <p className="text-sm font-medium">No sessions found</p>
             <p className="text-xs">Active sessions will appear here</p>
           </div>

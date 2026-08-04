@@ -17,14 +17,14 @@ import { cn } from "@/lib/utils";
 import { UserButton } from "@neondatabase/neon-js/auth/react";
 import {
   IconAdjustments,
-  IconCamera,
-  IconDatabase,
-  IconFolders,
+  IconAlbum,
+  IconCameraSpark,
+  IconDatabaseCog,
+  IconHeartRateMonitor,
   IconLayoutSidebarLeftCollapse,
   IconLayoutSidebarLeftExpand,
   IconPigFilled,
   IconSettings,
-  IconWifi,
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
@@ -208,20 +208,20 @@ export function AppNav() {
   const navItems: NavItemDef[] = [
     {
       to: "/app",
-      icon: <IconCamera size={20} />,
+      icon: <IconCameraSpark size={20} />,
       label: "Scanner",
       end: true,
       desktopOnly: true,
     },
     {
       to: "/app/collections",
-      icon: <IconFolders size={20} />,
+      icon: <IconAlbum size={20} />,
       label: "Collections",
       desktopOnly: true,
     },
     {
       to: "/app/monitor",
-      icon: <IconWifi size={20} />,
+      icon: <IconHeartRateMonitor size={20} />,
       label: "Monitor",
       badge: hasLiveSessions,
     },
@@ -241,7 +241,7 @@ export function AppNav() {
       ? [
           {
             to: "/app/admin",
-            icon: <IconDatabase size={20} />,
+            icon: <IconDatabaseCog size={20} />,
             label: "Admin",
             desktopOnly: true,
           },

@@ -17,7 +17,7 @@ import { ScannerControls } from "@/features/scanner/components/scanner-controls"
 import { ScannerDebug } from "@/features/scanner/components/scanner-debug";
 import { computeStats } from "@/features/scanner/lib/compute-stats";
 
-import { IconArrowBarToDown, IconBolt, IconFolders } from "@tabler/icons-react";
+import { IconAlbum, IconArrowBarToDown, IconBolt } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -136,20 +136,22 @@ export function CardGrid() {
             <Skeleton className="size-9 rounded-md shrink-0" />
           </div>
         </div>
-        <div className="grid grid-cols-3 @md:grid-cols-4 @4xl:grid-cols-6 @5xl:grid-cols-8 gap-2 p-4 flex-1">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <div
-              key={i}
-              className="rounded-lg p-1 bg-muted border border-border"
-            >
-              <Skeleton className="aspect-[2.5/3.5] rounded-lg" />
-              <div className="flex items-center gap-2 px-1 py-1">
-                <Skeleton className="size-3 rounded-full shrink-0" />
-                <Skeleton className="h-3 w-8 rounded" />
-                <Skeleton className="h-3 w-6 rounded" />
+        <div className="p-2 flex-1">
+          <div className="grid grid-cols-3 @md:grid-cols-4 @4xl:grid-cols-6 gap-2">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div key={i} className="rounded-lg p-1 bg-muted border">
+                <Skeleton className="aspect-[2.5/3.5] rounded-lg" />
+                <div className="flex flex-row justify-between items-center px-1 pb-1">
+                  <div className="flex flex-row items-center gap-2">
+                    <Skeleton className="size-3 rounded-full shrink-0" />
+                    <Skeleton className="h-3 w-8 rounded" />
+                    <Skeleton className="h-3 w-6 rounded" />
+                  </div>
+                  <Skeleton className="h-3 w-8 rounded" />
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </>
     );
@@ -158,7 +160,7 @@ export function CardGrid() {
   if (!collectionsLoading && !activeCollection) {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
-        <IconFolders className="size-10" />
+        <IconAlbum className="size-10" />
         <div className="text-center">
           <p className="text-sm font-medium">No collection selected</p>
           <p className="text-xs">

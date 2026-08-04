@@ -89,10 +89,6 @@ export function CardScanner({ className, compact }: CardScannerProps) {
     ) {
       const raw = msg as Record<string, unknown>;
 
-      // Module 1 with no bin means the card was never scanned/routed - it's
-      // just sitting there unidentified. Try to auto-recover by forcing a
-      // scan instead of stopping for a human, as long as the scanner is
-      // actually in a state where a scan can run.
       if (
         raw.module === 1 &&
         raw.bin === undefined &&
@@ -184,10 +180,6 @@ export function CardScanner({ className, compact }: CardScannerProps) {
     }
   }, [sendCommand, receiveResponse, captureCard, handlePause]);
 
-  // Opens every module's bottom paddle at once so any card resting in the
-  // mechanism (jammed, stuck between modules, etc.) drops through to the
-  // catch-all area - a manual "flush the device" escape hatch, independent
-  // of the normal feed/route flow.
   const handleClearDevice = useCallback(async () => {
     setIsClearingDevice(true);
     try {
@@ -213,9 +205,6 @@ export function CardScanner({ className, compact }: CardScannerProps) {
     }
   }, [sendCommand, receiveResponse]);
 
-  // Skipping a duplicate means routing the physical card to the catch-all
-  // bin (it was never sent anywhere since sendBin is only called on
-  // add/add-again) and resetting the scanner to continue.
   const handleSkipDuplicate = useCallback(() => {
     sendCatchAllBin();
     handleSkipDuplicateFromScanner();

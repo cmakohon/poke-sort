@@ -3,7 +3,7 @@ import type { ScannerOverlayProps } from "@/features/scanner/types";
 import { cn } from "@/lib/utils";
 import {
   IconAlertTriangle,
-  IconCamera,
+  IconCameraSpark,
   IconLoader2,
   IconRefresh,
 } from "@tabler/icons-react";
@@ -50,7 +50,7 @@ export function ScannerOverlay({
     return (
       <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/80 backdrop-blur-sm rounded-lg p-4">
         <div className="text-center text-xs text-muted-foreground">
-          <IconCamera className="mx-auto mb-2 size-5" />
+          <IconCameraSpark className="mx-auto mb-2 size-5" />
           <p>Connect a camera to start scanning.</p>
         </div>
       </div>
@@ -79,7 +79,7 @@ export function ScannerOverlay({
     case "requesting-camera":
       return (
         <StatusPill variant="loading">
-          <IconCamera className="size-3.5 shrink-0" />
+          <IconCameraSpark className="size-3.5 shrink-0" />
           <span>Requesting camera access…</span>
         </StatusPill>
       );

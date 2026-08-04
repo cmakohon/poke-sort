@@ -13,7 +13,7 @@ import {
 import type { ZoomRange } from "@/features/scanner/types";
 import {
   IconAdjustments,
-  IconCamera,
+  IconCameraSpark,
   IconDeviceUsb,
   IconDeviceUsbFilled,
 } from "@tabler/icons-react";
@@ -62,13 +62,15 @@ export function ScannerMenu({
   return (
     <div className="absolute top-2 right-2 z-40">
       <DropdownMenu>
-        <DropdownMenuTrigger render={<Button size="icon" variant="secondary" />}>
+        <DropdownMenuTrigger
+          render={<Button size="icon" variant="secondary" />}
+        >
           <IconAdjustments size={16} />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>
-              <IconCamera />
+              <IconCameraSpark />
               Camera
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent>
@@ -100,23 +102,32 @@ export function ScannerMenu({
                       >
                         <p className="text-xs text-muted-foreground">Zoom</p>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground w-4">{zoomRange.min}</span>
+                          <span className="text-xs text-muted-foreground w-4">
+                            {zoomRange.min}
+                          </span>
                           <input
                             type="range"
                             min={zoomRange.min}
                             max={zoomRange.max}
                             step={zoomRange.step}
                             value={zoom}
-                            onChange={(e) => onZoomChange(Number(e.target.value))}
+                            onChange={(e) =>
+                              onZoomChange(Number(e.target.value))
+                            }
                             className="flex-1 cursor-pointer accent-foreground"
                           />
-                          <span className="text-xs text-muted-foreground w-4">{zoomRange.max}</span>
+                          <span className="text-xs text-muted-foreground w-4">
+                            {zoomRange.max}
+                          </span>
                         </div>
                       </div>
                     </>
                   )}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem variant="destructive" onClick={onCameraDisconnect}>
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onClick={onCameraDisconnect}
+                  >
                     Disconnect
                   </DropdownMenuItem>
                 </>
@@ -156,7 +167,10 @@ export function ScannerMenu({
                   <DropdownMenuItem onClick={onScannerRetry}>
                     Retry Connection
                   </DropdownMenuItem>
-                  <DropdownMenuItem variant="destructive" onClick={onScannerDisconnect}>
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onClick={onScannerDisconnect}
+                  >
                     Disconnect
                   </DropdownMenuItem>
                 </>
