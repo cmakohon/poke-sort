@@ -78,6 +78,25 @@ const PHASES: Phase[] = [
     ],
   },
   {
+    title: "Flash the firmware",
+    icon: IconCpu,
+    steps: [
+      {
+        key: "install-libraries",
+        text: "In the Arduino IDE, install the ArduinoJson and Adafruit PWM Servo Driver libraries.",
+        note: "Library Manager → search each by name.",
+      },
+      {
+        key: "upload-sketch",
+        text: 'Select board "Arduino Uno R4 Minima", select the correct port, then upload arduino/main/main.ino.',
+      },
+      {
+        key: "confirm-ready",
+        text: 'Open the Serial Monitor at 9600 baud and confirm you see {"status":"ready"} after the board resets.',
+      },
+    ],
+  },
+  {
     title: "Mount the servos",
     icon: IconTool,
     steps: [
@@ -161,31 +180,12 @@ const PHASES: Phase[] = [
       {
         key: "wire-sensors",
         text: "Wire the 4 IR sensors to D2–D5.",
-        note: "For the power and ground, you will have to combine 4 wires into one, either with a breadboard or by twisting and soldering them together.",
+        note: "For the power and ground, you will have to combine 4 wires into one, either with a breadboard or by twisting and soldering them together. You will need to manually calibrate the sensors to have a shorter throw, as to not get false positives.",
       },
       {
         key: "wire-power",
         text: "Bring the external 5V supply into the PCA9685 V+/GND terminal, and tie its ground to the Arduino's ground.",
         note: "Skipping the common ground is the #1 cause of servos that twitch but never move correctly.",
-      },
-    ],
-  },
-  {
-    title: "Flash the firmware",
-    icon: IconCpu,
-    steps: [
-      {
-        key: "install-libraries",
-        text: "In the Arduino IDE, install the ArduinoJson and Adafruit PWM Servo Driver libraries.",
-        note: "Library Manager → search each by name.",
-      },
-      {
-        key: "upload-sketch",
-        text: 'Select board "Arduino Uno R4 Minima", select the correct port, then upload arduino/main/main.ino.',
-      },
-      {
-        key: "confirm-ready",
-        text: 'Open the Serial Monitor at 9600 baud and confirm you see {"status":"ready"} after the board resets.',
       },
     ],
   },

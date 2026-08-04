@@ -161,6 +161,17 @@ export function BuildWiring() {
             ])}
           />
         </div>
+
+        <div>
+          <h3 className="mb-2 font-heading text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            Wiring diagram
+          </h3>
+          <img
+            src="/instructions/wiring-diagram.png"
+            alt="Wiring diagram showing the PCA9685, Arduino, servo, and IR sensor connections"
+            className="w-full rounded-lg border"
+          />
+        </div>
       </div>
     </section>
   );
