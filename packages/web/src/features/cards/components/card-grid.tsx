@@ -22,10 +22,18 @@ import { ScannerControls } from "@/features/scanner/components/scanner-controls"
 import { ScannerDebug } from "@/features/scanner/components/scanner-debug";
 import { computeStats } from "@/features/scanner/lib/compute-stats";
 
-import { IconAlbum, IconArrowBarToDown, IconBolt } from "@tabler/icons-react";
+import {
+  IconAlbum,
+  IconArrowBarToDown,
+  IconBolt,
+  IconChevronLeft,
+  IconChevronRight,
+} from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+
+const PAGE_SIZE = 96;
 
 export function CardGrid() {
   const {
@@ -73,6 +81,21 @@ export function CardGrid() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [openScanId, setOpenScanId] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+
+  const pageCount = Math.max(
+    1,
+    Math.ceil(filteredAndSorted.length / PAGE_SIZE),
+  );
+  const clampedPage = Math.min(page, pageCount - 1);
+  const pagedCards = filteredAndSorted.slice(
+    clampedPage * PAGE_SIZE,
+    (clampedPage + 1) * PAGE_SIZE,
+  );
+
+  useEffect(() => {
+    setPage(0);
+  }, [searchQuery, filters, sortKey, activeCollection?.guid]);
 
   const openIndex = openScanId
     ? filteredAndSorted.findIndex((c) => c.scanId === openScanId)
@@ -313,7 +336,7 @@ export function CardGrid() {
       )}
       <div className="p-2 flex-1">
         <div className="grid grid-cols-3 @md:grid-cols-4 @4xl:grid-cols-6 gap-2">
-          {filteredAndSorted.map((card) => (
+          {pagedCards.map((card) => (
             <ScannedCardItem
               key={card.scanId}
               card={card.card}
@@ -327,6 +350,29 @@ export function CardGrid() {
             />
           ))}
         </div>
+        {pageCount > 1 && (
+          <div className="flex items-center justify-center gap-3 pt-4">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={clampedPage === 0}
+            >
+              <IconChevronLeft />
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Page {clampedPage + 1} of {pageCount}
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+              disabled={clampedPage === pageCount - 1}
+            >
+              <IconChevronRight />
+            </Button>
+          </div>
+        )}
       </div>
 
       {(scanner?.isCameraActive || selectedIds.size > 0) && (
