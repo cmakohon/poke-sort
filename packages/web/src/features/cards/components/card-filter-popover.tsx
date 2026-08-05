@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { DynamicPopover } from "@/components/ui/responsive-popover";
+import { Slider } from "@/components/ui/slider";
 import type { CardFilters } from "@/features/cards/types";
 import { cn } from "@/lib/utils";
 import { BIN_COUNT } from "@magic-vault/shared";
@@ -17,6 +18,7 @@ const EMPTY_FILTERS: CardFilters = {
   needsAttention: false,
   showDownloaded: false,
   sets: [],
+  minMatchPercent: 0,
 };
 
 const KNOWN_COLOR_ACTIVE: Record<string, string> = {
@@ -206,6 +208,27 @@ export function CardFilterPopover({
               -
             </button>
           </div>
+        </div>
+
+        <div>
+          <p className="text-[11px] font-medium text-muted-foreground tracking-wide mb-1.5 font-heading flex items-center justify-between">
+            <span>Min. match</span>
+            <span className="text-foreground font-semibold">
+              {activeFilters.minMatchPercent}%
+            </span>
+          </p>
+          <Slider
+            min={0}
+            max={100}
+            step={1}
+            value={activeFilters.minMatchPercent}
+            onValueChange={(value) =>
+              onFiltersChange({
+                ...activeFilters,
+                minMatchPercent: value,
+              })
+            }
+          />
         </div>
 
         <div>

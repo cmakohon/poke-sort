@@ -25,6 +25,7 @@ export interface CardFilters {
   needsAttention: boolean;
   showDownloaded: boolean;
   sets: string[];
+  minMatchPercent: number;
 }
 
 export interface CardToolbarProps {
@@ -53,7 +54,6 @@ export interface ScannedCardItemProps {
   binNumber?: number;
   isSelected?: boolean;
   onToggleSelect?: () => void;
-  isNew?: boolean;
   hasAlternatives?: boolean;
   isFoil?: boolean;
   isDownloaded?: boolean;

@@ -8,6 +8,7 @@ export const EMPTY_CARD_FILTERS: CardFilters = {
   needsAttention: false,
   showDownloaded: false,
   sets: [],
+  minMatchPercent: 0,
 };
 
 function toggleItem<T>(arr: T[], item: T): T[] {

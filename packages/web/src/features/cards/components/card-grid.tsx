@@ -24,8 +24,7 @@ import { computeStats } from "@/features/scanner/lib/compute-stats";
 
 import { IconAlbum, IconArrowBarToDown, IconBolt } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
-import { AnimatePresence } from "framer-motion";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 export function CardGrid() {
@@ -73,19 +72,7 @@ export function CardGrid() {
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [newestScanId, setNewestScanId] = useState<string | null>(null);
   const [openScanId, setOpenScanId] = useState<string | null>(null);
-  const prevCardCountRef = useRef(cards.length);
-
-  useEffect(() => {
-    if (cards.length > prevCardCountRef.current && cards.length > 0) {
-      setNewestScanId(cards[0].scanId);
-      const timer = setTimeout(() => setNewestScanId(null), 1200);
-      prevCardCountRef.current = cards.length;
-      return () => clearTimeout(timer);
-    }
-    prevCardCountRef.current = cards.length;
-  }, [cards]);
 
   const openIndex = openScanId
     ? filteredAndSorted.findIndex((c) => c.scanId === openScanId)
@@ -326,22 +313,19 @@ export function CardGrid() {
       )}
       <div className="p-2 flex-1">
         <div className="grid grid-cols-3 @md:grid-cols-4 @4xl:grid-cols-6 gap-2">
-          <AnimatePresence initial={false}>
-            {filteredAndSorted.map((card) => (
-              <ScannedCardItem
-                key={card.scanId}
-                card={card.card}
-                onOpen={() => setOpenScanId(card.scanId)}
-                binNumber={card.binNumber}
-                isSelected={selectedIds.has(card.scanId)}
-                onToggleSelect={() => toggleSelect(card.scanId)}
-                isNew={card.scanId === newestScanId}
-                hasAlternatives={!!card.alternativeMatches?.length}
-                isFoil={card.isFoil}
-                isDownloaded={card.isDownloaded}
-              />
-            ))}
-          </AnimatePresence>
+          {filteredAndSorted.map((card) => (
+            <ScannedCardItem
+              key={card.scanId}
+              card={card.card}
+              onOpen={() => setOpenScanId(card.scanId)}
+              binNumber={card.binNumber}
+              isSelected={selectedIds.has(card.scanId)}
+              onToggleSelect={() => toggleSelect(card.scanId)}
+              hasAlternatives={!!card.alternativeMatches?.length}
+              isFoil={card.isFoil}
+              isDownloaded={card.isDownloaded}
+            />
+          ))}
         </div>
       </div>
 
@@ -360,29 +344,58 @@ export function CardGrid() {
                 />
                 {scanner.isConnected && (
                   <>
-                    <Button
-                      onClick={scanner.handleFeed}
-                      disabled={!scanner.isReady || scanner.isFeeding}
-                    >
-                      {scanner.isFeeding ? "Feeding…" : "Feed"}
-                    </Button>
-                    <Button
-                      variant={autoFeed ? "default" : "outline"}
-                      size="icon"
-                      onClick={() => setAutoFeed(!autoFeed)}
-                      title={autoFeed ? "Auto-feed on" : "Auto-feed off"}
-                    >
-                      <IconBolt />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={scanner.handleClearDevice}
-                      disabled={!scanner.isReady || scanner.isClearingDevice}
-                      title="Clear device (opens all bottom paddles)"
-                    >
-                      <IconArrowBarToDown />
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            onClick={scanner.handleFeed}
+                            disabled={!scanner.isReady || scanner.isFeeding}
+                          >
+                            {scanner.isFeeding ? "Feeding…" : "Feed"}
+                          </Button>
+                        }
+                      />
+                      <TooltipContent>
+                        Advance one card from the hopper into the scanner
+                      </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            variant={autoFeed ? "default" : "outline"}
+                            size="icon"
+                            onClick={() => setAutoFeed(!autoFeed)}
+                          >
+                            <IconBolt />
+                          </Button>
+                        }
+                      />
+                      <TooltipContent>
+                        {autoFeed
+                          ? "Auto-feed on — next card feeds automatically after each scan"
+                          : "Auto-feed off — feed each card manually"}
+                      </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={scanner.handleClearDevice}
+                            disabled={
+                              !scanner.isReady || scanner.isClearingDevice
+                            }
+                          >
+                            <IconArrowBarToDown />
+                          </Button>
+                        }
+                      />
+                      <TooltipContent>
+                        Clear device (opens all bottom paddles)
+                      </TooltipContent>
+                    </Tooltip>
                   </>
                 )}
                 <ScannerDebug />

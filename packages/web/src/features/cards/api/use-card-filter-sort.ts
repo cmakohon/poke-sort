@@ -9,6 +9,7 @@ const EMPTY_FILTERS: CardFilters = {
   needsAttention: false,
   showDownloaded: false,
   sets: [],
+  minMatchPercent: 0,
 };
 
 // Fields sortable on the card grid - multi-value ("set") fields don't have
@@ -108,6 +109,12 @@ export function useCardFilterSort(
       result = result.filter((entry) => filters.sets.includes(entry.card.set));
     }
 
+    if (filters.minMatchPercent > 0) {
+      result = result.filter(
+        (entry) => (1 - entry.card.distance) * 100 >= filters.minMatchPercent,
+      );
+    }
+
     const query = searchQuery.toLowerCase().trim();
     if (query) {
       result = result.filter((entry) => {
@@ -141,7 +148,8 @@ export function useCardFilterSort(
     filters.bins.length +
     filters.sets.length +
     (filters.needsAttention ? 1 : 0) +
-    (filters.showDownloaded ? 1 : 0);
+    (filters.showDownloaded ? 1 : 0) +
+    (filters.minMatchPercent > 0 ? 1 : 0);
 
   return {
     filteredAndSorted,
