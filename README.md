@@ -115,3 +115,14 @@ Brightness: 140
 Contrast: 140
 Saturation: 160
 Sharpness: 130
+
+## Licensing
+
+This repository contains multiple components with different licenses.
+
+| Component               | License         |
+| ----------------------- | --------------- |
+| Software source code    | MIT License     |
+| 3D models (`/3d model`) | CC BY-NC-SA 4.0 |
+
+See the `LICENSE` file in each directory for the complete license terms.
