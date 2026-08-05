@@ -62,9 +62,9 @@ struct ModuleConfig {
 };
 
 ModuleConfig moduleConfig[NUM_MODULES] = {
-  {150, 307, 150, 307, 150, 307, 460},
-  {150, 307, 150, 307, 150, 307, 460},
-  {150, 307, 150, 307, 150, 307, 460},
+  {300, 310, 300, 310, 295, 300, 305},
+  {300, 310, 300, 310, 295, 300, 305},
+  {300, 310, 300, 310, 295, 300, 305},
 };
 
 struct FeederConfig {
@@ -77,7 +77,7 @@ struct FeederConfig {
                        // stopping right at the sensor's beam
 };
 
-FeederConfig feederConfig = {400, 3000, 80, 50, 150};
+FeederConfig feederConfig = {315, 1000, 40, 100, 100};
 
 // Routing delays (ms) — tune to match your hardware timing
 #define DELAY_CARD_ENTER   300  // time for card to settle after target bottom opens
@@ -356,6 +356,8 @@ void routeCard(int bin) {
 void handleCommand(const String& json) {
   JsonDocument doc;
   if (deserializeJson(doc, json)) {
+    Serial.println(json);
+
     Serial.println("{\"error\":\"invalid JSON\"}");
     return;
   }
