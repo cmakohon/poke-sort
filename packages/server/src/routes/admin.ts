@@ -3,8 +3,14 @@ import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { db } from "../db";
 import { cardImageVectors } from "../db/schema";
-import { cancelSync, getStatus, startSync, subscribeSSE, SYNC_SOURCES } from "../lib/sync-job";
 import { resolveGameDataSourceUrl } from "../lib/card-search/resolve";
+import {
+  cancelSync,
+  getStatus,
+  startSync,
+  subscribeSSE,
+  SYNC_SOURCES,
+} from "../lib/sync-job";
 import { vectorizeImageFromBuffer } from "../lib/vectorize";
 import {
   getUserRole,
@@ -69,7 +75,10 @@ router.post("/sync", requireAuth, requireRole("admin"), async (c) => {
     return c.json({ success: false, message: "gameKey is required." }, 400);
   }
   if (!SYNC_SOURCES[gameKey]) {
-    return c.json({ success: false, message: `Unknown sync source: ${gameKey}` }, 400);
+    return c.json(
+      { success: false, message: `Unknown sync source: ${gameKey}` },
+      400,
+    );
   }
 
   startSync(c.req.header("X-Org-Id"), gameKey);
@@ -114,7 +123,6 @@ router.get("/cards", requireAuth, requireRole("admin"), async (c) => {
 });
 
 // POST /admin/cards/:scryfallId/revectorize — re-fetch image and regenerate embedding,
-// using whichever game's source the card was originally synced from
 router.post(
   "/cards/:scryfallId/revectorize",
   requireAuth,
@@ -128,20 +136,29 @@ router.post(
     });
     if (!existing) {
       return c.json(
-        { success: false, message: `Card ${scryfallId} not found in database.` },
+        {
+          success: false,
+          message: `Card ${scryfallId} not found in database.`,
+        },
         404,
       );
     }
     const gameKey = existing.gameKey;
     const source = SYNC_SOURCES[gameKey];
     if (!source) {
-      return c.json({ success: false, message: `Unknown sync source: ${gameKey}` }, 400);
+      return c.json(
+        { success: false, message: `Unknown sync source: ${gameKey}` },
+        400,
+      );
     }
     const baseUrl = await resolveGameDataSourceUrl(gameKey, source.defaultUrl);
 
     const card = await source.fetchOne(scryfallId, baseUrl);
     if (!card) {
-      return c.json({ success: false, message: `Card not found via ${source.label}` }, 404);
+      return c.json(
+        { success: false, message: `Card not found via ${source.label}` },
+        404,
+      );
     }
     if (!card.imageUrl) {
       return c.json(
@@ -150,7 +167,9 @@ router.post(
       );
     }
 
-    const imageRes = await fetch(card.imageUrl, { headers: source.fetchHeaders });
+    const imageRes = await fetch(card.imageUrl, {
+      headers: source.fetchHeaders,
+    });
     if (!imageRes.ok) {
       return c.json(
         { success: false, message: "Failed to download card image" },
@@ -162,7 +181,13 @@ router.post(
 
     await db
       .insert(cardImageVectors)
-      .values({ scryfallId, gameKey, name: card.name, setCode: card.setCode, embedding })
+      .values({
+        scryfallId,
+        gameKey,
+        name: card.name,
+        setCode: card.setCode,
+        embedding,
+      })
       .onConflictDoUpdate({
         target: cardImageVectors.scryfallId,
         set: { embedding, updatedAt: new Date() },
@@ -201,7 +226,9 @@ router.post("/cards/dump", requireAuth, requireRole("admin"), async (c) => {
   }
 
   if (gameKey) {
-    await db.delete(cardImageVectors).where(eq(cardImageVectors.gameKey, gameKey));
+    await db
+      .delete(cardImageVectors)
+      .where(eq(cardImageVectors.gameKey, gameKey));
     return c.json({ success: true, message: `Cleared "${gameKey}" cards` });
   }
 
