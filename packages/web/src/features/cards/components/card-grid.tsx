@@ -1,6 +1,11 @@
 import { DeleteDialog } from "@/components/delete-dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useBinConfigs } from "@/features/bins/api/use-bin-configs";
 import { useCardFilterSort } from "@/features/cards/api/use-card-filter-sort";
 import { useCardFilters } from "@/features/cards/api/use-card-filters";
@@ -196,29 +201,58 @@ export function CardGrid() {
               />
               {scanner.isConnected && (
                 <>
-                  <Button
-                    onClick={scanner.handleFeed}
-                    disabled={!scanner.isReady || scanner.isFeeding}
-                  >
-                    {scanner.isFeeding ? "Feeding…" : "Feed"}
-                  </Button>
-                  <Button
-                    variant={autoFeed ? "default" : "outline"}
-                    size="icon"
-                    onClick={() => setAutoFeed(!autoFeed)}
-                    title={autoFeed ? "Auto-feed on" : "Auto-feed off"}
-                  >
-                    <IconBolt />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={scanner.handleClearDevice}
-                    disabled={!scanner.isReady || scanner.isClearingDevice}
-                    title="Clear device (opens all bottom paddles)"
-                  >
-                    <IconArrowBarToDown />
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          onClick={scanner.handleFeed}
+                          disabled={!scanner.isReady || scanner.isFeeding}
+                        >
+                          {scanner.isFeeding ? "Feeding…" : "Feed"}
+                        </Button>
+                      }
+                    />
+                    <TooltipContent>
+                      Advance one card from the hopper into the scanner
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          variant={autoFeed ? "default" : "outline"}
+                          size="icon"
+                          onClick={() => setAutoFeed(!autoFeed)}
+                        >
+                          <IconBolt />
+                        </Button>
+                      }
+                    />
+                    <TooltipContent>
+                      {autoFeed
+                        ? "Auto-feed on — next card feeds automatically after each scan"
+                        : "Auto-feed off — feed each card manually"}
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={scanner.handleClearDevice}
+                          disabled={
+                            !scanner.isReady || scanner.isClearingDevice
+                          }
+                        >
+                          <IconArrowBarToDown />
+                        </Button>
+                      }
+                    />
+                    <TooltipContent>
+                      Clear device (opens all bottom paddles)
+                    </TooltipContent>
+                  </Tooltip>
                 </>
               )}
               <ScannerDebug />
