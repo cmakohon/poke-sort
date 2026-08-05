@@ -85,6 +85,7 @@ FeederConfig feederConfig = {315, 1000, 40, 100, 100};
 #define DELAY_PUSH         600  // time for pusher to complete its stroke
 
 String inputBuffer = "";
+bool inputOverflowed = false;
 
 // Idle-time jam watch for module 1 — see checkModule1Jam().
 unsigned long module1PresentSince = 0;
@@ -600,13 +601,19 @@ void loop() {
   while (Serial.available()) {
     char c = Serial.read();
     if (c == '\n' || c == '\r') {
-      if (inputBuffer.length() > 0) {
+      if (inputOverflowed) {
+        Serial.println("{\"error\":\"command too long\"}");
+        inputOverflowed = false;
+      } else if (inputBuffer.length() > 0) {
         handleCommand(inputBuffer);
-        inputBuffer = "";
       }
-    } else {
+      inputBuffer = "";
+    } else if (!inputOverflowed) {
       inputBuffer += c;
-      if (inputBuffer.length() > 256) inputBuffer = "";
+      if (inputBuffer.length() > 256) {
+        inputBuffer = "";
+        inputOverflowed = true;
+      }
     }
   }
   checkModule1Jam();

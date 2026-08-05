@@ -46,7 +46,21 @@ export function ModuleConfigsProvider({
             setConfig: { module: config.moduleNumber, ...config.calibration },
           }),
         );
-        await p;
+        const response = await p;
+        try {
+          const parsed = response ? JSON.parse(response) : null;
+          if (parsed?.error) {
+            toast.error(`Module ${config.moduleNumber} calibration not synced`, {
+              description: String(parsed.error),
+            });
+          }
+        } catch {
+          toast.error(`Module ${config.moduleNumber} calibration not synced`, {
+            description: response
+              ? `Unexpected response: ${response}`
+              : "No response from sorter.",
+          });
+        }
       }
     });
   }, [registerPreTestHook, queryClient, sendCommand, receiveResponse]);
