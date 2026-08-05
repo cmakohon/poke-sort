@@ -303,7 +303,7 @@ export function CardGrid() {
 
   return (
     <>
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-2xl p-2 border-b">
+      <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-2xl p-2 border-b">
         <CardToolbar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -376,7 +376,7 @@ export function CardGrid() {
       </div>
 
       {(scanner?.isCameraActive || selectedIds.size > 0) && (
-        <div className="sticky bottom-0 z-10 bg-background/80 backdrop-blur-2xl p-2 border-t">
+        <div className="sticky bottom-0 z-20 bg-background/80 backdrop-blur-2xl p-2 border-t">
           <div className="flex flex-row gap-2 items-center w-full">
             {scanner?.isCameraActive && (
               <>
