@@ -356,10 +356,15 @@ void routeCard(int bin) {
 
 void handleCommand(const String& json) {
   JsonDocument doc;
-  if (deserializeJson(doc, json)) {
-    Serial.println(json);
-
-    Serial.println("{\"error\":\"invalid JSON\"}");
+  DeserializationError err = deserializeJson(doc, json);
+  if (err) {
+    JsonDocument res;
+    res["error"] = "invalid JSON";
+    res["reason"] = err.c_str();
+    res["length"] = json.length();
+    res["received"] = json;
+    serializeJson(res, Serial);
+    Serial.println();
     return;
   }
 
