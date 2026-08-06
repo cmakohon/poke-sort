@@ -8,7 +8,6 @@ import {
 import { BinLocationDiagram } from "@/features/bins/components/bin-location-diagram";
 import type { ScannedCardItemProps } from "@/features/cards/types";
 import { cn } from "@/lib/utils";
-import { getCardImageUris } from "@magic-vault/shared";
 import {
   IconCheck,
   IconDownload,
@@ -88,7 +87,7 @@ export const ScannedCardItem = memo(function ScannedCardItem({
             </Tooltip>
           </div>
           <img
-            src={getCardImageUris(card)?.normal || ""}
+            src={card.image?.normal || ""}
             alt={card.name}
             className="w-full h-full object-cover"
           />
@@ -117,7 +116,7 @@ export const ScannedCardItem = memo(function ScannedCardItem({
             {card.set}
           </p>
           <p className="text-xs text-muted-foreground">
-            #{card.collector_number}
+            #{card.collectorNumber}
           </p>
           {isDownloaded && (
             <span title="Downloaded">
@@ -125,9 +124,9 @@ export const ScannedCardItem = memo(function ScannedCardItem({
             </span>
           )}
         </div>
-        {card.prices?.usd && (
+        {card.price != null && (
           <p className="text-xs font-medium text-muted-foreground">
-            ${card.prices.usd}
+            ${card.price.toFixed(2)}
           </p>
         )}
       </div>

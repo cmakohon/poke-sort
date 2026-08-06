@@ -76,14 +76,14 @@ export function exportToManabox(cards: ScannedCard[], collection: string) {
   const rows = Array.from(grouped.values()).map(({ card, quantity }) => [
     csvEscape(card.name),
     card.set.toUpperCase(),
-    csvEscape(card.set_name),
-    card.collector_number,
+    csvEscape(card.setName),
+    card.collectorNumber,
     "",
     String(quantity),
     card.id,
     "Near Mint",
-    card.lang,
-    card.prices.usd ?? "",
+    "en",
+    card.price != null ? card.price.toFixed(2) : "",
   ]);
   const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
   downloadCsv(csv, `magic-vault-manabox-${dateSuffix()}-${collection}.csv`);
@@ -109,12 +109,12 @@ export function exportToMoxfield(cards: ScannedCard[], collection: string) {
     csvEscape(card.name),
     card.set.toUpperCase(),
     "Near Mint",
-    card.lang?.toUpperCase() ?? "EN",
+    "EN",
     "",
-    card.collector_number,
+    card.collectorNumber,
     "False",
     "False",
-    card.prices.usd ?? "",
+    card.price != null ? card.price.toFixed(2) : "",
   ]);
   const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
   downloadCsv(csv, `magic-vault-moxfield-${dateSuffix()}-${collection}.csv`);
@@ -135,8 +135,8 @@ export function exportToTcgplayer(cards: ScannedCard[], collection: string) {
   const rows = Array.from(grouped.values()).map(({ card, quantity }) => [
     String(quantity),
     csvEscape(card.name),
-    csvEscape(card.set_name),
-    card.collector_number,
+    csvEscape(card.setName),
+    card.collectorNumber,
     "Near Mint",
     "Normal",
     "English",
@@ -175,7 +175,7 @@ export function exportToCardKingdom(cards: ScannedCard[], collection: string) {
   const rows = Array.from(grouped.values()).map(
     ({ card, quantity, isFoil }) => [
       csvEscape(card.name),
-      csvEscape(card.set_name),
+      csvEscape(card.setName),
       isFoil ? "True" : "False",
       String(quantity),
     ],

@@ -1,0 +1,28 @@
+export interface PlayingCardImage {
+  small: string;
+  normal: string;
+}
+
+export interface PlayingCard {
+  id: string;
+  name: string;
+  image: PlayingCardImage | null;
+  set: string;
+  setName: string;
+  collectorNumber: string;
+  rarity: string;
+  typeLine: string;
+  text?: string;
+  manaCost?: string;
+  power?: string;
+  toughness?: string;
+  colorIdentity: string[];
+  artist?: string;
+  price: number | null;
+  sourceUrl?: string;
+  cmc?: number;
+}
+
+export interface PlayingCardWithDistance extends PlayingCard {
+  distance: number;
+}
