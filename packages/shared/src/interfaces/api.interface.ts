@@ -22,6 +22,7 @@ export type SyncStatus =
 export interface SyncState {
   status: SyncStatus;
   gameKey: string;
+  lang: string;
   total: number;
   processed: number;
   skipped: number;

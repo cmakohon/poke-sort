@@ -4,6 +4,7 @@ import { SCRYFALL_DEFAULT_URL, SCRYFALL_HEADERS } from "./search";
 type ScryfallBulkCard = {
   id: string;
   name: string;
+  printed_name?: string;
   set: string;
   image_uris?: { png?: string; large?: string };
 };
@@ -16,14 +17,62 @@ function apiRoot(baseUrl: string): string {
   }
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchCardsByLanguage(
+  baseUrl: string,
+  addLog: (msg: string) => void,
+  lang: string,
+  signal?: AbortSignal,
+): Promise<SyncSourceCard[]> {
+  addLog(`Searching Scryfall for "${lang}" printings...`);
+
+  const all: ScryfallBulkCard[] = [];
+  let url: string | undefined =
+    `${baseUrl}/search?q=${encodeURIComponent(`lang:${lang}`)}&unique=prints&order=set`;
+
+  while (url) {
+    const res = await fetch(url, { headers: SCRYFALL_HEADERS, signal });
+    if (res.status === 404) break;
+    if (!res.ok) throw new Error(`Scryfall search fetch failed: ${res.status}`);
+
+    const page = (await res.json()) as {
+      data: ScryfallBulkCard[];
+      has_more: boolean;
+      next_page?: string;
+    };
+    all.push(...page.data);
+    addLog(`Fetched ${all.length} cards so far...`);
+
+    url = page.has_more ? page.next_page : undefined;
+    if (url) await sleep(100);
+  }
+
+  addLog(`Downloaded ${all.length} cards.`);
+
+  return all.map((c) => ({
+    id: c.id,
+    name: c.printed_name ?? c.name,
+    setCode: c.set,
+    imageUrl: c.image_uris?.png ?? c.image_uris?.large,
+  }));
+}
+
 async function fetchCards(
   baseUrl: string,
   addLog: (msg: string) => void,
+  lang: string = "en",
+  signal?: AbortSignal,
 ): Promise<SyncSourceCard[]> {
+  if (lang !== "en") return fetchCardsByLanguage(baseUrl, addLog, lang, signal);
+
   addLog("Fetching Scryfall bulk data catalog...");
 
   const catalogRes = await fetch(`${apiRoot(baseUrl)}/bulk-data`, {
     headers: SCRYFALL_HEADERS,
+    signal,
   });
   if (!catalogRes.ok) {
     throw new Error(`Scryfall catalog fetch failed: ${catalogRes.status}`);
@@ -40,6 +89,7 @@ async function fetchCards(
 
   const bulkRes = await fetch(artEntry.download_uri, {
     headers: SCRYFALL_HEADERS,
+    signal,
   });
   if (!bulkRes.ok)
     throw new Error(`Bulk data download failed: ${bulkRes.status}`);
@@ -75,6 +125,7 @@ export const scryfallSyncSource: SyncSource = {
   label: "Magic: The Gathering (Scryfall)",
   defaultUrl: SCRYFALL_DEFAULT_URL,
   fetchHeaders: SCRYFALL_HEADERS,
+  languages: ["en", "de"],
   fetchCards,
   fetchOne,
 };

@@ -16,8 +16,10 @@ interface ScryfallImageUris {
 
 interface ScryfallCardFace {
   name?: string;
+  printed_name?: string;
   mana_cost?: string;
   oracle_text?: string;
+  printed_text?: string;
   power?: string;
   toughness?: string;
   artist?: string;
@@ -26,13 +28,17 @@ interface ScryfallCardFace {
 
 interface ScryfallApiCard {
   id: string;
+  lang?: string;
   name: string;
+  printed_name?: string;
   image_uris?: ScryfallImageUris;
   card_faces?: ScryfallCardFace[];
   mana_cost?: string;
   cmc?: number;
   type_line: string;
+  printed_type_line?: string;
   oracle_text?: string;
+  printed_text?: string;
   power?: string;
   toughness?: string;
   color_identity: string[];
@@ -51,7 +57,7 @@ function normalizeScryfallCard(raw: ScryfallApiCard): PlayingCard {
 
   return {
     id: raw.id,
-    name: face?.name ?? raw.name,
+    name: raw.printed_name ?? face?.printed_name ?? face?.name ?? raw.name,
     image: imageUris
       ? { small: imageUris.small, normal: imageUris.normal }
       : null,
@@ -59,8 +65,12 @@ function normalizeScryfallCard(raw: ScryfallApiCard): PlayingCard {
     setName: raw.set_name,
     collectorNumber: raw.collector_number,
     rarity: raw.rarity,
-    typeLine: raw.type_line,
-    text: raw.oracle_text ?? face?.oracle_text,
+    typeLine: raw.printed_type_line ?? raw.type_line,
+    text:
+      raw.printed_text ??
+      face?.printed_text ??
+      raw.oracle_text ??
+      face?.oracle_text,
     manaCost: raw.mana_cost ?? face?.mana_cost,
     power: raw.power ?? face?.power,
     toughness: raw.toughness ?? face?.toughness,

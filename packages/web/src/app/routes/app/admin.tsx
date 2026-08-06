@@ -27,6 +27,7 @@ import {
   listSyncSources,
   revectorizeCard,
   startSync,
+  syncCardById,
 } from "@/lib/api/admin";
 import type { SyncState } from "@magic-vault/shared";
 import {
@@ -40,6 +41,7 @@ import { toast } from "sonner";
 import {
   DEFAULT_SYNC_STATE,
   formatDuration,
+  LANGUAGE_LABELS,
   STATUS_COLORS,
 } from "./admin.constants";
 
@@ -57,7 +59,11 @@ export default function AdminPage() {
     new Set(),
   );
   const [syncGameKey, setSyncGameKey] = useState<string | null>(null);
+  const [syncLang, setSyncLang] = useState<string>("en");
   const [dumpGameKey, setDumpGameKey] = useState<string>("__all__");
+  const [syncCardGameKey, setSyncCardGameKey] = useState<string | null>(null);
+  const [syncCardLang, setSyncCardLang] = useState<string>("en");
+  const [syncCardIdInput, setSyncCardIdInput] = useState("");
 
   const sourcesQuery = useQuery({
     queryKey: ["admin", "sync-sources"],
@@ -177,8 +183,24 @@ export default function AdminPage() {
     }
   }
 
-  const startSyncMutation = useMutation({ mutationFn: startSync });
+  const startSyncMutation = useMutation({
+    mutationFn: ({ gameKey, lang }: { gameKey: string; lang: string }) =>
+      startSync(gameKey, lang),
+  });
   const cancelSyncMutation = useMutation({ mutationFn: cancelSync });
+  const syncCardMutation = useMutation({
+    mutationFn: () =>
+      syncCardById(syncCardGameKey!, syncCardIdInput.trim(), syncCardLang),
+    onSuccess: (result) => {
+      toast.success(result.message);
+      setSyncCardIdInput("");
+      cardsQuery.refetch();
+      cardGamesQuery.refetch();
+    },
+    onError: () => {
+      toast.error(`Failed to sync card ${syncCardIdInput.trim()}`);
+    },
+  });
   const dumpMutation = useMutation({
     mutationFn: (gameKey?: string) => dumpCards(gameKey),
     onSuccess: (result) => {
@@ -201,10 +223,14 @@ export default function AdminPage() {
     ? now - new Date(syncState.startedAt).getTime()
     : 0;
   const etaMs =
-    done > 0 && total > done
-      ? (elapsedMs / done) * (total - done)
-      : null;
+    done > 0 && total > done ? (elapsedMs / done) * (total - done) : null;
   const isRunning = syncState.status === "running";
+  const selectedSource = sourcesQuery.data?.find(
+    (s) => s.gameKey === syncGameKey,
+  );
+  const selectedCardSource = sourcesQuery.data?.find(
+    (s) => s.gameKey === syncCardGameKey,
+  );
 
   return (
     <div className="flex flex-col p-6 max-w-4xl mx-auto w-full h-full overlflow-hidden">
@@ -223,12 +249,25 @@ export default function AdminPage() {
                   sourcesQuery.data?.find(
                     (s) => s.gameKey === syncState.gameKey,
                   )?.label ?? syncState.gameKey
+                }${
+                  syncState.lang !== "en"
+                    ? ` (${LANGUAGE_LABELS[syncState.lang] ?? syncState.lang})`
+                    : ""
                 }`}
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {!isRunning && (
-              <Select value={syncGameKey} onValueChange={setSyncGameKey}>
+              <Select
+                value={syncGameKey}
+                onValueChange={(value) => {
+                  setSyncGameKey(value);
+                  const source = sourcesQuery.data?.find(
+                    (s) => s.gameKey === value,
+                  );
+                  setSyncLang(source?.languages[0] ?? "en");
+                }}
+              >
                 <SelectTrigger className="w-56">
                   <SelectValue placeholder="Select a game..." />
                 </SelectTrigger>
@@ -236,6 +275,23 @@ export default function AdminPage() {
                   {(sourcesQuery.data ?? []).map((source) => (
                     <SelectItem key={source.gameKey} value={source.gameKey}>
                       {source.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {!isRunning && (selectedSource?.languages.length ?? 0) > 1 && (
+              <Select
+                value={syncLang}
+                onValueChange={(value) => setSyncLang(value ?? "en")}
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder="Language..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {selectedSource?.languages.map((lang) => (
+                    <SelectItem key={lang} value={lang}>
+                      {LANGUAGE_LABELS[lang] ?? lang}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -254,7 +310,12 @@ export default function AdminPage() {
                 disabled={
                   isRunning || startSyncMutation.isPending || !syncGameKey
                 }
-                onClick={() => startSyncMutation.mutate(syncGameKey!)}
+                onClick={() =>
+                  startSyncMutation.mutate({
+                    gameKey: syncGameKey!,
+                    lang: syncLang,
+                  })
+                }
               >
                 {startSyncMutation.isPending ? "Starting..." : "Start Sync"}
               </Button>
@@ -356,6 +417,7 @@ export default function AdminPage() {
               </p>
               <p className="text-xs text-muted-foreground uppercase font-mono shrink-0">
                 {card.gameKey} · {card.setCode}
+                {card.lang !== "en" ? ` · ${card.lang}` : ""}
               </p>
               <p className="text-xs text-muted-foreground tabular-nums shrink-0 hidden sm:block">
                 {new Date(card.updatedAt).toLocaleDateString()}
@@ -411,6 +473,71 @@ export default function AdminPage() {
 
       <div className="mt-4">
         <GamesManager />
+      </div>
+
+      <div className="rounded-lg border p-4 flex items-center justify-between mt-4 gap-3">
+        <div className="flex flex-col gap-0.5 min-w-0">
+          <p className="text-sm font-medium">Sync Card by ID</p>
+          <p className="text-xs text-muted-foreground">
+            Fetch and vectorize a single card, adding it if it isn't in the
+            database yet
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Select
+            value={syncCardGameKey}
+            onValueChange={(value) => {
+              setSyncCardGameKey(value);
+              const source = sourcesQuery.data?.find(
+                (s) => s.gameKey === value,
+              );
+              setSyncCardLang(source?.languages[0] ?? "en");
+            }}
+          >
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Select a game..." />
+            </SelectTrigger>
+            <SelectContent>
+              {(sourcesQuery.data ?? []).map((source) => (
+                <SelectItem key={source.gameKey} value={source.gameKey}>
+                  {source.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {(selectedCardSource?.languages.length ?? 0) > 1 && (
+            <Select
+              value={syncCardLang}
+              onValueChange={(value) => setSyncCardLang(value ?? "en")}
+            >
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Language..." />
+              </SelectTrigger>
+              <SelectContent>
+                {selectedCardSource?.languages.map((lang) => (
+                  <SelectItem key={lang} value={lang}>
+                    {LANGUAGE_LABELS[lang] ?? lang}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <Input
+            placeholder="Card ID..."
+            value={syncCardIdInput}
+            onChange={(e) => setSyncCardIdInput(e.target.value)}
+          />
+          <Button
+            disabled={
+              !syncCardGameKey ||
+              !syncCardIdInput.trim() ||
+              syncCardMutation.isPending
+            }
+            onClick={() => syncCardMutation.mutate()}
+          >
+            {syncCardMutation.isPending ? "Syncing..." : "Sync"}
+          </Button>
+        </div>
       </div>
 
       <div className="rounded-lg border p-4 flex items-center justify-between mt-4 gap-3">

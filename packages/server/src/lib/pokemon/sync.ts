@@ -23,6 +23,8 @@ function highResUrl(image: string | undefined): string | undefined {
 async function fetchCards(
   baseUrl: string,
   addLog: (msg: string) => void,
+  _lang?: string,
+  signal?: AbortSignal,
 ): Promise<SyncSourceCard[]> {
   addLog("Fetching Pokémon TCG catalog...");
 
@@ -30,7 +32,7 @@ async function fetchCards(
   let page = 1;
   for (;;) {
     const url = `${baseUrl}?pagination:page=${page}&pagination:itemsPerPage=${PAGE_LIMIT}`;
-    const res = await fetch(url, { headers: POKEMON_HEADERS });
+    const res = await fetch(url, { headers: POKEMON_HEADERS, signal });
     if (!res.ok) throw new Error(`Pokémon card list fetch failed: ${res.status}`);
 
     const rows = (await res.json()) as PokemonListCard[];
@@ -71,6 +73,7 @@ export const pokemonSyncSource: SyncSource = {
   label: "Pokémon (TCGdex)",
   defaultUrl: POKEMON_DEFAULT_URL,
   fetchHeaders: POKEMON_HEADERS,
+  languages: ["en"],
   fetchCards,
   fetchOne,
 };

@@ -45,6 +45,7 @@ export const cardImageVectors = pgTable(
     guid: uuid("guid").defaultRandom(),
     scryfallId: text("scryfall_id").notNull(),
     gameKey: text("game_key").notNull().default("mtg"),
+    lang: text("lang").notNull().default("en"),
     name: text("name").notNull(),
     setCode: text("set_code").notNull(),
     embedding: vector("embedding").notNull(),
