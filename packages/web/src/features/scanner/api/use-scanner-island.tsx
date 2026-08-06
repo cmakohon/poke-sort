@@ -12,11 +12,14 @@ export interface ScannerIslandState {
   isConnected: boolean;
   isReady: boolean;
   isFeeding: boolean;
+  isClearingDevice: boolean;
   handleForceAddDuplicate: () => void;
   handleForceScan: () => void;
+  handleSkipDuplicate: () => void;
   handlePause: () => void;
   handleResume: () => void;
   handleFeed: () => void;
+  handleClearDevice: () => void;
 }
 
 type ContextValue = {

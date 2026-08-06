@@ -1,0 +1,87 @@
+import { useCollections } from "@/features/collections/api/use-collections";
+import { useOrg } from "@/features/companies/api/use-organization";
+import { cn } from "@/lib/utils";
+import { IconLoader2, IconPigFilled } from "@tabler/icons-react";
+import { useEffect, useState, type ReactNode } from "react";
+
+function AppLoadingScreen({
+  className,
+  onTransitionEnd,
+}: {
+  className?: string;
+  onTransitionEnd?: () => void;
+}) {
+  return (
+    <div
+      className={cn(
+        "h-dvh w-dvw flex items-center justify-center bg-muted dark:bg-black relative overflow-hidden",
+        className,
+      )}
+      onTransitionEnd={onTransitionEnd}
+    >
+      <div
+        aria-hidden
+        className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-60 rounded-full bg-primary/50 blur-[60px]"
+      />
+      <div className="flex flex-col items-center gap-3 relative">
+        <span className="bg-primary grid size-10 shrink-0 place-items-center rounded-lg text-primary-foreground">
+          <IconPigFilled className="size-5" />
+        </span>
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <IconLoader2 size={14} className="animate-spin" />
+          <span className="text-xs">Loading your vault…</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Shows a full-screen splash only for the app's very first data load
+ * (org + collections). Once that resolves, it fades out over the app
+ * content and unmounts for good - background refetches, org switches,
+ * and navigation should use inline/skeleton loading instead.
+ */
+export function AppLoadingGate({ children }: { children: ReactNode }) {
+  const { isLoading: orgLoading, activeOrg } = useOrg();
+  const { isLoading: collectionsLoading } = useCollections();
+  const isInitialLoading = orgLoading || (!!activeOrg && collectionsLoading);
+
+  const [phase, setPhase] = useState<"loading" | "exiting" | "ready">(
+    "loading",
+  );
+  const [overlayVisible, setOverlayVisible] = useState(true);
+
+  useEffect(() => {
+    if (!isInitialLoading && phase === "loading") {
+      setPhase("exiting");
+    }
+  }, [isInitialLoading, phase]);
+
+  useEffect(() => {
+    if (phase !== "exiting") return;
+    const id = requestAnimationFrame(() => setOverlayVisible(false));
+    return () => cancelAnimationFrame(id);
+  }, [phase]);
+
+  if (phase === "loading") {
+    return <AppLoadingScreen />;
+  }
+
+  if (phase === "ready") {
+    return <>{children}</>;
+  }
+
+  return (
+    <>
+      {children}
+      <AppLoadingScreen
+        className={cn(
+          "fixed inset-0 z-50 transition-opacity duration-500 ease-out",
+          overlayVisible ? "opacity-100" : "pointer-events-none opacity-0",
+        )}
+        onTransitionEnd={() => setPhase("ready")}
+      />
+    </>
+  );
+}

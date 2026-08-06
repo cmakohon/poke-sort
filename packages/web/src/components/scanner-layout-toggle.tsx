@@ -4,6 +4,7 @@ import {
 } from "@/features/companies/api/org-settings";
 import { useOrg } from "@/features/companies/api/use-organization";
 import { cn } from "@/lib/utils";
+import { DEFAULT_SCAN_REGION } from "@magic-vault/shared";
 import { IconLayoutColumns, IconLayoutRows } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -35,11 +36,16 @@ export function ScannerLayoutToggle() {
     onMutate: async (scannerLayout) => {
       await queryClient.cancelQueries({ queryKey: queryOpts.queryKey });
       const previous = queryClient.getQueryData(queryOpts.queryKey);
-      queryClient.setQueryData(queryOpts.queryKey, (old: typeof data): typeof data => ({
-        primaryColor: old?.primaryColor ?? null,
-        scannerLayout,
-        discordWebhookUrl: old?.discordWebhookUrl ?? null,
-      }));
+      queryClient.setQueryData(
+        queryOpts.queryKey,
+        (old: typeof data): typeof data => ({
+          primaryColor: old?.primaryColor ?? null,
+          scannerLayout,
+          discordWebhookUrl: old?.discordWebhookUrl ?? null,
+          discordNotifyOnScan: old?.discordNotifyOnScan ?? false,
+          scanRegion: old?.scanRegion ?? DEFAULT_SCAN_REGION,
+        }),
+      );
       return { previous };
     },
     onError: (_err, _vars, ctx) => {

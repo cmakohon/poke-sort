@@ -1,4 +1,4 @@
-import type { Result, ScryfallCard } from "@magic-vault/shared";
+import type { PlayingCard, Result } from "@magic-vault/shared";
 import { QUERY_MIN_LENGTH } from "@magic-vault/shared";
 import type { CardSearchAdapter } from "../card-search/types";
 
@@ -7,10 +7,9 @@ export const GUNDAM_DEFAULT_URL = "https://api.gcgapi.com/v1/cards";
 export const GUNDAM_HEADERS: Record<string, string> = {
   "User-Agent": "MagicVault/1.0",
   Accept: "application/json",
-  ...(process.env.GCG_API_KEY ? { "X-API-Key": process.env.GCG_API_KEY } : {}),
 };
 
-const NOT_LEGAL: ScryfallCard["legalities"] = {
+const NOT_LEGAL: PlayingCard["legalities"] = {
   standard: "not_legal",
   future: "not_legal",
   historic: "not_legal",
@@ -56,7 +55,7 @@ function proxiedImageUrl(url: string): string {
   return `/api/cards/image-proxy?url=${encodeURIComponent(url)}`;
 }
 
-function normalizeGundamCard(raw: GundamCard): ScryfallCard {
+function normalizeGundamCard(raw: GundamCard): PlayingCard {
   const id = String(raw.product_id ?? raw.card_number ?? "");
   const image = raw.image_url ? proxiedImageUrl(raw.image_url) : "";
   const setCode = raw.set_code ?? "";
@@ -168,7 +167,7 @@ function extractOne(json: unknown): GundamCard | null {
 export async function Search(
   query: string,
   baseUrl: string = GUNDAM_DEFAULT_URL,
-): Promise<Result<ScryfallCard[]>> {
+): Promise<Result<PlayingCard[]>> {
   if (!query || query.trim().length < QUERY_MIN_LENGTH) {
     return {
       message: `Your query must be greater than ${QUERY_MIN_LENGTH}`,
@@ -205,7 +204,7 @@ export async function Search(
 export async function SearchById(
   id: string,
   baseUrl: string = GUNDAM_DEFAULT_URL,
-): Promise<Result<ScryfallCard>> {
+): Promise<Result<PlayingCard>> {
   const response = await fetch(`${baseUrl}/${id}`, { headers: GUNDAM_HEADERS });
 
   if (!response.ok) {
@@ -228,6 +227,7 @@ export async function SearchById(
 }
 
 export const gundamAdapter: CardSearchAdapter = {
+  defaultUrl: GUNDAM_DEFAULT_URL,
   search: Search,
   searchById: SearchById,
 };

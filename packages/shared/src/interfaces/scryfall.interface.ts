@@ -1,4 +1,4 @@
-export interface ScryfallImageUris {
+export interface PlayingCardImageUris {
   small: string;
   normal: string;
   large: string;
@@ -7,7 +7,7 @@ export interface ScryfallImageUris {
   border_crop: string;
 }
 
-export interface ScryfallCardFace {
+export interface PlayinCardFace {
   name: string;
   mana_cost?: string;
   type_line?: string;
@@ -16,10 +16,10 @@ export interface ScryfallCardFace {
   toughness?: string;
   artist?: string;
   colors?: string[];
-  image_uris?: ScryfallImageUris;
+  image_uris?: PlayingCardImageUris;
 }
 
-interface ScryfallLegalities {
+interface PlayingCardLegalities {
   standard: string;
   future: string;
   historic: string;
@@ -43,7 +43,7 @@ interface ScryfallLegalities {
   predh: string;
 }
 
-interface ScryfallPrices {
+interface PlayingCardPrices {
   usd: string | null;
   usd_foil: string | null;
   usd_etched: string | null;
@@ -52,7 +52,7 @@ interface ScryfallPrices {
   tix: string | null;
 }
 
-export interface ScryfallCard {
+export interface PlayingCard {
   object: string;
   id: string;
   oracle_id: string;
@@ -69,8 +69,8 @@ export interface ScryfallCard {
   layout: string;
   highres_image: boolean;
   image_status: string;
-  image_uris?: ScryfallImageUris;
-  card_faces?: ScryfallCardFace[];
+  image_uris?: PlayingCardImageUris;
+  card_faces?: PlayinCardFace[];
   mana_cost?: string;
   cmc: number;
   type_line: string;
@@ -80,7 +80,7 @@ export interface ScryfallCard {
   colors?: string[];
   color_identity: string[];
   keywords?: string[];
-  legalities: ScryfallLegalities;
+  legalities: PlayingCardLegalities;
   games: string[];
   reserved: boolean;
   game_changer: boolean;
@@ -115,11 +115,11 @@ export interface ScryfallCard {
   story_spotlight: boolean;
   edhrec_rank?: number;
   penny_rank?: number;
-  prices: ScryfallPrices;
+  prices: PlayingCardPrices;
   related_uris?: Record<string, string>;
   purchase_uris?: Record<string, string>;
 }
 
-export interface ScryfallCardWithDistance extends ScryfallCard {
+export interface PlayingCardWithDistance extends PlayingCard {
   distance: number;
 }

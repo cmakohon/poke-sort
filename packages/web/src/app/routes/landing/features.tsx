@@ -1,8 +1,8 @@
 import {
   IconAdjustments,
+  IconAlbum,
   IconChartBar,
   IconDeviceDesktop,
-  IconFolders,
   IconScan,
   IconStack2,
 } from "@tabler/icons-react";
@@ -21,7 +21,7 @@ const FEATURES = [
       "Mix and match conditions - rarity, color, set, type and more - to route cards exactly where you want.",
   },
   {
-    icon: IconFolders,
+    icon: IconAlbum,
     title: "Multiple collections",
     description:
       "Keep separate collections for trade binders, decks, or storage boxes, and switch between them freely.",

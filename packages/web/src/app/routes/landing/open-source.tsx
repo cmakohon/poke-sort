@@ -1,10 +1,13 @@
 import { buttonVariants } from "@/components/ui/button";
+import { DISCORD_URL, MODEL_URL, REPO_URL } from "@/lib/links";
 import { cn } from "@/lib/utils";
-import { IconBrandGithub, IconCube, IconDownload } from "@tabler/icons-react";
+import {
+  IconBrandDiscord,
+  IconBrandGithub,
+  IconCube,
+  IconDownload,
+} from "@tabler/icons-react";
 import { Link } from "react-router-dom";
-
-const REPO_URL = "https://github.com/dishwasher-detergent/mault";
-const MODEL_URL = `${REPO_URL}/tree/master/3d%20model`;
 
 export function LandingOpenSource() {
   return (
@@ -19,7 +22,7 @@ export function LandingOpenSource() {
         </p>
       </div>
 
-      <div className="mt-12 grid gap-4 sm:grid-cols-2">
+      <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div className="flex flex-col gap-3 rounded-lg border bg-card p-6">
           <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
             <IconBrandGithub size={18} />
@@ -75,6 +78,31 @@ export function LandingOpenSource() {
               Read the build guide
             </Link>
           </div>
+        </div>
+
+        <div className="flex flex-col gap-3 rounded-lg border bg-card p-6">
+          <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+            <IconBrandDiscord size={18} />
+          </span>
+          <div>
+            <p className="font-heading text-sm font-semibold">Community</p>
+            <p className="mt-1 text-xs/relaxed text-muted-foreground">
+              Join the Discord to share builds, get help, and talk to other
+              people running their own sorter.
+            </p>
+          </div>
+          <a
+            href={DISCORD_URL}
+            target="_blank"
+            rel="noreferrer"
+            className={cn(
+              buttonVariants({ variant: "outline", size: "sm" }),
+              "mt-2 self-start",
+            )}
+          >
+            <IconBrandDiscord size={16} />
+            Join the Discord
+          </a>
         </div>
       </div>
     </section>

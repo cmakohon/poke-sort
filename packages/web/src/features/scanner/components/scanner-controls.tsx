@@ -5,12 +5,14 @@ import {
   IconPlayerPause,
   IconPlayerPlay,
   IconPlus,
+  IconX,
 } from "@tabler/icons-react";
 
 export function ScannerControls({
   status,
   onForceAddDuplicate,
   onForceScan,
+  onSkipDuplicate,
   onPause,
   onResume,
 }: ScannerControlsProps) {
@@ -23,10 +25,16 @@ export function ScannerControls({
         </Button>
       )}
       {status === "duplicate" && (
-        <Button onClick={onForceAddDuplicate} variant="secondary">
-          <IconPlus />
-          Add Again
-        </Button>
+        <>
+          <Button onClick={onForceAddDuplicate} variant="secondary">
+            <IconPlus />
+            Add Again
+          </Button>
+          <Button onClick={onSkipDuplicate} variant="ghost">
+            <IconX />
+            Skip
+          </Button>
+        </>
       )}
       {(status === "scanning" || status === "captured") && (
         <Button onClick={onForceScan} variant="secondary">

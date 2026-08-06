@@ -1,12 +1,19 @@
 import {
   orgSettingsQueryOptions,
   saveOrgSettings,
+  type OrgSettings,
 } from "@/features/companies/api/org-settings";
 import { useOrg } from "@/features/companies/api/use-organization";
+import { DEFAULT_SCAN_REGION } from "@magic-vault/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { NotificationTestType } from "./notification-settings";
 import { sendTestNotification } from "./notification-settings";
+
+type NotificationSettingsPatch = Pick<
+  OrgSettings,
+  "discordWebhookUrl" | "discordNotifyOnScan"
+>;
 
 export function useNotificationSettings() {
   const queryClient = useQueryClient();
@@ -14,18 +21,24 @@ export function useNotificationSettings() {
   const queryOpts = orgSettingsQueryOptions(activeOrg?.id);
 
   const { data, isLoading } = useQuery(queryOpts);
-  const settings = { discordWebhookUrl: data?.discordWebhookUrl ?? null };
+  const settings = {
+    discordWebhookUrl: data?.discordWebhookUrl ?? null,
+    discordNotifyOnScan: data?.discordNotifyOnScan ?? false,
+  };
 
   const saveMutation = useMutation({
-    mutationFn: (discordWebhookUrl: string | null) =>
-      saveOrgSettings({ discordWebhookUrl }),
-    onMutate: async (discordWebhookUrl) => {
+    mutationFn: (patch: Partial<NotificationSettingsPatch>) =>
+      saveOrgSettings(patch),
+    onMutate: async (patch) => {
       await queryClient.cancelQueries({ queryKey: queryOpts.queryKey });
       const previous = queryClient.getQueryData(queryOpts.queryKey);
       queryClient.setQueryData(queryOpts.queryKey, (old: typeof data): typeof data => ({
         primaryColor: old?.primaryColor ?? null,
         scannerLayout: old?.scannerLayout ?? "horizontal",
-        discordWebhookUrl,
+        scanRegion: old?.scanRegion ?? DEFAULT_SCAN_REGION,
+        discordWebhookUrl: old?.discordWebhookUrl ?? null,
+        discordNotifyOnScan: old?.discordNotifyOnScan ?? false,
+        ...patch,
       }));
       return { previous };
     },
@@ -52,8 +65,8 @@ export function useNotificationSettings() {
   return {
     settings,
     isLoading,
-    save: (s: { discordWebhookUrl: string | null }) =>
-      saveMutation.mutateAsync(s.discordWebhookUrl),
+    save: (patch: Partial<NotificationSettingsPatch>) =>
+      saveMutation.mutateAsync(patch),
     isSaving: saveMutation.isPending,
     sendTest: testMutation.mutate,
     isTesting: testMutation.isPending,

@@ -26,10 +26,15 @@ const vector = customType<{ data: number[]; driverData: string }>({
   },
 });
 
-// org_id is a text column referencing neon_auth.organization.id (managed by Neon Auth)
+// org_id is a text column referencing neon_auth.organization.id (managed by Neon Auth).
+// Checks the org_id claim injected into request.jwt.claims by the app (see
+// requireOrg in middleware/auth.ts) against auth_is_org_member(), a
+// SECURITY DEFINER SQL function created directly in Postgres (not modeled
+// here) that re-verifies membership via neon_auth.member - so a forged/stale
+// org_id claim alone can't grant access.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const orgRls = (orgId: any) =>
-  sql`${orgId} IN (SELECT "organizationId" FROM neon_auth.member WHERE "userId" = auth.user_id())`;
+  sql`(${orgId} = (current_setting('request.jwt.claims', true)::json ->> 'org_id')) AND auth_is_org_member(${orgId})`;
 
 // ─── Global card vectors (no org scope) ──────────────────────────────────────
 
@@ -260,6 +265,12 @@ export const orgSettings = pgTable(
     primaryColor: text("primary_color"),
     scannerLayout: text("scanner_layout"),
     discordWebhookUrl: text("discord_webhook_url"),
+    discordNotifyOnScan: boolean("discord_notify_on_scan")
+      .notNull()
+      .default(false),
+    scanCoverage: integer("scan_coverage"),
+    scanOffsetX: integer("scan_offset_x"),
+    scanOffsetY: integer("scan_offset_y"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },

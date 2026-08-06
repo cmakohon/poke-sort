@@ -1,3 +1,4 @@
+import { DISCORD_URL } from "@/lib/links";
 import { cn } from "@/lib/utils";
 import {
   IconAdjustmentsHorizontal,
@@ -73,6 +74,25 @@ const PHASES: Phase[] = [
         key: "attach-base-panels",
         text: "Attach the base panels to the base with 8 M3×6 screws and 8 M3 nuts.",
         note: "Do this after the Arduino and PCA9685 are mounted to the panels - the boards are much harder to reach once the panels are on the base.",
+      },
+    ],
+  },
+  {
+    title: "Flash the firmware",
+    icon: IconCpu,
+    steps: [
+      {
+        key: "install-libraries",
+        text: "In the Arduino IDE, install the ArduinoJson and Adafruit PWM Servo Driver libraries.",
+        note: "Library Manager → search each by name.",
+      },
+      {
+        key: "upload-sketch",
+        text: 'Select board "Arduino Uno R4 Minima", select the correct port, then upload arduino/main/main.ino.',
+      },
+      {
+        key: "confirm-ready",
+        text: 'Open the Serial Monitor at 9600 baud and confirm you see {"status":"ready"} after the board resets.',
       },
     ],
   },
@@ -160,31 +180,12 @@ const PHASES: Phase[] = [
       {
         key: "wire-sensors",
         text: "Wire the 4 IR sensors to D2–D5.",
-        note: "For the power and ground, you will have to combine 4 wires into one, either with a breadboard or by twisting and soldering them together.",
+        note: "For the power and ground, you will have to combine 4 wires into one, either with a breadboard or by twisting and soldering them together. You will need to manually calibrate the sensors to have a shorter throw, as to not get false positives.",
       },
       {
         key: "wire-power",
         text: "Bring the external 5V supply into the PCA9685 V+/GND terminal, and tie its ground to the Arduino's ground.",
         note: "Skipping the common ground is the #1 cause of servos that twitch but never move correctly.",
-      },
-    ],
-  },
-  {
-    title: "Flash the firmware",
-    icon: IconCpu,
-    steps: [
-      {
-        key: "install-libraries",
-        text: "In the Arduino IDE, install the ArduinoJson and Adafruit PWM Servo Driver libraries.",
-        note: "Library Manager → search each by name.",
-      },
-      {
-        key: "upload-sketch",
-        text: 'Select board "Arduino Uno R4 Minima", select the correct port, then upload arduino/main/main.ino.',
-      },
-      {
-        key: "confirm-ready",
-        text: 'Open the Serial Monitor at 9600 baud and confirm you see {"status":"ready"} after the board resets.',
       },
     ],
   },
@@ -292,6 +293,18 @@ export function BuildAssembly() {
       <p className="mt-3 max-w-2xl text-sm/relaxed text-muted-foreground">
         Eight phases, structural work first. Checkboxes are saved in this
         browser, so you can close the tab mid-build and pick back up later.
+      </p>
+      <p className="mt-2 max-w-2xl text-sm/relaxed text-muted-foreground">
+        Stuck on a step?{" "}
+        <a
+          href={DISCORD_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="underline underline-offset-2 hover:text-foreground"
+        >
+          Join the Discord
+        </a>{" "}
+        if you need help.
       </p>
 
       <div className="mt-6">

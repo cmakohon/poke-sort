@@ -51,8 +51,27 @@ export async function getSyncStatus(): Promise<{
   return apiGet<{ success: boolean; data: SyncState }>("/api/admin/sync");
 }
 
-export async function dumpCards(): Promise<{ success: boolean; message: string }> {
-  return apiPost<{ success: boolean; message: string }>("/api/admin/cards/dump");
+export interface CardGameCount {
+  gameKey: string;
+  count: number;
+}
+
+export async function listCardGameKeys(): Promise<{
+  success: boolean;
+  data: CardGameCount[];
+}> {
+  return apiGet<{ success: boolean; data: CardGameCount[] }>(
+    "/api/admin/cards/games",
+  );
+}
+
+export async function dumpCards(
+  gameKey?: string,
+): Promise<{ success: boolean; message: string }> {
+  return apiPost<{ success: boolean; message: string }>(
+    "/api/admin/cards/dump",
+    gameKey ? { gameKey } : undefined,
+  );
 }
 
 export async function listCards(

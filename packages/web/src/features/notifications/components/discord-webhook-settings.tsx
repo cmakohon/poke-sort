@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { IconBrandDiscord } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import type { NotificationTestType } from "../api/notification-settings";
@@ -59,6 +60,20 @@ export function DiscordWebhookSettings() {
           Save
         </Button>
       </div>
+      <label className="flex items-center justify-between gap-3">
+        <span className="flex flex-col gap-0.5">
+          <span className="text-sm">Notify on every card scanned</span>
+          <span className="text-xs text-muted-foreground">
+            Posts the card's name, price, and image to Discord each time one
+            is scanned.
+          </span>
+        </span>
+        <Switch
+          checked={settings.discordNotifyOnScan}
+          disabled={isLoading || !settings.discordWebhookUrl}
+          onCheckedChange={(checked) => save({ discordNotifyOnScan: checked })}
+        />
+      </label>
       <div className="flex flex-col gap-1.5">
         <Label className="text-xs text-muted-foreground">
           {isDirty

@@ -17,13 +17,14 @@ import { cn } from "@/lib/utils";
 import { UserButton } from "@neondatabase/neon-js/auth/react";
 import {
   IconAdjustments,
-  IconCamera,
-  IconDatabase,
-  IconFolders,
+  IconAlbum,
+  IconCameraSpark,
+  IconDatabaseCog,
+  IconHeartRateMonitor,
   IconLayoutSidebarLeftCollapse,
   IconLayoutSidebarLeftExpand,
+  IconPigFilled,
   IconSettings,
-  IconWifi,
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
@@ -207,20 +208,20 @@ export function AppNav() {
   const navItems: NavItemDef[] = [
     {
       to: "/app",
-      icon: <IconCamera size={20} />,
+      icon: <IconCameraSpark size={20} />,
       label: "Scanner",
       end: true,
       desktopOnly: true,
     },
     {
       to: "/app/collections",
-      icon: <IconFolders size={20} />,
+      icon: <IconAlbum size={20} />,
       label: "Collections",
       desktopOnly: true,
     },
     {
       to: "/app/monitor",
-      icon: <IconWifi size={20} />,
+      icon: <IconHeartRateMonitor size={20} />,
       label: "Monitor",
       badge: hasLiveSessions,
     },
@@ -240,7 +241,7 @@ export function AppNav() {
       ? [
           {
             to: "/app/admin",
-            icon: <IconDatabase size={20} />,
+            icon: <IconDatabaseCog size={20} />,
             label: "Admin",
             desktopOnly: true,
           },
@@ -272,11 +273,16 @@ export function AppNav() {
       <Tooltip>
         <TooltipTrigger
           className={cn(
-            "bg-primary grid place-items-center rounded-lg text-primary-foreground font-bold font-heading cursor-default text-sm shrink-0",
-            expanded ? "h-8 mx-2" : "size-8",
+            "flex items-center gap-2 cursor-default shrink-0",
+            expanded ? "h-8 mx-2" : "size-8 justify-center",
           )}
         >
-          {expanded ? "Magic Vault" : "MV"}
+          <span className="bg-primary grid size-8 shrink-0 place-items-center rounded-lg text-primary-foreground">
+            <IconPigFilled className="size-4" />
+          </span>
+          {expanded && (
+            <span className="font-bold font-heading text-sm">Magic Vault</span>
+          )}
         </TooltipTrigger>
         <TooltipContent side="right">v{__APP_VERSION__}</TooltipContent>
       </Tooltip>

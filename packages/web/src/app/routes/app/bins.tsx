@@ -1,14 +1,14 @@
+import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 import {
-  Drawer,
-  DrawerContent,
-  DrawerTrigger,
-} from "@/components/ui/drawer";
-import { useBinConfigs } from "@/features/bins/api/use-bin-configs";
+  BinConfigsProvider,
+  useBinConfigs,
+} from "@/features/bins/api/use-bin-configs";
 import { BinConfigPanel } from "@/features/bins/components/bin-config-panel";
 import { BinList } from "@/features/bins/components/bin-list";
 import { PresetSelector } from "@/features/bins/components/preset-selector";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { IconLayoutGrid } from "@tabler/icons-react";
+import { useParams } from "react-router-dom";
 
 function MobileBins() {
   const { selectedBin } = useBinConfigs();
@@ -41,12 +41,11 @@ function MobileBins() {
 
 export default function BinsPage() {
   const isMobile = useIsMobile();
+  const { collectionGuid } = useParams<{ collectionGuid: string }>();
 
-  if (isMobile) {
-    return <MobileBins />;
-  }
-
-  return (
+  const content = isMobile ? (
+    <MobileBins />
+  ) : (
     <div className="grid grid-cols-12 flex-1 min-h-0 overflow-hidden">
       <section className="col-span-4 lg:col-span-3 overflow-hidden flex flex-col h-full border-r p-2 gap-2 bg-sidebar/70">
         <PresetSelector />
@@ -56,5 +55,11 @@ export default function BinsPage() {
         <BinConfigPanel />
       </section>
     </div>
+  );
+
+  return (
+    <BinConfigsProvider collectionGuid={collectionGuid}>
+      {content}
+    </BinConfigsProvider>
   );
 }

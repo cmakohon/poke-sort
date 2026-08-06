@@ -15,7 +15,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -35,10 +34,10 @@ import {
 } from "@/schemas/collections.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
+  IconAlbum,
   IconCheck,
   IconEdit,
   IconEraser,
-  IconFolders,
   IconLayoutGrid,
   IconLoader2,
   IconPlayerPlay,
@@ -170,7 +169,10 @@ export default function CollectionsPage() {
           onOpenChange={(open) => {
             setCreateOpen(open);
             if (open) {
-              createForm.reset({ name: "", gameGuid: activeGames[0]?.guid ?? "" });
+              createForm.reset({
+                name: "",
+                gameGuid: activeGames[0]?.guid ?? "",
+              });
             } else {
               createForm.reset();
             }
@@ -199,7 +201,10 @@ export default function CollectionsPage() {
           }
           footerClassName="flex-col-reverse md:flex-row"
         >
-          <form onSubmit={createForm.handleSubmit(handleCreate)} className="flex flex-col gap-4">
+          <form
+            onSubmit={createForm.handleSubmit(handleCreate)}
+            className="flex flex-col gap-4"
+          >
             <Controller
               name="name"
               control={createForm.control}
@@ -229,7 +234,7 @@ export default function CollectionsPage() {
                   <FieldLabel htmlFor="new-collection-game">Game</FieldLabel>
                   <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger id="new-collection-game">
-                      <SelectValue placeholder="Select a game..." />
+                      {activeGames.find((g) => g.guid === field.value)?.name}
                     </SelectTrigger>
                     <SelectContent>
                       {activeGames.map((game) => (
@@ -263,7 +268,7 @@ export default function CollectionsPage() {
 
         {!isLoading && collections.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 gap-2 text-muted-foreground">
-            <IconFolders className="size-8" />
+            <IconAlbum className="size-8" />
             <p className="text-sm font-medium">No collections yet</p>
             <p className="text-xs">
               Create a collection to start scanning cards

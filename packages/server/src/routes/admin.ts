@@ -1,10 +1,16 @@
-import { count, ilike } from "drizzle-orm";
+import { count, eq, ilike } from "drizzle-orm";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { db } from "../db";
 import { cardImageVectors } from "../db/schema";
-import { cancelSync, getStatus, startSync, subscribeSSE, SYNC_SOURCES } from "../lib/sync-job";
 import { resolveGameDataSourceUrl } from "../lib/card-search/resolve";
+import {
+  cancelSync,
+  getStatus,
+  startSync,
+  subscribeSSE,
+  SYNC_SOURCES,
+} from "../lib/sync-job";
 import { vectorizeImageFromBuffer } from "../lib/vectorize";
 import {
   getUserRole,
@@ -57,16 +63,22 @@ router.get("/sync/sources", requireAuth, requireRole("admin"), (c) => {
 
 // POST /admin/sync
 router.post("/sync", requireAuth, requireRole("admin"), async (c) => {
-  let gameKey = "mtg";
+  let gameKey: string | undefined;
   try {
     const body = await c.req.json<{ gameKey?: string }>();
-    if (body.gameKey) gameKey = body.gameKey;
+    gameKey = body.gameKey;
   } catch {
-    // no/invalid body - fall back to mtg
+    // no/invalid body
   }
 
+  if (!gameKey) {
+    return c.json({ success: false, message: "gameKey is required." }, 400);
+  }
   if (!SYNC_SOURCES[gameKey]) {
-    return c.json({ success: false, message: `Unknown sync source: ${gameKey}` }, 400);
+    return c.json(
+      { success: false, message: `Unknown sync source: ${gameKey}` },
+      400,
+    );
   }
 
   startSync(c.req.header("X-Org-Id"), gameKey);
@@ -111,7 +123,6 @@ router.get("/cards", requireAuth, requireRole("admin"), async (c) => {
 });
 
 // POST /admin/cards/:scryfallId/revectorize — re-fetch image and regenerate embedding,
-// using whichever game's source the card was originally synced from
 router.post(
   "/cards/:scryfallId/revectorize",
   requireAuth,
@@ -123,16 +134,31 @@ router.post(
       where: (t, { eq }) => eq(t.scryfallId, scryfallId),
       columns: { gameKey: true },
     });
-    const gameKey = existing?.gameKey ?? "mtg";
+    if (!existing) {
+      return c.json(
+        {
+          success: false,
+          message: `Card ${scryfallId} not found in database.`,
+        },
+        404,
+      );
+    }
+    const gameKey = existing.gameKey;
     const source = SYNC_SOURCES[gameKey];
     if (!source) {
-      return c.json({ success: false, message: `Unknown sync source: ${gameKey}` }, 400);
+      return c.json(
+        { success: false, message: `Unknown sync source: ${gameKey}` },
+        400,
+      );
     }
     const baseUrl = await resolveGameDataSourceUrl(gameKey, source.defaultUrl);
 
     const card = await source.fetchOne(scryfallId, baseUrl);
     if (!card) {
-      return c.json({ success: false, message: `Card not found via ${source.label}` }, 404);
+      return c.json(
+        { success: false, message: `Card not found via ${source.label}` },
+        404,
+      );
     }
     if (!card.imageUrl) {
       return c.json(
@@ -141,7 +167,9 @@ router.post(
       );
     }
 
-    const imageRes = await fetch(card.imageUrl, { headers: source.fetchHeaders });
+    const imageRes = await fetch(card.imageUrl, {
+      headers: source.fetchHeaders,
+    });
     if (!imageRes.ok) {
       return c.json(
         { success: false, message: "Failed to download card image" },
@@ -153,7 +181,13 @@ router.post(
 
     await db
       .insert(cardImageVectors)
-      .values({ scryfallId, gameKey, name: card.name, setCode: card.setCode, embedding })
+      .values({
+        scryfallId,
+        gameKey,
+        name: card.name,
+        setCode: card.setCode,
+        embedding,
+      })
       .onConflictDoUpdate({
         target: cardImageVectors.scryfallId,
         set: { embedding, updatedAt: new Date() },
@@ -163,13 +197,39 @@ router.post(
   },
 );
 
-// POST /admin/cards/dump — delete all card vectors
+// GET /admin/cards/games — distinct game keys currently in the card database, with counts
+router.get("/cards/games", requireAuth, requireRole("admin"), async (c) => {
+  const rows = await db
+    .select({ gameKey: cardImageVectors.gameKey, count: count() })
+    .from(cardImageVectors)
+    .groupBy(cardImageVectors.gameKey)
+    .orderBy(cardImageVectors.gameKey);
+
+  return c.json({ success: true, data: rows });
+});
+
+// POST /admin/cards/dump — delete card vectors, either all of them or just one game's
 router.post("/cards/dump", requireAuth, requireRole("admin"), async (c) => {
   if (getStatus().status === "running") {
     return c.json(
       { success: false, message: "Cannot dump while sync is running" },
       409,
     );
+  }
+
+  let gameKey: string | undefined;
+  try {
+    const body = await c.req.json<{ gameKey?: string }>();
+    if (body.gameKey) gameKey = body.gameKey;
+  } catch {
+    // no/invalid body - dump everything
+  }
+
+  if (gameKey) {
+    await db
+      .delete(cardImageVectors)
+      .where(eq(cardImageVectors.gameKey, gameKey));
+    return c.json({ success: true, message: `Cleared "${gameKey}" cards` });
   }
 
   await db.delete(cardImageVectors);

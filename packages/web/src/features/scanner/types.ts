@@ -1,8 +1,8 @@
 import type {
-  ScannerStatus,
+  PlayingCard,
+  PlayingCardWithDistance,
   ScannedCard,
-  ScryfallCard,
-  ScryfallCardWithDistance,
+  ScannerStatus,
 } from "@magic-vault/shared";
 
 export type CameraStatus = "idle" | "requesting" | "ready" | "error";
@@ -34,11 +34,17 @@ export interface ScannedCardsContextValue {
   elapsedMs: number;
   isTimerActive: boolean;
   setAutoFeed: (enabled: boolean) => void;
-  addCard: (card: ScryfallCardWithDistance, capturedImageUrl?: string, alternativeMatches?: ScryfallCardWithDistance[]) => void;
+  addCard: (
+    card: PlayingCardWithDistance,
+    capturedImageUrl?: string,
+    alternativeMatches?: PlayingCardWithDistance[],
+  ) => void;
   sendCatchAllBin: () => void;
+  registerCardArrivedHook: (fn: () => void) => () => void;
+  registerPauseHook: (fn: () => void) => () => void;
   removeCard: (scanId: string) => void;
   removeCards: (scanIds: string[]) => void;
-  correctCard: (scanId: string, card: ScryfallCard) => void;
+  correctCard: (scanId: string, card: PlayingCard) => void;
   toggleFoil: (scanId: string, isFoil: boolean) => void;
   markDownloaded: (scanIds: string[]) => void;
   clearCards: () => void;
@@ -64,6 +70,7 @@ export interface ScannerControlsProps {
   duplicateCardName?: string;
   onForceAddDuplicate: () => void;
   onForceScan: () => void;
+  onSkipDuplicate: () => void;
   onPause: () => void;
   onResume: () => void;
 }

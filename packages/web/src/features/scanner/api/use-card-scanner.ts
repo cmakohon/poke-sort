@@ -1,48 +1,29 @@
 import { searchByImage } from "@/features/cards/api/card";
 import { getCardById } from "@/features/cards/api/card-search";
 import { useCollections } from "@/features/collections/api/use-collections";
+import { orgSettingsQueryOptions } from "@/features/companies/api/org-settings";
+import { useOrg } from "@/features/companies/api/use-organization";
 import { useCameraContext } from "@/features/scanner/api/use-camera";
 import {
-  DETECTION_INTERVAL_MS,
+  CARD_SETTLE_DELAY_MS,
   SCANNABLE_STATUSES,
-  STABILITY_FRAMES,
 } from "@/features/scanner/constants";
 import {
   canvasToBlob,
-  detectCard,
   drawDetectionOverlay,
   extractCardImage,
+  getDefaultCardContour,
 } from "@/features/scanner/lib/card-detection";
-import { loadOpenCv } from "@/features/scanner/lib/opencv-loader";
 import {
+  DEFAULT_SCAN_REGION,
   type CardContour,
   type CardScannerProps,
-  type DetectionResult,
-  type Point,
+  type PlayingCardWithDistance,
+  type ScanRegion,
   type ScannerStatus,
-  type ScryfallCardWithDistance,
 } from "@magic-vault/shared";
+import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
-
-// Weight given to the newest detection frame (0–1). Higher = tracks faster, less smooth.
-const SMOOTH_ALPHA = 0.35;
-
-function lerpPoint(a: Point, b: Point, t: number): Point {
-  return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
-}
-
-function smoothContour(
-  prev: CardContour,
-  next: CardContour,
-  alpha: number,
-): CardContour {
-  return {
-    topLeft: lerpPoint(prev.topLeft, next.topLeft, alpha),
-    topRight: lerpPoint(prev.topRight, next.topRight, alpha),
-    bottomRight: lerpPoint(prev.bottomRight, next.bottomRight, alpha),
-    bottomLeft: lerpPoint(prev.bottomLeft, next.bottomLeft, alpha),
-  };
-}
 
 // Singleton AudioContext - browsers cap concurrent contexts (~6).
 // Creating one per scan exhausts the limit quickly.
@@ -82,8 +63,8 @@ async function searchCardImage(
   contour?: CardContour | null,
   collectionGuid?: string,
 ): Promise<{
-  card: ScryfallCardWithDistance | null;
-  alternativeMatches: ScryfallCardWithDistance[];
+  card: PlayingCardWithDistance | null;
+  alternativeMatches: PlayingCardWithDistance[];
   debugImageUrl: string;
 }> {
   const warpedCanvas = contour ? extractCardImage(canvas, contour) : canvas;
@@ -108,7 +89,7 @@ async function searchCardImage(
     ),
   );
 
-  const cards = resolved.filter(Boolean) as ScryfallCardWithDistance[];
+  const cards = resolved.filter(Boolean) as PlayingCardWithDistance[];
   if (cards.length === 0)
     return { card: null, alternativeMatches: [], debugImageUrl };
 
@@ -121,7 +102,11 @@ export function useCardScanner({
   onNoMatch,
   onError,
   rotated = true,
-}: Omit<CardScannerProps, "className"> & { rotated?: boolean } = {}) {
+  scanRegion: scanRegionProp,
+}: Omit<CardScannerProps, "className"> & {
+  rotated?: boolean;
+  scanRegion?: ScanRegion;
+} = {}) {
   const {
     stream,
     status: cameraStatus,
@@ -136,9 +121,18 @@ export function useCardScanner({
     stopCamera,
   } = useCameraContext();
   const { activeCollection } = useCollections();
+  const { activeOrg } = useOrg();
+  const { data: orgSettingsData } = useQuery(
+    orgSettingsQueryOptions(activeOrg?.id),
+  );
 
   const rotatedRef = useRef(rotated);
   rotatedRef.current = rotated;
+
+  const scanRegion =
+    scanRegionProp ?? orgSettingsData?.scanRegion ?? DEFAULT_SCAN_REGION;
+  const scanRegionRef = useRef(scanRegion);
+  scanRegionRef.current = scanRegion;
 
   const activeCollectionGuidRef = useRef(activeCollection?.guid);
   activeCollectionGuidRef.current = activeCollection?.guid;
@@ -146,27 +140,20 @@ export function useCardScanner({
   const videoRef = useRef<HTMLVideoElement>(null);
   const displayCanvasRef = useRef<HTMLCanvasElement>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
-  const processingCanvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
-  const lastDetectionRef = useRef<number>(0);
-  const stableCountRef = useRef<number>(0);
-  const lastResultRef = useRef<DetectionResult | null>(null);
-  const smoothedContourRef = useRef<CardContour | null>(null);
 
   const statusRef = useRef<ScannerStatus>("initializing");
-  const pausedRef = useRef(true);
   const lastScannedCardIdRef = useRef<string | null>(null);
-  const needsCardRemovalRef = useRef(false);
   const isCapturingRef = useRef(false);
+  const settleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onSearchResultsRef = useRef(onSearchResults);
   const onNoMatchRef = useRef(onNoMatch);
   const handleErrorRef = useRef<(msg: string) => void>(() => {});
 
   const [status, setStatus] = useState<ScannerStatus>("initializing");
   const [errorMessage, setErrorMessage] = useState("");
-  const [isStable, setIsStable] = useState(false);
   const [duplicateCard, setDuplicateCard] =
-    useState<ScryfallCardWithDistance | null>(null);
+    useState<PlayingCardWithDistance | null>(null);
   const [debugImageUrl, setDebugImageUrl] = useState<string | null>(null);
   const debugImageUrlRef = useRef<string | null>(null);
   const [allowDuplicates, setAllowDuplicates] = useState(true);
@@ -184,12 +171,6 @@ export function useCardScanner({
     },
     [onError, updateStatus],
   );
-
-  const resetStability = useCallback(() => {
-    stableCountRef.current = 0;
-    smoothedContourRef.current = null;
-    setIsStable(false);
-  }, []);
 
   useEffect(() => {
     onSearchResultsRef.current = onSearchResults;
@@ -256,8 +237,6 @@ export function useCardScanner({
           onNoMatchRef.current?.();
           updateStatus("no-match");
         }
-
-        needsCardRemovalRef.current = true;
       } catch (err) {
         handleErrorRef.current(
           err instanceof Error ? err.message : "Failed to search card",
@@ -269,106 +248,27 @@ export function useCardScanner({
     [updateStatus, allowDuplicates],
   );
 
+  // Draws the live camera feed to the display canvas every frame. Capture is
+  // no longer triggered from here - see `captureCard`, which fires off the
+  // module 1 IR sensor confirming a card has arrived (via the feeder command
+  // round trip), not from continuously polling the frame for a card shape.
   const detectionLoop = useCallback(() => {
     const video = videoRef.current;
     const displayCanvas = displayCanvasRef.current;
-    const overlayCanvas = overlayCanvasRef.current;
-    const processingCanvas = processingCanvasRef.current;
 
-    if (!video || !displayCanvas || !overlayCanvas || !processingCanvas) return;
+    if (!video || !displayCanvas) return;
     if (video.readyState < video.HAVE_ENOUGH_DATA) {
       rafRef.current = requestAnimationFrame(detectionLoop);
       return;
     }
 
     const displayCtx = displayCanvas.getContext("2d");
-    const overlayCtx = overlayCanvas.getContext("2d");
-    const processingCtx = processingCanvas.getContext("2d");
-
-    if (!displayCtx || !overlayCtx || !processingCtx) return;
+    if (!displayCtx) return;
 
     displayCtx.drawImage(video, 0, 0);
 
-    if (pausedRef.current) {
-      rafRef.current = requestAnimationFrame(detectionLoop);
-      return;
-    }
-
-    const now = performance.now();
-    if (now - lastDetectionRef.current >= DETECTION_INTERVAL_MS) {
-      lastDetectionRef.current = now;
-
-      processingCtx.drawImage(video, 0, 0);
-      const imageData = processingCtx.getImageData(
-        0,
-        0,
-        processingCanvas.width,
-        processingCanvas.height,
-      );
-
-      const result = detectCard(imageData);
-
-      // Smooth corner positions to reduce jitter in the overlay
-      if (result.detected && result.contour) {
-        smoothedContourRef.current = smoothedContourRef.current
-          ? smoothContour(
-              smoothedContourRef.current,
-              result.contour,
-              SMOOTH_ALPHA,
-            )
-          : result.contour;
-      } else {
-        smoothedContourRef.current = null;
-      }
-
-      overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-      drawDetectionOverlay(
-        overlayCtx,
-        smoothedContourRef.current
-          ? {
-              detected: true,
-              contour: smoothedContourRef.current,
-              confidence: result.confidence,
-            }
-          : result,
-      );
-
-      if (result.detected) {
-        stableCountRef.current++;
-        lastResultRef.current = result;
-      } else {
-        stableCountRef.current = 0;
-        lastResultRef.current = null;
-
-        if (needsCardRemovalRef.current) {
-          needsCardRemovalRef.current = false;
-          setDuplicateCard(null);
-          if (SCANNABLE_STATUSES.includes(statusRef.current)) {
-            updateStatus("scanning");
-          }
-        }
-      }
-
-      const stable = stableCountRef.current >= STABILITY_FRAMES;
-      setIsStable(stable);
-
-      if (
-        stable &&
-        !needsCardRemovalRef.current &&
-        !isCapturingRef.current &&
-        statusRef.current === "scanning"
-      ) {
-        const captureResult = lastResultRef.current;
-        if (captureResult?.detected && captureResult.contour) {
-          isCapturingRef.current = true;
-          updateStatus("searching");
-          performCapture(true, captureResult.contour);
-        }
-      }
-    }
-
     rafRef.current = requestAnimationFrame(detectionLoop);
-  }, [updateStatus, performCapture]);
+  }, []);
 
   // Attach stream to video/canvases and start the detection loop.
   // Re-runs if the stream is replaced (e.g. after retryCamera).
@@ -390,20 +290,27 @@ export function useCardScanner({
         if (cancelled) return;
 
         const { videoWidth, videoHeight } = video;
-        for (const ref of [
-          displayCanvasRef,
-          overlayCanvasRef,
-          processingCanvasRef,
-        ]) {
+        for (const ref of [displayCanvasRef, overlayCanvasRef]) {
           if (ref.current) {
             ref.current.width = videoWidth;
             ref.current.height = videoHeight;
           }
         }
 
-        // Scale display/overlay canvases to fill the container (contain, no squish).
-        // When rotated 90° via CSS the visual dimensions are transposed, so we swap
-        // videoWidth/videoHeight in the scale calculation.
+        const overlayCtx = overlayCanvasRef.current?.getContext("2d");
+        if (overlayCtx) {
+          overlayCtx.clearRect(0, 0, videoWidth, videoHeight);
+          drawDetectionOverlay(overlayCtx, {
+            detected: true,
+            contour: getDefaultCardContour(
+              videoWidth,
+              videoHeight,
+              scanRegionRef.current,
+            ),
+            confidence: 1,
+          });
+        }
+
         const container = displayCanvasRef.current?.parentElement;
         if (container) {
           const cw = container.clientWidth;
@@ -423,11 +330,6 @@ export function useCardScanner({
           }
         }
 
-        // Wait for OpenCV to finish loading before starting detection
-        await loadOpenCv();
-        if (cancelled) return;
-
-        pausedRef.current = true;
         updateStatus("paused");
         rafRef.current = requestAnimationFrame(detectionLoop);
       } catch (err) {
@@ -443,10 +345,28 @@ export function useCardScanner({
       cancelled = true;
       cancelAnimationFrame(rafRef.current);
       rafRef.current = 0;
+      if (settleTimeoutRef.current) {
+        clearTimeout(settleTimeoutRef.current);
+        settleTimeoutRef.current = null;
+        isCapturingRef.current = false;
+      }
       video.srcObject = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stream]);
+
+  useEffect(() => {
+    const canvas = displayCanvasRef.current;
+    const overlayCtx = overlayCanvasRef.current?.getContext("2d");
+    if (!canvas || !overlayCtx || !canvas.width || !canvas.height) return;
+    overlayCtx.clearRect(0, 0, canvas.width, canvas.height);
+    drawDetectionOverlay(overlayCtx, {
+      detected: true,
+      contour: getDefaultCardContour(canvas.width, canvas.height, scanRegion),
+      confidence: 1,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scanRegion.coverage, scanRegion.offsetX, scanRegion.offsetY]);
 
   const handleForceAddDuplicate = useCallback(() => {
     if (duplicateCard) {
@@ -466,28 +386,54 @@ export function useCardScanner({
     )
       return;
 
+    const canvas = displayCanvasRef.current;
+    if (!canvas) return;
+
     isCapturingRef.current = true;
     updateStatus("searching");
     setDuplicateCard(null);
-
-    const result = lastResultRef.current;
-    const contour = result?.detected ? result.contour : null;
-    performCapture(false, contour);
+    performCapture(
+      false,
+      getDefaultCardContour(canvas.width, canvas.height, scanRegionRef.current),
+    );
   }, [updateStatus, performCapture]);
 
+  const captureCard = useCallback(() => {
+    if (
+      isCapturingRef.current ||
+      !SCANNABLE_STATUSES.includes(statusRef.current)
+    )
+      return;
+
+    const canvas = displayCanvasRef.current;
+    if (!canvas) return;
+
+    isCapturingRef.current = true;
+    updateStatus("searching");
+    const contour = getDefaultCardContour(
+      canvas.width,
+      canvas.height,
+      scanRegionRef.current,
+    );
+    settleTimeoutRef.current = setTimeout(() => {
+      settleTimeoutRef.current = null;
+      performCapture(true, contour);
+    }, CARD_SETTLE_DELAY_MS);
+  }, [updateStatus, performCapture]);
+
+  const handleSkipDuplicate = useCallback(() => {
+    setDuplicateCard(null);
+    updateStatus("scanning");
+  }, [updateStatus]);
+
   const handlePause = useCallback(() => {
-    pausedRef.current = true;
-    needsCardRemovalRef.current = false;
-    resetStability();
     setDuplicateCard(null);
     updateStatus("paused");
-  }, [updateStatus, resetStability]);
+  }, [updateStatus]);
 
   const handleResume = useCallback(() => {
-    pausedRef.current = false;
-    resetStability();
     updateStatus("scanning");
-  }, [updateStatus, resetStability]);
+  }, [updateStatus]);
 
   const handleRetryError = useCallback(async () => {
     setErrorMessage("");
@@ -501,15 +447,15 @@ export function useCardScanner({
   return {
     status,
     errorMessage,
-    isStable,
     duplicateCard,
     debugImageUrl,
     videoRef,
     displayCanvasRef,
     overlayCanvasRef,
-    processingCanvasRef,
+    captureCard,
     handleForceAddDuplicate,
     handleForceScan,
+    handleSkipDuplicate,
     handlePause,
     handleResume,
     handleRetryError,

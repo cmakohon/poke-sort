@@ -1,6 +1,6 @@
 import {
+  type PlayingCardWithDistance,
   type ScannedCard,
-  type ScryfallCardWithDistance,
 } from "@magic-vault/shared";
 
 function csvEscape(val: string): string {
@@ -14,7 +14,7 @@ export function exportToManabox(cards: ScannedCard[], collection: string) {
 
   const grouped = new Map<
     string,
-    { card: ScryfallCardWithDistance; quantity: number }
+    { card: PlayingCardWithDistance; quantity: number }
   >();
   for (const entry of cards) {
     const existing = grouped.get(entry.card.id);

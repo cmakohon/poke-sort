@@ -1,4 +1,4 @@
-import type { ScryfallCardWithDistance } from "./scryfall.interface";
+import type { PlayingCardWithDistance } from "./scryfall.interface";
 
 export interface Point {
   x: number;
@@ -11,6 +11,18 @@ export interface CardContour {
   bottomRight: Point;
   bottomLeft: Point;
 }
+
+export interface ScanRegion {
+  coverage: number; // 0-1
+  offsetX: number; // -0.5 to 0.5
+  offsetY: number; // -0.5 to 0.5
+}
+
+export const DEFAULT_SCAN_REGION: ScanRegion = {
+  coverage: 0.85,
+  offsetX: 0,
+  offsetY: 0,
+};
 
 export interface DetectionResult {
   detected: boolean;
@@ -30,7 +42,10 @@ export type ScannerStatus =
   | "error";
 
 export interface CardScannerProps {
-  onSearchResults?: (matches: ScryfallCardWithDistance[], capturedImageUrl?: string) => void;
+  onSearchResults?: (
+    matches: PlayingCardWithDistance[],
+    capturedImageUrl?: string,
+  ) => void;
   onNoMatch?: () => void;
   onManualAdd?: () => void;
   onError?: (error: string) => void;
@@ -46,11 +61,11 @@ export interface CardMatch {
 
 export interface ScannedCard {
   scanId: string;
-  card: ScryfallCardWithDistance;
+  card: PlayingCardWithDistance;
   scannedAt: number;
   binNumber?: number;
   capturedImageUrl?: string;
-  alternativeMatches?: ScryfallCardWithDistance[];
+  alternativeMatches?: PlayingCardWithDistance[];
   isFoil?: boolean;
   isDownloaded?: boolean;
 }

@@ -114,6 +114,7 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
         }
         const writer = writableRef.current.getWriter();
         try {
+          console.log("[Serial] →", data.trim()); // eslint-disable-line no-console -- hardware debug trace
           await writer.write(new TextEncoder().encode(data));
           resolve(true);
         } catch {

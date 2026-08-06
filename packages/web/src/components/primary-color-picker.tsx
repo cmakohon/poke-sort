@@ -10,6 +10,7 @@ import {
   type ThemeColor,
 } from "@/lib/primary-color";
 import { cn } from "@/lib/utils";
+import { DEFAULT_SCAN_REGION } from "@magic-vault/shared";
 import { IconCheck, IconRotate } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -27,11 +28,16 @@ export function PrimaryColorPicker() {
     onMutate: async (primaryColor) => {
       await queryClient.cancelQueries({ queryKey: queryOpts.queryKey });
       const previous = queryClient.getQueryData(queryOpts.queryKey);
-      queryClient.setQueryData(queryOpts.queryKey, (old: typeof data): typeof data => ({
-        scannerLayout: old?.scannerLayout ?? "horizontal",
-        discordWebhookUrl: old?.discordWebhookUrl ?? null,
-        primaryColor,
-      }));
+      queryClient.setQueryData(
+        queryOpts.queryKey,
+        (old: typeof data): typeof data => ({
+          scannerLayout: old?.scannerLayout ?? "horizontal",
+          discordWebhookUrl: old?.discordWebhookUrl ?? null,
+          discordNotifyOnScan: old?.discordNotifyOnScan ?? false,
+          scanRegion: old?.scanRegion ?? DEFAULT_SCAN_REGION,
+          primaryColor,
+        }),
+      );
       return { previous };
     },
     onError: (_err, _vars, ctx) => {

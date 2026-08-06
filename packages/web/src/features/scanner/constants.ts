@@ -1,7 +1,5 @@
 import type { ScannerStatus } from "@magic-vault/shared";
 
-export const STABILITY_FRAMES = 8;
-export const DETECTION_INTERVAL_MS = 100;
 export const SCANNABLE_STATUSES: ScannerStatus[] = [
   "scanning",
   "no-match",
@@ -28,4 +26,7 @@ export const RARITY_ORDER = [
 
 export const MTG_ASPECT_RATIO = 2.5 / 3.5;
 
-export const OPENCV_CDN_URL = "/opencv.js";
+// After the module 1 IR sensor confirms a card has arrived, how long to wait
+// before capturing a frame - the card is still sliding into place when the
+// sensor first trips, so scanning immediately can catch it mid-motion/blurred.
+export const CARD_SETTLE_DELAY_MS = 500;

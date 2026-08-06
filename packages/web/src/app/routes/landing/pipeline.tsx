@@ -1,5 +1,5 @@
 import {
-  IconCamera,
+  IconCameraSpark,
   IconLayoutGrid,
   IconRoute,
   IconSparkles,
@@ -7,7 +7,7 @@ import {
 
 const STEPS = [
   {
-    icon: IconCamera,
+    icon: IconCameraSpark,
     title: "Show it a card",
     description:
       "Hold any card up to your webcam - no scanner or app on your phone required.",

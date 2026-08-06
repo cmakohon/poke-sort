@@ -3,25 +3,13 @@ import react from "@vitejs/plugin-react";
 import { readFileSync } from "fs";
 import path from "path";
 import { defineConfig } from "vite";
-import { viteStaticCopy } from "vite-plugin-static-copy";
 
 const { version } = JSON.parse(
   readFileSync(path.resolve(__dirname, "../../package.json"), "utf-8"),
 );
 
 export default defineConfig({
-  plugins: [
-    react(),
-    tailwindcss(),
-    viteStaticCopy({
-      targets: [
-        {
-          src: "node_modules/@techstark/opencv-js/dist/opencv.js",
-          dest: ".",
-        },
-      ],
-    }),
-  ],
+  plugins: [react(), tailwindcss()],
   define: {
     __APP_VERSION__: JSON.stringify(`${version}`),
   },

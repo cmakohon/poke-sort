@@ -1,4 +1,4 @@
-import { SyncIndicator } from "@/components/sync-indicator";
+import { AppLoadingGate } from "@/app/app-loading-gate";
 import { BinConfigsProvider } from "@/features/bins/api/use-bin-configs";
 import { CardFiltersProvider } from "@/features/cards/api/use-card-filters";
 import { OrgPickerModal } from "@/features/companies/components/org-picker-modal";
@@ -58,8 +58,7 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
                 <FeederConfigProvider>
                   <ScannedCardsProvider>
                     <CardFiltersProvider>
-                      {children}
-                      <SyncIndicator />
+                      <AppLoadingGate>{children}</AppLoadingGate>
                       <OrgPickerModal />
                       <DocumentTitleUpdater />
                     </CardFiltersProvider>

@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
@@ -147,7 +148,14 @@ export function CollectionSwitcher() {
 
   return (
     <Field>
-      <FieldLabel>Collection</FieldLabel>
+      <span className="flex items-center gap-1.5">
+        <FieldLabel>Collection</FieldLabel>
+        {activeCollection?.game && (
+          <Badge variant="secondary" className="shrink-0">
+            {activeCollection.game.name}
+          </Badge>
+        )}
+      </span>
       <ButtonGroup className="w-full">
         <Select
           key={activeCollection?.guid ?? ""}
@@ -254,92 +262,109 @@ export function CollectionSwitcher() {
           </Tooltip>
         )}
 
-        <DynamicDialog
-          open={createOpen}
-          onOpenChange={handleCreateDialogChange}
-          title="New Collection"
-          description="Create a new collection to scan cards into."
-          trigger={
-            <Button
-              variant="outline"
-              size="icon"
-              disabled={isMutating || activeGames.length === 0}
-              title={
-                activeGames.length === 0
-                  ? "Ask an admin to add a game before creating a collection"
-                  : undefined
-              }
+        <Tooltip>
+          <DynamicDialog
+            open={createOpen}
+            onOpenChange={handleCreateDialogChange}
+            title="New Collection"
+            description="Create a new collection to scan cards into."
+            trigger={
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    disabled={isMutating || activeGames.length === 0}
+                    title={
+                      activeGames.length === 0
+                        ? "Ask an admin to add a game before creating a collection"
+                        : undefined
+                    }
+                  >
+                    <IconPlus />
+                  </Button>
+                }
+              />
+            }
+            footer={
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => handleCreateDialogChange(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={form.handleSubmit(handleCreate)}
+                  disabled={!form.formState.isValid || isMutating}
+                >
+                  {isMutating && (
+                    <IconLoader2 className="size-4 animate-spin" />
+                  )}
+                  Create
+                </Button>
+              </>
+            }
+            footerClassName="flex-col-reverse md:flex-row"
+          >
+            <form
+              onSubmit={form.handleSubmit(handleCreate)}
+              className="flex flex-col gap-4"
             >
-              <IconPlus />
-            </Button>
-          }
-          footer={
-            <>
-              <Button
-                variant="outline"
-                onClick={() => handleCreateDialogChange(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={form.handleSubmit(handleCreate)}
-                disabled={!form.formState.isValid || isMutating}
-              >
-                {isMutating && <IconLoader2 className="size-4 animate-spin" />}
-                Create
-              </Button>
-            </>
-          }
-          footerClassName="flex-col-reverse md:flex-row"
-        >
-          <form onSubmit={form.handleSubmit(handleCreate)} className="flex flex-col gap-4">
-            <Controller
-              name="name"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid || undefined}>
-                  <FieldLabel htmlFor="collection-name">
-                    Collection name
-                  </FieldLabel>
-                  <Input
-                    {...field}
-                    id="collection-name"
-                    placeholder="e.g. Commander Collection, Draft Haul..."
-                    aria-invalid={fieldState.invalid}
-                    autoFocus
-                  />
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
-                </Field>
-              )}
-            />
-            <Controller
-              name="gameGuid"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid || undefined}>
-                  <FieldLabel htmlFor="collection-game">Game</FieldLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger id="collection-game">
-                      <SelectValue placeholder="Select a game..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {activeGames.map((game) => (
-                        <SelectItem key={game.guid} value={game.guid}>
-                          {game.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
-                </Field>
-              )}
-            />
-          </form>
-        </DynamicDialog>
+              <Controller
+                name="name"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid || undefined}>
+                    <FieldLabel htmlFor="collection-name">
+                      Collection name
+                    </FieldLabel>
+                    <Input
+                      {...field}
+                      id="collection-name"
+                      placeholder="e.g. Commander Collection, Draft Haul..."
+                      aria-invalid={fieldState.invalid}
+                      autoFocus
+                    />
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                )}
+              />
+              <Controller
+                name="gameGuid"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid || undefined}>
+                    <FieldLabel htmlFor="collection-game">Game</FieldLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger id="collection-game">
+                        <SelectValue placeholder="Select a game...">
+                          {
+                            activeGames.find((g) => g.guid === field.value)
+                              ?.name
+                          }
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {activeGames.map((game) => (
+                          <SelectItem key={game.guid} value={game.guid}>
+                            {game.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                )}
+              />
+            </form>
+          </DynamicDialog>
+          <TooltipContent>New Collection</TooltipContent>
+        </Tooltip>
       </ButtonGroup>
     </Field>
   );

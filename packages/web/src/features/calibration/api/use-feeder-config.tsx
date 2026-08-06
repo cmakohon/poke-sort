@@ -42,7 +42,21 @@ export function FeederConfigProvider({
       const fresh = await queryClient.fetchQuery(feederQueryOptions);
       const p = receiveResponse();
       await sendCommand(JSON.stringify({ setFeederConfig: fresh }));
-      await p;
+      const response = await p;
+      try {
+        const parsed = response ? JSON.parse(response) : null;
+        if (parsed?.error) {
+          toast.error("Feeder calibration not synced", {
+            description: String(parsed.error),
+          });
+        }
+      } catch {
+        toast.error("Feeder calibration not synced", {
+          description: response
+            ? `Unexpected response: ${response}`
+            : "No response from sorter.",
+        });
+      }
     });
   }, [registerPreTestHook, queryClient, sendCommand, receiveResponse]);
 

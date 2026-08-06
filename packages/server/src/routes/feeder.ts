@@ -8,9 +8,12 @@ const router = new Hono<AppEnv>();
 
 // GET /feeder
 router.get("/", requireAuth, requireOrg, async (c) => {
+  const orgId = c.get("orgId");
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
-      const row = await tx.query.feederConfigs.findFirst();
+      const row = await tx.query.feederConfigs.findFirst({
+        where: (t, { eq }) => eq(t.orgId, orgId),
+      });
       const calibration: FeederCalibration = row
         ? {
             speed: row.speed,
@@ -45,7 +48,9 @@ router.put("/", requireAuth, requireOrg, async (c) => {
 
       await tx.insert(feederConfigAudit).values({ ...calibration, orgId });
 
-      const row = await tx.query.feederConfigs.findFirst();
+      const row = await tx.query.feederConfigs.findFirst({
+        where: (t, { eq }) => eq(t.orgId, orgId),
+      });
       const saved: FeederCalibration = row
         ? {
             speed: row.speed,
@@ -66,9 +71,11 @@ router.put("/", requireAuth, requireOrg, async (c) => {
 
 // GET /feeder/history
 router.get("/history", requireAuth, requireOrg, async (c) => {
+  const orgId = c.get("orgId");
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
       const rows = await tx.query.feederConfigAudit.findMany({
+        where: (t, { eq }) => eq(t.orgId, orgId),
         orderBy: (t, { desc }) => [desc(t.createdAt)],
         limit: 20,
       });
@@ -102,7 +109,7 @@ router.post("/history/:guid/revert", requireAuth, requireOrg, async (c) => {
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
       const entry = await tx.query.feederConfigAudit.findFirst({
-        where: (t, { eq }) => eq(t.guid, guid),
+        where: (t, { eq, and }) => and(eq(t.guid, guid), eq(t.orgId, orgId)),
       });
       if (!entry) return { success: false, message: "Audit record not found." };
 

@@ -18,8 +18,8 @@ import {
   getCardFaceName,
   getCardImageUris,
   QUERY_MIN_LENGTH,
-  type ScryfallCard,
-  type ScryfallCardWithDistance,
+  type PlayingCard,
+  type PlayingCardWithDistance,
 } from "@magic-vault/shared";
 import {
   IconCheck,
@@ -69,21 +69,19 @@ export function CardSelectDialog({
   const [selectedSet, setSelectedSet] = useState<string | null>("all");
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
 
-  // Stable candidates list - built once per scanId, not rebuilt on correction
-  const [candidates, setCandidates] = useState<ScryfallCardWithDistance[]>([]);
+  const [candidates, setCandidates] = useState<PlayingCardWithDistance[]>([]);
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
   const prevScanIdRef = useRef<string | undefined>(undefined);
 
   const { addCard, correctCard } = useScannedCards();
   const { activeCollection } = useCollections();
 
-  // Rebuild candidates when navigating to a different scan entry
   useEffect(() => {
     if (!open || !currentCard) return;
     if (scanId !== prevScanIdRef.current) {
       prevScanIdRef.current = scanId;
       const ids = new Set<string>();
-      const all: ScryfallCardWithDistance[] = [];
+      const all: PlayingCardWithDistance[] = [];
       for (const c of [currentCard, ...(alternativeMatches ?? [])]) {
         if (!ids.has(c.id)) {
           ids.add(c.id);
@@ -126,9 +124,8 @@ export function CardSelectDialog({
     debounceRef.current = setTimeout(() => setDebouncedQuery(value), 300);
   };
 
-  // Used by the Scryfall search picker - corrects and closes
   const handleSelect = useCallback(
-    (card: ScryfallCard) => {
+    (card: PlayingCard) => {
       if (scanId) {
         correctCard(scanId, card);
       } else {
@@ -140,9 +137,8 @@ export function CardSelectDialog({
     [scanId, addCard, correctCard],
   );
 
-  // Used by the candidates picker - corrects but stays open
   const handleSelectCandidate = useCallback(
-    (card: ScryfallCardWithDistance) => {
+    (card: PlayingCardWithDistance) => {
       setSelectedId(card.id);
       if (scanId) correctCard(scanId, card);
     },

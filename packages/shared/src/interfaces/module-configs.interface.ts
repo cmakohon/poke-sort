@@ -14,13 +14,13 @@ export interface ModuleConfig {
 }
 
 export const DEFAULT_CALIBRATION: ServoCalibration = {
-  bottomClosed: 150,
-  bottomOpen: 307,
-  paddleClosed: 150,
-  paddleOpen: 307,
+  bottomClosed: 400,
+  bottomOpen: 150,
+  paddleClosed: 420,
+  paddleOpen: 150,
   pusherLeft: 150,
-  pusherNeutral: 307,
-  pusherRight: 460,
+  pusherNeutral: 230,
+  pusherRight: 300,
 };
 
 export interface FeederCalibration {
@@ -32,9 +32,9 @@ export interface FeederCalibration {
 }
 
 export const DEFAULT_FEEDER_CALIBRATION: FeederCalibration = {
-  speed: 400,
+  speed: 250,
   duration: 3000,
   pulseDuration: 80,
-  pauseDuration: 50,
-  settleDuration: 150,
+  pauseDuration: 0,
+  settleDuration: 500,
 };

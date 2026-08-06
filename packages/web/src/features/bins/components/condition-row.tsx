@@ -152,7 +152,13 @@ export function ConditionRow({
           onValueChange={(val) => handleValueChange(val as string)}
         >
           <SelectTrigger className="min-w-24 flex-1">
-            <SelectValue placeholder="Select..." />
+            <SelectValue placeholder="Select...">
+              {
+                fieldMeta.options.find(
+                  (opt) => opt.value === String(condition.value),
+                )?.label
+              }
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {fieldMeta.options.map((opt) => (
@@ -201,7 +207,7 @@ export function ConditionRow({
         onValueChange={(val) => handleFieldChange(val as ConditionField)}
       >
         <SelectTrigger className="min-w-28">
-          <SelectValue />
+          <SelectValue>{fieldMeta?.label}</SelectValue>
         </SelectTrigger>
         <SelectContent>
           {fieldDefinitions.map((f) => (
@@ -220,7 +226,13 @@ export function ConditionRow({
           }
         >
           <SelectTrigger className="min-w-28">
-            <SelectValue />
+            <SelectValue>
+              {
+                fieldMeta.operators.find(
+                  (op) => op.value === condition.operator,
+                )?.label
+              }
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {fieldMeta.operators.map((op) => (

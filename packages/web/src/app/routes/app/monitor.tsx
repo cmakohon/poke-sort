@@ -14,19 +14,17 @@ import { SessionErrorsPanel } from "@/features/scanner/components/session-errors
 import { SessionStatsPanel } from "@/features/scanner/components/session-stats-panel";
 import { computeStats } from "@/features/scanner/lib/compute-stats";
 import { useIsMobile } from "@/hooks/use-is-mobile";
+import { FIELD_DEFINITIONS } from "@magic-vault/shared";
 import { IconCards, IconLoader2, IconWifiOff } from "@tabler/icons-react";
-import { AnimatePresence } from "framer-motion";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import { useParams } from "react-router-dom";
 
 function CardGrid({
   filteredAndSorted,
-  newestScanId,
   status,
   cardCount,
 }: {
   filteredAndSorted: ReturnType<typeof useCardFilterSort>["filteredAndSorted"];
-  newestScanId: string | null;
   status: string;
   cardCount: number;
 }) {
@@ -56,26 +54,24 @@ function CardGrid({
             No cards match the search query.
           </div>
         )}
-      <AnimatePresence initial={false}>
-        <div className="grid grid-cols-3 @md:grid-cols-4 @4xl:grid-cols-6 @5xl:grid-cols-8 gap-2 p-4">
-          {filteredAndSorted.map((card) => (
-            <ScannedCardItem
-              key={card.scanId}
-              card={card.card}
-              binNumber={card.binNumber}
-              isNew={card.scanId === newestScanId}
-              onOpen={() => {}}
-            />
-          ))}
-        </div>
-      </AnimatePresence>
+      <div className="grid grid-cols-3 @md:grid-cols-4 @4xl:grid-cols-6 @5xl:grid-cols-8 gap-2 p-4">
+        {filteredAndSorted.map((card) => (
+          <ScannedCardItem
+            key={card.scanId}
+            card={card.card}
+            binNumber={card.binNumber}
+            onOpen={() => {}}
+          />
+        ))}
+      </div>
     </>
   );
 }
 
 export default function MonitorPage() {
   const { collectionGuid } = useParams<{ collectionGuid: string }>();
-  const { cards, viewers, errors, status } = useSessionMonitor(collectionGuid);
+  const { collection, cards, viewers, errors, status } =
+    useSessionMonitor(collectionGuid);
   const { locks, currentUserId } = useCollectionLocks();
   const isMobile = useIsMobile();
 
@@ -87,30 +83,19 @@ export default function MonitorPage() {
     (v) => v.userId !== scannerUserId && v.userId !== currentUserId,
   );
   const stats = useMemo(() => computeStats(cards), [cards]);
+  const fieldDefinitions =
+    collection?.game?.fieldDefinitions ?? FIELD_DEFINITIONS;
   const {
     filteredAndSorted,
     searchQuery,
     setSearchQuery,
     sortKey,
     setSortKey,
+    sortableFields,
     filters,
     setFilters,
     activeFilterCount,
-  } = useCardFilterSort(cards);
-
-  const [newestScanId, setNewestScanId] = useState<string | null>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const firstCardId = cards[0]?.scanId ?? null;
-
-  useEffect(() => {
-    if (!firstCardId) return;
-    if (timerRef.current) clearTimeout(timerRef.current);
-    setNewestScanId(firstCardId);
-    timerRef.current = setTimeout(() => setNewestScanId(null), 1200);
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [firstCardId]);
+  } = useCardFilterSort(cards, fieldDefinitions);
 
   const viewerAvatars = (
     <>
@@ -160,6 +145,7 @@ export default function MonitorPage() {
                   onSearchChange={setSearchQuery}
                   sortKey={sortKey}
                   onSortChange={setSortKey}
+                  sortableFields={sortableFields}
                   hasCards={filteredAndSorted.length > 0}
                   activeFilters={filters}
                   onFiltersChange={setFilters}
@@ -171,7 +157,6 @@ export default function MonitorPage() {
               <div className="overflow-y-auto flex-1 @container">
                 <CardGrid
                   filteredAndSorted={filteredAndSorted}
-                  newestScanId={newestScanId}
                   status={status}
                   cardCount={cards.length}
                 />
@@ -202,6 +187,7 @@ export default function MonitorPage() {
             onSearchChange={setSearchQuery}
             sortKey={sortKey}
             onSortChange={setSortKey}
+            sortableFields={sortableFields}
             hasCards={filteredAndSorted.length > 0}
             activeFilters={filters}
             onFiltersChange={setFilters}
@@ -212,7 +198,6 @@ export default function MonitorPage() {
         </div>
         <CardGrid
           filteredAndSorted={filteredAndSorted}
-          newestScanId={newestScanId}
           status={status}
           cardCount={cards.length}
         />

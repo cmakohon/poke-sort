@@ -1,3 +1,5 @@
+import { DISCORD_URL } from "@/lib/links";
+import { IconBrandDiscord, IconPigFilled } from "@tabler/icons-react";
 import { Link } from "react-router-dom";
 
 export function LandingFooter() {
@@ -5,8 +7,8 @@ export function LandingFooter() {
     <footer className="border-t">
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 py-8 sm:flex-row">
         <Link to="/" className="flex items-center gap-2">
-          <span className="grid size-6 shrink-0 place-items-center rounded-md bg-primary font-heading text-xs font-bold text-primary-foreground">
-            MV
+          <span className="grid size-6 shrink-0 place-items-center rounded-md bg-primary text-primary-foreground">
+            <IconPigFilled className="size-3.5" />
           </span>
           <span className="font-heading text-xs font-semibold">
             Magic Vault
@@ -14,7 +16,10 @@ export function LandingFooter() {
         </Link>
 
         <nav className="flex items-center gap-5 text-xs text-muted-foreground">
-          <a href="#features" className="transition-colors hover:text-foreground">
+          <a
+            href="#features"
+            className="transition-colors hover:text-foreground"
+          >
             Features
           </a>
           <a
@@ -32,14 +37,28 @@ export function LandingFooter() {
           <Link to="/build" className="transition-colors hover:text-foreground">
             Build
           </Link>
-          <Link to="/auth/sign-in" className="transition-colors hover:text-foreground">
+          <Link
+            to="/auth/sign-in"
+            className="transition-colors hover:text-foreground"
+          >
             Sign in
           </Link>
         </nav>
 
-        <p className="text-xs text-muted-foreground">
-          © {new Date().getFullYear()} Magic Vault
-        </p>
+        <div className="flex items-center gap-4">
+          <a
+            href={DISCORD_URL}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Join the Discord"
+            className="text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <IconBrandDiscord size={18} />
+          </a>
+          <p className="text-xs text-muted-foreground">
+            © {new Date().getFullYear()} Magic Vault · v{__APP_VERSION__}
+          </p>
+        </div>
       </div>
     </footer>
   );

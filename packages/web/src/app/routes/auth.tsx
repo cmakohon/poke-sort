@@ -5,15 +5,7 @@ export default function AuthPage() {
   const { path } = useParams();
 
   return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        minHeight: "100vh",
-        padding: "2rem 1rem",
-      }}
-    >
+    <div className="bg-muted flex items-center justify-center min-h-screen">
       <AuthView
         path={path}
         classNames={{

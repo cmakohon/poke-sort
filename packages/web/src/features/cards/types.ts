@@ -1,5 +1,5 @@
+import type { FieldMeta, PlayingCardWithDistance } from "@magic-vault/shared";
 import type { ReactElement } from "react";
-import type { ScryfallCardWithDistance } from "@magic-vault/shared";
 
 export interface CardSelectDialogProps {
   trigger?: ReactElement;
@@ -7,8 +7,8 @@ export interface CardSelectDialogProps {
   description?: string;
   scanId?: string;
   onRemove?: () => void;
-  currentCard?: ScryfallCardWithDistance;
-  alternativeMatches?: ScryfallCardWithDistance[];
+  currentCard?: PlayingCardWithDistance;
+  alternativeMatches?: PlayingCardWithDistance[];
   capturedImageUrl?: string;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -25,6 +25,7 @@ export interface CardFilters {
   needsAttention: boolean;
   showDownloaded: boolean;
   sets: string[];
+  minMatchPercent: number;
 }
 
 export interface CardToolbarProps {
@@ -32,6 +33,7 @@ export interface CardToolbarProps {
   onSearchChange: (query: string) => void;
   sortKey: string | null;
   onSortChange: (key: string | null) => void;
+  sortableFields: FieldMeta[];
   onExport?: () => void;
   collectionName?: string;
   onClearAll?: () => void;
@@ -47,12 +49,11 @@ export interface CardToolbarProps {
 }
 
 export interface ScannedCardItemProps {
-  card: ScryfallCardWithDistance;
+  card: PlayingCardWithDistance;
   onOpen: () => void;
   binNumber?: number;
   isSelected?: boolean;
   onToggleSelect?: () => void;
-  isNew?: boolean;
   hasAlternatives?: boolean;
   isFoil?: boolean;
   isDownloaded?: boolean;

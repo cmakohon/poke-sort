@@ -25,7 +25,14 @@ export function CardScanner({ className, compact }: CardScannerProps) {
   const navigate = useNavigate();
   const { isAdmin } = useRole();
   const isMobile = useIsMobile();
-  const { addCard, sendCatchAllBin, autoFeed, setAutoFeed } = useScannedCards();
+  const {
+    addCard,
+    sendCatchAllBin,
+    autoFeed,
+    setAutoFeed,
+    registerCardArrivedHook,
+    registerPauseHook,
+  } = useScannedCards();
   const registerIsland = useRegisterScannerIsland();
   const {
     isConnected,
@@ -37,6 +44,7 @@ export function CardScanner({ className, compact }: CardScannerProps) {
     receiveResponse,
   } = useSerial();
   const [isFeeding, setIsFeeding] = useState(false);
+  const [isClearingDevice, setIsClearingDevice] = useState(false);
   const { hasCatchAll } = useBinConfigs();
   const {
     status,
@@ -46,9 +54,10 @@ export function CardScanner({ className, compact }: CardScannerProps) {
     videoRef,
     displayCanvasRef,
     overlayCanvasRef,
-    processingCanvasRef,
+    captureCard,
     handleForceAddDuplicate,
     handleForceScan,
+    handleSkipDuplicate: handleSkipDuplicateFromScanner,
     handlePause,
     handleResume,
     handleRetryError,
@@ -80,10 +89,6 @@ export function CardScanner({ className, compact }: CardScannerProps) {
     ) {
       const raw = msg as Record<string, unknown>;
 
-      // Module 1 with no bin means the card was never scanned/routed - it's
-      // just sitting there unidentified. Try to auto-recover by forcing a
-      // scan instead of stopping for a human, as long as the scanner is
-      // actually in a state where a scan can run.
       if (
         raw.module === 1 &&
         raw.bin === undefined &&
@@ -137,6 +142,7 @@ export function CardScanner({ className, compact }: CardScannerProps) {
       try {
         const parsed = JSON.parse(response) as Record<string, unknown>;
         if (parsed.empty) {
+          handlePause();
           toast.error("Feeder empty", {
             description:
               "No cards remaining in the hopper. Add more cards to continue.",
@@ -159,6 +165,9 @@ export function CardScanner({ className, compact }: CardScannerProps) {
             sent: true,
             response: parsed,
           });
+        } else {
+          // Feeder confirmed a card reached module 1 - capture it now.
+          captureCard();
         }
       } catch {
         toast.error("Feed error", {
@@ -169,7 +178,45 @@ export function CardScanner({ className, compact }: CardScannerProps) {
     } finally {
       setIsFeeding(false);
     }
+  }, [sendCommand, receiveResponse, captureCard, handlePause]);
+
+  const handleClearDevice = useCallback(async () => {
+    setIsClearingDevice(true);
+    try {
+      const sent = await sendCommand(JSON.stringify({ clearDevice: true }));
+      if (!sent) {
+        toast.error("Clear failed", {
+          description: "Could not send command to the device.",
+        });
+        return;
+      }
+      const response = await receiveResponse(10000);
+      if (!response) {
+        toast.error("Clear timeout", {
+          description: "Device did not respond in time.",
+        });
+        return;
+      }
+      toast.success("Device cleared", {
+        description: "All bottom paddles were opened to drop any stuck cards.",
+      });
+    } finally {
+      setIsClearingDevice(false);
+    }
   }, [sendCommand, receiveResponse]);
+
+  const handleSkipDuplicate = useCallback(() => {
+    sendCatchAllBin();
+    handleSkipDuplicateFromScanner();
+  }, [sendCatchAllBin, handleSkipDuplicateFromScanner]);
+
+  useEffect(() => {
+    return registerCardArrivedHook(captureCard);
+  }, [registerCardArrivedHook, captureCard]);
+
+  useEffect(() => {
+    return registerPauseHook(handlePause);
+  }, [registerPauseHook, handlePause]);
 
   useEffect(() => {
     registerIsland({
@@ -178,14 +225,17 @@ export function CardScanner({ className, compact }: CardScannerProps) {
       isConnected,
       isReady,
       isFeeding,
+      isClearingDevice,
       handleForceAddDuplicate,
       handleForceScan,
+      handleSkipDuplicate,
       handlePause: () => {
         setAutoFeed(false);
         handlePause();
       },
       handleResume,
       handleFeed,
+      handleClearDevice,
     });
   }, [
     status,
@@ -193,11 +243,14 @@ export function CardScanner({ className, compact }: CardScannerProps) {
     isConnected,
     isReady,
     isFeeding,
+    isClearingDevice,
     handleForceAddDuplicate,
     handleForceScan,
+    handleSkipDuplicate,
     handlePause,
     handleResume,
     handleFeed,
+    handleClearDevice,
     setAutoFeed,
     registerIsland,
   ]);
@@ -230,7 +283,6 @@ export function CardScanner({ className, compact }: CardScannerProps) {
         )}
       >
         <video ref={videoRef} className="hidden" playsInline muted />
-        <canvas ref={processingCanvasRef} className="hidden" />
         <canvas
           ref={displayCanvasRef}
           className={cn("absolute", !isMobile && "rotate-90")}

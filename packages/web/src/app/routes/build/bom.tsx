@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { IconExternalLink } from "@tabler/icons-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 interface Row {
@@ -6,6 +7,7 @@ interface Row {
   qty: string;
   part: ReactNode;
   notes: ReactNode;
+  buyUrl?: string;
 }
 
 interface Group {
@@ -28,12 +30,14 @@ const GROUPS: Group[] = [
         ),
         notes:
           "Runs arduino/main/main.ino; USB connection to the host computer for Web Serial",
+        buyUrl: "https://www.amazon.com/dp/B0C78K4CD4",
       },
       {
         key: "pca9685",
         qty: "1",
         part: "Adafruit PCA9685 16-channel 12-bit PWM/servo driver",
         notes: "I²C servo driver - drives all 10 servos",
+        buyUrl: "https://www.amazon.com/dp/B0CNVBWX2M",
       },
       {
         key: "sg90-positional",
@@ -41,12 +45,14 @@ const GROUPS: Group[] = [
         part: "SG90 micro servo, positional (180°)",
         notes:
           "3 per module × 3 modules - bottom trapdoor, paddle gate, pusher",
+        buyUrl: "https://www.amazon.com/dp/B07L2SF3R4",
       },
       {
         key: "sg90-continuous",
         qty: "1",
         part: "SG90 servo, modified for continuous rotation",
         notes: "Feeder - drives cards out of the hopper into module 1",
+        buyUrl: "https://www.amazon.com/dp/B086ZGTLZB",
       },
     ],
   },
@@ -66,6 +72,7 @@ const GROUPS: Group[] = [
         ),
         notes:
           "One at the gate of modules 1, 2, 3, plus one in the hopper throat",
+        buyUrl: "https://www.amazon.com/dp/B0CWKWWKYL",
       },
     ],
   },
@@ -78,6 +85,7 @@ const GROUPS: Group[] = [
         part: "5V regulated power supply, 4–10A",
         notes:
           "Dedicated servo bus power into the PCA9685 V+ terminal - do not power 10 servos off the Arduino's onboard 5V",
+        buyUrl: "https://www.amazon.com/dp/B0B2DZJQCR",
       },
       {
         key: "usb-cable",
@@ -90,6 +98,7 @@ const GROUPS: Group[] = [
         qty: "1",
         part: "DC barrel jack or screw-terminal pigtail",
         notes: "Adapts the PSU output to the PCA9685's V+ / GND terminal",
+        buyUrl: "https://www.amazon.com/dp/B0CR8TZ41W",
       },
     ],
   },
@@ -129,12 +138,15 @@ const GROUPS: Group[] = [
         qty: "-",
         part: "PLA or PETG filament",
         notes: "Quantity per your slicer's estimate for the model above",
+        buyUrl: "https://www.amazon.com/dp/B0C14M5HR9",
       },
       {
         key: "o-ring",
         qty: "6",
         part: "G20 o-ring",
         notes: "Fitted onto the feeder roller for grip on the card face",
+        buyUrl:
+          "https://www.harborfreight.com/397-piece-metric-o-ring-assortment-67580.html",
       },
     ],
   },
@@ -147,18 +159,21 @@ const GROUPS: Group[] = [
         part: "M3×6 screw",
         notes:
           "14 attach each bin base to the housing; 8 attach the base panels to the base",
+        buyUrl: "https://www.amazon.com/dp/B0FGV5K8BT",
       },
       {
         key: "m3-nut",
         qty: "8",
         part: "M3 nut",
         notes: "Paired with the base panel M3×6 screws",
+        buyUrl: "https://www.amazon.com/dp/B0FGV5K8BT",
       },
       {
         key: "m3x8-screw",
         qty: "2",
         part: "M3×8 screw",
         notes: "Attaches the hopper tube",
+        buyUrl: "https://www.amazon.com/dp/B0FGV5K8BT",
       },
       {
         key: "m2x4-screw",
@@ -171,6 +186,7 @@ const GROUPS: Group[] = [
         ),
         notes:
           "Per module: flapper (bottom/sides), pusher arms, and IR sensor mounts",
+        buyUrl: "https://www.amazon.com/dp/B0FGV5K8BT",
       },
       {
         key: "m2x6-screw",
@@ -178,6 +194,7 @@ const GROUPS: Group[] = [
         part: "M2×6 screw",
         notes:
           "Mounts the Arduino and PCA9685 servo driver board to the base panels",
+        buyUrl: "https://www.amazon.com/dp/B0FGV5K8BT",
       },
       {
         key: "servo-horn-screw",
@@ -188,8 +205,17 @@ const GROUPS: Group[] = [
       {
         key: "hookup-wire",
         qty: "1 roll",
-        part: "22–24 AWG hookup wire",
+        part: "22–26 AWG hookup wire",
         notes: "IR sensor",
+        buyUrl: "https://www.amazon.com/dp/B07G2LRX68",
+      },
+      {
+        key: "dupont-connectors",
+        qty: "~50",
+        part: "Dupont Connectors",
+        notes:
+          "These are only needed if you are connecting your own Dupont connectors to the IR sensor wires; otherwise, you can solder directly to the sensor pads",
+        buyUrl: "https://www.amazon.com/dp/B07QGBKFYZ",
       },
     ],
   },
@@ -252,6 +278,9 @@ function GroupTable({
               <th className="border-b px-3 py-2 text-left font-mono text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
                 Notes
               </th>
+              <th className="w-12 border-b px-3 py-2 text-left font-mono text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+                Buy
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -286,6 +315,19 @@ function GroupTable({
                 </td>
                 <td className="px-3 py-2.5 text-muted-foreground">
                   {row.notes}
+                </td>
+                <td className="px-3 py-2.5">
+                  {row.buyUrl && (
+                    <a
+                      href={row.buyUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`Buy ${typeof row.part === "string" ? row.part : "part"}`}
+                      className="inline-flex items-center text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      <IconExternalLink size={14} />
+                    </a>
+                  )}
                 </td>
               </tr>
             ))}

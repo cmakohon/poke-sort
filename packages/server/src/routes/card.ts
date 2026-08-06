@@ -43,6 +43,12 @@ router.post("/", requireAuth, async (c) => {
 
   const embeddingStr = `[${embedding.join(",")}]`;
   const gameKey = await resolveGameKey(c.get("jwtClaims"), collectionGuid);
+  if (!gameKey) {
+    return c.json(
+      { success: false, message: "No game configured for this collection." },
+      400,
+    );
+  }
 
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
@@ -86,24 +92,40 @@ router.post("/", requireAuth, async (c) => {
 });
 
 // /search must be registered before /search/:id to avoid path conflicts.
-// Dispatches to whichever game's card API backs the given collection
-// (Scryfall by default) - see lib/card-search/resolve.ts.
+// Dispatches to whichever game's card API backs the given collection -
+// see lib/card-search/resolve.ts. Every game (including MTG/Scryfall) is
+// registered explicitly there; there is no implicit default game.
 router.get("/search", requireAuth, async (c) => {
   const query = c.req.query("q") ?? "";
-  const { adapter, baseUrl } = await resolveCardSearch(
+  const resolved = await resolveCardSearch(
     c.get("jwtClaims"),
     c.req.query("collectionGuid"),
   );
-  const result = await adapter.search(query, baseUrl);
+  if (!resolved) {
+    return c.json(
+      { success: false, message: "No game configured for this collection." },
+      400,
+    );
+  }
+  const result = await resolved.adapter.search(query, resolved.baseUrl);
   return c.json(result);
 });
 
 router.get("/search/:id", requireAuth, async (c) => {
-  const { adapter, baseUrl } = await resolveCardSearch(
+  const resolved = await resolveCardSearch(
     c.get("jwtClaims"),
     c.req.query("collectionGuid"),
   );
-  const result = await adapter.searchById(c.req.param("id"), baseUrl);
+  if (!resolved) {
+    return c.json(
+      { success: false, message: "No game configured for this collection." },
+      400,
+    );
+  }
+  const result = await resolved.adapter.searchById(
+    c.req.param("id"),
+    resolved.baseUrl,
+  );
   return c.json(result);
 });
 
@@ -111,6 +133,7 @@ const ALLOWED_IMAGE_HOSTS = new Set([
   "cards.scryfall.io",
   "gundam-gcg.com",
   "www.gundam-gcg.com",
+  "assets.tcgdex.net",
 ]);
 
 router.get("/image-proxy", async (c) => {
@@ -142,8 +165,6 @@ router.get("/image-proxy", async (c) => {
   return c.body(buffer, 200, {
     "Content-Type": contentType,
     "Cache-Control": "public, max-age=86400",
-    // Without this, Chrome's Opaque Response Blocking silently drops the
-    // image when it's embedded from a different origin than the API.
     "Cross-Origin-Resource-Policy": "cross-origin",
   });
 });

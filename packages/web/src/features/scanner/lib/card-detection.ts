@@ -1,212 +1,58 @@
 import { MTG_ASPECT_RATIO } from "@/features/scanner/constants";
-import type { CardContour, DetectionResult, Point } from "@magic-vault/shared";
+import {
+  DEFAULT_SCAN_REGION,
+  type CardContour,
+  type DetectionResult,
+  type ScanRegion,
+} from "@magic-vault/shared";
 
 /**
- * Order four points clockwise: topLeft, topRight, bottomRight, bottomLeft.
- * Uses the sum (x+y) and difference (y-x) method.
+ * Returns a fixed card-sized region within the frame, used in place of
+ * per-frame edge detection. Cards are a known, constant physical size and
+ * the camera is mounted in a fixed position over the sorter's module 1
+ * platform, so a hardcoded region avoids the lighting/contrast failures of
+ * contour detection (e.g. light-bordered cards against a light surface).
+ *
+ * Raw camera frames are landscape; the desktop scanning UI rotates the
+ * canvas 90° via CSS for portrait viewing (see card-scanner.tsx), so the
+ * card sits in the *raw* frame rotated - same assumption extractCardImage's
+ * isLandscape branch below already relies on.
+ *
+ * `region` (coverage + offsetX/offsetY, all fractions of the frame) is
+ * calibrated per-org in the app's calibration screen to match a given
+ * camera's field of view and mounting - see
+ * features/calibration/components/scan-region-calibration-panel.tsx.
  */
-function orderPoints(pts: Point[]): CardContour {
-  const sorted = [...pts];
-
-  // Sum: smallest = topLeft, largest = bottomRight
-  sorted.sort((a, b) => a.x + a.y - (b.x + b.y));
-  const topLeft = sorted[0];
-  const bottomRight = sorted[3];
-
-  // Difference (y - x): smallest = topRight, largest = bottomLeft
-  sorted.sort((a, b) => a.y - a.x - (b.y - b.x));
-  const topRight = sorted[0];
-  const bottomLeft = sorted[3];
-
-  return { topLeft, topRight, bottomRight, bottomLeft };
-}
-
-/**
- * Sample the median pixel value from a grayscale Mat (used for auto-Canny).
- */
-function medianPixelValue(mat: cv.Mat): number {
-  const data = mat.data as Uint8Array;
-  const step = Math.max(1, Math.floor(data.length / 1000));
-  const sample: number[] = [];
-  for (let i = 0; i < data.length; i += step) sample.push(data[i]);
-  sample.sort((a, b) => a - b);
-  return sample[Math.floor(sample.length / 2)];
-}
-
-/**
- * Score a quadrilateral by aspect ratio, area, and side symmetry.
- */
-function scoreContour(contour: CardContour, frameArea: number): number {
-  const { topLeft, topRight, bottomRight, bottomLeft } = contour;
-
-  const widthTop = Math.hypot(topRight.x - topLeft.x, topRight.y - topLeft.y);
-  const widthBottom = Math.hypot(
-    bottomRight.x - bottomLeft.x,
-    bottomRight.y - bottomLeft.y,
-  );
-  const heightLeft = Math.hypot(
-    bottomLeft.x - topLeft.x,
-    bottomLeft.y - topLeft.y,
-  );
-  const heightRight = Math.hypot(
-    bottomRight.x - topRight.x,
-    bottomRight.y - topRight.y,
-  );
-
-  const avgWidth = (widthTop + widthBottom) / 2;
-  const avgHeight = (heightLeft + heightRight) / 2;
-
-  if (avgHeight === 0 || avgWidth === 0) return 0;
-
-  // How close to the MTG card aspect ratio
-  const aspectRatio = avgWidth / avgHeight;
-  const aspectScore =
-    1 - Math.abs(aspectRatio - MTG_ASPECT_RATIO) / MTG_ASPECT_RATIO;
-
-  // Prefer cards that fill a meaningful portion of the frame
-  const area = avgWidth * avgHeight;
-  const areaScore = Math.min((area / frameArea) * 4, 1);
-
-  // Opposite sides should be roughly the same length (parallelogram check)
-  const widthSym =
-    1 - Math.abs(widthTop - widthBottom) / Math.max(widthTop, widthBottom, 1);
-  const heightSym =
-    1 -
-    Math.abs(heightLeft - heightRight) / Math.max(heightLeft, heightRight, 1);
-  const symmetryScore = (widthSym + heightSym) / 2;
-
-  return Math.max(0, aspectScore * 0.6 + areaScore * 0.2 + symmetryScore * 0.2);
-}
-
-// Processing width for detection - scale down for speed and noise reduction.
-// Points are scaled back up to original coordinates before returning.
-const PROC_WIDTH = 640;
-
-// Minimum composite score (aspect ratio + area + symmetry) to accept a contour as a card.
-const CONFIDENCE_THRESHOLD = 0.35;
-
-/**
- * Detect an MTG card in an ImageData frame using OpenCV.js contour detection.
- */
-export function detectCard(imageData: ImageData): DetectionResult {
-  const noDetection: DetectionResult = {
-    detected: false,
-    contour: null,
-    confidence: 0,
-  };
-
-  const scale = PROC_WIDTH / imageData.width;
-  const procH = Math.round(imageData.height * scale);
-  const frameArea = PROC_WIDTH * procH;
-  const minArea = frameArea * 0.05;
-  const maxArea = frameArea * 0.95;
-
-  const src = cv.matFromImageData(imageData);
-  const scaled = new cv.Mat();
-  const gray = new cv.Mat();
-  const blurred = new cv.Mat();
-  const edges = new cv.Mat();
-  const morphed = new cv.Mat();
-  const hierarchy = new cv.Mat();
-  const contours = new cv.MatVector();
-  let kernel: cv.Mat | null = null;
-
-  try {
-    // Scale down - dramatically reduces noise and speeds up processing
-    cv.resize(src, scaled, new cv.Size(PROC_WIDTH, procH));
-
-    cv.cvtColor(scaled, gray, cv.COLOR_RGBA2GRAY);
-    cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0);
-
-    // Auto-calibrate Canny thresholds from the image's median brightness
-    const median = medianPixelValue(blurred);
-    const sigma = 0.33;
-    const lower = Math.max(0, Math.round((1 - sigma) * median));
-    const upper = Math.min(255, Math.round((1 + sigma) * median));
-    cv.Canny(blurred, edges, lower, upper);
-
-    // Morphological close: 2× dilate then erode bridges edge gaps better than dilate alone
-    kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(3, 3));
-    cv.dilate(edges, morphed, kernel, new cv.Point(-1, -1), 2);
-    cv.erode(morphed, morphed, kernel, new cv.Point(-1, -1), 1);
-
-    cv.findContours(
-      morphed,
-      contours,
-      hierarchy,
-      cv.RETR_EXTERNAL,
-      cv.CHAIN_APPROX_SIMPLE,
-    );
-
-    let bestResult: DetectionResult = noDetection;
-
-    for (let i = 0; i < contours.size(); i++) {
-      const contour = contours.get(i);
-      const area = cv.contourArea(contour);
-      if (area < minArea || area > maxArea) continue;
-
-      const perimeter = cv.arcLength(contour, true);
-      let approx: cv.Mat | null = null;
-
-      try {
-        // Try progressively larger epsilons until we get a quadrilateral
-        for (const eps of [0.02, 0.03, 0.04, 0.06]) {
-          const candidate = new cv.Mat();
-          cv.approxPolyDP(contour, candidate, eps * perimeter, true);
-          if (candidate.rows === 4) {
-            approx = candidate;
-            break;
-          }
-          candidate.delete();
-        }
-
-        if (!approx) continue;
-
-        // Cards are convex - skip anything that isn't
-        if (!cv.isContourConvex(approx)) continue;
-
-        // Scale points back to original image coordinates
-        const points: Point[] = [];
-        for (let j = 0; j < 4; j++) {
-          points.push({
-            x: approx.data32S[j * 2] / scale,
-            y: approx.data32S[j * 2 + 1] / scale,
-          });
-        }
-
-        const ordered = orderPoints(points);
-        const confidence = scoreContour(
-          ordered,
-          imageData.width * imageData.height,
-        );
-
-        if (
-          confidence > bestResult.confidence &&
-          confidence > CONFIDENCE_THRESHOLD
-        ) {
-          bestResult = { detected: true, contour: ordered, confidence };
-        }
-      } finally {
-        approx?.delete();
-      }
-    }
-
-    return bestResult;
-  } finally {
-    src.delete();
-    scaled.delete();
-    gray.delete();
-    blurred.delete();
-    edges.delete();
-    morphed.delete();
-    hierarchy.delete();
-    contours.delete();
-    kernel?.delete();
+export function getDefaultCardContour(
+  width: number,
+  height: number,
+  region: ScanRegion = DEFAULT_SCAN_REGION,
+): CardContour {
+  const cardAspect = 1 / MTG_ASPECT_RATIO;
+  let boxH = height * region.coverage;
+  let boxW = boxH * cardAspect;
+  if (boxW > width * region.coverage) {
+    boxW = width * region.coverage;
+    boxH = boxW / cardAspect;
   }
+  const left = (width - boxW) / 2 + region.offsetX * width;
+  const top = (height - boxH) / 2 + region.offsetY * height;
+
+  return {
+    topLeft: { x: left, y: top },
+    topRight: { x: left + boxW, y: top },
+    bottomRight: { x: left + boxW, y: top + boxH },
+    bottomLeft: { x: left, y: top + boxH },
+  };
 }
 
 /**
- * Extract and perspective-warp the detected card region from a canvas.
+ * Extract the card region from a canvas, straightened to a fixed-size
+ * portrait output. `contour` always comes from getDefaultCardContour above,
+ * which only ever produces an axis-aligned rectangle (no skew) - so this is
+ * a plain crop, not a general four-point perspective warp. If a contour
+ * source that can return a skewed quadrilateral is ever reintroduced (e.g.
+ * per-frame edge detection), this needs a real homography again.
  */
 export function extractCardImage(
   sourceCanvas: HTMLCanvasElement,
@@ -215,90 +61,38 @@ export function extractCardImage(
 ): HTMLCanvasElement {
   const outputHeight = Math.round(outputWidth / MTG_ASPECT_RATIO);
 
+  const left = contour.topLeft.x;
+  const top = contour.topLeft.y;
+  const boxW = contour.topRight.x - contour.topLeft.x;
+  const boxH = contour.bottomLeft.y - contour.topLeft.y;
+
   // If the card bounding box is wider than tall, it's landscape in the frame.
-  // Warp to a landscape canvas matching that ratio, then rotate 90° CW to portrait
-  // so extractArtRegion receives a correctly-oriented image and nothing gets squished.
-  const xs = [
-    contour.topLeft.x,
-    contour.topRight.x,
-    contour.bottomRight.x,
-    contour.bottomLeft.x,
-  ];
-  const ys = [
-    contour.topLeft.y,
-    contour.topRight.y,
-    contour.bottomRight.y,
-    contour.bottomLeft.y,
-  ];
-  const isLandscape =
-    Math.max(...xs) - Math.min(...xs) > Math.max(...ys) - Math.min(...ys);
+  // Crop into a landscape canvas matching that ratio, then rotate 90° CW to
+  // portrait so extractArtRegion receives a correctly-oriented image and
+  // nothing gets squished.
+  const isLandscape = boxW > boxH;
+  const cropW = isLandscape ? outputHeight : outputWidth;
+  const cropH = isLandscape ? outputWidth : outputHeight;
 
-  const warpW = isLandscape ? outputHeight : outputWidth;
-  const warpH = isLandscape ? outputWidth : outputHeight;
+  const cropCanvas = document.createElement("canvas");
+  cropCanvas.width = cropW;
+  cropCanvas.height = cropH;
+  const cropCtx = cropCanvas.getContext("2d");
+  if (!cropCtx) throw new Error("Could not get canvas context");
+  cropCtx.drawImage(sourceCanvas, left, top, boxW, boxH, 0, 0, cropW, cropH);
 
-  const ctx = sourceCanvas.getContext("2d");
-  if (!ctx) throw new Error("Could not get canvas context");
+  if (!isLandscape) return cropCanvas;
 
-  const imageData = ctx.getImageData(
-    0,
-    0,
-    sourceCanvas.width,
-    sourceCanvas.height,
-  );
-  const src = cv.matFromImageData(imageData);
-  const dst = new cv.Mat();
-
-  const srcPts = cv.matFromArray(4, 1, cv.CV_32FC2, [
-    contour.topLeft.x,
-    contour.topLeft.y,
-    contour.topRight.x,
-    contour.topRight.y,
-    contour.bottomRight.x,
-    contour.bottomRight.y,
-    contour.bottomLeft.x,
-    contour.bottomLeft.y,
-  ]);
-
-  const dstPts = cv.matFromArray(4, 1, cv.CV_32FC2, [
-    0,
-    0,
-    warpW,
-    0,
-    warpW,
-    warpH,
-    0,
-    warpH,
-  ]);
-
-  let transformMatrix: cv.Mat | null = null;
-
-  try {
-    transformMatrix = cv.getPerspectiveTransform(srcPts, dstPts);
-    cv.warpPerspective(src, dst, transformMatrix, new cv.Size(warpW, warpH));
-
-    const warpCanvas = document.createElement("canvas");
-    warpCanvas.width = warpW;
-    warpCanvas.height = warpH;
-    cv.imshow(warpCanvas, dst);
-
-    if (!isLandscape) return warpCanvas;
-
-    // Rotate the landscape warp result 90° CW to produce a portrait canvas.
-    const outputCanvas = document.createElement("canvas");
-    outputCanvas.width = outputWidth;
-    outputCanvas.height = outputHeight;
-    const outCtx = outputCanvas.getContext("2d")!;
-    outCtx.translate(outputWidth / 2, outputHeight / 2);
-    outCtx.rotate(Math.PI / 2);
-    outCtx.drawImage(warpCanvas, -warpW / 2, -warpH / 2);
-    return outputCanvas;
-  } finally {
-    src.delete();
-    dst.delete();
-    srcPts.delete();
-    dstPts.delete();
-    transformMatrix?.delete();
-  }
+  // Rotate the landscape crop 90° CW to produce a portrait canvas.
+  const outputCanvas = document.createElement("canvas");
+  outputCanvas.width = outputWidth;
+  outputCanvas.height = outputHeight;
+  const outCtx = outputCanvas.getContext("2d");
+  if (!outCtx) throw new Error("Could not get canvas context");
+  outCtx.translate(outputWidth / 2, outputHeight / 2);
+  outCtx.rotate(Math.PI / 2);
+  outCtx.drawImage(cropCanvas, -cropW / 2, -cropH / 2);
+  return outputCanvas;
 }
 
 /**

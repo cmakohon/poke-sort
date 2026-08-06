@@ -1,7 +1,7 @@
 import {
+  type PlayingCard,
+  type PlayingCardWithDistance,
   type ScannedCard,
-  type ScryfallCard,
-  type ScryfallCardWithDistance,
   evaluateCardBin,
   getCatchAllBin,
 } from "@magic-vault/shared";
@@ -24,7 +24,7 @@ import { reportSerialEvent } from "@/features/notifications/api/notification-set
 import { useScanTimer } from "@/features/scanner/api/use-scan-timer";
 import { useSerial } from "@/features/scanner/api/use-serial";
 import type { ScannedCardsContextValue } from "@/features/scanner/types";
-import { generateScanId } from "@/lib/idb";
+import { generateScanId } from "@/lib/utils";
 import {
   createContext,
   useCallback,
@@ -75,6 +75,8 @@ export function ScannedCardsProvider({
   const prevCollectionGuidRef = useRef<string | undefined>(undefined);
   const [autoFeed, setAutoFeedState] = useState(true);
   const autoFeedRef = useRef(true);
+  const cardArrivedHookRef = useRef<(() => void) | null>(null);
+  const pauseHookRef = useRef<(() => void) | null>(null);
   const [timerTrigger, setTimerTrigger] = useState<number | undefined>(
     undefined,
   );
@@ -105,6 +107,20 @@ export function ScannedCardsProvider({
   const setAutoFeed = useCallback((enabled: boolean) => {
     autoFeedRef.current = enabled;
     setAutoFeedState(enabled);
+  }, []);
+
+  const registerCardArrivedHook = useCallback((fn: () => void) => {
+    cardArrivedHookRef.current = fn;
+    return () => {
+      if (cardArrivedHookRef.current === fn) cardArrivedHookRef.current = null;
+    };
+  }, []);
+
+  const registerPauseHook = useCallback((fn: () => void) => {
+    pauseHookRef.current = fn;
+    return () => {
+      if (pauseHookRef.current === fn) pauseHookRef.current = null;
+    };
   }, []);
 
   const triggerAutoFeed = useCallback(async () => {
@@ -143,6 +159,7 @@ export function ScannedCardsProvider({
       if (parsed.empty) {
         autoFeedRef.current = false;
         setAutoFeedState(false);
+        pauseHookRef.current?.();
         toast.error("Feeder empty", {
           description:
             "No cards remaining in the hopper. Add more cards to continue.",
@@ -167,6 +184,8 @@ export function ScannedCardsProvider({
           sent: true,
           response: parsed,
         });
+      } else {
+        cardArrivedHookRef.current?.();
       }
     } catch {
       autoFeedRef.current = false;
@@ -188,7 +207,6 @@ export function ScannedCardsProvider({
     activeCollectionRef.current = activeCollection;
   }, [activeCollection]);
 
-  // Release lock on unmount
   useEffect(() => {
     return () => {
       const guid = activeCollectionRef.current?.guid;
@@ -196,7 +214,6 @@ export function ScannedCardsProvider({
     };
   }, []);
 
-  // Reload cards when active collection changes
   useEffect(() => {
     if (!activeCollection) {
       setCards([]);
@@ -226,9 +243,9 @@ export function ScannedCardsProvider({
 
   const addCard = useCallback(
     (
-      card: ScryfallCardWithDistance,
+      card: PlayingCardWithDistance,
       capturedImageUrl?: string,
-      alternativeMatches?: ScryfallCardWithDistance[],
+      alternativeMatches?: PlayingCardWithDistance[],
     ) => {
       const collection = activeCollectionRef.current;
       if (!collection) {
@@ -263,11 +280,8 @@ export function ScannedCardsProvider({
           : undefined,
       };
 
-      // Optimistic update
       setCards((prev) => [record, ...prev]);
       setTimerTrigger(record.scannedAt);
-
-      // Persist to server - rollback if collection is locked by another user
       addCollectionCard(collection.guid, record)
         .then((result) => {
           if (!result.success) {
@@ -318,6 +332,7 @@ export function ScannedCardsProvider({
             });
             autoFeedRef.current = false;
             setAutoFeedState(false);
+            pauseHookRef.current?.();
             return;
           }
           if (res.error) {
@@ -384,6 +399,7 @@ export function ScannedCardsProvider({
           });
           autoFeedRef.current = false;
           setAutoFeedState(false);
+          pauseHookRef.current?.();
           return;
         }
         if (res.error) {
@@ -430,9 +446,9 @@ export function ScannedCardsProvider({
     }
   }, []);
 
-  const correctCard = useCallback((scanId: string, card: ScryfallCard) => {
+  const correctCard = useCallback((scanId: string, card: PlayingCard) => {
     const collection = activeCollectionRef.current;
-    const corrected: ScryfallCardWithDistance = { ...card, distance: 0 };
+    const corrected: PlayingCardWithDistance = { ...card, distance: 0 };
     const matchedBin = evaluateCardBin(
       corrected,
       binConfigsRef.current,
@@ -506,6 +522,8 @@ export function ScannedCardsProvider({
         elapsedMs,
         isTimerActive,
         setAutoFeed,
+        registerCardArrivedHook,
+        registerPauseHook,
         addCard,
         sendCatchAllBin,
         removeCard,

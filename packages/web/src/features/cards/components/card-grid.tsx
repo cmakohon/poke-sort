@@ -1,6 +1,12 @@
 import { DeleteDialog } from "@/components/delete-dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { useBinConfigs } from "@/features/bins/api/use-bin-configs";
 import { useCardFilterSort } from "@/features/cards/api/use-card-filter-sort";
 import { useCardFilters } from "@/features/cards/api/use-card-filters";
 import { CardDetailPanel } from "@/features/cards/components/card-detail-panel";
@@ -16,11 +22,18 @@ import { ScannerControls } from "@/features/scanner/components/scanner-controls"
 import { ScannerDebug } from "@/features/scanner/components/scanner-debug";
 import { computeStats } from "@/features/scanner/lib/compute-stats";
 
-import { IconFolders } from "@tabler/icons-react";
+import {
+  IconAlbum,
+  IconArrowBarToDown,
+  IconBolt,
+  IconChevronLeft,
+  IconChevronRight,
+} from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
-import { AnimatePresence } from "framer-motion";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+
+const PAGE_SIZE = 96;
 
 export function CardGrid() {
   const {
@@ -36,6 +49,8 @@ export function CardGrid() {
     markDownloaded,
     isLoading,
     elapsedMs,
+    autoFeed,
+    setAutoFeed,
   } = useScannedCards();
   const [summaryOpen, setSummaryOpen] = useState(false);
   const scanner = useScannerIsland();
@@ -51,31 +66,36 @@ export function CardGrid() {
   });
   const viewers = viewersRaw?.filter((v) => v.userId !== currentUserId);
   const { filters, setFilters } = useCardFilters();
+  const { fieldDefinitions } = useBinConfigs();
   const {
     filteredAndSorted,
     searchQuery,
     setSearchQuery,
     sortKey,
     setSortKey,
+    sortableFields,
     activeFilterCount,
-  } = useCardFilterSort(cards, { filters, setFilters });
+  } = useCardFilterSort(cards, fieldDefinitions, { filters, setFilters });
   const stats = useMemo(() => computeStats(cards), [cards]);
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [newestScanId, setNewestScanId] = useState<string | null>(null);
   const [openScanId, setOpenScanId] = useState<string | null>(null);
-  const prevCardCountRef = useRef(cards.length);
+  const [page, setPage] = useState(0);
+
+  const pageCount = Math.max(
+    1,
+    Math.ceil(filteredAndSorted.length / PAGE_SIZE),
+  );
+  const clampedPage = Math.min(page, pageCount - 1);
+  const pagedCards = filteredAndSorted.slice(
+    clampedPage * PAGE_SIZE,
+    (clampedPage + 1) * PAGE_SIZE,
+  );
 
   useEffect(() => {
-    if (cards.length > prevCardCountRef.current && cards.length > 0) {
-      setNewestScanId(cards[0].scanId);
-      const timer = setTimeout(() => setNewestScanId(null), 1200);
-      prevCardCountRef.current = cards.length;
-      return () => clearTimeout(timer);
-    }
-    prevCardCountRef.current = cards.length;
-  }, [cards]);
+    setPage(0);
+  }, [searchQuery, filters, sortKey, activeCollection?.guid]);
 
   const openIndex = openScanId
     ? filteredAndSorted.findIndex((c) => c.scanId === openScanId)
@@ -131,20 +151,22 @@ export function CardGrid() {
             <Skeleton className="size-9 rounded-md shrink-0" />
           </div>
         </div>
-        <div className="grid grid-cols-3 @md:grid-cols-4 @4xl:grid-cols-6 @5xl:grid-cols-8 gap-2 p-4 flex-1">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <div
-              key={i}
-              className="rounded-lg p-1 bg-muted border border-border"
-            >
-              <Skeleton className="aspect-[2.5/3.5] rounded-lg" />
-              <div className="flex items-center gap-2 px-1 py-1">
-                <Skeleton className="size-3 rounded-full shrink-0" />
-                <Skeleton className="h-3 w-8 rounded" />
-                <Skeleton className="h-3 w-6 rounded" />
+        <div className="p-2 flex-1">
+          <div className="grid grid-cols-3 @md:grid-cols-4 @4xl:grid-cols-6 gap-2">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div key={i} className="rounded-lg p-1 bg-muted border">
+                <Skeleton className="aspect-[2.5/3.5] rounded-lg" />
+                <div className="flex flex-row justify-between items-center px-1 pb-1">
+                  <div className="flex flex-row items-center gap-2">
+                    <Skeleton className="size-3 rounded-full shrink-0" />
+                    <Skeleton className="h-3 w-8 rounded" />
+                    <Skeleton className="h-3 w-6 rounded" />
+                  </div>
+                  <Skeleton className="h-3 w-8 rounded" />
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </>
     );
@@ -153,7 +175,7 @@ export function CardGrid() {
   if (!collectionsLoading && !activeCollection) {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
-        <IconFolders className="size-10" />
+        <IconAlbum className="size-10" />
         <div className="text-center">
           <p className="text-sm font-medium">No collection selected</p>
           <p className="text-xs">
@@ -183,16 +205,65 @@ export function CardGrid() {
                 status={scanner.status}
                 onForceAddDuplicate={scanner.handleForceAddDuplicate}
                 onForceScan={scanner.handleForceScan}
+                onSkipDuplicate={scanner.handleSkipDuplicate}
                 onPause={scanner.handlePause}
                 onResume={scanner.handleResume}
               />
               {scanner.isConnected && (
-                <Button
-                  onClick={scanner.handleFeed}
-                  disabled={!scanner.isReady || scanner.isFeeding}
-                >
-                  {scanner.isFeeding ? "Feeding…" : "Feed"}
-                </Button>
+                <>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          onClick={scanner.handleFeed}
+                          disabled={!scanner.isReady || scanner.isFeeding}
+                        >
+                          {scanner.isFeeding ? "Feeding…" : "Feed"}
+                        </Button>
+                      }
+                    />
+                    <TooltipContent>
+                      Advance one card from the hopper into the scanner
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          variant={autoFeed ? "default" : "outline"}
+                          size="icon"
+                          onClick={() => setAutoFeed(!autoFeed)}
+                        >
+                          <IconBolt />
+                        </Button>
+                      }
+                    />
+                    <TooltipContent>
+                      {autoFeed
+                        ? "Auto-feed on — next card feeds automatically after each scan"
+                        : "Auto-feed off — feed each card manually"}
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={scanner.handleClearDevice}
+                          disabled={
+                            !scanner.isReady || scanner.isClearingDevice
+                          }
+                        >
+                          <IconArrowBarToDown />
+                        </Button>
+                      }
+                    />
+                    <TooltipContent>
+                      Clear device (opens all bottom paddles)
+                    </TooltipContent>
+                  </Tooltip>
+                </>
               )}
               <ScannerDebug />
             </div>
@@ -232,12 +303,13 @@ export function CardGrid() {
 
   return (
     <>
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-2xl p-2 border-b">
+      <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-2xl p-2 border-b">
         <CardToolbar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           sortKey={sortKey}
           onSortChange={setSortKey}
+          sortableFields={sortableFields}
           onExport={() => setSummaryOpen(true)}
           collectionName={activeCollection?.name}
           onClearAll={handleClearSession}
@@ -263,28 +335,48 @@ export function CardGrid() {
         </div>
       )}
       <div className="p-2 flex-1">
-        <div className="grid grid-cols-3 @md:grid-cols-4 @4xl:grid-cols-6 @5xl:grid-cols-8 gap-2">
-          <AnimatePresence initial={false}>
-            {filteredAndSorted.map((card) => (
-              <ScannedCardItem
-                key={card.scanId}
-                card={card.card}
-                onOpen={() => setOpenScanId(card.scanId)}
-                binNumber={card.binNumber}
-                isSelected={selectedIds.has(card.scanId)}
-                onToggleSelect={() => toggleSelect(card.scanId)}
-                isNew={card.scanId === newestScanId}
-                hasAlternatives={!!card.alternativeMatches?.length}
-                isFoil={card.isFoil}
-                isDownloaded={card.isDownloaded}
-              />
-            ))}
-          </AnimatePresence>
+        <div className="grid grid-cols-3 @md:grid-cols-4 @4xl:grid-cols-6 gap-2">
+          {pagedCards.map((card) => (
+            <ScannedCardItem
+              key={card.scanId}
+              card={card.card}
+              onOpen={() => setOpenScanId(card.scanId)}
+              binNumber={card.binNumber}
+              isSelected={selectedIds.has(card.scanId)}
+              onToggleSelect={() => toggleSelect(card.scanId)}
+              hasAlternatives={!!card.alternativeMatches?.length}
+              isFoil={card.isFoil}
+              isDownloaded={card.isDownloaded}
+            />
+          ))}
         </div>
+        {pageCount > 1 && (
+          <div className="flex items-center justify-center gap-3 pt-4">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={clampedPage === 0}
+            >
+              <IconChevronLeft />
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Page {clampedPage + 1} of {pageCount}
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+              disabled={clampedPage === pageCount - 1}
+            >
+              <IconChevronRight />
+            </Button>
+          </div>
+        )}
       </div>
 
       {(scanner?.isCameraActive || selectedIds.size > 0) && (
-        <div className="sticky bottom-0 z-10 bg-background/80 backdrop-blur-2xl p-2 border-t">
+        <div className="sticky bottom-0 z-20 bg-background/80 backdrop-blur-2xl p-2 border-t">
           <div className="flex flex-row gap-2 items-center w-full">
             {scanner?.isCameraActive && (
               <>
@@ -292,16 +384,65 @@ export function CardGrid() {
                   status={scanner.status}
                   onForceAddDuplicate={scanner.handleForceAddDuplicate}
                   onForceScan={scanner.handleForceScan}
+                  onSkipDuplicate={scanner.handleSkipDuplicate}
                   onPause={scanner.handlePause}
                   onResume={scanner.handleResume}
                 />
                 {scanner.isConnected && (
-                  <Button
-                    onClick={scanner.handleFeed}
-                    disabled={!scanner.isReady || scanner.isFeeding}
-                  >
-                    {scanner.isFeeding ? "Feeding…" : "Feed"}
-                  </Button>
+                  <>
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            onClick={scanner.handleFeed}
+                            disabled={!scanner.isReady || scanner.isFeeding}
+                          >
+                            {scanner.isFeeding ? "Feeding…" : "Feed"}
+                          </Button>
+                        }
+                      />
+                      <TooltipContent>
+                        Advance one card from the hopper into the scanner
+                      </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            variant={autoFeed ? "default" : "outline"}
+                            size="icon"
+                            onClick={() => setAutoFeed(!autoFeed)}
+                          >
+                            <IconBolt />
+                          </Button>
+                        }
+                      />
+                      <TooltipContent>
+                        {autoFeed
+                          ? "Auto-feed on — next card feeds automatically after each scan"
+                          : "Auto-feed off — feed each card manually"}
+                      </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={scanner.handleClearDevice}
+                            disabled={
+                              !scanner.isReady || scanner.isClearingDevice
+                            }
+                          >
+                            <IconArrowBarToDown />
+                          </Button>
+                        }
+                      />
+                      <TooltipContent>
+                        Clear device (opens all bottom paddles)
+                      </TooltipContent>
+                    </Tooltip>
+                  </>
                 )}
                 <ScannerDebug />
               </>
