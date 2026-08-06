@@ -1,13 +1,13 @@
-import { useCameraContext } from "@/features/scanner/api/use-camera";
-import { useScannedCards } from "@/features/scanner/api/use-scanned-cards";
-import { useSerial } from "@/features/scanner/api/use-serial";
-import { createSyncEventSource } from "@/lib/api/admin";
-import { useRole } from "@/hooks/use-role";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useCameraContext } from "@/features/scanner/api/use-camera";
+import { useScannedCards } from "@/features/scanner/api/use-scanned-cards";
+import { useSerial } from "@/features/scanner/api/use-serial";
+import { useRole } from "@/hooks/use-role";
+import { createSyncEventSource } from "@/lib/api/admin";
 import type { SyncState } from "@magic-vault/shared";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -25,16 +25,23 @@ const DEFAULT_SYNC_STATE: SyncState = {
   errors: 0,
   startedAt: null,
   logs: [],
+  lang: "en",
 };
 
-function StatusDot({ variant }: { variant: "success" | "warning" | "error" | "muted" }) {
+function StatusDot({
+  variant,
+}: {
+  variant: "success" | "warning" | "error" | "muted";
+}) {
   const colors = {
     success: "bg-green-500",
     warning: "bg-amber-500 animate-pulse",
     error: "bg-red-500",
     muted: "bg-muted-foreground/30",
   };
-  return <span className={`size-1.5 rounded-full shrink-0 ${colors[variant]}`} />;
+  return (
+    <span className={`size-1.5 rounded-full shrink-0 ${colors[variant]}`} />
+  );
 }
 
 function StatusItem({
@@ -106,7 +113,8 @@ function SyncStatusItem() {
   const { status, total, processed, skipped } = syncState;
   const done = processed + skipped;
 
-  const visible = status !== "idle" && status !== "cancelled" && pathname !== "/app/admin";
+  const visible =
+    status !== "idle" && status !== "cancelled" && pathname !== "/app/admin";
   if (!visible) return null;
 
   const dot =
@@ -158,7 +166,10 @@ export function StatusFooter() {
   const { isConnected, isReady } = useSerial();
   const { cards } = useScannedCards();
 
-  const totalValue = cards.reduce((sum, { card }) => sum + (card.price ?? 0), 0);
+  const totalValue = cards.reduce(
+    (sum, { card }) => sum + (card.price ?? 0),
+    0,
+  );
 
   const cameraDot =
     cameraStatus === "ready"
