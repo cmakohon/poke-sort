@@ -35,7 +35,7 @@ export const FIELD_DEFINITIONS: FieldMeta[] = [
     field: "color_identity",
     label: "Color Identity",
     type: "set",
-    path: "color_identity",
+    path: "colorIdentity",
     operators: [
       { value: "contains_any", label: "contains any of" },
       { value: "contains_all", label: "contains all of" },
@@ -54,7 +54,7 @@ export const FIELD_DEFINITIONS: FieldMeta[] = [
     field: "type_line",
     label: "Type Line",
     type: "string",
-    path: "type_line",
+    path: "typeLine",
     operators: [
       { value: "contains", label: "contains" },
       { value: "not_contains", label: "does not contain" },
@@ -78,7 +78,7 @@ export const FIELD_DEFINITIONS: FieldMeta[] = [
     field: "price_usd",
     label: "Price (USD)",
     type: "numeric",
-    path: "prices.usd",
+    path: "price",
     operators: [
       { value: "gt", label: "greater than" },
       { value: "gte", label: "greater than or equal" },
@@ -116,7 +116,7 @@ export const FIELD_DEFINITIONS: FieldMeta[] = [
     field: "description",
     label: "Description",
     type: "string",
-    path: "oracle_text",
+    path: "text",
     operators: [
       { value: "contains", label: "contains" },
       { value: "not_contains", label: "does not contain" },

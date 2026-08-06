@@ -158,10 +158,7 @@ export function StatusFooter() {
   const { isConnected, isReady } = useSerial();
   const { cards } = useScannedCards();
 
-  const totalValue = cards.reduce(
-    (sum, { card }) => sum + parseFloat(card.prices.usd ?? "0"),
-    0,
-  );
+  const totalValue = cards.reduce((sum, { card }) => sum + (card.price ?? 0), 0);
 
   const cameraDot =
     cameraStatus === "ready"

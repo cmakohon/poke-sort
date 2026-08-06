@@ -22,6 +22,8 @@ function extractRows(json: unknown): GundamListCard[] {
 async function fetchCards(
   baseUrl: string,
   addLog: (msg: string) => void,
+  _lang?: string,
+  signal?: AbortSignal,
 ): Promise<SyncSourceCard[]> {
   addLog("Fetching Gundam Card Game catalog...");
 
@@ -29,7 +31,7 @@ async function fetchCards(
   let offset = 0;
   for (;;) {
     const url = `${baseUrl}?limit=${PAGE_LIMIT}&offset=${offset}`;
-    const res = await fetch(url, { headers: GUNDAM_HEADERS });
+    const res = await fetch(url, { headers: GUNDAM_HEADERS, signal });
     if (!res.ok) throw new Error(`Gundam card list fetch failed: ${res.status}`);
 
     const rows = extractRows(await res.json());
@@ -67,6 +69,7 @@ export const gundamSyncSource: SyncSource = {
   label: "Gundam Card Game",
   defaultUrl: GUNDAM_DEFAULT_URL,
   fetchHeaders: GUNDAM_HEADERS,
+  languages: ["en"],
   fetchCards,
   fetchOne,
 };

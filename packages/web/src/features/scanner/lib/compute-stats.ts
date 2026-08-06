@@ -55,7 +55,7 @@ export function computeStats(cards: ScannedCard[]): ScanStats | null {
 
   for (const entry of cards) {
     const c = entry.card;
-    const price = Number.parseFloat(c.prices?.usd ?? "0");
+    const price = c.price ?? 0;
 
     uniqueCards.add(c.id);
 
@@ -75,7 +75,7 @@ export function computeStats(cards: ScannedCard[]): ScanStats | null {
     } else {
       setMap.set(c.set, {
         code: c.set,
-        name: c.set_name,
+        name: c.setName,
         count: 1,
         value: price,
       });
@@ -85,7 +85,7 @@ export function computeStats(cards: ScannedCard[]): ScanStats | null {
       rarityMap.set(c.rarity, (rarityMap.get(c.rarity) ?? 0) + 1);
     }
 
-    for (const color of c.color_identity) {
+    for (const color of c.colorIdentity) {
       colorMap.set(color, (colorMap.get(color) ?? 0) + 1);
     }
   }

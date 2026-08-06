@@ -9,30 +9,6 @@ export const POKEMON_HEADERS: Record<string, string> = {
   Accept: "application/json",
 };
 
-const NOT_LEGAL: PlayingCard["legalities"] = {
-  standard: "not_legal",
-  future: "not_legal",
-  historic: "not_legal",
-  timeless: "not_legal",
-  gladiator: "not_legal",
-  pioneer: "not_legal",
-  modern: "not_legal",
-  legacy: "not_legal",
-  pauper: "not_legal",
-  vintage: "not_legal",
-  penny: "not_legal",
-  commander: "not_legal",
-  oathbreaker: "not_legal",
-  standardbrawl: "not_legal",
-  brawl: "not_legal",
-  alchemy: "not_legal",
-  paupercommander: "not_legal",
-  duel: "not_legal",
-  oldschool: "not_legal",
-  premodern: "not_legal",
-  predh: "not_legal",
-};
-
 interface PokemonCardBrief {
   id: string;
   localId: string;
@@ -53,9 +29,12 @@ interface PokemonAbility {
   effect?: string;
 }
 
-interface PokemonWeakResist {
-  type: string;
-  value: string;
+interface PokemonPricing {
+  cardmarket?: { avg?: number };
+  tcgplayer?: {
+    normal?: { marketPrice?: number };
+    reverse?: { marketPrice?: number };
+  };
 }
 
 interface PokemonCardDetail extends PokemonCardBrief {
@@ -72,17 +51,14 @@ interface PokemonCardDetail extends PokemonCardBrief {
   effect?: string;
   attacks?: PokemonAttack[];
   abilities?: PokemonAbility[];
-  weaknesses?: PokemonWeakResist[];
-  resistances?: PokemonWeakResist[];
   retreat?: number;
+  pricing?: PokemonPricing;
   set?: {
     id: string;
     name: string;
-    releaseDate?: string;
   };
   legal?: {
     standard?: boolean;
-    expanded?: boolean;
   };
 }
 
@@ -92,10 +68,18 @@ function assetUrl(image: string, quality: "low" | "high"): string {
   return `/api/cards/image-proxy?url=${encodeURIComponent(`${image}/${quality}.webp`)}`;
 }
 
+function resolvePrice(pricing: PokemonPricing | undefined): number | null {
+  if (!pricing) return null;
+  const usd =
+    pricing.tcgplayer?.normal?.marketPrice ??
+    pricing.tcgplayer?.reverse?.marketPrice;
+  if (usd != null) return usd;
+  return pricing.cardmarket?.avg ?? null;
+}
+
 function normalizePokemonCard(raw: PokemonCardDetail): PlayingCard {
   const small = raw.image ? assetUrl(raw.image, "low") : "";
   const large = raw.image ? assetUrl(raw.image, "high") : "";
-  const colors = raw.types ?? [];
   const attackText = (raw.attacks ?? [])
     .map((a) =>
       [a.name, a.damage != null ? `(${a.damage})` : "", a.effect]
@@ -106,7 +90,7 @@ function normalizePokemonCard(raw: PokemonCardDetail): PlayingCard {
   const abilityText = (raw.abilities ?? [])
     .map((a) => [a.name, a.effect].filter(Boolean).join(": "))
     .join("\n");
-  const oracleText =
+  const text =
     [raw.effect, raw.description, abilityText, attackText]
       .filter(Boolean)
       .join("\n\n") || undefined;
@@ -117,77 +101,22 @@ function normalizePokemonCard(raw: PokemonCardDetail): PlayingCard {
     (raw.category ?? "");
 
   return {
-    object: "card",
     id: raw.id,
-    oracle_id: raw.id,
     name: raw.name ?? "",
-    lang: "en",
-    released_at: raw.set?.releaseDate ?? "",
-    uri: "",
-    scryfall_uri: `https://tcgdex.dev/cards/${raw.id}`,
-    layout: "normal",
-    highres_image: true,
-    image_status: "highres_scan",
-    image_uris: large
-      ? {
-          small: small || large,
-          normal: large,
-          large,
-          png: large,
-          art_crop: large,
-          border_crop: large,
-        }
-      : undefined,
-    cmc: raw.retreat ?? 0,
-    type_line: typeLine,
-    oracle_text: oracleText,
+    image: large ? { small: small || large, normal: large } : null,
+    set: raw.set?.id ?? "",
+    setName: raw.set?.name || (raw.set?.id ?? ""),
+    collectorNumber: raw.localId ?? "",
+    rarity: (raw.rarity ?? "").toLowerCase(),
+    typeLine,
+    text,
     power: undefined,
     toughness: raw.hp != null ? String(raw.hp) : undefined,
-    colors,
-    color_identity: colors,
-    keywords: (raw.abilities ?? []).map((a) => a.name),
-    legalities: {
-      ...NOT_LEGAL,
-      standard: raw.legal?.standard ? "legal" : "not_legal",
-    },
-    games: [],
-    reserved: false,
-    game_changer: false,
-    foil: false,
-    nonfoil: true,
-    finishes: ["nonfoil"],
-    oversized: false,
-    promo: false,
-    reprint: false,
-    variation: false,
-    set_id: raw.set?.id ?? "",
-    set: raw.set?.id ?? "",
-    set_name: raw.set?.name || (raw.set?.id ?? ""),
-    set_type: "expansion",
-    set_uri: "",
-    set_search_uri: "",
-    scryfall_set_uri: "",
-    rulings_uri: "",
-    prints_search_uri: "",
-    collector_number: raw.localId ?? "",
-    digital: false,
-    rarity: (raw.rarity ?? "").toLowerCase(),
-    artist: raw.illustrator ?? "",
-    artist_ids: [],
-    border_color: "black",
-    frame: "2015",
-    full_art: false,
-    textless: false,
-    booster: false,
-    story_spotlight: false,
-    prices: {
-      usd: null,
-      usd_foil: null,
-      usd_etched: null,
-      eur: null,
-      eur_foil: null,
-      tix: null,
-    },
+    colorIdentity: raw.types ?? [],
+    artist: raw.illustrator ?? undefined,
+    price: resolvePrice(raw.pricing),
+    sourceUrl: `https://tcgdex.dev/cards/${raw.id}`,
+    cmc: raw.retreat,
   };
 }
 

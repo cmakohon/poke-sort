@@ -1,7 +1,5 @@
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { PlayingCard } from "@magic-vault/shared";
-import { getCardFaceName, getCardImageUris } from "@magic-vault/shared";
 import { IconArrowRight } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -9,8 +7,16 @@ import { Link } from "react-router-dom";
 const CARD_COUNT = 6;
 const KNOWN_RARITIES = ["common", "uncommon", "rare", "mythic"];
 
+interface RandomScryfallCard {
+  id: string;
+  name: string;
+  rarity: string;
+  image_uris?: { normal: string };
+  card_faces?: { name: string; image_uris?: { normal: string } }[];
+}
+
 function useRandomCards(count: number) {
-  const [cards, setCards] = useState<PlayingCard[]>([]);
+  const [cards, setCards] = useState<RandomScryfallCard[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -18,12 +24,14 @@ function useRandomCards(count: number) {
     Promise.all(
       Array.from({ length: count }, () =>
         fetch("https://api.scryfall.com/cards/random")
-          .then((res) => (res.ok ? (res.json() as Promise<PlayingCard>) : null))
+          .then((res) =>
+            res.ok ? (res.json() as Promise<RandomScryfallCard>) : null,
+          )
           .catch(() => null),
       ),
     ).then((results) => {
       if (cancelled) return;
-      setCards(results.filter((card): card is PlayingCard => !!card));
+      setCards(results.filter((card): card is RandomScryfallCard => !!card));
     });
 
     return () => {
@@ -81,7 +89,9 @@ export function LandingHero() {
           <div className="grid grid-cols-3 gap-2">
             {Array.from({ length: CARD_COUNT }).map((_, i) => {
               const card = cards[i];
-              const image = card ? getCardImageUris(card)?.normal : undefined;
+              const image = card
+                ? (card.image_uris ?? card.card_faces?.[0]?.image_uris)?.normal
+                : undefined;
               const rarity =
                 card && KNOWN_RARITIES.includes(card.rarity)
                   ? card.rarity
@@ -104,7 +114,7 @@ export function LandingHero() {
                       style={{ backgroundColor: `var(--${rarity})` }}
                     />
                     <p className="truncate text-[0.6rem] font-medium">
-                      {card ? getCardFaceName(card) : " "}
+                      {card ? (card.card_faces?.[0]?.name ?? card.name) : " "}
                     </p>
                   </div>
                 </div>

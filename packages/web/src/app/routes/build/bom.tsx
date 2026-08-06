@@ -159,21 +159,21 @@ const GROUPS: Group[] = [
         part: "M3×6 screw",
         notes:
           "14 attach each bin base to the housing; 8 attach the base panels to the base",
-        buyUrl: "https://www.amazon.com/dp/B0FGV5K8BT",
+        buyUrl: "https://www.amazon.com/dp/B0CGNP4RXK",
       },
       {
         key: "m3-nut",
         qty: "8",
         part: "M3 nut",
         notes: "Paired with the base panel M3×6 screws",
-        buyUrl: "https://www.amazon.com/dp/B0FGV5K8BT",
+        buyUrl: "https://www.amazon.com/dp/B0CGNP4RXK",
       },
       {
         key: "m3x8-screw",
         qty: "2",
         part: "M3×8 screw",
         notes: "Attaches the hopper tube",
-        buyUrl: "https://www.amazon.com/dp/B0FGV5K8BT",
+        buyUrl: "https://www.amazon.com/dp/B0CGNP4RXK",
       },
       {
         key: "m2x4-screw",
@@ -186,7 +186,7 @@ const GROUPS: Group[] = [
         ),
         notes:
           "Per module: flapper (bottom/sides), pusher arms, and IR sensor mounts",
-        buyUrl: "https://www.amazon.com/dp/B0FGV5K8BT",
+        buyUrl: "https://www.amazon.com/dp/B0CGNP4RXK",
       },
       {
         key: "m2x6-screw",
@@ -194,7 +194,7 @@ const GROUPS: Group[] = [
         part: "M2×6 screw",
         notes:
           "Mounts the Arduino and PCA9685 servo driver board to the base panels",
-        buyUrl: "https://www.amazon.com/dp/B0FGV5K8BT",
+        buyUrl: "https://www.amazon.com/dp/B0CGNP4RXK",
       },
       {
         key: "servo-horn-screw",
@@ -205,17 +205,27 @@ const GROUPS: Group[] = [
       {
         key: "hookup-wire",
         qty: "1 roll",
-        part: "22–26 AWG hookup wire",
-        notes: "IR sensor",
-        buyUrl: "https://www.amazon.com/dp/B07G2LRX68",
+        part: "Low Voltage Wire",
+        notes:
+          "IR sensor/Servos. Using these you may have to daisy chain some together, just electrical tape them to make sure they don't come apart.",
+        buyUrl:
+          "https://www.amazon.com/dp/B01EV70C78?ref_=ppx_hzsearch_conn_dt_b_fed_asin_title_9",
       },
       {
         key: "dupont-connectors",
         qty: "~50",
-        part: "Dupont Connectors",
+        part: "Dupont Connectors (Optional)",
         notes:
-          "These are only needed if you are connecting your own Dupont connectors to the IR sensor wires; otherwise, you can solder directly to the sensor pads",
+          "These are only needed if you're making your own custom length wires.",
         buyUrl: "https://www.amazon.com/dp/B07QGBKFYZ",
+      },
+      {
+        key: "dupont-crimper",
+        qty: "1",
+        part: "Dupont Crimper (Optional)",
+        notes:
+          "These are only needed if you're making your own custom length wires.",
+        buyUrl: "https://www.amazon.com/dp/B0D1FR76Q7",
       },
     ],
   },

@@ -468,74 +468,69 @@ router.post("/:guid/cards", requireAuth, requireOrg, async (c) => {
     | { success: false; message: string };
 
   try {
-    const { result, fieldDefinitions, collectionName, gameName } =
-      await authQuery<{
-        result: AddCardResult;
-        fieldDefinitions: FieldMeta[] | undefined;
-        collectionName: string | undefined;
-        gameName: string | undefined;
-      }>(c.get("jwtClaims"), async (tx) => {
-        const collection = await tx.query.collections.findFirst({
-          where: (t, { eq, and }) => and(eq(t.guid, guid), eq(t.orgId, orgId)),
-          columns: { id: true, gameId: true, name: true },
-        });
-        if (!collection)
-          return {
-            result: { success: false, message: "Collection not found." },
-            fieldDefinitions: undefined,
-            collectionName: undefined,
-            gameName: undefined,
-          };
-
-        await tx
-          .insert(collectionCards)
-          .values({
-            guid: scanId,
-            collectionId: collection.id,
-            scryfallId: (card as PlayingCardWithDistance).id,
-            card,
-            scannedAt: new Date(scannedAt),
-            binNumber: binNumber ?? null,
-            capturedImageDataUrl: capturedImageUrl ?? null,
-            isFoil: isFoil ?? false,
-            alternativeMatches: alternativeMatches?.length
-              ? alternativeMatches
-              : null,
-            orgId,
-          })
-          .onConflictDoNothing();
-
-        await tx
-          .update(collections)
-          .set({ updatedAt: new Date() })
-          .where(eq(collections.id, collection.id));
-
-        const game = collection.gameId
-          ? await tx.query.games.findFirst({
-              where: (t, { eq }) => eq(t.id, collection.gameId!),
-              columns: { fieldDefinitions: true, name: true },
-            })
-          : null;
-
-        return {
-          result: {
-            success: true,
-            data: {
-              scanId,
-              card,
-              scannedAt,
-              binNumber,
-              capturedImageUrl,
-              isFoil,
-              alternativeMatches,
-            } as ScannedCard,
-          },
-          fieldDefinitions:
-            (game?.fieldDefinitions as FieldMeta[] | undefined) ?? undefined,
-          collectionName: collection.name,
-          gameName: game?.name,
-        };
+    const { result, collectionName, gameName } = await authQuery<{
+      result: AddCardResult;
+      collectionName: string | undefined;
+      gameName: string | undefined;
+    }>(c.get("jwtClaims"), async (tx) => {
+      const collection = await tx.query.collections.findFirst({
+        where: (t, { eq, and }) => and(eq(t.guid, guid), eq(t.orgId, orgId)),
+        columns: { id: true, gameId: true, name: true },
       });
+      if (!collection)
+        return {
+          result: { success: false, message: "Collection not found." },
+          collectionName: undefined,
+          gameName: undefined,
+        };
+
+      await tx
+        .insert(collectionCards)
+        .values({
+          guid: scanId,
+          collectionId: collection.id,
+          scryfallId: (card as PlayingCardWithDistance).id,
+          card,
+          scannedAt: new Date(scannedAt),
+          binNumber: binNumber ?? null,
+          capturedImageDataUrl: capturedImageUrl ?? null,
+          isFoil: isFoil ?? false,
+          alternativeMatches: alternativeMatches?.length
+            ? alternativeMatches
+            : null,
+          orgId,
+        })
+        .onConflictDoNothing();
+
+      await tx
+        .update(collections)
+        .set({ updatedAt: new Date() })
+        .where(eq(collections.id, collection.id));
+
+      const game = collection.gameId
+        ? await tx.query.games.findFirst({
+            where: (t, { eq }) => eq(t.id, collection.gameId!),
+            columns: { name: true },
+          })
+        : null;
+
+      return {
+        result: {
+          success: true,
+          data: {
+            scanId,
+            card,
+            scannedAt,
+            binNumber,
+            capturedImageUrl,
+            isFoil,
+            alternativeMatches,
+          } as ScannedCard,
+        },
+        collectionName: collection.name,
+        gameName: game?.name,
+      };
+    });
     if (result.success) {
       emitToSession(guid, "card_added", result.data);
 
@@ -550,7 +545,6 @@ router.post("/:guid/cards", requireAuth, requireOrg, async (c) => {
               orgId,
               buildCardScannedEmbed(card as PlayingCardWithDistance, {
                 isFoil,
-                fieldDefinitions,
                 collectionName,
                 gameName,
                 collectionGuid: guid,

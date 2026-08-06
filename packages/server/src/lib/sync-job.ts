@@ -21,6 +21,7 @@ type SseWriter = (event: string, data: unknown) => void;
 let state: SyncState = {
   status: "idle",
   gameKey: "",
+  lang: "en",
   total: 0,
   processed: 0,
   skipped: 0,
@@ -30,6 +31,7 @@ let state: SyncState = {
 };
 
 let cancelFlag = false;
+let abortController: AbortController | null = null;
 const writers = new Set<SseWriter>();
 
 function addLog(msg: string) {
@@ -60,19 +62,27 @@ export function subscribeSSE(writer: SseWriter): () => void {
 export function cancelSync(): void {
   if (state.status === "running") {
     cancelFlag = true;
+    abortController?.abort();
   }
 }
 
-export function startSync(orgId: string | undefined, gameKey: string): void {
+export function startSync(
+  orgId: string | undefined,
+  gameKey: string,
+  lang: string = "en",
+): void {
   if (state.status === "running") return;
 
   const source = SYNC_SOURCES[gameKey];
   if (!source) return;
+  if (!source.languages.includes(lang)) return;
 
   cancelFlag = false;
+  abortController = new AbortController();
   state = {
     status: "running",
     gameKey,
+    lang,
     total: 0,
     processed: 0,
     skipped: 0,
@@ -82,7 +92,7 @@ export function startSync(orgId: string | undefined, gameKey: string): void {
   };
 
   emit("status", getStatus());
-  runSync(source).catch((err) => {
+  runSync(source, lang).catch((err) => {
     state = { ...state, status: "failed" };
     const msg = err instanceof Error ? err.message : String(err);
     addLog(`Fatal error: ${msg}`);
@@ -102,11 +112,27 @@ async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function runSync(source: SyncSource): Promise<void> {
+async function runSync(source: SyncSource, lang: string): Promise<void> {
   const baseUrl = await resolveGameDataSourceUrl(source.gameKey, source.defaultUrl);
   addLog(`Using data source: ${baseUrl}`);
 
-  const cards = await source.fetchCards(baseUrl, addLog);
+  let cards: Awaited<ReturnType<SyncSource["fetchCards"]>>;
+  try {
+    cards = await source.fetchCards(baseUrl, addLog, lang, abortController?.signal);
+  } catch (err) {
+    if (cancelFlag) {
+      state = { ...state, status: "cancelled" };
+      addLog("Sync cancelled by user.");
+      emit("done", {
+        status: "cancelled" as SyncStatus,
+        processed: state.processed,
+        skipped: state.skipped,
+        errors: state.errors,
+      });
+      return;
+    }
+    throw err;
+  }
   state = { ...state, total: cards.length };
   emit("status", getStatus());
 
@@ -147,7 +173,10 @@ async function runSync(source: SyncSource): Promise<void> {
     }
 
     try {
-      const imageRes = await fetch(card.imageUrl, { headers: source.fetchHeaders });
+      const imageRes = await fetch(card.imageUrl, {
+        headers: source.fetchHeaders,
+        signal: abortController?.signal,
+      });
       if (!imageRes.ok) throw new Error(`Image fetch failed: ${imageRes.status}`);
       const buffer = Buffer.from(await imageRes.arrayBuffer());
       const embedding = await vectorizeImageFromBuffer(buffer);
@@ -157,6 +186,7 @@ async function runSync(source: SyncSource): Promise<void> {
         .values({
           scryfallId: card.id,
           gameKey: source.gameKey,
+          lang,
           name: card.name,
           setCode: card.setCode,
           embedding,
