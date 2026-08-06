@@ -33,7 +33,8 @@ async function fetchCards(
   for (;;) {
     const url = `${baseUrl}?pagination:page=${page}&pagination:itemsPerPage=${PAGE_LIMIT}`;
     const res = await fetch(url, { headers: POKEMON_HEADERS, signal });
-    if (!res.ok) throw new Error(`Pokémon card list fetch failed: ${res.status}`);
+    if (!res.ok)
+      throw new Error(`Pokémon card list fetch failed: ${res.status}`);
 
     const rows = (await res.json()) as PokemonListCard[];
     all.push(...rows);
@@ -46,9 +47,6 @@ async function fetchCards(
   return all.map((c) => ({
     id: c.id,
     name: c.name,
-    // The brief list card doesn't include the set code, only the full id
-    // (e.g. "swsh3-136") which is set-code-prefixed - good enough as a
-    // fallback grouping key since fetchOne fills in the real one on demand.
     setCode: c.id.split("-")[0] ?? "",
     imageUrl: highResUrl(c.image),
   }));
