@@ -24,6 +24,7 @@ import { IconLoader2 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 
 const EMPTY_LANGUAGES: string[] = [];
 
@@ -32,6 +33,7 @@ interface CreateCollectionDialogProps {
 }
 
 export function CreateCollectionDialog({ trigger }: CreateCollectionDialogProps) {
+  const { t } = useTranslation("collections");
   const { collections, isMutating, createCollection } = useCollections();
   const { data: games = [] } = useQuery(gamesQueryOptions);
   const activeGames = games.filter((g) => g.isActive);
@@ -82,7 +84,7 @@ export function CreateCollectionDialog({ trigger }: CreateCollectionDialogProps)
       if (isDuplicate) {
         form.setError("name", {
           type: "manual",
-          message: "A collection with this name already exists",
+          message: t("createDialog.duplicateName"),
         });
         return;
       }
@@ -90,15 +92,15 @@ export function CreateCollectionDialog({ trigger }: CreateCollectionDialogProps)
       form.reset();
       setOpen(false);
     },
-    [createCollection, collections, form],
+    [createCollection, collections, form, t],
   );
 
   return (
     <DynamicDialog
       open={open}
       onOpenChange={handleOpenChange}
-      title="New Collection"
-      description="Create a new collection to scan cards into."
+      title={t("createDialog.title")}
+      description={t("createDialog.description")}
       trigger={trigger({
         disabled: isMutating || activeGames.length === 0,
         noGames: activeGames.length === 0,
@@ -106,14 +108,14 @@ export function CreateCollectionDialog({ trigger }: CreateCollectionDialogProps)
       footer={
         <>
           <Button variant="outline" onClick={() => handleOpenChange(false)}>
-            Cancel
+            {t("createDialog.cancel")}
           </Button>
           <Button
             onClick={form.handleSubmit(handleCreate)}
             disabled={!form.formState.isValid || isMutating}
           >
             {isMutating && <IconLoader2 className="size-4 animate-spin" />}
-            Create
+            {t("createDialog.create")}
           </Button>
         </>
       }
@@ -129,12 +131,12 @@ export function CreateCollectionDialog({ trigger }: CreateCollectionDialogProps)
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid || undefined}>
               <FieldLabel htmlFor="collection-name">
-                Collection name
+                {t("createDialog.nameLabel")}
               </FieldLabel>
               <Input
                 {...field}
                 id="collection-name"
-                placeholder="e.g. Commander Collection, Draft Haul..."
+                placeholder={t("createDialog.namePlaceholder")}
                 aria-invalid={fieldState.invalid}
                 autoFocus
               />
@@ -147,7 +149,9 @@ export function CreateCollectionDialog({ trigger }: CreateCollectionDialogProps)
           control={form.control}
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid || undefined}>
-              <FieldLabel htmlFor="collection-game">Game</FieldLabel>
+              <FieldLabel htmlFor="collection-game">
+                {t("createDialog.gameLabel")}
+              </FieldLabel>
               <Select
                 value={field.value}
                 onValueChange={(guid) => {
@@ -156,7 +160,7 @@ export function CreateCollectionDialog({ trigger }: CreateCollectionDialogProps)
                 }}
               >
                 <SelectTrigger id="collection-game">
-                  <SelectValue placeholder="Select a game...">
+                  <SelectValue placeholder={t("createDialog.gamePlaceholder")}>
                     {activeGames.find((g) => g.guid === field.value)?.name}
                   </SelectValue>
                 </SelectTrigger>
@@ -177,13 +181,15 @@ export function CreateCollectionDialog({ trigger }: CreateCollectionDialogProps)
           control={form.control}
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid || undefined}>
-              <FieldLabel htmlFor="collection-lang">Language</FieldLabel>
+              <FieldLabel htmlFor="collection-lang">
+                {t("createDialog.langLabel")}
+              </FieldLabel>
               <Select value={field.value} onValueChange={field.onChange}>
                 <SelectTrigger
                   id="collection-lang"
                   disabled={gameLanguages.length <= 1}
                 >
-                  <SelectValue placeholder="Select a language...">
+                  <SelectValue placeholder={t("createDialog.langPlaceholder")}>
                     {LANGUAGE_LABELS[field.value] ?? field.value}
                   </SelectValue>
                 </SelectTrigger>

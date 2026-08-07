@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
+import { Trans, useTranslation } from "react-i18next";
 
 function Pin({ children }: { children: ReactNode }) {
   return (
@@ -53,48 +54,107 @@ function MiniTable({
   );
 }
 
-const CHANNEL_MAP: [string, string][] = [
-  ["0", "Unused - reserved for LEDs in firmware, not part of this build"],
-  ["1", "Unused - reserved for LEDs in firmware, not part of this build"],
-  ["2", "Unused - reserved for LEDs in firmware, not part of this build"],
-  ["3", "Unused - reserved for LEDs in firmware, not part of this build"],
-  ["4", "Module 1 - bottom"],
-  ["5", "Module 1 - paddle"],
-  ["6", "Module 1 - pusher"],
-  ["7", "Module 2 - bottom"],
-  ["8", "Module 2 - paddle"],
-  ["9", "Module 2 - pusher"],
-  ["10", "Module 3 - bottom"],
-  ["11", "Module 3 - paddle"],
-  ["12", "Module 3 - pusher"],
-  ["13", "Feeder (continuous rotation)"],
-];
-
 export function BuildWiring() {
+  const { t } = useTranslation("build");
+
+  const CHANNEL_MAP: [string, string][] = [
+    ["0", t("wiring.channelMap.unused")],
+    ["1", t("wiring.channelMap.unused")],
+    ["2", t("wiring.channelMap.unused")],
+    ["3", t("wiring.channelMap.unused")],
+    [
+      "4",
+      t("wiring.channelMap.modulePart", {
+        n: 1,
+        part: t("wiring.parts.bottom"),
+      }),
+    ],
+    [
+      "5",
+      t("wiring.channelMap.modulePart", {
+        n: 1,
+        part: t("wiring.parts.paddle"),
+      }),
+    ],
+    [
+      "6",
+      t("wiring.channelMap.modulePart", {
+        n: 1,
+        part: t("wiring.parts.pusher"),
+      }),
+    ],
+    [
+      "7",
+      t("wiring.channelMap.modulePart", {
+        n: 2,
+        part: t("wiring.parts.bottom"),
+      }),
+    ],
+    [
+      "8",
+      t("wiring.channelMap.modulePart", {
+        n: 2,
+        part: t("wiring.parts.paddle"),
+      }),
+    ],
+    [
+      "9",
+      t("wiring.channelMap.modulePart", {
+        n: 2,
+        part: t("wiring.parts.pusher"),
+      }),
+    ],
+    [
+      "10",
+      t("wiring.channelMap.modulePart", {
+        n: 3,
+        part: t("wiring.parts.bottom"),
+      }),
+    ],
+    [
+      "11",
+      t("wiring.channelMap.modulePart", {
+        n: 3,
+        part: t("wiring.parts.paddle"),
+      }),
+    ],
+    [
+      "12",
+      t("wiring.channelMap.modulePart", {
+        n: 3,
+        part: t("wiring.parts.pusher"),
+      }),
+    ],
+    ["13", t("wiring.channelMap.feeder")],
+  ];
+
   return (
     <section id="wiring" className="mx-auto max-w-4xl px-4 py-16">
       <h2 className="font-heading text-2xl font-semibold tracking-tight md:text-3xl">
-        Wiring
+        {t("wiring.heading")}
       </h2>
       <p className="mt-3 max-w-2xl text-sm/relaxed text-muted-foreground">
-        Everything hangs off one I²C bus (PCA9685) and four digital input pins
-        (IR sensors). The PCA9685's logic side runs off the Arduino's 5V; its{" "}
-        <Pin>V+</Pin> servo rail must come from the external supply, and that
-        supply's ground must be tied back to the Arduino's ground - a floating
-        servo ground is the most common reason a freshly wired unit won't move.
+        <Trans
+          t={t}
+          i18nKey="wiring.description"
+          components={{ pin: <Pin /> }}
+        />
       </p>
 
       <div className="mt-8 flex flex-col gap-8">
         <div>
           <h3 className="mb-2 font-heading text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-            I²C bus
+            {t("wiring.sections.i2c.title")}
           </h3>
           <MiniTable
-            columns={["PCA9685 pin", "Arduino Uno R4 Minima"]}
+            columns={[
+              t("wiring.i2cTable.colPcaPin"),
+              t("wiring.i2cTable.colArduino"),
+            ]}
             rows={[
               [<Pin key="a">SDA</Pin>, <Pin key="b">SDA</Pin>],
               [<Pin key="a">SCL</Pin>, <Pin key="b">SCL</Pin>],
-              ["VCC (logic)", <Pin key="b">5V</Pin>],
+              [t("wiring.i2cTable.vccLogic"), <Pin key="b">5V</Pin>],
               [<Pin key="a">GND</Pin>, <Pin key="b">GND</Pin>],
             ]}
           />
@@ -102,24 +162,36 @@ export function BuildWiring() {
 
         <div>
           <h3 className="mb-2 font-heading text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-            Servo power
+            {t("wiring.sections.servoPower.title")}
           </h3>
           <MiniTable
-            columns={["From", "To"]}
+            columns={[
+              t("wiring.servoPowerTable.colFrom"),
+              t("wiring.servoPowerTable.colTo"),
+            ]}
             rows={[
               [
-                "External 5V PSU, +",
-                <>
-                  PCA9685 <Pin>V+</Pin> terminal block
-                </>,
+                t("wiring.servoPowerTable.psuPlus"),
+                <Trans
+                  key="to-plus"
+                  t={t}
+                  i18nKey="wiring.servoPowerTable.toPositive"
+                  components={{ pin: <Pin /> }}
+                />,
               ],
               [
-                "External 5V PSU, −",
-                <>
-                  PCA9685 <Pin>GND</Pin> terminal block{" "}
-                  <em className="text-muted-foreground not-italic">and</em>{" "}
-                  Arduino <Pin>GND</Pin>
-                </>,
+                t("wiring.servoPowerTable.psuMinus"),
+                <Trans
+                  key="to-minus"
+                  t={t}
+                  i18nKey="wiring.servoPowerTable.toNegative"
+                  components={{
+                    pin: <Pin />,
+                    em: (
+                      <em className="text-muted-foreground not-italic" />
+                    ),
+                  }}
+                />,
               ],
             ]}
           />
@@ -127,32 +199,50 @@ export function BuildWiring() {
 
         <div>
           <h3 className="mb-2 font-heading text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-            IR sensors
+            {t("wiring.sections.irSensors.title")}
           </h3>
           <p className="mb-3 text-xs/relaxed text-muted-foreground">
-            All four read active-
-            <strong className="text-foreground">LOW</strong> (pin goes low when
-            a card is present) using the Arduino's internal pull-up - wire the
-            sensor's digital <Pin>OUT</Pin> straight to the pin, no external
-            pull-up resistor needed.
+            <Trans
+              t={t}
+              i18nKey="wiring.irSensors.description"
+              components={{
+                strong: <strong className="text-foreground" />,
+                pin: <Pin />,
+              }}
+            />
           </p>
           <MiniTable
-            columns={["Sensor", "Arduino pin"]}
+            columns={[
+              t("wiring.irTable.colSensor"),
+              t("wiring.irTable.colPin"),
+            ]}
             rows={[
-              ["Module 1 gate", <Pin key="p">D2</Pin>],
-              ["Module 2 gate", <Pin key="p">D3</Pin>],
-              ["Module 3 gate", <Pin key="p">D4</Pin>],
-              ["Hopper throat", <Pin key="p">D5</Pin>],
+              [
+                t("wiring.irTable.moduleGate", { n: 1 }),
+                <Pin key="p">D2</Pin>,
+              ],
+              [
+                t("wiring.irTable.moduleGate", { n: 2 }),
+                <Pin key="p">D3</Pin>,
+              ],
+              [
+                t("wiring.irTable.moduleGate", { n: 3 }),
+                <Pin key="p">D4</Pin>,
+              ],
+              [t("wiring.irTable.hopperThroat"), <Pin key="p">D5</Pin>],
             ]}
           />
         </div>
 
         <div>
           <h3 className="mb-2 font-heading text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-            PCA9685 channel map
+            {t("wiring.sections.channelMap.title")}
           </h3>
           <MiniTable
-            columns={["Ch.", "Assignment"]}
+            columns={[
+              t("wiring.channelTable.colCh"),
+              t("wiring.channelTable.colAssignment"),
+            ]}
             rows={CHANNEL_MAP.map(([ch, assignment]) => [
               <span key="ch" className="font-mono tabular-nums">
                 {ch}
@@ -164,11 +254,11 @@ export function BuildWiring() {
 
         <div>
           <h3 className="mb-2 font-heading text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-            Wiring diagram
+            {t("wiring.sections.diagram.title")}
           </h3>
           <img
             src="/instructions/wiring-diagram.png"
-            alt="Wiring diagram showing the PCA9685, Arduino, servo, and IR sensor connections"
+            alt={t("wiring.sections.diagram.alt")}
             className="w-full rounded-lg border"
           />
         </div>

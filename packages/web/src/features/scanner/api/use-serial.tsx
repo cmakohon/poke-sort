@@ -11,6 +11,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 export type { SerialMessageListener } from "@/features/scanner/types";
@@ -18,6 +19,7 @@ export type { SerialMessageListener } from "@/features/scanner/types";
 const SerialContext = createContext<SerialContextValue | null>(null);
 
 export function SerialProvider({ children }: { children: React.ReactNode }) {
+  const { t } = useTranslation("scanner");
   const [isConnected, setIsConnected] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const portRef = useRef<SerialPort | null>(null);
@@ -188,9 +190,8 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
         try {
           await port.open({ baudRate: 9600 });
         } catch {
-          toast.error("Connection failed", {
-            description:
-              "Failed to open port. Make sure no other application is using it.",
+          toast.error(t("serial.connectionFailed.title"), {
+            description: t("serial.connectionFailed.description"),
           });
           void reportSerialEvent({
             command: "connect",
@@ -225,14 +226,14 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
           await preTestHookRef.current();
         }
         if (!portRef.current) return;
-        toast.info("Testing device…");
+        toast.info(t("serial.testingDevice"));
         const ok = await sendTest();
         if (!portRef.current) return;
         if (ok) {
-          toast.success("Device ready");
+          toast.success(t("serial.deviceReady"));
         } else {
-          toast.error("Device test failed", {
-            description: "Connected but got no response. Try reconnecting.",
+          toast.error(t("serial.deviceTestFailed.title"), {
+            description: t("serial.deviceTestFailed.description"),
           });
           void reportSerialEvent({
             command: "test",
@@ -244,7 +245,7 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
 
       return true;
     },
-    [startReading, waitForLine, sendTest, disconnect],
+    [startReading, waitForLine, sendTest, disconnect, t],
   );
 
   const connect = useCallback(async () => {

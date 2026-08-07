@@ -1,0 +1,22 @@
+{
+  "title": "Einstellungen",
+  "subtitle": "Verwalte deine Organisation, das Erscheinungsbild und Benachrichtigungen",
+  "organizations": {
+    "heading": "Organisationen"
+  },
+  "appearance": {
+    "heading": "Erscheinungsbild",
+    "description": "Passe die Akzentfarbe der App an.",
+    "primaryColor": "Primärfarbe",
+    "resetColor": "Auf Standard zurücksetzen",
+    "scannerLayout": "Scanner-Layout",
+    "scannerLayoutHorizontal": "Horizontal",
+    "scannerLayoutHorizontalDescription": "Scanner in der Seitenleiste, Karten rechts",
+    "scannerLayoutVertical": "Vertikal",
+    "scannerLayoutVerticalDescription": "Scanner oben, Kartenraster darunter",
+    "language": "Sprache"
+  },
+  "notifications": {
+    "heading": "Benachrichtigungen"
+  }
+}

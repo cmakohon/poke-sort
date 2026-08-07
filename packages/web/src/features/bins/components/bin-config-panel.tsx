@@ -13,12 +13,14 @@ import { BinRuleGroup } from "@magic-vault/shared";
 import { IconLoader2 } from "@tabler/icons-react";
 import { useCallback, useEffect } from "react";
 import { Controller, useForm, type Resolver } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 
 function emptyRuleGroup(): BinRuleGroup {
   return { id: crypto.randomUUID(), combinator: "and", conditions: [] };
 }
 
 export function BinConfigPanel() {
+  const { t } = useTranslation("bins");
   const {
     selectedConfig: config,
     save,
@@ -52,19 +54,19 @@ export function BinConfigPanel() {
     (values: BinConfigFormValues) => {
       if (!values.isCatchAll && isOnlyCatchAll) {
         form.setError("isCatchAll", {
-          message: "At least one bin must be catch-all.",
+          message: t("binConfigPanel.needCatchAllError"),
         });
         return;
       }
       save(config.binNumber, values.rules as BinRuleGroup, values.isCatchAll);
     },
-    [config, save, isOnlyCatchAll, form],
+    [config, save, isOnlyCatchAll, form, t],
   );
 
   const handleClear = useCallback(() => {
     if (isOnlyCatchAll) {
       form.setError("isCatchAll", {
-        message: "At least one bin must be catch-all.",
+        message: t("binConfigPanel.needCatchAllError"),
       });
       return;
     }
@@ -73,14 +75,16 @@ export function BinConfigPanel() {
       rules: emptyRuleGroup(),
     });
     clear(config.binNumber);
-  }, [config, clear, form, isOnlyCatchAll]);
+  }, [config, clear, form, isOnlyCatchAll, t]);
 
   const isCatchAll = form.watch("isCatchAll");
 
   return (
     <div className="flex flex-col">
       <div className="flex items-center gap-4 mb-4">
-        <h2 className="font-semibold font-heading">Bin {config.binNumber}</h2>
+        <h2 className="font-semibold font-heading">
+          {t("binConfigPanel.binHeading", { number: config.binNumber })}
+        </h2>
         <Controller
           name="isCatchAll"
           control={form.control}
@@ -92,11 +96,13 @@ export function BinConfigPanel() {
                 size="sm"
                 onClick={() => field.onChange(!field.value)}
               >
-                {field.value ? "Catch-all enabled" : "Set as catch-all"}
+                {field.value
+                  ? t("binConfigPanel.catchAllEnabled")
+                  : t("binConfigPanel.setCatchAll")}
               </Button>
               {field.value && (
                 <p className="text-xs text-muted-foreground">
-                  Cards that don&apos;t match any other bin will go here.
+                  {t("binConfigPanel.catchAllDescription")}
                 </p>
               )}
             </div>
@@ -105,7 +111,7 @@ export function BinConfigPanel() {
       </div>
       {!isCatchAll && (
         <ScrollArea>
-          <Label className="mb-2">Rules</Label>
+          <Label className="mb-2">{t("binConfigPanel.rulesLabel")}</Label>
           <Controller
             name="rules"
             control={form.control}
@@ -131,7 +137,7 @@ export function BinConfigPanel() {
           onClick={handleClear}
           disabled={isPending}
         >
-          Clear
+          {t("binConfigPanel.clear")}
         </Button>
         <Button
           type="button"
@@ -139,7 +145,7 @@ export function BinConfigPanel() {
           disabled={isPending}
         >
           {isPending && <IconLoader2 className="size-4 animate-spin" />}
-          Save
+          {t("binConfigPanel.save")}
         </Button>
       </div>
     </div>

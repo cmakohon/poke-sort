@@ -2,6 +2,7 @@ import { router } from "@/app/router";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "@/index.css";
 import { neon } from "@/lib/auth/client";
+import "@/lib/i18n";
 import { NeonAuthUIProvider } from "@neondatabase/neon-js/auth/react/ui";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";

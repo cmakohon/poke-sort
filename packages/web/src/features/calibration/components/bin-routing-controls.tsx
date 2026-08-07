@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { IconPackage, IconPlayerPlay } from "@tabler/icons-react";
+import { useTranslation } from "react-i18next";
 
 const BINS = [1, 2, 3, 4, 5, 6, 7] as const;
 
@@ -21,14 +22,15 @@ export function BinRoutingControls({
   onFeed,
   onSampleRun,
 }: BinRoutingControlsProps) {
+  const { t } = useTranslation("calibration");
   const busy = activeBin !== null || isSampleRunning;
 
   return (
     <div className="flex flex-col gap-2">
-      <Label>Bin Routing</Label>
+      <Label>{t("binRoutingControls.label")}</Label>
       <div className="flex items-center gap-2">
         <Button variant="outline" disabled={!isConnected || busy} onClick={onFeed}>
-          Feed
+          {t("binRoutingControls.feed")}
         </Button>
         <Button
           variant={isSampleRunning ? "default" : "outline"}
@@ -38,9 +40,9 @@ export function BinRoutingControls({
           <IconPlayerPlay />
           {isSampleRunning
             ? activeBin !== null
-              ? `Bin ${activeBin}…`
-              : "Running…"
-            : "Sample Run"}
+              ? t("binRoutingControls.binActive", { bin: activeBin })
+              : t("binRoutingControls.running")
+            : t("binRoutingControls.sampleRun")}
         </Button>
         <div className="bg-border w-px self-stretch" />
         {BINS.map((bin) => (
@@ -51,7 +53,9 @@ export function BinRoutingControls({
             onClick={() => onTestBin(bin)}
           >
             <IconPackage />
-            Bin {activeBin === bin && !isSampleRunning ? "…" : bin}
+            {t("binRoutingControls.binButton", {
+              bin: activeBin === bin && !isSampleRunning ? "…" : bin,
+            })}
           </Button>
         ))}
       </div>

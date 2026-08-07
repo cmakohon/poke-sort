@@ -13,8 +13,10 @@ import { cn } from "@/lib/utils";
 import { DEFAULT_SCAN_REGION } from "@magic-vault/shared";
 import { IconCheck, IconRotate } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 
 export function PrimaryColorPicker() {
+  const { t } = useTranslation("settings");
   const { activeOrg } = useOrg();
   const queryClient = useQueryClient();
   const queryOpts = orgSettingsQueryOptions(activeOrg?.id);
@@ -94,12 +96,12 @@ export function PrimaryColorPicker() {
         {selectedName && (
           <button
             type="button"
-            title="Reset to default"
+            title={t("appearance.resetColor")}
             onClick={handleReset}
             className="size-7 rounded-md shrink-0 border border-dashed border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors hover:border-foreground"
           >
             <IconRotate size={13} />
-            <span className="sr-only">Reset to default</span>
+            <span className="sr-only">{t("appearance.resetColor")}</span>
           </button>
         )}
       </div>

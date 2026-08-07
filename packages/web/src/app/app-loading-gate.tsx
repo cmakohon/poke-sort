@@ -3,6 +3,7 @@ import { useOrg } from "@/features/companies/api/use-organization";
 import { cn } from "@/lib/utils";
 import { IconLoader2, IconPigFilled } from "@tabler/icons-react";
 import { useEffect, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 function AppLoadingScreen({
   className,
@@ -11,6 +12,7 @@ function AppLoadingScreen({
   className?: string;
   onTransitionEnd?: () => void;
 }) {
+  const { t } = useTranslation("common");
   return (
     <div
       className={cn(
@@ -29,7 +31,7 @@ function AppLoadingScreen({
         </span>
         <div className="flex items-center gap-2 text-muted-foreground">
           <IconLoader2 size={14} className="animate-spin" />
-          <span className="text-xs">Loading your vault…</span>
+          <span className="text-xs">{t("loadingGate.loadingVault")}</span>
         </div>
       </div>
     </div>

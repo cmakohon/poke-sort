@@ -32,10 +32,12 @@ import { IconFolderPlus, IconLoader2 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 
 const EMPTY_LANGUAGES: string[] = [];
 
 export function RequireCollectionDialog() {
+  const { t } = useTranslation("collections");
   const { collections, isLoading, isMutating, createCollection } =
     useCollections();
   const { activeOrg } = useOrg();
@@ -85,12 +87,9 @@ export function RequireCollectionDialog() {
         <DialogHeader>
           <div className="flex items-center gap-2 mb-1">
             <IconFolderPlus className="size-5 text-primary" />
-            <DialogTitle>Create your first collection</DialogTitle>
+            <DialogTitle>{t("requireDialog.title")}</DialogTitle>
           </div>
-          <DialogDescription>
-            Collections organise your scanned cards. You need at least one
-            before you can start scanning.
-          </DialogDescription>
+          <DialogDescription>{t("requireDialog.description")}</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(handleCreate)} className="flex flex-col gap-4">
@@ -100,12 +99,12 @@ export function RequireCollectionDialog() {
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid || undefined}>
                 <FieldLabel htmlFor="first-collection-name">
-                  Collection name
+                  {t("createDialog.nameLabel")}
                 </FieldLabel>
                 <Input
                   {...field}
                   id="first-collection-name"
-                  placeholder="e.g. Commander Collection, Draft Haul…"
+                  placeholder={t("createDialog.namePlaceholder")}
                   aria-invalid={fieldState.invalid}
                   autoFocus
                 />
@@ -120,7 +119,9 @@ export function RequireCollectionDialog() {
             control={form.control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid || undefined}>
-                <FieldLabel htmlFor="first-collection-game">Game</FieldLabel>
+                <FieldLabel htmlFor="first-collection-game">
+                  {t("createDialog.gameLabel")}
+                </FieldLabel>
                 <Select
                   value={field.value}
                   onValueChange={(guid) => {
@@ -129,7 +130,7 @@ export function RequireCollectionDialog() {
                   }}
                 >
                   <SelectTrigger id="first-collection-game">
-                    <SelectValue placeholder="Select a game..." />
+                    <SelectValue placeholder={t("createDialog.gamePlaceholder")} />
                   </SelectTrigger>
                   <SelectContent>
                     {activeGames.map((game) => (
@@ -151,14 +152,14 @@ export function RequireCollectionDialog() {
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid || undefined}>
                 <FieldLabel htmlFor="first-collection-lang">
-                  Language
+                  {t("createDialog.langLabel")}
                 </FieldLabel>
                 <Select value={field.value} onValueChange={field.onChange}>
                   <SelectTrigger
                     id="first-collection-lang"
                     disabled={gameLanguages.length <= 1}
                   >
-                    <SelectValue placeholder="Select a language...">
+                    <SelectValue placeholder={t("createDialog.langPlaceholder")}>
                       {LANGUAGE_LABELS[field.value] ?? field.value}
                     </SelectValue>
                   </SelectTrigger>
@@ -187,7 +188,7 @@ export function RequireCollectionDialog() {
             className="w-full"
           >
             {isMutating && <IconLoader2 className="size-4 animate-spin" />}
-            Create Collection
+            {t("requireDialog.submit")}
           </Button>
         </DialogFooter>
       </DialogContent>

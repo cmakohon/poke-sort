@@ -7,18 +7,20 @@ import {
   IconCube,
   IconDownload,
 } from "@tabler/icons-react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 export function LandingOpenSource() {
+  const { t } = useTranslation("landing");
+
   return (
     <section id="open-source" className="mx-auto max-w-6xl px-4 py-20">
       <div className="mx-auto max-w-2xl text-center">
         <h2 className="font-heading text-2xl font-semibold tracking-tight md:text-3xl">
-          Fully open source
+          {t("openSource.heading")}
         </h2>
         <p className="mt-3 text-sm/relaxed text-muted-foreground md:text-base/relaxed">
-          The software and the physical sorter are both free to build, inspect,
-          and modify. Grab the code and print your own.
+          {t("openSource.subtitle")}
         </p>
       </div>
 
@@ -28,10 +30,11 @@ export function LandingOpenSource() {
             <IconBrandGithub size={18} />
           </span>
           <div>
-            <p className="font-heading text-sm font-semibold">Source code</p>
+            <p className="font-heading text-sm font-semibold">
+              {t("openSource.sourceCode.title")}
+            </p>
             <p className="mt-1 text-xs/relaxed text-muted-foreground">
-              The web app, API, and Arduino firmware are all in one repo under
-              an open license.
+              {t("openSource.sourceCode.description")}
             </p>
           </div>
           <a
@@ -44,7 +47,7 @@ export function LandingOpenSource() {
             )}
           >
             <IconBrandGithub size={16} />
-            View on GitHub
+            {t("openSource.sourceCode.cta")}
           </a>
         </div>
 
@@ -54,11 +57,10 @@ export function LandingOpenSource() {
           </span>
           <div>
             <p className="font-heading text-sm font-semibold">
-              3D printable sorter
+              {t("openSource.printableSorter.title")}
             </p>
             <p className="mt-1 text-xs/relaxed text-muted-foreground">
-              Print the card sorter yourself - Fusion 360 and 3MF files are
-              included in the repo.
+              {t("openSource.printableSorter.description")}
             </p>
           </div>
           <div className="mt-2 flex flex-wrap gap-2">
@@ -69,13 +71,13 @@ export function LandingOpenSource() {
               className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
             >
               <IconDownload size={16} />
-              Get the 3D model
+              {t("openSource.printableSorter.getModel")}
             </a>
             <Link
               to="/build"
               className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
             >
-              Read the build guide
+              {t("openSource.printableSorter.buildGuide")}
             </Link>
           </div>
         </div>
@@ -85,10 +87,11 @@ export function LandingOpenSource() {
             <IconBrandDiscord size={18} />
           </span>
           <div>
-            <p className="font-heading text-sm font-semibold">Community</p>
+            <p className="font-heading text-sm font-semibold">
+              {t("openSource.community.title")}
+            </p>
             <p className="mt-1 text-xs/relaxed text-muted-foreground">
-              Join the Discord to share builds, get help, and talk to other
-              people running their own sorter.
+              {t("openSource.community.description")}
             </p>
           </div>
           <a
@@ -101,7 +104,7 @@ export function LandingOpenSource() {
             )}
           >
             <IconBrandDiscord size={16} />
-            Join the Discord
+            {t("openSource.community.cta")}
           </a>
         </div>
       </div>

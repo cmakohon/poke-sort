@@ -1,5 +1,6 @@
 import { formatUsd } from "@/features/scanner/components/scan-stats";
 import type { ScanStats } from "@/features/scanner/lib/compute-stats";
+import { useTranslation } from "react-i18next";
 
 function StatCell({
   label,
@@ -29,26 +30,33 @@ export function SessionStatsPanel({
   stats,
   totalCards,
 }: SessionStatsPanelProps) {
+  const { t } = useTranslation("scanner");
   return (
     <>
       <div className="rounded-lg border bg-input/20 dark:bg-input/30">
         <div className="grid grid-cols-2 divide-x divide-y divide-border">
           <div className="col-span-2 divide-y divide-border">
-            <StatCell label="Total Cards" value={String(totalCards)} />
+            <StatCell
+              label={t("sessionStatsPanel.totalCards")}
+              value={String(totalCards)}
+            />
           </div>
           <StatCell
-            label="Unique"
+            label={t("sessionStatsPanel.unique")}
             value={stats ? String(stats.uniqueCount) : "-"}
             className={!stats?.hasPricing ? "col-span-2" : undefined}
           />
           {stats?.hasPricing && (
-            <StatCell label="Value" value={formatUsd(stats.totalValue)} />
+            <StatCell
+              label={t("sessionStatsPanel.value")}
+              value={formatUsd(stats.totalValue)}
+            />
           )}
         </div>
         {stats?.mostValuable && (
           <div className="p-2 border-t border-input">
             <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">
-              Most Valuable
+              {t("sessionStatsPanel.mostValuable")}
             </p>
             <p className="text-xs font-semibold truncate">
               {stats.mostValuable.name}
@@ -63,7 +71,7 @@ export function SessionStatsPanel({
       {stats && stats.rarities.length > 0 && (
         <div className="rounded-lg border bg-input/20 dark:bg-input/30 p-2">
           <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
-            By Rarity
+            {t("sessionStatsPanel.byRarity")}
           </p>
           <div className="flex flex-col gap-1">
             {stats.rarities.map((r) => (

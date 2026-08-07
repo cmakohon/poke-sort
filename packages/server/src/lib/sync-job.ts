@@ -2,12 +2,12 @@ import type { SyncState, SyncStatus } from "@magic-vault/shared";
 import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { cardImageVectors } from "../db/schema";
+import { resolveGameDataSourceUrl } from "./card-search/resolve";
+import type { SyncSource, SyncSourceCard } from "./card-search/sync-types";
+import { sendDiscordNotification } from "./discord";
 import { gundamSyncSource } from "./gundam/sync";
 import { pokemonSyncSource } from "./pokemon/sync";
 import { scryfallSyncSource } from "./scryfall/sync";
-import type { SyncSource, SyncSourceCard } from "./card-search/sync-types";
-import { resolveGameDataSourceUrl } from "./card-search/resolve";
-import { sendDiscordNotification } from "./discord";
 import { vectorizeImageFromBuffer } from "./vectorize";
 
 export const SYNC_SOURCES: Record<string, SyncSource> = {
@@ -112,15 +112,23 @@ async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-const VECTORIZE_CONCURRENCY = 4;
+const VECTORIZE_CONCURRENCY = 10;
 
 async function runSync(source: SyncSource, lang: string): Promise<void> {
-  const baseUrl = await resolveGameDataSourceUrl(source.gameKey, source.defaultUrl);
+  const baseUrl = await resolveGameDataSourceUrl(
+    source.gameKey,
+    source.defaultUrl,
+  );
   addLog(`Using data source: ${baseUrl}`);
 
   let cards: Awaited<ReturnType<SyncSource["fetchCards"]>>;
   try {
-    cards = await source.fetchCards(baseUrl, addLog, lang, abortController?.signal);
+    cards = await source.fetchCards(
+      baseUrl,
+      addLog,
+      lang,
+      abortController?.signal,
+    );
   } catch (err) {
     if (cancelFlag) {
       state = { ...state, status: "cancelled" };
@@ -167,7 +175,8 @@ async function runSync(source: SyncSource, lang: string): Promise<void> {
         headers: source.fetchHeaders,
         signal: abortController?.signal,
       });
-      if (!imageRes.ok) throw new Error(`Image fetch failed: ${imageRes.status}`);
+      if (!imageRes.ok)
+        throw new Error(`Image fetch failed: ${imageRes.status}`);
       const buffer = Buffer.from(await imageRes.arrayBuffer());
       const embedding = await vectorizeImageFromBuffer(buffer);
 
@@ -214,7 +223,6 @@ async function runSync(source: SyncSource, lang: string): Promise<void> {
       const index = nextIndex++;
       if (index >= cards.length) return;
       await processCard(cards[index]);
-      await sleep(100);
     }
   }
 

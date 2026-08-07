@@ -1,29 +1,33 @@
 import { useCollections } from "@/features/collections/api/use-collections";
 import { cn } from "@/lib/utils";
 import { IconChevronRight } from "@tabler/icons-react";
+import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router-dom";
 
 type Crumb = { label: string; to?: string };
 
 function useBreadcrumbs(): Crumb[] {
+  const { t } = useTranslation("common");
   const { pathname } = useLocation();
   const { collections } = useCollections();
 
-  if (pathname === "/app") return [{ label: "Scanner" }];
-  if (pathname === "/app/collections") return [{ label: "Collections" }];
-  if (pathname === "/app/calibrate") return [{ label: "Calibrate" }];
-  if (pathname === "/app/settings") return [{ label: "Settings" }];
-  if (pathname === "/app/admin") return [{ label: "Admin" }];
-  if (pathname === "/app/monitor") return [{ label: "Monitor" }];
-  if (pathname.startsWith("/app/account/")) return [{ label: "Account" }];
+  if (pathname === "/app") return [{ label: t("nav.scanner") }];
+  if (pathname === "/app/collections")
+    return [{ label: t("nav.collections") }];
+  if (pathname === "/app/calibrate") return [{ label: t("nav.calibrate") }];
+  if (pathname === "/app/settings") return [{ label: t("nav.settings") }];
+  if (pathname === "/app/admin") return [{ label: t("nav.admin") }];
+  if (pathname === "/app/monitor") return [{ label: t("nav.monitor") }];
+  if (pathname.startsWith("/app/account/"))
+    return [{ label: t("breadcrumb.account") }];
 
   const binsMatch = pathname.match(/^\/app\/collections\/([^/]+)\/bins$/);
   if (binsMatch) {
     const collection = collections.find((c) => c.guid === binsMatch[1]);
     return [
-      { label: "Collections", to: "/app/collections" },
+      { label: t("nav.collections"), to: "/app/collections" },
       { label: collection?.name ?? "…" },
-      { label: "Sorting Logic" },
+      { label: t("breadcrumb.sortingLogic") },
     ];
   }
 
@@ -31,7 +35,7 @@ function useBreadcrumbs(): Crumb[] {
   if (monitorMatch) {
     const collection = collections.find((c) => c.guid === monitorMatch[1]);
     return [
-      { label: "Monitor", to: "/app/monitor" },
+      { label: t("nav.monitor"), to: "/app/monitor" },
       { label: collection?.name ?? "…" },
     ];
   }

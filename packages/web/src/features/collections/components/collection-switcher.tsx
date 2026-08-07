@@ -34,10 +34,12 @@ import {
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
 export function CollectionSwitcher() {
+  const { t } = useTranslation("collections");
   const { collections, activeCollection, isActivating, activateCollection } =
     useCollections();
   const { activeOrg } = useOrg();
@@ -59,13 +61,13 @@ export function CollectionSwitcher() {
     setReleasing(true);
     try {
       await releaseScanLock(activeCollection.guid);
-      toast.success("Session released");
+      toast.success(t("switcher.sessionReleased"));
     } catch {
-      toast.error("Failed to release session");
+      toast.error(t("switcher.releaseFailed"));
     } finally {
       setReleasing(false);
     }
-  }, [activeCollection]);
+  }, [activeCollection, t]);
 
   const handleShare = useCallback(() => {
     if (!activeCollection) return;
@@ -73,15 +75,14 @@ export function CollectionSwitcher() {
     navigator.clipboard
       .writeText(url)
       .then(() => {
-        toast.success("Monitor link copied", {
-          description:
-            "Share this link with org members to let them watch the session.",
+        toast.success(t("switcher.monitorLinkCopied"), {
+          description: t("switcher.monitorLinkCopiedDescription"),
         });
       })
       .catch(() => {
-        toast.error("Could not copy link", { description: url });
+        toast.error(t("switcher.copyLinkFailed"), { description: url });
       });
-  }, [activeCollection]);
+  }, [activeCollection, t]);
 
   if (isLoading) {
     return (
@@ -96,7 +97,7 @@ export function CollectionSwitcher() {
   return (
     <Field>
       <span className="flex items-center gap-1.5">
-        <FieldLabel>Collection</FieldLabel>
+        <FieldLabel>{t("switcher.label")}</FieldLabel>
         {activeCollection?.game && (
           <Badge variant="secondary" className="shrink-0">
             {activeCollection.game.name}
@@ -118,7 +119,7 @@ export function CollectionSwitcher() {
             className="flex-1 overflow-hidden"
             disabled={isActivating}
           >
-            <SelectValue placeholder="No collection selected">
+            <SelectValue placeholder={t("switcher.noCollectionSelected")}>
               <span className="flex items-center gap-1.5 min-w-0">
                 {isActivating && (
                   <IconLoader2 className="size-3 animate-spin shrink-0 text-muted-foreground" />
@@ -127,7 +128,7 @@ export function CollectionSwitcher() {
                   <IconLock size={11} className="shrink-0 text-amber-500" />
                 )}
                 <span className="truncate">
-                  {activeCollection?.name ?? "No collection"}
+                  {activeCollection?.name ?? t("switcher.noCollection")}
                 </span>
               </span>
             </SelectValue>
@@ -156,7 +157,7 @@ export function CollectionSwitcher() {
             })}
             {collections.length === 0 && (
               <div className="px-2 py-3 text-xs text-muted-foreground text-center">
-                No collections yet
+                {t("switcher.noCollectionsYet")}
               </div>
             )}
           </SelectContent>
@@ -172,7 +173,7 @@ export function CollectionSwitcher() {
               </Button>
             }
           />
-          <TooltipContent>Manage Collections</TooltipContent>
+          <TooltipContent>{t("switcher.manageCollections")}</TooltipContent>
         </Tooltip>
 
         <Tooltip>
@@ -188,7 +189,7 @@ export function CollectionSwitcher() {
               </Button>
             }
           />
-          <TooltipContent>Copy monitor link</TooltipContent>
+          <TooltipContent>{t("switcher.copyMonitorLink")}</TooltipContent>
         </Tooltip>
 
         {isLockedByMe && (
@@ -210,7 +211,7 @@ export function CollectionSwitcher() {
                 </Button>
               }
             />
-            <TooltipContent>Give up session</TooltipContent>
+            <TooltipContent>{t("switcher.giveUpSession")}</TooltipContent>
           </Tooltip>
         )}
 
@@ -223,11 +224,7 @@ export function CollectionSwitcher() {
                     variant="outline"
                     size="icon"
                     disabled={disabled}
-                    title={
-                      noGames
-                        ? "Ask an admin to add a game before creating a collection"
-                        : undefined
-                    }
+                    title={noGames ? t("switcher.noGamesHint") : undefined}
                   >
                     <IconPlus />
                   </Button>
@@ -235,7 +232,7 @@ export function CollectionSwitcher() {
               />
             )}
           />
-          <TooltipContent>New Collection</TooltipContent>
+          <TooltipContent>{t("switcher.newCollection")}</TooltipContent>
         </Tooltip>
       </ButtonGroup>
     </Field>

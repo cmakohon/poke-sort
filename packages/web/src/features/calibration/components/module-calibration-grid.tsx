@@ -14,6 +14,7 @@ import type {
 } from "@/features/calibration/types";
 import type { ModuleConfig, ServoCalibration } from "@magic-vault/shared";
 import { IconRotateClockwise } from "@tabler/icons-react";
+import { useTranslation } from "react-i18next";
 
 interface ServoControlProps {
   module: 1 | 2 | 3;
@@ -54,15 +55,21 @@ function ServoControl({
   onSliderChange,
   onSetPosition,
 }: ServoControlProps) {
+  const { t } = useTranslation("calibration");
+  const positionLabel = (position: string) =>
+    t(`moduleCalibrationGrid.positions.${position}`).toUpperCase();
+
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">{servo.label}</p>
+        <p className="text-xs text-muted-foreground">{t(servo.labelKey)}</p>
         <button
           disabled={!isConnected}
           onClick={() => onReset(module, servo)}
           className="text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          title={`Reset to ${servo.defaultPosition}`}
+          title={t("moduleCalibrationGrid.resetTo", {
+            position: positionLabel(servo.defaultPosition),
+          })}
         >
           <IconRotateClockwise size={12} />
         </button>
@@ -77,7 +84,7 @@ function ServoControl({
             onClick={() => onControl(module, servo.name, position)}
             className="flex-1"
           >
-            {position.toUpperCase()}
+            {positionLabel(position)}
           </Button>
         ))}
       </ButtonGroup>
@@ -112,8 +119,7 @@ function ServoControl({
             }
           />
           <TooltipContent>
-            Raw servo pulse position (120-490). Use the position buttons
-            above, then a "Set" button to save this as a calibration point.
+            {t("moduleCalibrationGrid.sliderTooltip")}
           </TooltipContent>
         </Tooltip>
         <Button
@@ -145,7 +151,7 @@ function ServoControl({
             onClick={() => onSetPosition(module, pos.key, sliderValue)}
             className="flex-1"
           >
-            {pos.label}
+            {t(pos.labelKey)}
           </Button>
         ))}
       </ButtonGroup>
@@ -201,6 +207,7 @@ export function ModuleCalibrationGrid({
   onSliderChange,
   onSetPosition,
 }: ModuleCalibrationGridProps) {
+  const { t } = useTranslation("calibration");
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 rounded-lg border overflow-hidden">
       {MODULES.map((module) => {
@@ -210,7 +217,9 @@ export function ModuleCalibrationGrid({
             key={module}
             className="p-2 flex flex-col gap-5 border-b md:border-b-0 md:border-r last:border-0 bg-sidebar"
           >
-            <h2 className="text-sm font-bold font-heading">Module {module}</h2>
+            <h2 className="text-sm font-bold font-heading">
+              {t("moduleCalibrationGrid.moduleHeading", { module })}
+            </h2>
             {SERVOS.map((servo) => {
               const sliderKey = `${module}:${servo.name}` as SliderKey;
               return (

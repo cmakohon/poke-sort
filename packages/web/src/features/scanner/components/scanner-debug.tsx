@@ -19,6 +19,7 @@ import {
   IconCards,
   IconStack2,
 } from "@tabler/icons-react";
+import { useTranslation } from "react-i18next";
 
 // All three use real M11 image URLs so they actually render.
 // set/collector differ to simulate a realistic multi-printing scenario.
@@ -182,6 +183,7 @@ const POKEMON_MOCK_CARDS: PlayingCardWithDistance[] = [PIKACHU_BASE1];
 let mockCardIndex = 0;
 
 export function ScannerDebug() {
+  const { t } = useTranslation("scanner");
   const { isAdmin } = useRole();
   const { addCard } = useScannedCards();
   const { activeCollection } = useCollections();
@@ -242,15 +244,15 @@ export function ScannerDebug() {
       <DropdownMenuContent side="right" align="end">
         <DropdownMenuGroup>
           <DropdownMenuLabel className="text-xs font-mono">
-            Debug
+            {t("scannerDebug.heading")}
           </DropdownMenuLabel>
           <DropdownMenuItem onClick={handleSimulateScan}>
             <IconCards className="size-3.5" />
-            Simulate Scan
+            {t("scannerDebug.simulateScan")}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={handleSimulateMultiMatch}>
             <IconStack2 className="size-3.5" />
-            Simulate Multi-Match
+            {t("scannerDebug.simulateMultiMatch")}
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
@@ -261,7 +263,7 @@ export function ScannerDebug() {
             variant="destructive"
           >
             <IconAlertTriangle className="size-3.5" />
-            Force Error
+            {t("scannerDebug.forceError")}
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>

@@ -1,0 +1,74 @@
+{
+  "nav": {
+    "scanner": "Scanner",
+    "collections": "Collections",
+    "monitor": "Monitor",
+    "calibrate": "Calibrate",
+    "settings": "Settings",
+    "admin": "Admin",
+    "collapse": "Collapse",
+    "collapseSidebar": "Collapse sidebar ([)",
+    "expandSidebar": "Expand sidebar ([)"
+  },
+  "breadcrumb": {
+    "account": "Account",
+    "sortingLogic": "Sorting Logic"
+  },
+  "emailVerification": {
+    "banner": "Please verify your email address ({{email}}) to secure your account.",
+    "sendCode": "Send code",
+    "haveCode": "I have a code",
+    "codeSentTitle": "Verification code sent",
+    "codeSentDescription": "Check {{email}} for a code.",
+    "codeFailedTitle": "Couldn't send verification code",
+    "codeFailedDescription": "Please try again in a moment."
+  },
+  "statusFooter": {
+    "camera": "Camera",
+    "sorter": "Sorter",
+    "cameraConnected": "Camera connected",
+    "cameraError": "Camera error",
+    "cameraRequesting": "Requesting camera access…",
+    "cameraNone": "No camera",
+    "sorterDisconnected": "No sorter connected",
+    "sorterSelfTest": "Sorter connected, running self-test…",
+    "sorterReady": "Sorter ready",
+    "syncProgress": "Sync {{done}}/{{total}}",
+    "syncStatus": "Sync {{status}}",
+    "syncing": "Syncing card image vectors…",
+    "syncingCard": "Syncing card image vectors: {{card}}",
+    "syncCompleted": "Card image vector sync completed",
+    "syncFailed": "Card image vector sync failed",
+    "sync": "Card image vector sync",
+    "cardTotal_one": "{{count}} card · ${{value}}",
+    "cardTotal_other": "{{count}} cards · ${{value}}"
+  },
+  "theme": {
+    "toggle": "Toggle theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "deleteDialog": {
+    "typeDeleteToConfirm": "Type \"delete\" to confirm",
+    "typeNameToConfirm": "Type \"{{name}}\" to confirm",
+    "typeKeywordLabel": "Type <code>delete</code> to confirm",
+    "typeNameLabel": "Type <code>{{name}}</code> to confirm"
+  },
+  "actions": {
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "save": "Save",
+    "create": "Create"
+  },
+  "auditDrawer": {
+    "noHistory": "No history yet.",
+    "current": "current",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "revert": "Revert"
+  },
+  "loadingGate": {
+    "loadingVault": "Loading your vault…"
+  }
+}

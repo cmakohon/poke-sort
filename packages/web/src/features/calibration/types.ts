@@ -15,10 +15,10 @@ export interface ModuleConfigsContextValue {
 
 export interface ServoConfig {
   name: "bottom" | "paddle" | "pusher";
-  label: string;
+  labelKey: string;
   controlPositions: string[];
   defaultPosition: string;
-  calibrationPositions: { label: string; key: keyof ServoCalibration }[];
+  calibrationPositions: { labelKey: string; key: keyof ServoCalibration }[];
 }
 
 export type SliderKey = `${1 | 2 | 3}:${"bottom" | "paddle" | "pusher"}`;

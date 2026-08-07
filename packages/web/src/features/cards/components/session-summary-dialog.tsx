@@ -29,6 +29,7 @@ import { computeStats } from "@/features/scanner/lib/compute-stats";
 import type { ScannedCard } from "@magic-vault/shared";
 import { IconChevronDown, IconDownload } from "@tabler/icons-react";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface ExportOption {
   key: string;
@@ -64,6 +65,7 @@ export function SessionSummaryDialog({
   collectionName,
   onMarkDownloaded,
 }: SessionSummaryDialogProps) {
+  const { t } = useTranslation("cards");
   const [includeDownloaded, setIncludeDownloaded] = useState(false);
   const previouslyDownloadedCount = useMemo(
     () => cards.filter((c) => c.isDownloaded).length,
@@ -102,19 +104,19 @@ export function SessionSummaryDialog({
     elapsedMs > 0 ? Math.round((cards.length / elapsedMs) * 3_600_000) : null;
 
   const summaryCells: { label: string; value: string }[] = [
-    { label: "Total Cards", value: String(cards.length) },
-    { label: "Unique", value: stats ? String(stats.uniqueCount) : "-" },
+    { label: t("sessionSummaryDialog.totalCards"), value: String(cards.length) },
+    { label: t("sessionSummaryDialog.unique"), value: stats ? String(stats.uniqueCount) : "-" },
   ];
   if (stats?.hasPricing) {
     summaryCells.push(
-      { label: "Total Value", value: formatUsd(stats.totalValue) },
-      { label: "Avg Value", value: formatUsd(stats.avgValue) },
+      { label: t("sessionSummaryDialog.totalValue"), value: formatUsd(stats.totalValue) },
+      { label: t("sessionSummaryDialog.avgValue"), value: formatUsd(stats.avgValue) },
     );
   }
   summaryCells.push(
-    { label: "Duration", value: formatElapsed(elapsedMs) },
+    { label: t("sessionSummaryDialog.duration"), value: formatElapsed(elapsedMs) },
     {
-      label: "Cards / hr",
+      label: t("sessionSummaryDialog.cardsPerHour"),
       value: cardsPerHour != null ? String(cardsPerHour) : "-",
     },
   );
@@ -129,7 +131,7 @@ export function SessionSummaryDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Session Summary</DialogTitle>
+          <DialogTitle>{t("sessionSummaryDialog.title")}</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-3">
           <div className="rounded-lg border bg-input/20 dark:bg-input/30 divide-y divide-border">
@@ -145,7 +147,7 @@ export function SessionSummaryDialog({
             {stats?.mostValuable && (
               <div className="px-2.5 py-2 flex items-center justify-between gap-2">
                 <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide shrink-0">
-                  Most Valuable
+                  {t("sessionSummaryDialog.mostValuable")}
                 </p>
                 <div className="flex items-center gap-2 min-w-0">
                   <p className="text-xs font-semibold truncate">
@@ -169,7 +171,7 @@ export function SessionSummaryDialog({
               {stats.rarities.length > 0 && (
                 <div className="rounded-lg border bg-input/20 dark:bg-input/30 p-2.5">
                   <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
-                    By Rarity
+                    {t("sessionSummaryDialog.byRarity")}
                   </p>
                   <div className="flex flex-col gap-1">
                     {stats.rarities.map((r) => (
@@ -192,7 +194,7 @@ export function SessionSummaryDialog({
               )}
               <div className="rounded-lg border bg-input/20 dark:bg-input/30 p-2.5">
                 <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
-                  Top Sets
+                  {t("sessionSummaryDialog.topSets")}
                 </p>
                 <div className="flex flex-col gap-1">
                   {stats.sets.slice(0, 5).map((s) => (
@@ -215,7 +217,7 @@ export function SessionSummaryDialog({
           )}
           {previouslyDownloadedCount > 0 && (
             <label className="flex items-center justify-between gap-1.5 text-xs text-muted-foreground">
-              Include previously downloaded
+              {t("sessionSummaryDialog.includePreviouslyDownloaded")}
               <Switch
                 size="sm"
                 checked={includeDownloaded}
@@ -227,14 +229,14 @@ export function SessionSummaryDialog({
           {/* Actions */}
           <div className="flex gap-2 justify-end pt-1">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Close
+              {t("sessionSummaryDialog.close")}
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={<Button disabled={exportCards.length === 0} />}
               >
                 <IconDownload className="size-4" />
-                Download ({exportCards.length})
+                {t("sessionSummaryDialog.download", { count: exportCards.length })}
                 <IconChevronDown className="size-4" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">

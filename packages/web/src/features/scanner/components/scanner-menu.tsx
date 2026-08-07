@@ -17,6 +17,7 @@ import {
   IconDeviceUsb,
   IconDeviceUsbFilled,
 } from "@tabler/icons-react";
+import { useTranslation } from "react-i18next";
 
 interface ScannerMenuProps {
   isCameraActive: boolean;
@@ -59,6 +60,7 @@ export function ScannerMenu({
   onAutoFeedChange,
   onAllowDuplicatesChange,
 }: ScannerMenuProps) {
+  const { t } = useTranslation("scanner");
   return (
     <div className="absolute top-2 right-2 z-40">
       <DropdownMenu>
@@ -71,7 +73,7 @@ export function ScannerMenu({
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>
               <IconCameraSpark />
-              Camera
+              {t("scannerMenu.camera")}
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent>
               {isCameraActive ? (
@@ -84,14 +86,17 @@ export function ScannerMenu({
                           checked={cam.deviceId === selectedCameraId}
                           onCheckedChange={() => onCameraSelect(cam.deviceId)}
                         >
-                          {cam.label || `Camera ${i + 1}`}
+                          {cam.label ||
+                            t("scannerMenu.cameraFallbackLabel", {
+                              index: i + 1,
+                            })}
                         </DropdownMenuCheckboxItem>
                       ))}
                       <DropdownMenuSeparator />
                     </>
                   )}
                   <DropdownMenuItem onClick={onCameraConnect}>
-                    Reconnect
+                    {t("scannerMenu.reconnect")}
                   </DropdownMenuItem>
                   {zoomRange && (
                     <>
@@ -100,7 +105,9 @@ export function ScannerMenu({
                         className="px-2 py-1.5 flex flex-col gap-1"
                         onPointerDown={(e) => e.stopPropagation()}
                       >
-                        <p className="text-xs text-muted-foreground">Zoom</p>
+                        <p className="text-xs text-muted-foreground">
+                          {t("scannerMenu.zoom")}
+                        </p>
                         <div className="flex items-center gap-2">
                           <span className="text-xs text-muted-foreground w-4">
                             {zoomRange.min}
@@ -128,12 +135,12 @@ export function ScannerMenu({
                     variant="destructive"
                     onClick={onCameraDisconnect}
                   >
-                    Disconnect
+                    {t("scannerMenu.disconnect")}
                   </DropdownMenuItem>
                 </>
               ) : (
                 <DropdownMenuItem onClick={onCameraConnect}>
-                  Connect
+                  {t("scannerMenu.connect")}
                 </DropdownMenuItem>
               )}
             </DropdownMenuSubContent>
@@ -142,7 +149,7 @@ export function ScannerMenu({
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>
               {isConnected ? <IconDeviceUsbFilled /> : <IconDeviceUsb />}
-              Scanner
+              {t("scannerMenu.scanner")}
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent>
               {isConnected ? (
@@ -151,32 +158,32 @@ export function ScannerMenu({
                     checked={autoFeed}
                     onCheckedChange={onAutoFeedChange}
                   >
-                    Auto-feed
+                    {t("scannerMenu.autoFeed")}
                   </DropdownMenuCheckboxItem>
                   <DropdownMenuCheckboxItem
                     checked={allowDuplicates}
                     onCheckedChange={onAllowDuplicatesChange}
                   >
-                    Allow duplicates
+                    {t("scannerMenu.allowDuplicates")}
                   </DropdownMenuCheckboxItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={onCalibrate}>
-                    Calibrate
+                    {t("scannerMenu.calibrate")}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={onScannerRetry}>
-                    Retry Connection
+                    {t("scannerMenu.retryConnection")}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     variant="destructive"
                     onClick={onScannerDisconnect}
                   >
-                    Disconnect
+                    {t("scannerMenu.disconnect")}
                   </DropdownMenuItem>
                 </>
               ) : (
                 <DropdownMenuItem onClick={onScannerConnect}>
-                  Connect
+                  {t("scannerMenu.connect")}
                 </DropdownMenuItem>
               )}
             </DropdownMenuSubContent>

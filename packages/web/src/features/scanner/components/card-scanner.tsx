@@ -18,10 +18,12 @@ import { cn } from "@/lib/utils";
 import type { CardScannerProps } from "@magic-vault/shared";
 import { IconEye } from "@tabler/icons-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 export function CardScanner({ className, compact }: CardScannerProps) {
+  const { t } = useTranslation("scanner");
   const navigate = useNavigate();
   const { isAdmin } = useRole();
   const isMobile = useIsMobile();
@@ -94,17 +96,21 @@ export function CardScanner({ className, compact }: CardScannerProps) {
         raw.bin === undefined &&
         SCANNABLE_STATUSES.includes(status)
       ) {
-        toast.info("Card stuck at module 1 - forcing a scan", {
-          description:
-            "It was never identified, so we're scanning it automatically.",
+        toast.info(t("cardScanner.jamAutoScan.title"), {
+          description: t("cardScanner.jamAutoScan.description"),
         });
         handleForceScan();
         return;
       }
 
       handlePause();
-      toast.error("Card jam detected", {
-        description: `Card stuck at module ${raw.module}${raw.bin ? ` (heading to bin ${raw.bin})` : ""}. Check the sorter and resume.`,
+      toast.error(t("cardScanner.jamDetected.title"), {
+        description: raw.bin
+          ? t("cardScanner.jamDetected.descriptionWithBin", {
+              module: raw.module,
+              bin: raw.bin,
+            })
+          : t("cardScanner.jamDetected.description", { module: raw.module }),
         duration: Infinity,
         dismissible: true,
       });
@@ -117,8 +123,8 @@ export function CardScanner({ className, compact }: CardScannerProps) {
     try {
       const sent = await sendCommand(JSON.stringify({ feeder: true }));
       if (!sent) {
-        toast.error("Feed failed", {
-          description: "Could not send feeder command.",
+        toast.error(t("cardScanner.feedFailed.title"), {
+          description: t("cardScanner.feedFailed.description"),
         });
         void reportSerialEvent({
           command: "feeder",
@@ -129,8 +135,8 @@ export function CardScanner({ className, compact }: CardScannerProps) {
       }
       const response = await receiveResponse(10000);
       if (!response) {
-        toast.error("Feed timeout", {
-          description: "Feeder did not respond in time.",
+        toast.error(t("cardScanner.feedTimeout.title"), {
+          description: t("cardScanner.feedTimeout.description"),
         });
         void reportSerialEvent({
           command: "feeder",
@@ -143,9 +149,8 @@ export function CardScanner({ className, compact }: CardScannerProps) {
         const parsed = JSON.parse(response) as Record<string, unknown>;
         if (parsed.empty) {
           handlePause();
-          toast.error("Feeder empty", {
-            description:
-              "No cards remaining in the hopper. Add more cards to continue.",
+          toast.error(t("cardScanner.feederEmpty.title"), {
+            description: t("cardScanner.feederEmpty.description"),
             duration: Infinity,
             dismissible: true,
           });
@@ -155,7 +160,7 @@ export function CardScanner({ className, compact }: CardScannerProps) {
             response: parsed,
           });
         } else if (parsed.error) {
-          toast.error("Feeder error", {
+          toast.error(t("cardScanner.feederError.title"), {
             description: String(parsed.error),
             duration: Infinity,
             dismissible: true,
@@ -170,40 +175,40 @@ export function CardScanner({ className, compact }: CardScannerProps) {
           captureCard();
         }
       } catch {
-        toast.error("Feed error", {
-          description: "Unexpected response from feeder.",
+        toast.error(t("cardScanner.feedError.title"), {
+          description: t("cardScanner.feedError.description"),
         });
         void reportSerialEvent({ command: "feeder", sent: true, response });
       }
     } finally {
       setIsFeeding(false);
     }
-  }, [sendCommand, receiveResponse, captureCard, handlePause]);
+  }, [sendCommand, receiveResponse, captureCard, handlePause, t]);
 
   const handleClearDevice = useCallback(async () => {
     setIsClearingDevice(true);
     try {
       const sent = await sendCommand(JSON.stringify({ clearDevice: true }));
       if (!sent) {
-        toast.error("Clear failed", {
-          description: "Could not send command to the device.",
+        toast.error(t("cardScanner.clearFailed.title"), {
+          description: t("cardScanner.clearFailed.description"),
         });
         return;
       }
       const response = await receiveResponse(10000);
       if (!response) {
-        toast.error("Clear timeout", {
-          description: "Device did not respond in time.",
+        toast.error(t("cardScanner.clearTimeout.title"), {
+          description: t("cardScanner.clearTimeout.description"),
         });
         return;
       }
-      toast.success("Device cleared", {
-        description: "All bottom paddles were opened to drop any stuck cards.",
+      toast.success(t("cardScanner.deviceCleared.title"), {
+        description: t("cardScanner.deviceCleared.description"),
       });
     } finally {
       setIsClearingDevice(false);
     }
-  }, [sendCommand, receiveResponse]);
+  }, [sendCommand, receiveResponse, t]);
 
   const handleSkipDuplicate = useCallback(() => {
     sendCatchAllBin();
@@ -305,7 +310,7 @@ export function CardScanner({ className, compact }: CardScannerProps) {
             >
               <img
                 src={debugImageUrl}
-                alt="Last search image"
+                alt={t("cardScanner.lastSearchImageAlt")}
                 className="w-48"
               />
             </TooltipContent>

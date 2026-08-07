@@ -7,24 +7,26 @@ import { cn } from "@/lib/utils";
 import { DEFAULT_SCAN_REGION } from "@magic-vault/shared";
 import { IconLayoutColumns, IconLayoutRows } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-
-const OPTIONS = [
-  {
-    value: "horizontal" as const,
-    label: "Horizontal",
-    description: "Scanner in sidebar, cards on the right",
-    icon: IconLayoutColumns,
-  },
-  {
-    value: "vertical" as const,
-    label: "Vertical",
-    description: "Scanner on top, card grid below",
-    icon: IconLayoutRows,
-  },
-];
+import { useTranslation } from "react-i18next";
 
 export function ScannerLayoutToggle() {
+  const { t } = useTranslation("settings");
   const { activeOrg } = useOrg();
+
+  const OPTIONS = [
+    {
+      value: "horizontal" as const,
+      label: t("appearance.scannerLayoutHorizontal"),
+      description: t("appearance.scannerLayoutHorizontalDescription"),
+      icon: IconLayoutColumns,
+    },
+    {
+      value: "vertical" as const,
+      label: t("appearance.scannerLayoutVertical"),
+      description: t("appearance.scannerLayoutVerticalDescription"),
+      icon: IconLayoutRows,
+    },
+  ];
   const queryClient = useQueryClient();
   const queryOpts = orgSettingsQueryOptions(activeOrg?.id);
   const { data } = useQuery(queryOpts);

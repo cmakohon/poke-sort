@@ -6,6 +6,7 @@ import {
 import { useOrg } from "@/features/companies/api/use-organization";
 import { DEFAULT_SCAN_REGION } from "@magic-vault/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import type { NotificationTestType } from "./notification-settings";
 import { sendTestNotification } from "./notification-settings";
@@ -16,6 +17,7 @@ type NotificationSettingsPatch = Pick<
 >;
 
 export function useNotificationSettings() {
+  const { t } = useTranslation("notifications");
   const queryClient = useQueryClient();
   const { activeOrg } = useOrg();
   const queryOpts = orgSettingsQueryOptions(activeOrg?.id);
@@ -44,22 +46,22 @@ export function useNotificationSettings() {
     },
     onError: (_err, _vars, ctx) => {
       if (ctx?.previous) queryClient.setQueryData(queryOpts.queryKey, ctx.previous);
-      toast.error("Failed to save notification settings.");
+      toast.error(t("toasts.saveError"));
     },
     onSuccess: (result) => {
       if (result.success && result.data) {
         queryClient.setQueryData(queryOpts.queryKey, result.data);
-        toast.success("Notification settings saved.");
+        toast.success(t("toasts.saveSuccess"));
       } else {
-        toast.error("Failed to save notification settings.");
+        toast.error(t("toasts.saveError"));
       }
     },
   });
 
   const testMutation = useMutation({
     mutationFn: (type: NotificationTestType) => sendTestNotification(type),
-    onSuccess: () => toast.success("Test notification sent."),
-    onError: () => toast.error("Failed to send test notification."),
+    onSuccess: () => toast.success(t("toasts.testSuccess")),
+    onError: () => toast.error(t("toasts.testError")),
   });
 
   return {

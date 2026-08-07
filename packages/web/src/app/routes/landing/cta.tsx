@@ -1,18 +1,20 @@
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { IconArrowRight } from "@tabler/icons-react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 export function LandingCta() {
+  const { t } = useTranslation("landing");
+
   return (
     <section className="mx-auto max-w-6xl px-4 pb-20">
       <div className="flex flex-col items-center gap-4 rounded-2xl border bg-primary/10 px-6 py-14 text-center">
         <h2 className="font-heading text-2xl font-semibold tracking-tight md:text-3xl">
-          Stop shuffling. Start sorting.
+          {t("cta.heading")}
         </h2>
         <p className="max-w-md text-sm/relaxed text-muted-foreground md:text-base/relaxed">
-          Set up your first collection in minutes and let Magic Vault keep it
-          organized from here on out.
+          {t("cta.subtitle")}
         </p>
         <Link
           to="/auth/sign-up"
@@ -21,7 +23,7 @@ export function LandingCta() {
             "mt-2",
           )}
         >
-          Get started free
+          {t("cta.button")}
           <IconArrowRight size={16} />
         </Link>
       </div>

@@ -24,6 +24,7 @@ import {
 } from "@magic-vault/shared";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 // Singleton AudioContext - browsers cap concurrent contexts (~6).
 // Creating one per scan exhausts the limit quickly.
@@ -107,6 +108,7 @@ export function useCardScanner({
   rotated?: boolean;
   scanRegion?: ScanRegion;
 } = {}) {
+  const { t } = useTranslation("scanner");
   const {
     stream,
     status: cameraStatus,
@@ -239,13 +241,13 @@ export function useCardScanner({
         }
       } catch (err) {
         handleErrorRef.current(
-          err instanceof Error ? err.message : "Failed to search card",
+          err instanceof Error ? err.message : t("scanEngine.searchFailed"),
         );
       } finally {
         isCapturingRef.current = false;
       }
     },
-    [updateStatus, allowDuplicates],
+    [updateStatus, allowDuplicates, t],
   );
 
   // Draws the live camera feed to the display canvas every frame. Capture is
@@ -335,7 +337,7 @@ export function useCardScanner({
       } catch (err) {
         if (!cancelled) {
           handleErrorRef.current(
-            err instanceof Error ? err.message : "Failed to start video",
+            err instanceof Error ? err.message : t("scanEngine.videoStartFailed"),
           );
         }
       }
@@ -440,9 +442,9 @@ export function useCardScanner({
     try {
       await retryCamera();
     } catch {
-      handleErrorRef.current("Failed to reinitialize camera");
+      handleErrorRef.current(t("scanEngine.cameraReinitFailed"));
     }
-  }, [retryCamera]);
+  }, [retryCamera, t]);
 
   return {
     status,

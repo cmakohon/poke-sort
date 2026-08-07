@@ -4,11 +4,13 @@ import { useScannedCards } from "@/features/scanner/api/use-scanned-cards";
 import { formatUsd } from "@/features/scanner/components/scan-stats";
 import { computeStats } from "@/features/scanner/lib/compute-stats";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 const BASE_TITLE = "MAULT";
 const CYCLE_MS = 4000;
 
 export function DocumentTitleUpdater() {
+  const { t } = useTranslation("scanner");
   const { cards } = useScannedCards();
   const { activeCollection } = useCollections();
   const { selectedSet } = useBinConfigs();
@@ -17,19 +19,23 @@ export function DocumentTitleUpdater() {
   const slides = useMemo(() => {
     const result: string[] = [];
     if (activeCollection) result.push(activeCollection.name);
-    if (selectedSet) result.push(`Sorting: ${selectedSet.name}`);
+    if (selectedSet)
+      result.push(t("documentTitle.sorting", { setName: selectedSet.name }));
     result.push(
       stats
-        ? `${stats.totalCount} card${stats.totalCount === 1 ? "" : "s"} scanned`
-        : "No cards scanned",
+        ? t("documentTitle.cardsScanned", { count: stats.totalCount })
+        : t("documentTitle.noCardsScanned"),
     );
     if (stats?.mostValuable) {
       result.push(
-        `${formatUsd(stats.mostValuable.price)} · ${stats.mostValuable.name}`,
+        t("documentTitle.mostValuable", {
+          price: formatUsd(stats.mostValuable.price),
+          name: stats.mostValuable.name,
+        }),
       );
     }
     return result;
-  }, [activeCollection, selectedSet, stats]);
+  }, [activeCollection, selectedSet, stats, t]);
 
   const [index, setIndex] = useState(0);
 

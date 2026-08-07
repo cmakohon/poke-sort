@@ -27,6 +27,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 function emptyRules(): BinRuleGroup {
@@ -59,6 +60,7 @@ export function BinConfigsProvider({
   children: React.ReactNode;
   collectionGuid?: string;
 }) {
+  const { t } = useTranslation("bins");
   const queryClient = useQueryClient();
   const { activeOrg } = useOrg();
   const { activeCollection, collections } = useCollections();
@@ -128,7 +130,7 @@ export function BinConfigsProvider({
     onError: (_err, _vars, context) => {
       if (context?.previous)
         queryClient.setQueryData(["bins"], context.previous);
-      toast.error("Failed to save bin config");
+      toast.error(t("useBinConfigs.toasts.saveBinFailed"));
     },
     onSuccess: (result) => {
       if (!result.success) {
@@ -174,7 +176,7 @@ export function BinConfigsProvider({
     onError: (_err, _vars, context) => {
       if (context?.previous)
         queryClient.setQueryData(["bins"], context.previous);
-      toast.error("Failed to clear bin config");
+      toast.error(t("useBinConfigs.toasts.clearBinFailed"));
     },
   });
 
@@ -188,7 +190,7 @@ export function BinConfigsProvider({
         queryClient.setQueryData(["bins"], result.data);
       }
     },
-    onError: () => toast.error("Failed to activate set"),
+    onError: () => toast.error(t("useBinConfigs.toasts.activateSetFailed")),
   });
 
   const createSetMutation = useMutation({
@@ -200,7 +202,7 @@ export function BinConfigsProvider({
         queryClient.setQueryData(["bins"], result.data);
       }
     },
-    onError: () => toast.error("Failed to create set"),
+    onError: () => toast.error(t("useBinConfigs.toasts.createSetFailed")),
   });
 
   const saveSetMutation = useMutation({
@@ -210,7 +212,7 @@ export function BinConfigsProvider({
         queryClient.setQueryData(["bins"], result.data);
       }
     },
-    onError: () => toast.error("Failed to save set"),
+    onError: () => toast.error(t("useBinConfigs.toasts.saveSetFailed")),
   });
 
   const renameSetMutation = useMutation({
@@ -221,7 +223,7 @@ export function BinConfigsProvider({
         queryClient.setQueryData(["bins"], result.data);
       }
     },
-    onError: () => toast.error("Failed to rename set"),
+    onError: () => toast.error(t("useBinConfigs.toasts.renameSetFailed")),
   });
 
   const deleteSetMutation = useMutation({
@@ -232,7 +234,7 @@ export function BinConfigsProvider({
         queryClient.setQueryData(["bins"], result.data);
       }
     },
-    onError: () => toast.error("Failed to delete set"),
+    onError: () => toast.error(t("useBinConfigs.toasts.deleteSetFailed")),
   });
 
   const isPending = saveBinMutation.isPending || clearBinMutation.isPending;

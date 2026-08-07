@@ -4,18 +4,20 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { IconBrandDiscord } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { NotificationTestType } from "../api/notification-settings";
 import { useNotificationSettings } from "../api/use-notification-settings";
 
-const TEST_TYPES: { type: NotificationTestType; label: string }[] = [
-  { type: "sorter-error", label: "Sorter Error" },
-  { type: "feeder-empty", label: "Feeder Empty" },
-  { type: "card-jam", label: "Card Jam" },
-  { type: "card-search-error", label: "Card Search Error" },
-  { type: "sync-failure", label: "Sync Failure" },
+const TEST_TYPES: NotificationTestType[] = [
+  "sorter-error",
+  "feeder-empty",
+  "card-jam",
+  "card-search-error",
+  "sync-failure",
 ];
 
 export function DiscordWebhookSettings() {
+  const { t } = useTranslation("notifications");
   const {
     settings,
     isLoading,
@@ -38,16 +40,14 @@ export function DiscordWebhookSettings() {
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
         <IconBrandDiscord className="size-4" />
-        <Label>Discord Webhook</Label>
+        <Label>{t("discordWebhookSettings.heading")}</Label>
       </div>
       <p className="text-sm text-muted-foreground">
-        Receive a notification when card sorting fails, the device reports an
-        error (jams, empty feeder, connection issues), a card search errors,
-        or the sync job crashes.
+        {t("discordWebhookSettings.description")}
       </p>
       <div className="flex gap-2">
         <Input
-          placeholder="https://discord.com/api/webhooks/..."
+          placeholder={t("discordWebhookSettings.urlPlaceholder")}
           value={webhookUrl}
           onChange={(e) => setWebhookUrl(e.target.value)}
           disabled={isLoading}
@@ -57,15 +57,16 @@ export function DiscordWebhookSettings() {
           onClick={() => save({ discordWebhookUrl: webhookUrl || null })}
           disabled={!isDirty || isSaving || isLoading}
         >
-          Save
+          {t("discordWebhookSettings.saveButton")}
         </Button>
       </div>
       <label className="flex items-center justify-between gap-3">
         <span className="flex flex-col gap-0.5">
-          <span className="text-sm">Notify on every card scanned</span>
+          <span className="text-sm">
+            {t("discordWebhookSettings.notifyToggleLabel")}
+          </span>
           <span className="text-xs text-muted-foreground">
-            Posts the card's name, price, and image to Discord each time one
-            is scanned.
+            {t("discordWebhookSettings.notifyToggleDescription")}
           </span>
         </span>
         <Switch
@@ -77,11 +78,11 @@ export function DiscordWebhookSettings() {
       <div className="flex flex-col gap-1.5">
         <Label className="text-xs text-muted-foreground">
           {isDirty
-            ? "Save webhook URL to enable test notifications"
-            : "Send a test notification"}
+            ? t("discordWebhookSettings.testHintDirty")
+            : t("discordWebhookSettings.testHintReady")}
         </Label>
         <div className="flex flex-wrap gap-2">
-          {TEST_TYPES.map(({ type, label }) => (
+          {TEST_TYPES.map((type) => (
             <Button
               key={type}
               variant="outline"
@@ -89,7 +90,9 @@ export function DiscordWebhookSettings() {
               onClick={() => sendTest(type)}
               disabled={!canTest}
             >
-              {isTesting && testingType === type ? "Sending…" : label}
+              {isTesting && testingType === type
+                ? t("discordWebhookSettings.sending")
+                : t(`discordWebhookSettings.testTypes.${type}`)}
             </Button>
           ))}
         </div>

@@ -5,6 +5,8 @@ import {
   FieldMeta,
   isRuleGroup,
 } from "@magic-vault/shared";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 
 function formatCondition(
   condition: BinCondition,
@@ -36,23 +38,31 @@ function formatCondition(
   return `${fieldLabel} ${opLabel} ${valueStr}`;
 }
 
-function formatGroup(group: BinRuleGroup, fieldDefinitions: FieldMeta[]): string {
-  if (group.conditions.length === 0) return "No conditions";
+function formatGroup(
+  group: BinRuleGroup,
+  fieldDefinitions: FieldMeta[],
+  t: TFunction<"bins">,
+): string {
+  if (group.conditions.length === 0) return t("ruleSummary.noConditions");
 
   const parts = group.conditions.map((item) => {
     if (isRuleGroup(item)) {
-      return `(${formatGroup(item, fieldDefinitions)})`;
+      return `(${formatGroup(item, fieldDefinitions, t)})`;
     }
     return formatCondition(item, fieldDefinitions);
   });
 
-  const joiner = group.combinator === "and" ? " AND " : " OR ";
+  const joiner =
+    group.combinator === "and"
+      ? ` ${t("ruleSummary.and")} `
+      : ` ${t("ruleSummary.or")} `;
   return parts.join(joiner);
 }
 
 export function RuleSummary({ rules }: { rules: BinRuleGroup }) {
+  const { t } = useTranslation("bins");
   const { fieldDefinitions } = useBinConfigs();
-  const text = formatGroup(rules, fieldDefinitions);
+  const text = formatGroup(rules, fieldDefinitions, t);
 
   return (
     <p className="text-xs line-clamp-3 wrap-break-words text-muted-foreground truncate">

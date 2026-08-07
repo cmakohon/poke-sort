@@ -54,9 +54,6 @@ async function downloadBulkData(
   if (!bulkRes.ok || !bulkRes.body)
     throw new Error(`Bulk data download failed: ${bulkRes.status}`);
 
-  // all_cards contains every print in every language (1M+ rows) — filter
-  // and shrink each row down to the fields we keep as we stream, rather
-  // than materializing the full bulk file in memory before filtering.
   const cards: SyncSourceCard[] = [];
   let seen = 0;
   const lines = createInterface({

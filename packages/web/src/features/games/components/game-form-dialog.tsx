@@ -15,32 +15,38 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import type { FieldMeta, Game } from "@magic-vault/shared";
 import { useEffect } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
+import { useTranslation, type TFunction } from "react-i18next";
 import { z } from "zod";
 import { DEFAULT_OPERATORS_BY_TYPE } from "../constants/field-operators";
 import { GameFieldDefinitionsEditor } from "./game-field-definitions-editor";
 
-const fieldMetaFormSchema = z.object({
-  field: z.string().min(1, "Required"),
-  label: z.string().min(1, "Required"),
-  type: z.enum(["string", "numeric", "enum", "set"]),
-  path: z.string().min(1, "Required"),
-  optionsText: z.string().optional(),
-});
+function createGameFormSchema(t: TFunction<"games">) {
+  const fieldMetaFormSchema = z.object({
+    field: z.string().min(1, t("gameFormDialog.validation.required")),
+    label: z.string().min(1, t("gameFormDialog.validation.required")),
+    type: z.enum(["string", "numeric", "enum", "set"]),
+    path: z.string().min(1, t("gameFormDialog.validation.required")),
+    optionsText: z.string().optional(),
+  });
 
-const gameFormSchema = z.object({
-  key: z
-    .string()
-    .min(1, "Required")
-    .regex(/^[a-z0-9-]+$/, "Lowercase letters, numbers, and hyphens only"),
-  name: z.string().min(1, "Required"),
-  dataSourceUrl: z.string().min(1, "Required").url("Must be a valid URL"),
-  isActive: z.boolean(),
-  fieldDefinitions: z
-    .array(fieldMetaFormSchema)
-    .min(1, "Add at least one field"),
-});
+  return z.object({
+    key: z
+      .string()
+      .min(1, t("gameFormDialog.validation.required"))
+      .regex(/^[a-z0-9-]+$/, t("gameFormDialog.validation.keyFormat")),
+    name: z.string().min(1, t("gameFormDialog.validation.required")),
+    dataSourceUrl: z
+      .string()
+      .min(1, t("gameFormDialog.validation.required"))
+      .url(t("gameFormDialog.validation.invalidUrl")),
+    isActive: z.boolean(),
+    fieldDefinitions: z
+      .array(fieldMetaFormSchema)
+      .min(1, t("gameFormDialog.validation.minFields")),
+  });
+}
 
-export type GameFormValues = z.infer<typeof gameFormSchema>;
+export type GameFormValues = z.infer<ReturnType<typeof createGameFormSchema>>;
 
 function toFormValues(game?: Game | null): GameFormValues {
   if (!game) {
@@ -101,6 +107,8 @@ export function GameFormDialog({
   game,
   onSubmit,
 }: GameFormDialogProps) {
+  const { t } = useTranslation("games");
+  const gameFormSchema = createGameFormSchema(t);
   const form = useForm<GameFormValues>({
     resolver: zodResolver(gameFormSchema),
     defaultValues: toFormValues(game),
@@ -132,43 +140,47 @@ export function GameFormDialog({
           >
             <DrawerHeader>
               <DrawerTitle>
-                {game ? `Edit ${game.name}` : "Add game"}
+                {game
+                  ? t("gameFormDialog.editTitle", { name: game.name })
+                  : t("gameFormDialog.addTitle")}
               </DrawerTitle>
               <DrawerDescription>
-                Define how cards for this game are fetched and which fields
-                bin rules can filter on.
+                {t("gameFormDialog.description")}
               </DrawerDescription>
             </DrawerHeader>
 
             <div className="flex flex-col gap-4 px-4 shrink-0">
               <div className="grid grid-cols-2 gap-3">
                 <Field data-invalid={!!errors.key}>
-                  <FieldLabel>Key</FieldLabel>
+                  <FieldLabel>{t("gameFormDialog.keyLabel")}</FieldLabel>
                   <Input
-                    placeholder="pokemon"
+                    placeholder={t("gameFormDialog.keyPlaceholder")}
                     {...register("key")}
                     disabled={!!game}
                   />
                   <FieldError errors={[errors.key]} />
                 </Field>
                 <Field data-invalid={!!errors.name}>
-                  <FieldLabel>Name</FieldLabel>
-                  <Input placeholder="Pokémon" {...register("name")} />
+                  <FieldLabel>{t("gameFormDialog.nameLabel")}</FieldLabel>
+                  <Input
+                    placeholder={t("gameFormDialog.namePlaceholder")}
+                    {...register("name")}
+                  />
                   <FieldError errors={[errors.name]} />
                 </Field>
               </div>
 
               <Field data-invalid={!!errors.dataSourceUrl}>
-                <FieldLabel>Data source URL</FieldLabel>
+                <FieldLabel>{t("gameFormDialog.dataSourceUrlLabel")}</FieldLabel>
                 <Input
-                  placeholder="https://api.pokemontcg.io/v2/cards"
+                  placeholder={t("gameFormDialog.dataSourceUrlPlaceholder")}
                   {...register("dataSourceUrl")}
                 />
                 <FieldError errors={[errors.dataSourceUrl]} />
               </Field>
 
               <Field orientation="horizontal">
-                <FieldLabel>Active</FieldLabel>
+                <FieldLabel>{t("gameFormDialog.activeLabel")}</FieldLabel>
                 <Controller
                   control={control}
                   name="isActive"
@@ -192,14 +204,14 @@ export function GameFormDialog({
                 variant="outline"
                 onClick={() => onOpenChange(false)}
               >
-                Cancel
+                {t("gameFormDialog.cancel")}
               </Button>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting
-                  ? "Saving…"
+                  ? t("gameFormDialog.saving")
                   : game
-                    ? "Save changes"
-                    : "Create game"}
+                    ? t("gameFormDialog.saveChanges")
+                    : t("gameFormDialog.createGame")}
               </Button>
             </DrawerFooter>
           </form>

@@ -1,0 +1,211 @@
+{
+  "camera": {
+    "permissionDenied": "Kamerazugriff verweigert. Bitte erlaube den Kamerazugriff und versuche es erneut.",
+    "accessError": "Kamera konnte nicht aufgerufen werden. Bitte überprüfe dein Gerät."
+  },
+  "scanEngine": {
+    "searchFailed": "Kartensuche fehlgeschlagen",
+    "videoStartFailed": "Video konnte nicht gestartet werden",
+    "cameraReinitFailed": "Kamera konnte nicht neu initialisiert werden"
+  },
+  "serial": {
+    "connectionFailed": {
+      "title": "Verbindung fehlgeschlagen",
+      "description": "Port konnte nicht geöffnet werden. Stelle sicher, dass keine andere Anwendung ihn verwendet."
+    },
+    "testingDevice": "Gerät wird getestet…",
+    "deviceReady": "Gerät bereit",
+    "deviceTestFailed": {
+      "title": "Gerätetest fehlgeschlagen",
+      "description": "Verbunden, aber keine Antwort erhalten. Versuche eine erneute Verbindung."
+    }
+  },
+  "sessionMonitor": {
+    "connectionLost": "Verbindung zur Sitzung verloren."
+  },
+  "scannedCards": {
+    "autoFeedFailed": {
+      "title": "Automatische Zufuhr fehlgeschlagen",
+      "description": "Zuführbefehl konnte nicht gesendet werden."
+    },
+    "autoFeedTimeout": {
+      "title": "Zeitüberschreitung bei automatischer Zufuhr",
+      "description": "Der Zuführer hat nicht rechtzeitig geantwortet."
+    },
+    "feederEmpty": {
+      "title": "Zuführer leer",
+      "description": "Keine Karten mehr im Trichter. Füge weitere Karten hinzu, um fortzufahren."
+    },
+    "feederError": {
+      "title": "Zuführerfehler"
+    },
+    "autoFeedError": {
+      "title": "Fehler bei automatischer Zufuhr",
+      "description": "Unerwartete Antwort vom Zuführer."
+    },
+    "noCollectionSelected": {
+      "title": "Keine Sammlung ausgewählt",
+      "description": "Erstelle oder wähle eine Sammlung, bevor du scannst."
+    },
+    "collectionLocked": {
+      "title": "Sammlung gesperrt",
+      "description": "Ein anderes Organisationsmitglied scannt gerade in diese Sammlung."
+    },
+    "routingFailed": {
+      "title": "Weiterleitung fehlgeschlagen",
+      "description": "Keine Antwort vom Sortierer für Fach {{binNumber}}."
+    },
+    "sorterError": {
+      "title": "Sortiererfehler"
+    },
+    "routingFailedCatchAll": {
+      "title": "Weiterleitung fehlgeschlagen",
+      "description": "Keine Antwort vom Sortierer für das Sammelfach {{binNumber}}."
+    }
+  },
+  "cardScanner": {
+    "jamAutoScan": {
+      "title": "Karte an Modul 1 blockiert - Scan wird erzwungen",
+      "description": "Sie wurde nie erkannt, daher wird sie automatisch gescannt."
+    },
+    "jamDetected": {
+      "title": "Kartenstau erkannt",
+      "description": "Karte an Modul {{module}} blockiert. Überprüfe den Sortierer und setze fort.",
+      "descriptionWithBin": "Karte an Modul {{module}} blockiert (unterwegs zu Fach {{bin}}). Überprüfe den Sortierer und setze fort."
+    },
+    "feedFailed": {
+      "title": "Zufuhr fehlgeschlagen",
+      "description": "Zuführbefehl konnte nicht gesendet werden."
+    },
+    "feedTimeout": {
+      "title": "Zeitüberschreitung bei Zufuhr",
+      "description": "Der Zuführer hat nicht rechtzeitig geantwortet."
+    },
+    "feederEmpty": {
+      "title": "Zuführer leer",
+      "description": "Keine Karten mehr im Trichter. Füge weitere Karten hinzu, um fortzufahren."
+    },
+    "feederError": {
+      "title": "Zuführerfehler"
+    },
+    "feedError": {
+      "title": "Zufuhrfehler",
+      "description": "Unerwartete Antwort vom Zuführer."
+    },
+    "clearFailed": {
+      "title": "Leeren fehlgeschlagen",
+      "description": "Befehl konnte nicht an das Gerät gesendet werden."
+    },
+    "clearTimeout": {
+      "title": "Zeitüberschreitung beim Leeren",
+      "description": "Das Gerät hat nicht rechtzeitig geantwortet."
+    },
+    "deviceCleared": {
+      "title": "Gerät geleert",
+      "description": "Alle unteren Klappen wurden geöffnet, um festsitzende Karten zu lösen."
+    },
+    "lastSearchImageAlt": "Letztes Suchbild"
+  },
+  "documentTitle": {
+    "sorting": "Sortierung: {{setName}}",
+    "cardsScanned_one": "{{count}} Karte gescannt",
+    "cardsScanned_other": "{{count}} Karten gescannt",
+    "noCardsScanned": "Keine Karten gescannt",
+    "mostValuable": "{{price}} · {{name}}"
+  },
+  "gameSwitchAlert": {
+    "message": "Beim Wechsel des Spieltyps musst du möglicherweise die Schlauchwand des Zuführmoduls neu anpassen."
+  },
+  "scanStats": {
+    "emptyState": "Scanne Karten, um ihre Statistiken zu sehen.",
+    "totalCards": "Karten gesamt",
+    "unique": "Einzigartig",
+    "totalValue": "Gesamtwert",
+    "avgValue": "Durchschnittswert",
+    "sessionTime": "Sitzungsdauer",
+    "cardsPerHour": "Karten/Std",
+    "mostValuable": "Wertvollste",
+    "byRarity": "Nach Seltenheit",
+    "byColor": "Nach Farbe",
+    "bySet": "Nach Set",
+    "showLess": "Weniger anzeigen",
+    "showAllSets": "Alle {{count}} Sets anzeigen"
+  },
+  "scannerControls": {
+    "scanAgain": "Erneut scannen",
+    "addAgain": "Erneut hinzufügen",
+    "skip": "Überspringen",
+    "scanNow": "Jetzt scannen",
+    "resume": "Fortsetzen",
+    "pause": "Pausieren"
+  },
+  "scannerDebug": {
+    "heading": "Debug",
+    "simulateScan": "Scan simulieren",
+    "simulateMultiMatch": "Mehrfachtreffer simulieren",
+    "forceError": "Fehler erzwingen"
+  },
+  "scannerMenu": {
+    "camera": "Kamera",
+    "cameraFallbackLabel": "Kamera {{index}}",
+    "reconnect": "Erneut verbinden",
+    "zoom": "Zoom",
+    "disconnect": "Trennen",
+    "connect": "Verbinden",
+    "scanner": "Scanner",
+    "autoFeed": "Automatische Zufuhr",
+    "allowDuplicates": "Duplikate zulassen",
+    "calibrate": "Kalibrieren",
+    "retryConnection": "Verbindung erneut versuchen"
+  },
+  "scannerOverlay": {
+    "connectCamera": "Verbinde eine Kamera, um mit dem Scannen zu beginnen.",
+    "noCatchAllBin": "Kein Sammelfach konfiguriert - nicht zugeordnete Karten werden nicht sortiert.",
+    "initializing": "Scanner wird initialisiert…",
+    "requestingCameraAccess": "Kamerazugriff wird angefordert…",
+    "identifyingCard": "Karte wird identifiziert…",
+    "paused": "Scanner pausiert - drücke Fortsetzen, um weiterzumachen.",
+    "duplicate": "Gleiche Karte erneut gescannt - verwende Erneut hinzufügen, um sie trotzdem hinzuzufügen.",
+    "noMatch": "Karte nicht erkannt - versuche Erneut scannen oder passe die Beleuchtung an."
+  },
+  "sessionErrorsPanel": {
+    "heading": "Fehler"
+  },
+  "sessionStatsPanel": {
+    "totalCards": "Karten gesamt",
+    "unique": "Einzigartig",
+    "value": "Wert",
+    "mostValuable": "Wertvollste",
+    "byRarity": "Nach Seltenheit"
+  },
+  "appScanner": {
+    "cardCount_one": "{{count}} Karte",
+    "cardCount_other": "{{count}} Karten"
+  },
+  "monitorPage": {
+    "loadingSession": "Sitzung wird geladen…",
+    "connectFailed": "Verbindung konnte nicht hergestellt werden.",
+    "noCardsScannedYet": "Noch keine Karten gescannt.",
+    "noCardsMatchSearch": "Keine Karten entsprechen der Suche.",
+    "isScanningTooltip": "{{name}} scannt gerade",
+    "isWatchingTooltip": "{{name}} schaut zu",
+    "viewCards_one": "{{count}} Karte ansehen",
+    "viewCards_other": "{{count}} Karten ansehen",
+    "viewCardsEmpty": "Karten ansehen",
+    "scannedCardsTitle": "Gescannte Karten"
+  },
+  "monitorSessions": {
+    "yourSession": "Deine Sitzung",
+    "scanning": "Wird gescannt",
+    "sessionReleased": "Sitzung freigegeben",
+    "releaseFailed": "Sitzung konnte nicht freigegeben werden",
+    "leaveSession": "Sitzung verlassen",
+    "title": "Sitzungsüberwachung",
+    "subtitle": "Einer laufenden Scan-Sitzung beitreten",
+    "noSessionsFound": "Keine Sitzungen gefunden",
+    "noSessionsHint": "Aktive Sitzungen werden hier angezeigt",
+    "cardCount_one": "{{count}} Karte",
+    "cardCount_other": "{{count}} Karten",
+    "isScanningTooltip": "{{name}} scannt gerade"
+  }
+}
