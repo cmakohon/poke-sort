@@ -1,3 +1,7 @@
+import { createInterface } from "node:readline";
+import { Readable } from "node:stream";
+import type { ReadableStream as NodeWebReadableStream } from "node:stream/web";
+import { createGunzip } from "node:zlib";
 import type { SyncSource, SyncSourceCard } from "../card-search/sync-types";
 import { SCRYFALL_DEFAULT_URL, SCRYFALL_HEADERS } from "./search";
 
@@ -34,7 +38,7 @@ async function downloadBulkData(
     throw new Error(`Scryfall catalog fetch failed: ${catalogRes.status}`);
   }
   const catalog = (await catalogRes.json()) as {
-    data: { type: string; download_uri: string }[];
+    data: { type: string; jsonl_download_uri: string }[];
   };
 
   const entry = catalog.data.find((e) => e.type === bulkType);
@@ -42,14 +46,26 @@ async function downloadBulkData(
 
   addLog(`Downloading bulk "${bulkType}" data...`);
 
-  const bulkRes = await fetch(entry.download_uri, {
+  const bulkRes = await fetch(entry.jsonl_download_uri, {
     headers: SCRYFALL_HEADERS,
     signal,
   });
-  if (!bulkRes.ok)
+  if (!bulkRes.ok || !bulkRes.body)
     throw new Error(`Bulk data download failed: ${bulkRes.status}`);
 
-  const cards = (await bulkRes.json()) as ScryfallBulkCard[];
+  const cards: ScryfallBulkCard[] = [];
+  const lines = createInterface({
+    input: Readable.fromWeb(
+      bulkRes.body as NodeWebReadableStream<Uint8Array>,
+    ).pipe(createGunzip()),
+    crlfDelay: Infinity,
+  });
+
+  for await (const line of lines) {
+    if (!line) continue;
+    cards.push(JSON.parse(line) as ScryfallBulkCard);
+  }
+
   addLog(`Downloaded ${cards.length} cards.`);
 
   return cards;
