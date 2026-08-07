@@ -18,7 +18,11 @@ import {
 } from "@/components/ui/select";
 import { useCollections } from "@/features/collections/api/use-collections";
 import { useOrg } from "@/features/companies/api/use-organization";
-import { gamesQueryOptions } from "@/features/games/api/games";
+import {
+  gameLanguagesQueryOptions,
+  gamesQueryOptions,
+} from "@/features/games/api/games";
+import { LANGUAGE_LABELS } from "@/lib/languages";
 import {
   createCollectionSchema,
   type CreateCollectionFormValues,
@@ -26,8 +30,10 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { IconFolderPlus, IconLoader2 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
+
+const EMPTY_LANGUAGES: string[] = [];
 
 export function RequireCollectionDialog() {
   const { collections, isLoading, isMutating, createCollection } =
@@ -38,7 +44,7 @@ export function RequireCollectionDialog() {
 
   const form = useForm<CreateCollectionFormValues>({
     resolver: zodResolver(createCollectionSchema),
-    defaultValues: { name: "", gameGuid: "" },
+    defaultValues: { name: "", gameGuid: "", lang: "" },
     mode: "onChange",
   });
 
@@ -48,9 +54,24 @@ export function RequireCollectionDialog() {
     }
   }, [activeGames, form]);
 
+  const selectedGameGuid = form.watch("gameGuid");
+  const { data: rawGameLanguages = EMPTY_LANGUAGES } = useQuery(
+    gameLanguagesQueryOptions(selectedGameGuid || undefined),
+  );
+  const gameLanguages = useMemo(
+    () => (rawGameLanguages.length > 0 ? rawGameLanguages : ["en"]),
+    [rawGameLanguages],
+  );
+
+  useEffect(() => {
+    if (gameLanguages.length === 1) {
+      form.setValue("lang", gameLanguages[0], { shouldValidate: true });
+    }
+  }, [gameLanguages, form]);
+
   const handleCreate = useCallback(
     async (values: CreateCollectionFormValues) => {
-      await createCollection(values.name, values.gameGuid);
+      await createCollection(values.name, values.gameGuid, values.lang);
       form.reset();
     },
     [createCollection, form],
@@ -100,7 +121,13 @@ export function RequireCollectionDialog() {
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid || undefined}>
                 <FieldLabel htmlFor="first-collection-game">Game</FieldLabel>
-                <Select value={field.value} onValueChange={field.onChange}>
+                <Select
+                  value={field.value}
+                  onValueChange={(guid) => {
+                    field.onChange(guid);
+                    form.setValue("lang", "", { shouldValidate: true });
+                  }}
+                >
                   <SelectTrigger id="first-collection-game">
                     <SelectValue placeholder="Select a game..." />
                   </SelectTrigger>
@@ -108,6 +135,37 @@ export function RequireCollectionDialog() {
                     {activeGames.map((game) => (
                       <SelectItem key={game.guid} value={game.guid}>
                         {game.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {fieldState.invalid && (
+                  <FieldError errors={[fieldState.error]} />
+                )}
+              </Field>
+            )}
+          />
+          <Controller
+            name="lang"
+            control={form.control}
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid || undefined}>
+                <FieldLabel htmlFor="first-collection-lang">
+                  Language
+                </FieldLabel>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger
+                    id="first-collection-lang"
+                    disabled={gameLanguages.length <= 1}
+                  >
+                    <SelectValue placeholder="Select a language...">
+                      {LANGUAGE_LABELS[field.value] ?? field.value}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {gameLanguages.map((lang) => (
+                      <SelectItem key={lang} value={lang}>
+                        {LANGUAGE_LABELS[lang] ?? lang}
                       </SelectItem>
                     ))}
                   </SelectContent>
