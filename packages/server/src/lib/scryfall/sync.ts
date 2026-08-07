@@ -5,6 +5,7 @@ type ScryfallBulkCard = {
   id: string;
   name: string;
   printed_name?: string;
+  lang: string;
   set: string;
   image_uris?: { png?: string; large?: string };
 };
@@ -17,57 +18,12 @@ function apiRoot(baseUrl: string): string {
   }
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function fetchCardsByLanguage(
+async function downloadBulkData(
   baseUrl: string,
   addLog: (msg: string) => void,
-  lang: string,
+  bulkType: string,
   signal?: AbortSignal,
-): Promise<SyncSourceCard[]> {
-  addLog(`Searching Scryfall for "${lang}" printings...`);
-
-  const all: ScryfallBulkCard[] = [];
-  let url: string | undefined =
-    `${baseUrl}/search?q=${encodeURIComponent(`lang:${lang}`)}&unique=prints&order=set`;
-
-  while (url) {
-    const res = await fetch(url, { headers: SCRYFALL_HEADERS, signal });
-    if (res.status === 404) break;
-    if (!res.ok) throw new Error(`Scryfall search fetch failed: ${res.status}`);
-
-    const page = (await res.json()) as {
-      data: ScryfallBulkCard[];
-      has_more: boolean;
-      next_page?: string;
-    };
-    all.push(...page.data);
-    addLog(`Fetched ${all.length} cards so far...`);
-
-    url = page.has_more ? page.next_page : undefined;
-    if (url) await sleep(100);
-  }
-
-  addLog(`Downloaded ${all.length} cards.`);
-
-  return all.map((c) => ({
-    id: c.id,
-    name: c.printed_name ?? c.name,
-    setCode: c.set,
-    imageUrl: c.image_uris?.png ?? c.image_uris?.large,
-  }));
-}
-
-async function fetchCards(
-  baseUrl: string,
-  addLog: (msg: string) => void,
-  lang: string = "en",
-  signal?: AbortSignal,
-): Promise<SyncSourceCard[]> {
-  if (lang !== "en") return fetchCardsByLanguage(baseUrl, addLog, lang, signal);
-
+): Promise<ScryfallBulkCard[]> {
   addLog("Fetching Scryfall bulk data catalog...");
 
   const catalogRes = await fetch(`${apiRoot(baseUrl)}/bulk-data`, {
@@ -81,13 +37,12 @@ async function fetchCards(
     data: { type: string; download_uri: string }[];
   };
 
-  const artEntry = catalog.data.find((e) => e.type === "unique_artwork");
-  if (!artEntry)
-    throw new Error("Could not find unique_artwork bulk data entry");
+  const entry = catalog.data.find((e) => e.type === bulkType);
+  if (!entry) throw new Error(`Could not find ${bulkType} bulk data entry`);
 
-  addLog("Downloading bulk artwork data...");
+  addLog(`Downloading bulk "${bulkType}" data...`);
 
-  const bulkRes = await fetch(artEntry.download_uri, {
+  const bulkRes = await fetch(entry.download_uri, {
     headers: SCRYFALL_HEADERS,
     signal,
   });
@@ -97,9 +52,25 @@ async function fetchCards(
   const cards = (await bulkRes.json()) as ScryfallBulkCard[];
   addLog(`Downloaded ${cards.length} cards.`);
 
+  return cards;
+}
+
+async function fetchCards(
+  baseUrl: string,
+  addLog: (msg: string) => void,
+  lang: string = "en",
+  signal?: AbortSignal,
+): Promise<SyncSourceCard[]> {
+  const cards =
+    lang === "en"
+      ? await downloadBulkData(baseUrl, addLog, "unique_artwork", signal)
+      : (await downloadBulkData(baseUrl, addLog, "all_cards", signal)).filter(
+          (c) => c.lang === lang,
+        );
+
   return cards.map((c) => ({
     id: c.id,
-    name: c.name,
+    name: c.printed_name ?? c.name,
     setCode: c.set,
     imageUrl: c.image_uris?.png ?? c.image_uris?.large,
   }));
