@@ -13,9 +13,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { FieldMeta, Game } from "@magic-vault/shared";
+import { TFunction } from "i18next";
 import { useEffect } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
-import { useTranslation, type TFunction } from "react-i18next";
+import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { DEFAULT_OPERATORS_BY_TYPE } from "../constants/field-operators";
 import { GameFieldDefinitionsEditor } from "./game-field-definitions-editor";
@@ -81,7 +82,10 @@ export function toFieldDefinitions(
       ?.split(",")
       .map((v) => v.trim())
       .filter(Boolean)
-      .map((v) => ({ value: v, label: v.charAt(0).toUpperCase() + v.slice(1) }));
+      .map((v) => ({
+        value: v,
+        label: v.charAt(0).toUpperCase() + v.slice(1),
+      }));
 
     return {
       field: f.field.trim(),
@@ -171,7 +175,9 @@ export function GameFormDialog({
               </div>
 
               <Field data-invalid={!!errors.dataSourceUrl}>
-                <FieldLabel>{t("gameFormDialog.dataSourceUrlLabel")}</FieldLabel>
+                <FieldLabel>
+                  {t("gameFormDialog.dataSourceUrlLabel")}
+                </FieldLabel>
                 <Input
                   placeholder={t("gameFormDialog.dataSourceUrlPlaceholder")}
                   {...register("dataSourceUrl")}

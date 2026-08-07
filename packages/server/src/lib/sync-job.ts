@@ -108,11 +108,9 @@ export function startSync(
   });
 }
 
-async function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-const VECTORIZE_CONCURRENCY = 10;
+const VECTORIZE_CONCURRENCY = parseInt(
+  process.env.VECTORIZE_CONCURRENCY ?? "10",
+);
 
 async function runSync(source: SyncSource, lang: string): Promise<void> {
   const baseUrl = await resolveGameDataSourceUrl(
