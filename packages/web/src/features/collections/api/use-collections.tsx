@@ -37,7 +37,11 @@ interface CollectionsContextValue {
   isLoading: boolean;
   isActivating: boolean;
   isMutating: boolean;
-  createCollection: (name: string, gameGuid: string) => Promise<void>;
+  createCollection: (
+    name: string,
+    gameGuid: string,
+    lang: string,
+  ) => Promise<void>;
   renameCollection: (guid: string, name: string) => Promise<void>;
   activateCollection: (guid: string) => Promise<void>;
   deleteCollection: (guid: string) => Promise<void>;
@@ -93,8 +97,15 @@ export function CollectionsProvider({
   }
 
   const createMutation = useMutation({
-    mutationFn: ({ name, gameGuid }: { name: string; gameGuid: string }) =>
-      createCollectionFn(name, gameGuid),
+    mutationFn: ({
+      name,
+      gameGuid,
+      lang,
+    }: {
+      name: string;
+      gameGuid: string;
+      lang: string;
+    }) => createCollectionFn(name, gameGuid, lang),
     onSuccess: async (r, { name }) => {
       if (r.success && r.data) {
         setCollections(r.data);
@@ -166,8 +177,8 @@ export function CollectionsProvider({
     emptyMutation.isPending;
 
   const create = useCallback(
-    async (name: string, gameGuid: string) => {
-      await createMutation.mutateAsync({ name, gameGuid });
+    async (name: string, gameGuid: string, lang: string) => {
+      await createMutation.mutateAsync({ name, gameGuid, lang });
     },
     [createMutation],
   );

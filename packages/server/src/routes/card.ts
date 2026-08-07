@@ -2,7 +2,10 @@ import type { SearchCardMatch } from "@magic-vault/shared";
 import { sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { authQuery } from "../db";
-import { resolveCardSearch, resolveGameKey } from "../lib/card-search/resolve";
+import {
+  resolveCardSearch,
+  resolveGameKeyAndLang,
+} from "../lib/card-search/resolve";
 import { sendDiscordNotification } from "../lib/discord";
 import { vectorizeImageFromBuffer } from "../lib/vectorize";
 import { requireAuth, type AppEnv } from "../middleware/auth";
@@ -42,13 +45,17 @@ router.post("/", requireAuth, async (c) => {
   }
 
   const embeddingStr = `[${embedding.join(",")}]`;
-  const gameKey = await resolveGameKey(c.get("jwtClaims"), collectionGuid);
-  if (!gameKey) {
+  const resolved = await resolveGameKeyAndLang(
+    c.get("jwtClaims"),
+    collectionGuid,
+  );
+  if (!resolved) {
     return c.json(
       { success: false, message: "No game configured for this collection." },
       400,
     );
   }
+  const { gameKey, lang } = resolved;
 
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
@@ -57,7 +64,7 @@ router.post("/", requireAuth, async (c) => {
           scryfall_id,
           embedding <=> ${embeddingStr}::vector(768) AS distance
         FROM cards
-        WHERE game_key = ${gameKey} AND (embedding <=> ${embeddingStr}::vector(768)) < 0.3
+        WHERE game_key = ${gameKey} AND lang = ${lang} AND (embedding <=> ${embeddingStr}::vector(768)) < 0.3
         ORDER BY embedding <=> ${embeddingStr}::vector(768)
         LIMIT 5
       `);

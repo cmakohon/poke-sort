@@ -20,6 +20,18 @@ export const gamesQueryOptions = queryOptions({
   staleTime: Infinity,
 });
 
+export async function listGameLanguages(guid: string): Promise<Result<string[]>> {
+  return apiGet<Result<string[]>>(`/api/games/${guid}/languages`);
+}
+
+export const gameLanguagesQueryOptions = (guid: string | undefined) =>
+  queryOptions({
+    queryKey: ["games", guid, "languages"] as const,
+    queryFn: () => listGameLanguages(guid!).then((r) => r.data ?? []),
+    enabled: !!guid,
+    staleTime: Infinity,
+  });
+
 export async function createGame(input: GameInput): Promise<Result<Game>> {
   return apiPost<Result<Game>>("/api/games", input);
 }

@@ -7,6 +7,7 @@ export interface Collection {
   isActive: boolean;
   cardCount: number;
   game: Game | null;
+  lang: string;
   createdAt: Date;
   updatedAt: Date;
 }

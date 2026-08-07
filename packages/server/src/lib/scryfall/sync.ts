@@ -26,8 +26,9 @@ async function downloadBulkData(
   baseUrl: string,
   addLog: (msg: string) => void,
   bulkType: string,
+  lang: string | undefined,
   signal?: AbortSignal,
-): Promise<ScryfallBulkCard[]> {
+): Promise<SyncSourceCard[]> {
   addLog("Fetching Scryfall bulk data catalog...");
 
   const catalogRes = await fetch(`${apiRoot(baseUrl)}/bulk-data`, {
@@ -53,7 +54,11 @@ async function downloadBulkData(
   if (!bulkRes.ok || !bulkRes.body)
     throw new Error(`Bulk data download failed: ${bulkRes.status}`);
 
-  const cards: ScryfallBulkCard[] = [];
+  // all_cards contains every print in every language (1M+ rows) — filter
+  // and shrink each row down to the fields we keep as we stream, rather
+  // than materializing the full bulk file in memory before filtering.
+  const cards: SyncSourceCard[] = [];
+  let seen = 0;
   const lines = createInterface({
     input: Readable.fromWeb(
       bulkRes.body as NodeWebReadableStream<Uint8Array>,
@@ -63,10 +68,18 @@ async function downloadBulkData(
 
   for await (const line of lines) {
     if (!line) continue;
-    cards.push(JSON.parse(line) as ScryfallBulkCard);
+    seen++;
+    const raw = JSON.parse(line) as ScryfallBulkCard;
+    if (lang && raw.lang !== lang) continue;
+    cards.push({
+      id: raw.id,
+      name: raw.printed_name ?? raw.name,
+      setCode: raw.set,
+      imageUrl: raw.image_uris?.png ?? raw.image_uris?.large,
+    });
   }
 
-  addLog(`Downloaded ${cards.length} cards.`);
+  addLog(`Scanned ${seen} cards, kept ${cards.length}.`);
 
   return cards;
 }
@@ -77,19 +90,9 @@ async function fetchCards(
   lang: string = "en",
   signal?: AbortSignal,
 ): Promise<SyncSourceCard[]> {
-  const cards =
-    lang === "en"
-      ? await downloadBulkData(baseUrl, addLog, "unique_artwork", signal)
-      : (await downloadBulkData(baseUrl, addLog, "all_cards", signal)).filter(
-          (c) => c.lang === lang,
-        );
-
-  return cards.map((c) => ({
-    id: c.id,
-    name: c.printed_name ?? c.name,
-    setCode: c.set,
-    imageUrl: c.image_uris?.png ?? c.image_uris?.large,
-  }));
+  return lang === "en"
+    ? downloadBulkData(baseUrl, addLog, "unique_artwork", undefined, signal)
+    : downloadBulkData(baseUrl, addLog, "all_cards", lang, signal);
 }
 
 async function fetchOne(id: string, baseUrl: string) {

@@ -15,8 +15,13 @@ export const collectionsQueryOptions = queryOptions({
 export async function createCollection(
   name: string,
   gameGuid: string,
+  lang: string,
 ): Promise<Result<Collection[]>> {
-  return apiPost<Result<Collection[]>>("/api/collections", { name, gameGuid });
+  return apiPost<Result<Collection[]>>("/api/collections", {
+    name,
+    gameGuid,
+    lang,
+  });
 }
 
 export async function renameCollection(guid: string, name: string): Promise<Result<Collection[]>> {

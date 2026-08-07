@@ -12,10 +12,7 @@ export const DEFAULT_SYNC_STATE: SyncState = {
   logs: [],
 };
 
-export const LANGUAGE_LABELS: Record<string, string> = {
-  en: "English",
-  de: "German",
-};
+export { LANGUAGE_LABELS } from "@/lib/languages";
 
 export const STATUS_COLORS: Record<SyncState["status"], string> = {
   idle: "var(--muted-foreground)",

@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { db } from "../db";
-import { games } from "../db/schema";
+import { cardImageVectors, games } from "../db/schema";
 import { requireAuth, requireRole, type AppEnv } from "../middleware/auth";
 import type { FieldMeta, Game } from "@magic-vault/shared";
 
@@ -33,6 +33,30 @@ router.get("/", requireAuth, async (c) => {
   try {
     const rows = await db.select().from(games).orderBy(games.name);
     return c.json({ success: true, data: rows.map(toGame) });
+  } catch (err) {
+    console.error(err);
+    return c.json({ success: false, message: "Database error." }, 500);
+  }
+});
+
+// GET /games/:guid/languages — distinct languages present in the card database for this game
+router.get("/:guid/languages", requireAuth, async (c) => {
+  const guid = c.req.param("guid");
+  try {
+    const game = await db.query.games.findFirst({
+      where: (t, { eq }) => eq(t.guid, guid),
+      columns: { key: true },
+    });
+    if (!game) return c.json({ success: false, message: "Game not found." }, 404);
+
+    const rows = await db
+      .select({ lang: cardImageVectors.lang })
+      .from(cardImageVectors)
+      .where(eq(cardImageVectors.gameKey, game.key))
+      .groupBy(cardImageVectors.lang)
+      .orderBy(cardImageVectors.lang);
+
+    return c.json({ success: true, data: rows.map((r) => r.lang) });
   } catch (err) {
     console.error(err);
     return c.json({ success: false, message: "Database error." }, 500);

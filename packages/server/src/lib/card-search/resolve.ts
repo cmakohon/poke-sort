@@ -24,13 +24,24 @@ async function findCollectionGame(jwtClaims: string, collectionGuid: string) {
   });
 }
 
-export async function resolveGameKey(
+export async function resolveGameKeyAndLang(
   jwtClaims: string,
   collectionGuid: string | undefined,
-): Promise<string | null> {
+): Promise<{ gameKey: string; lang: string } | null> {
   if (!collectionGuid) return null;
-  const game = await findCollectionGame(jwtClaims, collectionGuid);
-  return game?.key ?? null;
+  return authQuery(jwtClaims, async (tx) => {
+    const collection = await tx.query.collections.findFirst({
+      where: (t, { eq }) => eq(t.guid, collectionGuid),
+      columns: { gameId: true, lang: true },
+    });
+    if (!collection?.gameId) return null;
+    const game = await tx.query.games.findFirst({
+      where: (t, { eq }) => eq(t.id, collection.gameId!),
+      columns: { key: true },
+    });
+    if (!game) return null;
+    return { gameKey: game.key, lang: collection.lang };
+  });
 }
 
 export async function resolveGameDataSourceUrl(
