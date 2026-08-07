@@ -5,7 +5,7 @@ import { cardImageVectors } from "../db/schema";
 import { gundamSyncSource } from "./gundam/sync";
 import { pokemonSyncSource } from "./pokemon/sync";
 import { scryfallSyncSource } from "./scryfall/sync";
-import type { SyncSource } from "./card-search/sync-types";
+import type { SyncSource, SyncSourceCard } from "./card-search/sync-types";
 import { resolveGameDataSourceUrl } from "./card-search/resolve";
 import { sendDiscordNotification } from "./discord";
 import { vectorizeImageFromBuffer } from "./vectorize";
@@ -112,6 +112,8 @@ async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+const VECTORIZE_CONCURRENCY = 4;
+
 async function runSync(source: SyncSource, lang: string): Promise<void> {
   const baseUrl = await resolveGameDataSourceUrl(source.gameKey, source.defaultUrl);
   addLog(`Using data source: ${baseUrl}`);
@@ -145,22 +147,10 @@ async function runSync(source: SyncSource, lang: string): Promise<void> {
   const existingSet = new Set(existing.map((r) => r.id));
 
   addLog(
-    `Found ${existingSet.size} existing ${source.label} cards in DB. Starting vectorization...`,
+    `Found ${existingSet.size} existing ${source.label} cards in DB. Starting vectorization (${VECTORIZE_CONCURRENCY} in parallel)...`,
   );
 
-  for (const card of cards) {
-    if (cancelFlag) {
-      state = { ...state, status: "cancelled" };
-      addLog("Sync cancelled by user.");
-      emit("done", {
-        status: "cancelled" as SyncStatus,
-        processed: state.processed,
-        skipped: state.skipped,
-        errors: state.errors,
-      });
-      return;
-    }
-
+  async function processCard(card: SyncSourceCard): Promise<void> {
     if (!card.imageUrl || existingSet.has(card.id)) {
       state = { ...state, skipped: state.skipped + 1 };
       emit("progress", {
@@ -169,7 +159,7 @@ async function runSync(source: SyncSource, lang: string): Promise<void> {
         errors: state.errors,
         currentCard: card.name,
       });
-      continue;
+      return;
     }
 
     try {
@@ -198,25 +188,53 @@ async function runSync(source: SyncSource, lang: string): Promise<void> {
       addLog(
         `[${state.processed + state.skipped}/${state.total}] ${card.name} (${card.setCode})`,
       );
-      emit("progress", {
-        processed: state.processed,
-        skipped: state.skipped,
-        errors: state.errors,
-        currentCard: card.name,
-      });
-
-      await sleep(100);
     } catch (err) {
       state = { ...state, errors: state.errors + 1 };
       const msg = err instanceof Error ? err.message : String(err);
       addLog(`Error: ${card.name}: ${msg}`);
-      emit("progress", {
-        processed: state.processed,
-        skipped: state.skipped,
-        errors: state.errors,
-        currentCard: card.name,
-      });
     }
+
+    emit("progress", {
+      processed: state.processed,
+      skipped: state.skipped,
+      errors: state.errors,
+      currentCard: card.name,
+    });
+  }
+
+  let nextIndex = 0;
+  let cancelled = false;
+
+  async function worker(): Promise<void> {
+    for (;;) {
+      if (cancelFlag) {
+        cancelled = true;
+        return;
+      }
+      const index = nextIndex++;
+      if (index >= cards.length) return;
+      await processCard(cards[index]);
+      await sleep(100);
+    }
+  }
+
+  await Promise.all(
+    Array.from(
+      { length: Math.min(VECTORIZE_CONCURRENCY, cards.length) },
+      worker,
+    ),
+  );
+
+  if (cancelled) {
+    state = { ...state, status: "cancelled" };
+    addLog("Sync cancelled by user.");
+    emit("done", {
+      status: "cancelled" as SyncStatus,
+      processed: state.processed,
+      skipped: state.skipped,
+      errors: state.errors,
+    });
+    return;
   }
 
   state = { ...state, status: "completed" };

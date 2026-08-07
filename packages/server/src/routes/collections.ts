@@ -37,6 +37,7 @@ function toCollection(row: {
   name: string;
   isActive: boolean;
   cardCount: string | number;
+  lang: string;
   createdAt: Date;
   updatedAt: Date;
   gameGuid: string | null;
@@ -53,6 +54,7 @@ function toCollection(row: {
     name: row.name,
     isActive: row.isActive,
     cardCount: Number(row.cardCount),
+    lang: row.lang,
     game: row.gameGuid
       ? {
           guid: row.gameGuid,
@@ -104,6 +106,7 @@ async function _loadCollections(
       name: collections.name,
       isActive: collections.isActive,
       cardCount: count(collectionCards.id),
+      lang: collections.lang,
       createdAt: collections.createdAt,
       updatedAt: collections.updatedAt,
       gameGuid: games.guid,
@@ -124,6 +127,7 @@ async function _loadCollections(
       collections.guid,
       collections.name,
       collections.isActive,
+      collections.lang,
       collections.createdAt,
       collections.updatedAt,
       games.id,
@@ -268,9 +272,10 @@ router.get("/:guid/viewers", requireAuth, requireOrg, async (c) => {
 // POST /collections — create and activate
 router.post("/", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
-  const { name, gameGuid } = await c.req.json<{
+  const { name, gameGuid, lang } = await c.req.json<{
     name: string;
     gameGuid?: string;
+    lang?: string;
   }>();
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
@@ -292,7 +297,7 @@ router.post("/", requireAuth, requireOrg, async (c) => {
 
       await tx
         .insert(collections)
-        .values({ name, isActive: true, orgId, gameId });
+        .values({ name, isActive: true, orgId, gameId, lang: lang || "en" });
 
       return _loadCollections(tx, orgId);
     });
@@ -803,6 +808,7 @@ router.get("/:guid/stream", async (c) => {
             name: true,
             isActive: true,
             gameId: true,
+            lang: true,
             createdAt: true,
             updatedAt: true,
           },
@@ -836,6 +842,7 @@ router.get("/:guid/stream", async (c) => {
             name: collection.name,
             isActive: collection.isActive,
             cardCount: cardRows.length,
+            lang: collection.lang,
             game: game
               ? {
                   guid: game.guid!,

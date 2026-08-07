@@ -1,9 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
-import { Field, FieldError, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { DynamicDialog } from "@/components/ui/responsive-dialog";
+import { Field, FieldLabel } from "@/components/ui/field";
 import {
   Select,
   SelectContent,
@@ -21,15 +19,11 @@ import {
   collectionsQueryOptions,
   releaseScanLock,
 } from "@/features/collections/api/collections";
+import { CreateCollectionDialog } from "@/features/collections/components/create-collection-dialog";
 import { useCollectionLocks } from "@/features/collections/api/use-collection-locks";
 import { useCollections } from "@/features/collections/api/use-collections";
 import { useOrg } from "@/features/companies/api/use-organization";
-import { gamesQueryOptions } from "@/features/games/api/games";
-import {
-  createCollectionSchema,
-  type CreateCollectionFormValues,
-} from "@/schemas/collections.schema";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { LANGUAGE_LABELS } from "@/lib/languages";
 import {
   IconEdit,
   IconLoader2,
@@ -40,28 +34,18 @@ import {
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
 export function CollectionSwitcher() {
-  const {
-    collections,
-    activeCollection,
-    isActivating,
-    isMutating,
-    createCollection,
-    activateCollection,
-  } = useCollections();
+  const { collections, activeCollection, isActivating, activateCollection } =
+    useCollections();
   const { activeOrg } = useOrg();
   const { isLoading } = useQuery({
     ...collectionsQueryOptions,
     enabled: !!activeOrg,
   });
-  const { data: games = [] } = useQuery(gamesQueryOptions);
-  const activeGames = games.filter((g) => g.isActive);
   const { locks, currentUserId, isLockedByOther } = useCollectionLocks();
-  const [createOpen, setCreateOpen] = useState(false);
   const [releasing, setReleasing] = useState(false);
 
   const isLockedByMe = !!(
@@ -82,43 +66,6 @@ export function CollectionSwitcher() {
       setReleasing(false);
     }
   }, [activeCollection]);
-
-  const form = useForm<CreateCollectionFormValues>({
-    resolver: zodResolver(createCollectionSchema),
-    defaultValues: { name: "", gameGuid: "" },
-    mode: "onChange",
-  });
-
-  const handleCreate = useCallback(
-    async (values: CreateCollectionFormValues) => {
-      const isDuplicate = collections.some(
-        (c) => c.name.trim().toLowerCase() === values.name.trim().toLowerCase(),
-      );
-      if (isDuplicate) {
-        form.setError("name", {
-          type: "manual",
-          message: "A collection with this name already exists",
-        });
-        return;
-      }
-      await createCollection(values.name, values.gameGuid);
-      form.reset();
-      setCreateOpen(false);
-    },
-    [createCollection, collections, form],
-  );
-
-  const handleCreateDialogChange = useCallback(
-    (open: boolean) => {
-      setCreateOpen(open);
-      if (open) {
-        form.reset({ name: "", gameGuid: activeGames[0]?.guid ?? "" });
-      } else {
-        form.reset();
-      }
-    },
-    [form, activeGames],
-  );
 
   const handleShare = useCallback(() => {
     if (!activeCollection) return;
@@ -153,6 +100,11 @@ export function CollectionSwitcher() {
         {activeCollection?.game && (
           <Badge variant="secondary" className="shrink-0">
             {activeCollection.game.name}
+          </Badge>
+        )}
+        {activeCollection && (
+          <Badge variant="outline" className="shrink-0">
+            {LANGUAGE_LABELS[activeCollection.lang] ?? activeCollection.lang}
           </Badge>
         )}
       </span>
@@ -263,20 +215,16 @@ export function CollectionSwitcher() {
         )}
 
         <Tooltip>
-          <DynamicDialog
-            open={createOpen}
-            onOpenChange={handleCreateDialogChange}
-            title="New Collection"
-            description="Create a new collection to scan cards into."
-            trigger={
+          <CreateCollectionDialog
+            trigger={({ disabled, noGames }) => (
               <TooltipTrigger
                 render={
                   <Button
                     variant="outline"
                     size="icon"
-                    disabled={isMutating || activeGames.length === 0}
+                    disabled={disabled}
                     title={
-                      activeGames.length === 0
+                      noGames
                         ? "Ask an admin to add a game before creating a collection"
                         : undefined
                     }
@@ -285,84 +233,8 @@ export function CollectionSwitcher() {
                   </Button>
                 }
               />
-            }
-            footer={
-              <>
-                <Button
-                  variant="outline"
-                  onClick={() => handleCreateDialogChange(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={form.handleSubmit(handleCreate)}
-                  disabled={!form.formState.isValid || isMutating}
-                >
-                  {isMutating && (
-                    <IconLoader2 className="size-4 animate-spin" />
-                  )}
-                  Create
-                </Button>
-              </>
-            }
-            footerClassName="flex-col-reverse md:flex-row"
-          >
-            <form
-              onSubmit={form.handleSubmit(handleCreate)}
-              className="flex flex-col gap-4"
-            >
-              <Controller
-                name="name"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid || undefined}>
-                    <FieldLabel htmlFor="collection-name">
-                      Collection name
-                    </FieldLabel>
-                    <Input
-                      {...field}
-                      id="collection-name"
-                      placeholder="e.g. Commander Collection, Draft Haul..."
-                      aria-invalid={fieldState.invalid}
-                      autoFocus
-                    />
-                    {fieldState.invalid && (
-                      <FieldError errors={[fieldState.error]} />
-                    )}
-                  </Field>
-                )}
-              />
-              <Controller
-                name="gameGuid"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid || undefined}>
-                    <FieldLabel htmlFor="collection-game">Game</FieldLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger id="collection-game">
-                        <SelectValue placeholder="Select a game...">
-                          {
-                            activeGames.find((g) => g.guid === field.value)
-                              ?.name
-                          }
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {activeGames.map((game) => (
-                          <SelectItem key={game.guid} value={game.guid}>
-                            {game.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {fieldState.invalid && (
-                      <FieldError errors={[fieldState.error]} />
-                    )}
-                  </Field>
-                )}
-              />
-            </form>
-          </DynamicDialog>
+            )}
+          />
           <TooltipContent>New Collection</TooltipContent>
         </Tooltip>
       </ButtonGroup>
