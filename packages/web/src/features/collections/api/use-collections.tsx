@@ -27,6 +27,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 const ACTIVE_KEY = "activeCollectionGuid";
@@ -55,6 +56,7 @@ export function CollectionsProvider({
 }: {
   children: React.ReactNode;
 }) {
+  const { t } = useTranslation("collections");
   const queryClient = useQueryClient();
   const { activeOrg } = useOrg();
   const { data: collections = [], isLoading } = useQuery({
@@ -136,7 +138,7 @@ export function CollectionsProvider({
         }
       }
     },
-    onError: () => toast.error("Failed to create collection"),
+    onError: () => toast.error(t("errors.createFailed")),
   });
 
   const renameMutation = useMutation({
@@ -145,7 +147,7 @@ export function CollectionsProvider({
     onSuccess: (r) => {
       if (r.success && r.data) setCollections(r.data);
     },
-    onError: () => toast.error("Failed to rename collection"),
+    onError: () => toast.error(t("errors.renameFailed")),
   });
 
   const deleteMutation = useMutation({
@@ -153,7 +155,7 @@ export function CollectionsProvider({
     onSuccess: (r) => {
       if (r.success && r.data) setCollections(r.data);
     },
-    onError: () => toast.error("Failed to delete collection"),
+    onError: () => toast.error(t("errors.deleteFailed")),
   });
 
   const emptyMutation = useMutation({
@@ -167,7 +169,7 @@ export function CollectionsProvider({
         );
       }
     },
-    onError: () => toast.error("Failed to empty collection"),
+    onError: () => toast.error(t("errors.emptyFailed")),
   });
 
   const isMutating =

@@ -1,0 +1,64 @@
+{
+  "gamesManager": {
+    "heading": "Games",
+    "description": "Configure which trading card games can be scanned into and how their cards are matched against bin rules.",
+    "addGame": "Add game",
+    "loading": "Loading...",
+    "active": "Active",
+    "inactive": "Inactive",
+    "fieldCount_one": "{{count}} field",
+    "fieldCount_other": "{{count}} fields",
+    "editTitle": "Edit",
+    "deleteTitle": "Delete",
+    "empty": "No games configured yet",
+    "deleteDialog": {
+      "title": "Delete game",
+      "description": "Permanently delete \"{{name}}\"? Collections using this game will keep their scanned cards, but no new cards can be matched against it."
+    },
+    "toasts": {
+      "createError": "Failed to create game",
+      "createSuccess": "Created {{name}}",
+      "updateError": "Failed to update game",
+      "updateSuccess": "Saved {{name}}",
+      "deleteError": "Failed to delete game",
+      "deleteSuccess": "Game deleted"
+    }
+  },
+  "gameFormDialog": {
+    "addTitle": "Add game",
+    "editTitle": "Edit {{name}}",
+    "description": "Define how cards for this game are fetched and which fields bin rules can filter on.",
+    "keyLabel": "Key",
+    "keyPlaceholder": "pokemon",
+    "nameLabel": "Name",
+    "namePlaceholder": "Pokémon",
+    "dataSourceUrlLabel": "Data source URL",
+    "dataSourceUrlPlaceholder": "https://api.pokemontcg.io/v2/cards",
+    "activeLabel": "Active",
+    "cancel": "Cancel",
+    "saving": "Saving…",
+    "saveChanges": "Save changes",
+    "createGame": "Create game",
+    "validation": {
+      "required": "Required",
+      "keyFormat": "Lowercase letters, numbers, and hyphens only",
+      "invalidUrl": "Must be a valid URL",
+      "minFields": "Add at least one field"
+    }
+  },
+  "fieldDefinitionsEditor": {
+    "heading": "Field definitions",
+    "addField": "Add field",
+    "fieldKeyPlaceholder": "Field key (e.g. rarity)",
+    "labelPlaceholder": "Label (e.g. Rarity)",
+    "dataPathPlaceholder": "Data path (e.g. prices.usd)",
+    "optionsPlaceholder": "Options, comma separated (e.g. common, uncommon, rare)",
+    "empty": "No fields yet — add at least one for bin rules to filter on."
+  },
+  "fieldTypes": {
+    "string": "String",
+    "numeric": "Numeric",
+    "enum": "Enum",
+    "set": "Set"
+  }
+}

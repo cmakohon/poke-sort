@@ -16,15 +16,19 @@ import {
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 function ScanningPill({ isOwn }: { isOwn?: boolean }) {
+  const { t } = useTranslation("scanner");
   return (
     <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-500/10 ring-1 ring-amber-500/20 text-amber-500">
       <span className="size-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
       <span className="text-[10px] font-medium">
-        {isOwn ? "Your session" : "Scanning"}
+        {isOwn
+          ? t("monitorSessions.yourSession")
+          : t("monitorSessions.scanning")}
       </span>
     </span>
   );
@@ -63,6 +67,7 @@ function StatusIcon({
 }
 
 function ReleaseButton({ guid }: { guid: string }) {
+  const { t } = useTranslation("scanner");
   const [releasing, setReleasing] = useState(false);
 
   const handleRelease = async (e: React.MouseEvent) => {
@@ -70,9 +75,9 @@ function ReleaseButton({ guid }: { guid: string }) {
     setReleasing(true);
     try {
       await releaseScanLock(guid);
-      toast.success("Session released");
+      toast.success(t("monitorSessions.sessionReleased"));
     } catch {
-      toast.error("Failed to release session");
+      toast.error(t("monitorSessions.releaseFailed"));
     } finally {
       setReleasing(false);
     }
@@ -83,7 +88,7 @@ function ReleaseButton({ guid }: { guid: string }) {
       type="button"
       onClick={handleRelease}
       disabled={releasing}
-      title="Leave session"
+      title={t("monitorSessions.leaveSession")}
       className="flex items-center justify-center size-7 rounded-md border border-amber-500/30 text-amber-500 hover:bg-amber-500/10 transition-colors disabled:opacity-50 shrink-0"
     >
       {releasing ? (
@@ -96,6 +101,7 @@ function ReleaseButton({ guid }: { guid: string }) {
 }
 
 export default function MonitorSessionsPage() {
+  const { t } = useTranslation("scanner");
   const { activeOrg } = useOrg();
   const { data: collections, isLoading } = useQuery({
     ...collectionsQueryOptions,
@@ -127,9 +133,11 @@ export default function MonitorSessionsPage() {
   return (
     <div className="flex flex-col p-4 md:p-6 max-w-4xl mx-auto w-full gap-4">
       <div>
-        <h1 className="text-lg font-semibold font-heading">Session Monitor</h1>
+        <h1 className="text-lg font-semibold font-heading">
+          {t("monitorSessions.title")}
+        </h1>
         <p className="text-xs text-muted-foreground">
-          Join a live scanning session
+          {t("monitorSessions.subtitle")}
         </p>
       </div>
 
@@ -148,8 +156,10 @@ export default function MonitorSessionsPage() {
         {!isLoading && sorted.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 gap-2 text-muted-foreground">
             <IconHeartRateMonitor className="size-8" />
-            <p className="text-sm font-medium">No sessions found</p>
-            <p className="text-xs">Active sessions will appear here</p>
+            <p className="text-sm font-medium">
+              {t("monitorSessions.noSessionsFound")}
+            </p>
+            <p className="text-xs">{t("monitorSessions.noSessionsHint")}</p>
           </div>
         )}
 
@@ -181,8 +191,10 @@ export default function MonitorSessionsPage() {
                     {collection.name}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {collection.cardCount}{" "}
-                    {collection.cardCount === 1 ? "card" : "cards"} ·{" "}
+                    {t("monitorSessions.cardCount", {
+                      count: collection.cardCount,
+                    })}{" "}
+                    ·{" "}
                     {new Date(collection.updatedAt).toLocaleDateString(
                       undefined,
                       {
@@ -202,7 +214,9 @@ export default function MonitorSessionsPage() {
                         name={scannerLock.displayName}
                         variant="scanner"
                         size="sm"
-                        tooltip={`${scannerLock.displayName} is scanning`}
+                        tooltip={t("monitorSessions.isScanningTooltip", {
+                          name: scannerLock.displayName,
+                        })}
                       />
                     )}
                     <ScanningPill isOwn={isOwn} />

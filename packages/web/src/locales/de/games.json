@@ -1,0 +1,64 @@
+{
+  "gamesManager": {
+    "heading": "Spiele",
+    "description": "Lege fest, welche Trading Card Games gescannt werden können und wie ihre Karten mit Fach-Regeln abgeglichen werden.",
+    "addGame": "Spiel hinzufügen",
+    "loading": "Wird geladen...",
+    "active": "Aktiv",
+    "inactive": "Inaktiv",
+    "fieldCount_one": "{{count}} Feld",
+    "fieldCount_other": "{{count}} Felder",
+    "editTitle": "Bearbeiten",
+    "deleteTitle": "Löschen",
+    "empty": "Noch keine Spiele konfiguriert",
+    "deleteDialog": {
+      "title": "Spiel löschen",
+      "description": "„{{name}}“ dauerhaft löschen? Sammlungen, die dieses Spiel verwenden, behalten ihre gescannten Karten, aber es können keine neuen Karten mehr damit abgeglichen werden."
+    },
+    "toasts": {
+      "createError": "Spiel konnte nicht erstellt werden",
+      "createSuccess": "{{name}} erstellt",
+      "updateError": "Spiel konnte nicht aktualisiert werden",
+      "updateSuccess": "{{name}} gespeichert",
+      "deleteError": "Spiel konnte nicht gelöscht werden",
+      "deleteSuccess": "Spiel gelöscht"
+    }
+  },
+  "gameFormDialog": {
+    "addTitle": "Spiel hinzufügen",
+    "editTitle": "{{name}} bearbeiten",
+    "description": "Lege fest, wie Karten für dieses Spiel abgerufen werden und welche Felder Fach-Regeln filtern können.",
+    "keyLabel": "Schlüssel",
+    "keyPlaceholder": "pokemon",
+    "nameLabel": "Name",
+    "namePlaceholder": "Pokémon",
+    "dataSourceUrlLabel": "Datenquellen-URL",
+    "dataSourceUrlPlaceholder": "https://api.pokemontcg.io/v2/cards",
+    "activeLabel": "Aktiv",
+    "cancel": "Abbrechen",
+    "saving": "Wird gespeichert…",
+    "saveChanges": "Änderungen speichern",
+    "createGame": "Spiel erstellen",
+    "validation": {
+      "required": "Erforderlich",
+      "keyFormat": "Nur Kleinbuchstaben, Zahlen und Bindestriche",
+      "invalidUrl": "Muss eine gültige URL sein",
+      "minFields": "Mindestens ein Feld hinzufügen"
+    }
+  },
+  "fieldDefinitionsEditor": {
+    "heading": "Feld-Definitionen",
+    "addField": "Feld hinzufügen",
+    "fieldKeyPlaceholder": "Feldschlüssel (z. B. rarity)",
+    "labelPlaceholder": "Beschriftung (z. B. Seltenheit)",
+    "dataPathPlaceholder": "Datenpfad (z. B. prices.usd)",
+    "optionsPlaceholder": "Optionen, kommagetrennt (z. B. common, uncommon, rare)",
+    "empty": "Noch keine Felder — füge mindestens eines hinzu, damit Fach-Regeln filtern können."
+  },
+  "fieldTypes": {
+    "string": "Text",
+    "numeric": "Numerisch",
+    "enum": "Enum",
+    "set": "Menge"
+  }
+}

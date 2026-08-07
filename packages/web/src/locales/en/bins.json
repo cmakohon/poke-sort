@@ -1,0 +1,82 @@
+{
+  "binCard": {
+    "binLabel": "Bin {{number}}",
+    "catchAll": "Catch-all",
+    "ruleCount_one": "{{count}} rule",
+    "ruleCount_other": "{{count}} rules",
+    "allUnmatched": "All unmatched cards",
+    "clickToConfigure": "Click to configure"
+  },
+  "binConfigPanel": {
+    "needCatchAllError": "At least one bin must be catch-all.",
+    "binHeading": "Bin {{number}}",
+    "catchAllEnabled": "Catch-all enabled",
+    "setCatchAll": "Set as catch-all",
+    "catchAllDescription": "Cards that don't match any other bin will go here.",
+    "rulesLabel": "Rules",
+    "clear": "Clear",
+    "save": "Save"
+  },
+  "binList": {
+    "needCatchAll": "One bin must be set as catch-all."
+  },
+  "binLocationDiagram": {
+    "binLabel": "Bin {{number}}",
+    "catchAll": "Catch-all"
+  },
+  "conditionRow": {
+    "selectPlaceholder": "Select...",
+    "valuePlaceholder": "Value..."
+  },
+  "ruleGroupEditor": {
+    "and": "AND",
+    "or": "OR",
+    "emptyState": "No conditions. Add a condition or group to get started.",
+    "addCondition": "Condition",
+    "addGroup": "Group"
+  },
+  "ruleSummary": {
+    "noConditions": "No conditions",
+    "and": "AND",
+    "or": "OR"
+  },
+  "presetSelector": {
+    "binLabel": "Bin {{number}}",
+    "catchAll": "catch-all",
+    "noRules": "no rules",
+    "conditionCount_one": "{{count}} condition",
+    "conditionCount_other": "{{count}} conditions",
+    "sortingLogic": "Sorting Logic",
+    "selectSetPlaceholder": "Select a set...",
+    "editSortingLogic": "Edit Sorting Logic",
+    "deleteSetTitle": "Delete Set",
+    "deleteSetDescription": "Permanently deletes \"{{name}}\". This cannot be undone.",
+    "revertSuccess": "Reverted to previous bin set state",
+    "revertFailed": "Failed to revert",
+    "renameSetTitle": "Rename Set",
+    "renameSetDescription": "Enter a new name for this set.",
+    "cancel": "Cancel",
+    "rename": "Rename",
+    "setNameLabel": "Set name",
+    "setNamePlaceholder": "Set name...",
+    "newSetTitle": "New Set",
+    "newSetDescription": "Create a new set with 7 empty bins.",
+    "create": "Create",
+    "viewHistory": "View History",
+    "historyTitle": "Bin Set History"
+  },
+  "useBinConfigs": {
+    "toasts": {
+      "saveBinFailed": "Failed to save bin config",
+      "clearBinFailed": "Failed to clear bin config",
+      "activateSetFailed": "Failed to activate set",
+      "createSetFailed": "Failed to create set",
+      "saveSetFailed": "Failed to save set",
+      "renameSetFailed": "Failed to rename set",
+      "deleteSetFailed": "Failed to delete set"
+    }
+  },
+  "binsPage": {
+    "binLabel": "Bin {{number}}"
+  }
+}

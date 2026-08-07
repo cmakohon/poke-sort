@@ -10,7 +10,9 @@ import {
   IconSettings2,
   IconTool,
 } from "@tabler/icons-react";
+import type { TFunction } from "i18next";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 
 interface Step {
   key: string;
@@ -20,232 +22,244 @@ interface Step {
 }
 
 interface Phase {
+  key: string;
   title: string;
   icon: typeof IconCube;
   steps: Step[];
 }
 
-const PHASES: Phase[] = [
-  {
-    title: "Print the structural parts",
-    icon: IconCube,
-    steps: [
-      {
-        key: "print-enclosure",
-        text: (
-          <>
-            Slice and print the enclosure and three module housings from{" "}
-            <a
-              href="https://github.com/dishwasher-detergent/mault/blob/master/3d%20model/card_sorter.3mf"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline underline-offset-2 hover:text-foreground"
-            >
-              card_sorter.3mf
-            </a>{" "}
-            (or re-export from{" "}
-            <a
-              href="https://github.com/dishwasher-detergent/mault/blob/master/3d%20model/Card%20Sorter.f3d"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline underline-offset-2 hover:text-foreground"
-            >
-              Card Sorter.f3d
-            </a>
-            ).
-          </>
-        ),
-        note: "PLA is fine for the housings; PETG if the unit will sit somewhere warm.",
-      },
-      {
-        key: "dry-fit",
-        text: "Dry-fit each module housing before inserting any electronics - sand or adjust any tight servo pockets now.",
-        images: [
-          "/instructions/top_down_view_device.jpg",
-          "/instructions/corner_view_device.jpg",
-          "/instructions/front_view_device.jpg",
-        ],
-      },
-      {
-        key: "mount-boards-to-panels",
-        text: "Mount the Arduino and PCA9685 servo driver board to the base panels with 8 M2×6 screws.",
-      },
-      {
-        key: "attach-base-panels",
-        text: "Attach the base panels to the base with 8 M3×6 screws and 8 M3 nuts.",
-        note: "Do this after the Arduino and PCA9685 are mounted to the panels - the boards are much harder to reach once the panels are on the base.",
-      },
-    ],
-  },
-  {
-    title: "Flash the firmware",
-    icon: IconCpu,
-    steps: [
-      {
-        key: "install-libraries",
-        text: "In the Arduino IDE, install the ArduinoJson and Adafruit PWM Servo Driver libraries.",
-        note: "Library Manager → search each by name.",
-      },
-      {
-        key: "upload-sketch",
-        text: 'Select board "Arduino Uno R4 Minima", select the correct port, then upload arduino/main/main.ino.',
-      },
-      {
-        key: "confirm-ready",
-        text: 'Open the Serial Monitor at 9600 baud and confirm you see {"status":"ready"} after the board resets.',
-      },
-    ],
-  },
-  {
-    title: "Mount the servos",
-    icon: IconTool,
-    steps: [
-      {
-        key: "mount-module-servos",
-        text: "Install the bottom, paddle, and pusher servo into each of the 3 module housings (9 servos total).",
-        note: "Center each servo at its neutral pulse before screwing down the horn, so mechanical range matches the firmware's open/closed travel.",
-        images: ["/instructions/top_down_view_module.jpg"],
-      },
-      {
-        key: "mount-bottom-flapper",
-        text: "Attach the bottom flapper to the bottom servo's horn with M2×4 screws, servo held at its closed pulse so the flapper seats flush across the card path.",
-        note: "This is the trapdoor a card falls through to reach the next module, or the current one on a match.",
-        images: ["/instructions/bottom_paddle.jpg"],
-      },
-      {
-        key: "mount-side-flappers",
-        text: "Before attaching anything, command each paddle servo through its full range to confirm the linkage can reach fully open without binding. Then, with the servo held at its closed position, attach the left and right flapper to the shared linkage with M2×4 screws (one pair per module) so both sit flush and even.",
-        note: "One paddle servo drives both flappers together - they open and close as a pair, not independently. Fit the flappers closed first; the exact open-position pulse gets fine-tuned later from the Module Calibration Grid.",
-        images: ["/instructions/side_paddles.jpg"],
-      },
-      {
-        key: "mount-pusher-arm",
-        text: "Before fitting the arm, sweep the pusher servo through its full left-to-right range and find its true mechanical middle. With the servo held at that middle position, attach the card pusher arm to the horn with M2×4 screws so it sits centered between the left and right bins.",
-        note: "Fitting the arm off-center biases the push distance to one side - the exact left/right pulses get fine-tuned later from the Module Calibration Grid.",
-        images: ["/instructions/pusher_arms.jpg"],
-      },
-      {
-        key: "fit-feeder-orings",
-        text: "Fit 6 G20 o-rings onto the feeder roller.",
-        note: "These give the roller grip on the card face - space them evenly along the roller's length.",
-      },
-      {
-        key: "mount-feeder-roller",
-        text: "Attach the roller to the feeder module.",
-        images: ["/instructions/feeder_roller.jpg"],
-      },
-      {
-        key: "mount-feeder-servo",
-        text: "Install the continuous-rotation feeder servo to the roller, at the base of the hopper.",
-        images: ["/instructions/feeder_servo.jpg"],
-      },
-      {
-        key: "mount-feeder-wall",
-        text: "Attach the wall piece to the tube that guides cards from the hopper to the feeder roller.",
-        note: "When mounting the wall, attach it to the feeder module first, then put 2 cards below the wall and slide it down before tighting it into place.",
-        images: ["/instructions/feeder_tube_wall.jpg"],
-      },
-    ],
-  },
-  {
-    title: "Mount the IR sensors",
-    icon: IconAdjustmentsHorizontal,
-    steps: [
-      {
-        key: "mount-module-ir",
-        text: "Fix one IR sensor at the gate of each module (1, 2, 3), aimed across the card path.",
-        images: ["/instructions/ir_sensor.jpg"],
-      },
-      {
-        key: "mount-hopper-ir",
-        text: "Fix the fourth IR sensor in the hopper throat, just above the feeder.",
-        note: "This one tells the feeder when the hopper is empty - placement matters more than the module sensors.",
-      },
-    ],
-  },
-  {
-    title: "Wire the electronics",
-    icon: IconPlugConnected,
-    steps: [
-      {
-        key: "wire-i2c",
-        text: "Wire the PCA9685 to the Arduino's I²C bus (SDA/SCL) and 5V/GND for logic power.",
-        note: "See the Wiring section above.",
-      },
-      {
-        key: "wire-servos",
-        text: "Wire all 10 servos into PCA9685 channels 0–13 per the channel map.",
-        note: "There are wire channels, that use zip ties, in the side of the base to help keep everything neat.",
-      },
-      {
-        key: "wire-sensors",
-        text: "Wire the 4 IR sensors to D2–D5.",
-        note: "For the power and ground, you will have to combine 4 wires into one, either with a breadboard or by twisting and soldering them together. You will need to manually calibrate the sensors to have a shorter throw, as to not get false positives.",
-      },
-      {
-        key: "wire-power",
-        text: "Bring the external 5V supply into the PCA9685 V+/GND terminal, and tie its ground to the Arduino's ground.",
-        note: "Skipping the common ground is the #1 cause of servos that twitch but never move correctly.",
-      },
-    ],
-  },
-  {
-    title: "First power-on test",
-    icon: IconBolt,
-    steps: [
-      {
-        key: "run-test-command",
-        text: 'With the external servo supply connected, send {"test": true} over serial.',
-        note: "Cycles every bottom and paddle open, sweeps all pushers left then right, resets to neutral, then briefly spins the feeder.",
-      },
-      {
-        key: "watch-modules",
-        text: "Watch each module during the test - confirm nothing binds or grinds at the end of its travel.",
-        note: "If a servo strains at open or closed, its housing cutout likely needs adjusting before calibration.",
-      },
-    ],
-  },
-  {
-    title: "Calibrate from the app",
-    icon: IconSettings2,
-    steps: [
-      {
-        key: "connect-serial",
-        text: "Connect the Arduino to the app via Web Serial, then open /app/calibrate.",
-      },
-      {
-        key: "calibrate-modules",
-        text: "Module Calibration Grid - set the open/closed pulse for each bottom and paddle, and left/neutral/right for each pusher, module by module.",
-      },
-      {
-        key: "calibrate-feeder",
-        text: "Feeder Calibration Panel - tune feed speed, pulse/pause timing, and settle duration against your actual hopper.",
-      },
-      {
-        key: "check-ir",
-        text: "IR Sensor Panel - verify all 4 sensors report present/absent correctly with a card in hand.",
-      },
-      {
-        key: "test-bins",
-        text: "Bin Routing Controls - send a test card to each of the 7 bins in turn and confirm it lands correctly.",
-      },
-    ],
-  },
-  {
-    title: "Load and run",
-    icon: IconPlayerPlay,
-    steps: [
-      {
-        key: "load-hopper",
-        text: "Load the hopper and confirm the feeder stops pulsing once the hopper IR reads empty.",
-      },
-      {
-        key: "full-pass",
-        text: "Run a full scan-to-bin pass end to end before leaving the unit unattended.",
-      },
-    ],
-  },
-];
+function buildPhases(t: TFunction<"build">): Phase[] {
+  return [
+    {
+      key: "print",
+      title: t("assembly.phases.print.title"),
+      icon: IconCube,
+      steps: [
+        {
+          key: "print-enclosure",
+          text: (
+            <Trans
+              t={t}
+              i18nKey="assembly.phases.print.steps.printEnclosure.text"
+              components={{
+                mesh: (
+                  <a
+                    href="https://github.com/dishwasher-detergent/mault/blob/master/3d%20model/card_sorter.3mf"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline underline-offset-2 hover:text-foreground"
+                  />
+                ),
+                source: (
+                  <a
+                    href="https://github.com/dishwasher-detergent/mault/blob/master/3d%20model/Card%20Sorter.f3d"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline underline-offset-2 hover:text-foreground"
+                  />
+                ),
+              }}
+            />
+          ),
+          note: t("assembly.phases.print.steps.printEnclosure.note"),
+        },
+        {
+          key: "dry-fit",
+          text: t("assembly.phases.print.steps.dryFit.text"),
+          images: [
+            "/instructions/top_down_view_device.jpg",
+            "/instructions/corner_view_device.jpg",
+            "/instructions/front_view_device.jpg",
+          ],
+        },
+        {
+          key: "mount-boards-to-panels",
+          text: t("assembly.phases.print.steps.mountBoardsToPanels.text"),
+        },
+        {
+          key: "attach-base-panels",
+          text: t("assembly.phases.print.steps.attachBasePanels.text"),
+          note: t("assembly.phases.print.steps.attachBasePanels.note"),
+        },
+      ],
+    },
+    {
+      key: "firmware",
+      title: t("assembly.phases.firmware.title"),
+      icon: IconCpu,
+      steps: [
+        {
+          key: "install-libraries",
+          text: t("assembly.phases.firmware.steps.installLibraries.text"),
+          note: t("assembly.phases.firmware.steps.installLibraries.note"),
+        },
+        {
+          key: "upload-sketch",
+          text: t("assembly.phases.firmware.steps.uploadSketch.text"),
+        },
+        {
+          key: "confirm-ready",
+          text: t("assembly.phases.firmware.steps.confirmReady.text"),
+        },
+      ],
+    },
+    {
+      key: "servos",
+      title: t("assembly.phases.servos.title"),
+      icon: IconTool,
+      steps: [
+        {
+          key: "mount-module-servos",
+          text: t("assembly.phases.servos.steps.mountModuleServos.text"),
+          note: t("assembly.phases.servos.steps.mountModuleServos.note"),
+          images: ["/instructions/top_down_view_module.jpg"],
+        },
+        {
+          key: "mount-bottom-flapper",
+          text: t("assembly.phases.servos.steps.mountBottomFlapper.text"),
+          note: t("assembly.phases.servos.steps.mountBottomFlapper.note"),
+          images: ["/instructions/bottom_paddle.jpg"],
+        },
+        {
+          key: "mount-side-flappers",
+          text: t("assembly.phases.servos.steps.mountSideFlappers.text"),
+          note: t("assembly.phases.servos.steps.mountSideFlappers.note"),
+          images: ["/instructions/side_paddles.jpg"],
+        },
+        {
+          key: "mount-pusher-arm",
+          text: t("assembly.phases.servos.steps.mountPusherArm.text"),
+          note: t("assembly.phases.servos.steps.mountPusherArm.note"),
+          images: ["/instructions/pusher_arms.jpg"],
+        },
+        {
+          key: "fit-feeder-orings",
+          text: t("assembly.phases.servos.steps.fitFeederOrings.text"),
+          note: t("assembly.phases.servos.steps.fitFeederOrings.note"),
+        },
+        {
+          key: "mount-feeder-roller",
+          text: t("assembly.phases.servos.steps.mountFeederRoller.text"),
+          images: ["/instructions/feeder_roller.jpg"],
+        },
+        {
+          key: "mount-feeder-servo",
+          text: t("assembly.phases.servos.steps.mountFeederServo.text"),
+          images: ["/instructions/feeder_servo.jpg"],
+        },
+        {
+          key: "mount-feeder-wall",
+          text: t("assembly.phases.servos.steps.mountFeederWall.text"),
+          note: t("assembly.phases.servos.steps.mountFeederWall.note"),
+          images: ["/instructions/feeder_tube_wall.jpg"],
+        },
+      ],
+    },
+    {
+      key: "ir-sensors",
+      title: t("assembly.phases.irSensors.title"),
+      icon: IconAdjustmentsHorizontal,
+      steps: [
+        {
+          key: "mount-module-ir",
+          text: t("assembly.phases.irSensors.steps.mountModuleIr.text"),
+          images: ["/instructions/ir_sensor.jpg"],
+        },
+        {
+          key: "mount-hopper-ir",
+          text: t("assembly.phases.irSensors.steps.mountHopperIr.text"),
+          note: t("assembly.phases.irSensors.steps.mountHopperIr.note"),
+        },
+      ],
+    },
+    {
+      key: "wiring",
+      title: t("assembly.phases.wiring.title"),
+      icon: IconPlugConnected,
+      steps: [
+        {
+          key: "wire-i2c",
+          text: t("assembly.phases.wiring.steps.wireI2c.text"),
+          note: t("assembly.phases.wiring.steps.wireI2c.note"),
+        },
+        {
+          key: "wire-servos",
+          text: t("assembly.phases.wiring.steps.wireServos.text"),
+          note: t("assembly.phases.wiring.steps.wireServos.note"),
+        },
+        {
+          key: "wire-sensors",
+          text: t("assembly.phases.wiring.steps.wireSensors.text"),
+          note: t("assembly.phases.wiring.steps.wireSensors.note"),
+        },
+        {
+          key: "wire-power",
+          text: t("assembly.phases.wiring.steps.wirePower.text"),
+          note: t("assembly.phases.wiring.steps.wirePower.note"),
+        },
+      ],
+    },
+    {
+      key: "power-on-test",
+      title: t("assembly.phases.powerOnTest.title"),
+      icon: IconBolt,
+      steps: [
+        {
+          key: "run-test-command",
+          text: t("assembly.phases.powerOnTest.steps.runTestCommand.text"),
+          note: t("assembly.phases.powerOnTest.steps.runTestCommand.note"),
+        },
+        {
+          key: "watch-modules",
+          text: t("assembly.phases.powerOnTest.steps.watchModules.text"),
+          note: t("assembly.phases.powerOnTest.steps.watchModules.note"),
+        },
+      ],
+    },
+    {
+      key: "calibrate",
+      title: t("assembly.phases.calibrate.title"),
+      icon: IconSettings2,
+      steps: [
+        {
+          key: "connect-serial",
+          text: t("assembly.phases.calibrate.steps.connectSerial.text"),
+        },
+        {
+          key: "calibrate-modules",
+          text: t("assembly.phases.calibrate.steps.calibrateModules.text"),
+        },
+        {
+          key: "calibrate-feeder",
+          text: t("assembly.phases.calibrate.steps.calibrateFeeder.text"),
+        },
+        {
+          key: "check-ir",
+          text: t("assembly.phases.calibrate.steps.checkIr.text"),
+        },
+        {
+          key: "test-bins",
+          text: t("assembly.phases.calibrate.steps.testBins.text"),
+        },
+      ],
+    },
+    {
+      key: "load-run",
+      title: t("assembly.phases.loadRun.title"),
+      icon: IconPlayerPlay,
+      steps: [
+        {
+          key: "load-hopper",
+          text: t("assembly.phases.loadRun.steps.loadHopper.text"),
+        },
+        {
+          key: "full-pass",
+          text: t("assembly.phases.loadRun.steps.fullPass.text"),
+        },
+      ],
+    },
+  ];
+}
 
 const STORAGE_KEY = "magic-vault:build-checklist";
 
@@ -277,9 +291,12 @@ function useChecklist() {
 }
 
 export function BuildAssembly() {
+  const { t } = useTranslation("build");
   const { checked, toggle } = useChecklist();
 
-  const allSteps = useMemo(() => PHASES.flatMap((p) => p.steps), []);
+  const PHASES = useMemo(() => buildPhases(t), [t]);
+
+  const allSteps = useMemo(() => PHASES.flatMap((p) => p.steps), [PHASES]);
   const doneCount = allSteps.filter((s) => checked[s.key]).length;
   const pct = allSteps.length
     ? Math.round((doneCount / allSteps.length) * 100)
@@ -288,29 +305,35 @@ export function BuildAssembly() {
   return (
     <section id="assembly" className="mx-auto max-w-4xl px-4 py-16">
       <h2 className="font-heading text-2xl font-semibold tracking-tight md:text-3xl">
-        Assembly
+        {t("assembly.heading")}
       </h2>
       <p className="mt-3 max-w-2xl text-sm/relaxed text-muted-foreground">
-        Eight phases, structural work first. Checkboxes are saved in this
-        browser, so you can close the tab mid-build and pick back up later.
+        {t("assembly.description")}
       </p>
       <p className="mt-2 max-w-2xl text-sm/relaxed text-muted-foreground">
-        Stuck on a step?{" "}
-        <a
-          href={DISCORD_URL}
-          target="_blank"
-          rel="noreferrer"
-          className="underline underline-offset-2 hover:text-foreground"
-        >
-          Join the Discord
-        </a>{" "}
-        if you need help.
+        <Trans
+          t={t}
+          i18nKey="assembly.helpText"
+          components={{
+            a: (
+              <a
+                href={DISCORD_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="underline underline-offset-2 hover:text-foreground"
+              />
+            ),
+          }}
+        />
       </p>
 
       <div className="mt-6">
         <div className="mb-1.5 flex items-center justify-between font-mono text-[11px] text-muted-foreground">
           <span>
-            {doneCount} of {allSteps.length} steps
+            {t("assembly.progress.stepsCount", {
+              done: doneCount,
+              total: allSteps.length,
+            })}
           </span>
           <span>{pct}%</span>
         </div>
@@ -324,14 +347,14 @@ export function BuildAssembly() {
 
       <div className="mt-8 flex flex-col gap-4">
         {PHASES.map((phase, i) => (
-          <div key={phase.title} className="rounded-lg border bg-card">
+          <div key={phase.key} className="rounded-lg border bg-card">
             <div className="flex items-center gap-3 border-b bg-secondary/30 px-4 py-3 md:px-5">
               <span className="grid size-8 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
                 <phase.icon size={16} />
               </span>
               <div className="flex flex-col items-baseline">
                 <span className="font-mono text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
-                  Phase {i + 1}
+                  {t("assembly.phaseLabel", { n: i + 1 })}
                 </span>
                 <h3 className="font-heading text-sm font-semibold">
                   {phase.title}

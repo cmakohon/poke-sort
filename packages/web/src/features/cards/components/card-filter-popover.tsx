@@ -10,6 +10,7 @@ import {
   IconHelpCircle,
   IconX,
 } from "@tabler/icons-react";
+import { useTranslation } from "react-i18next";
 
 const EMPTY_FILTERS: CardFilters = {
   colors: [],
@@ -54,6 +55,7 @@ export function CardFilterPopover({
   availableRarities,
   availableColors,
 }: CardFilterPopoverProps) {
+  const { t } = useTranslation("cards");
   const bins = Array.from({ length: BIN_COUNT }, (_, i) => i + 1);
 
   return (
@@ -74,7 +76,7 @@ export function CardFilterPopover({
         {availableColors.length > 0 && (
           <div>
             <p className="text-[11px] font-medium text-muted-foreground tracking-wide mb-1.5 font-heading">
-              Color
+              {t("cardFilterPopover.color")}
             </p>
             <div className="flex flex-col gap-1">
               {availableColors.map((color) => {
@@ -119,7 +121,7 @@ export function CardFilterPopover({
         {availableRarities.length > 0 && (
           <div>
             <p className="text-[11px] font-medium text-muted-foreground tracking-wide mb-1.5 font-heading">
-              Rarity
+              {t("cardFilterPopover.rarity")}
             </p>
             <div className="flex flex-col gap-1">
               {availableRarities.map((rarity) => {
@@ -161,7 +163,7 @@ export function CardFilterPopover({
 
         <div>
           <p className="text-[11px] font-medium text-muted-foreground tracking-wide mb-1.5 font-heading">
-            Bin
+            {t("cardFilterPopover.bin")}
           </p>
           <div className="flex gap-1 flex-wrap">
             {bins.map((bin) => {
@@ -203,7 +205,7 @@ export function CardFilterPopover({
                   ? "bg-muted-foreground text-background border-muted-foreground"
                   : chipInactive,
               )}
-              title="Unassigned"
+              title={t("cardFilterPopover.unassigned")}
             >
               -
             </button>
@@ -212,7 +214,7 @@ export function CardFilterPopover({
 
         <div>
           <p className="text-[11px] font-medium text-muted-foreground tracking-wide mb-1.5 font-heading flex items-center justify-between">
-            <span>Min. match</span>
+            <span>{t("cardFilterPopover.minMatch")}</span>
             <span className="text-foreground font-semibold">
               {activeFilters.minMatchPercent}%
             </span>
@@ -233,7 +235,7 @@ export function CardFilterPopover({
 
         <div>
           <p className="text-[11px] font-medium text-muted-foreground tracking-wide mb-1.5 font-heading">
-            Status
+            {t("cardFilterPopover.status")}
           </p>
           <button
             type="button"
@@ -252,13 +254,13 @@ export function CardFilterPopover({
             )}
           >
             <IconHelpCircle className="size-3.5" />
-            Needs attention
+            {t("cardFilterPopover.needsAttention")}
           </button>
         </div>
 
         <div>
           <p className="text-[11px] font-medium text-muted-foreground tracking-wide mb-1.5 font-heading">
-            Downloaded
+            {t("cardFilterPopover.downloaded")}
           </p>
           <button
             type="button"
@@ -277,14 +279,14 @@ export function CardFilterPopover({
             )}
           >
             <IconDownload className="size-3.5" />
-            Show downloaded cards
+            {t("cardFilterPopover.showDownloadedCards")}
           </button>
         </div>
 
         {activeFilters.sets.length > 0 && (
           <div>
             <p className="text-[11px] font-medium text-muted-foreground tracking-wide mb-1.5 font-heading">
-              Sets
+              {t("cardFilterPopover.sets")}
             </p>
             <div className="flex gap-1 flex-wrap">
               {activeFilters.sets.map((setCode) => (
@@ -317,7 +319,7 @@ export function CardFilterPopover({
             className="w-full"
             onClick={() => onFiltersChange(EMPTY_FILTERS)}
           >
-            Reset filters
+            {t("cardFilterPopover.resetFilters")}
           </Button>
         )}
       </div>

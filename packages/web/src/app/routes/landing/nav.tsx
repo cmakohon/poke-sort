@@ -4,9 +4,11 @@ import { neon } from "@/lib/auth/client";
 import { DISCORD_URL } from "@/lib/links";
 import { cn } from "@/lib/utils";
 import { IconBrandDiscord, IconPigFilled } from "@tabler/icons-react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 export function LandingNav() {
+  const { t } = useTranslation("landing");
   const { data, isPending } = neon.auth.useSession();
   const isSignedIn = !isPending && !!data?.user;
 
@@ -27,22 +29,22 @@ export function LandingNav() {
             href="#features"
             className="transition-colors hover:text-foreground"
           >
-            Features
+            {t("nav.features")}
           </a>
           <a
             href="#how-it-works"
             className="transition-colors hover:text-foreground"
           >
-            How it works
+            {t("nav.howItWorks")}
           </a>
           <a
             href="#open-source"
             className="transition-colors hover:text-foreground"
           >
-            Open source
+            {t("nav.openSource")}
           </a>
           <Link to="/build" className="transition-colors hover:text-foreground">
-            Build
+            {t("nav.build")}
           </Link>
         </nav>
 
@@ -51,7 +53,7 @@ export function LandingNav() {
             href={DISCORD_URL}
             target="_blank"
             rel="noreferrer"
-            aria-label="Join the Discord"
+            aria-label={t("nav.discordAriaLabel")}
             className="text-muted-foreground transition-colors hover:text-foreground"
           >
             <IconBrandDiscord size={18} />
@@ -62,7 +64,7 @@ export function LandingNav() {
               to="/app"
               className={cn(buttonVariants({ variant: "default", size: "lg" }))}
             >
-              Open app
+              {t("nav.openApp")}
             </Link>
           ) : (
             <>
@@ -73,7 +75,7 @@ export function LandingNav() {
                   "hidden sm:inline-flex",
                 )}
               >
-                Sign in
+                {t("nav.signIn")}
               </Link>
               <Link
                 to="/auth/sign-up"
@@ -81,7 +83,7 @@ export function LandingNav() {
                   buttonVariants({ variant: "default", size: "lg" }),
                 )}
               >
-                Get started
+                {t("nav.getStarted")}
               </Link>
             </>
           )}

@@ -32,6 +32,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 
 function formatManaCost(manaCost: string): string {
   return manaCost.replace(/[{}]/g, " ").trim().replace(/\s+/g, " ");
@@ -39,8 +40,8 @@ function formatManaCost(manaCost: string): string {
 
 export function CardSelectDialog({
   trigger,
-  title = "Select Card",
-  description = "Search Scryfall for a card.",
+  title,
+  description,
   scanId,
   onRemove,
   currentCard,
@@ -53,6 +54,9 @@ export function CardSelectDialog({
   hasPrev,
   hasNext,
 }: CardSelectDialogProps) {
+  const { t } = useTranslation("cards");
+  const resolvedTitle = title ?? t("cardSelectDialog.defaultTitle");
+  const resolvedDescription = description ?? t("cardSelectDialog.defaultDescription");
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : internalOpen;
@@ -180,9 +184,9 @@ export function CardSelectDialog({
     candidates.find((c) => c.id === selectedId) ?? currentCard;
   const hasMultipleCandidates = candidates.length > 1;
 
-  const dialogTitle = selectedCard && !editing ? selectedCard.name : title;
+  const dialogTitle = selectedCard && !editing ? selectedCard.name : resolvedTitle;
   const dialogDescription =
-    selectedCard && !editing ? selectedCard.typeLine : description;
+    selectedCard && !editing ? selectedCard.typeLine : resolvedDescription;
 
   const hasNav = onPrev !== undefined || onNext !== undefined;
 
@@ -201,7 +205,7 @@ export function CardSelectDialog({
             <>
               <Button variant="destructive" onClick={handleRemove}>
                 <IconTrash className="size-4" />
-                Remove
+                {t("cardSelectDialog.remove")}
               </Button>
               <Button
                 variant="outline"
@@ -211,7 +215,7 @@ export function CardSelectDialog({
                 }}
               >
                 <IconPencil className="size-4" />
-                Correct Card
+                {t("cardSelectDialog.correctCard")}
               </Button>
             </>
           ) : undefined
@@ -226,18 +230,18 @@ export function CardSelectDialog({
                     <div className="w-12 aspect-[2.5/3.5] rounded overflow-hidden border shrink-0">
                       <img
                         src={capturedImageUrl}
-                        alt="Scanned"
+                        alt={t("cardSelectDialog.scannedAlt")}
                         className="w-full h-full object-cover"
                       />
                     </div>
                     <p className="text-xs text-muted-foreground leading-snug">
-                      Your scanned card - select the correct version below
+                      {t("cardSelectDialog.selectCorrectVersion")}
                     </p>
                   </div>
                 )}
                 {!capturedImageUrl && (
                   <p className="text-xs text-muted-foreground font-medium">
-                    Multiple close matches - select the correct version:
+                    {t("cardSelectDialog.multipleMatches")}
                   </p>
                 )}
                 <div className="flex gap-2 overflow-x-auto pb-1">
@@ -301,12 +305,12 @@ export function CardSelectDialog({
                   {capturedImageUrl && (
                     <>
                       <p className="text-[10px] text-muted-foreground">
-                        Scanned
+                        {t("cardSelectDialog.scanned")}
                       </p>
                       <div className="w-28 aspect-[2.5/3.5] rounded-lg overflow-hidden border">
                         <img
                           src={capturedImageUrl}
-                          alt="Scanned"
+                          alt={t("cardSelectDialog.scannedAlt")}
                           className="w-full h-full object-cover"
                         />
                       </div>
@@ -318,7 +322,7 @@ export function CardSelectDialog({
                 <div className="flex flex-col gap-1.5 min-w-0 text-xs flex-1">
                   {selectedCard.manaCost && (
                     <p className="text-muted-foreground">
-                      Mana: {formatManaCost(selectedCard.manaCost)}
+                      {t("cardSelectDialog.manaCost", { cost: formatManaCost(selectedCard.manaCost) })}
                     </p>
                   )}
                   {selectedCard.text && (
@@ -352,7 +356,7 @@ export function CardSelectDialog({
                   )}
                   {selectedCard.artist && (
                     <p className="text-muted-foreground">
-                      Art by {selectedCard.artist}
+                      {t("cardSelectDialog.artBy", { artist: selectedCard.artist })}
                     </p>
                   )}
                   {selectedCard.sourceUrl && (
@@ -362,7 +366,7 @@ export function CardSelectDialog({
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-primary hover:underline w-fit"
                     >
-                      View source
+                      {t("cardSelectDialog.viewSource")}
                       <IconExternalLink className="h-3 w-3" />
                     </a>
                   )}
@@ -376,7 +380,7 @@ export function CardSelectDialog({
               <div className="relative flex-1">
                 <IconSearch className="absolute left-2 top-1/2 -translate-y-1/2 size-3 text-muted-foreground" />
                 <Input
-                  placeholder="Search by card name..."
+                  placeholder={t("cardSelectDialog.searchPlaceholder")}
                   value={query}
                   onChange={(e) => handleInputChange(e.target.value)}
                   className="pl-7"
@@ -388,11 +392,11 @@ export function CardSelectDialog({
                   onValueChange={(value) => setSelectedSet(value)}
                 >
                   <SelectTrigger className="w-40 shrink-0">
-                    <SelectValue placeholder="All sets" />
+                    <SelectValue placeholder={t("cardSelectDialog.allSets")} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">
-                      All sets ({results.length})
+                      {t("cardSelectDialog.allSetsCount", { count: results.length })}
                     </SelectItem>
                     {sets.map((s) => (
                       <SelectItem key={s.code} value={s.code}>
@@ -413,14 +417,14 @@ export function CardSelectDialog({
                 filteredResults.length === 0 &&
                 query.trim().length === 0 && (
                   <p className="text-center text-sm text-muted-foreground py-8">
-                    Start typing to search for cards
+                    {t("cardSelectDialog.startTyping")}
                   </p>
                 )}
               {!loading &&
                 filteredResults.length === 0 &&
                 query.trim().length >= 2 && (
                   <p className="text-center text-sm text-muted-foreground py-8">
-                    No cards found
+                    {t("cardSelectDialog.noCardsFound")}
                   </p>
                 )}
               {!loading && filteredResults.length > 0 && (

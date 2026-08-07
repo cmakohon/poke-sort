@@ -1,11 +1,8 @@
 import type { ConditionOperator, FieldType } from "@magic-vault/shared";
 
-export const FIELD_TYPE_OPTIONS: { value: FieldType; label: string }[] = [
-  { value: "string", label: "String" },
-  { value: "numeric", label: "Numeric" },
-  { value: "enum", label: "Enum" },
-  { value: "set", label: "Set" },
-];
+// Values only — labels are rendered via t("fieldTypes.<value>") in the
+// components that display them, since this module has no i18n context.
+export const FIELD_TYPES: FieldType[] = ["string", "numeric", "enum", "set"];
 
 export const DEFAULT_OPERATORS_BY_TYPE: Record<
   FieldType,

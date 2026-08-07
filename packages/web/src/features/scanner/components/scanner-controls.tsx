@@ -7,6 +7,7 @@ import {
   IconPlus,
   IconX,
 } from "@tabler/icons-react";
+import { useTranslation } from "react-i18next";
 
 export function ScannerControls({
   status,
@@ -16,41 +17,42 @@ export function ScannerControls({
   onPause,
   onResume,
 }: ScannerControlsProps) {
+  const { t } = useTranslation("scanner");
   return (
     <>
       {status === "no-match" && (
         <Button onClick={onForceScan} variant="secondary">
           <IconFocus2 />
-          Scan Again
+          {t("scannerControls.scanAgain")}
         </Button>
       )}
       {status === "duplicate" && (
         <>
           <Button onClick={onForceAddDuplicate} variant="secondary">
             <IconPlus />
-            Add Again
+            {t("scannerControls.addAgain")}
           </Button>
           <Button onClick={onSkipDuplicate} variant="ghost">
             <IconX />
-            Skip
+            {t("scannerControls.skip")}
           </Button>
         </>
       )}
       {(status === "scanning" || status === "captured") && (
         <Button onClick={onForceScan} variant="secondary">
           <IconFocus2 />
-          Scan Now
+          {t("scannerControls.scanNow")}
         </Button>
       )}
       {status === "paused" ? (
         <Button onClick={onResume} variant="secondary">
           <IconPlayerPlay />
-          Resume
+          {t("scannerControls.resume")}
         </Button>
       ) : (
         <Button onClick={onPause} variant="secondary">
           <IconPlayerPause />
-          Pause
+          {t("scannerControls.pause")}
         </Button>
       )}
     </>

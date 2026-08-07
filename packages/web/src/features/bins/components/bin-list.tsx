@@ -5,8 +5,10 @@ import { useBinConfigs } from "@/features/bins/api/use-bin-configs";
 import { useOrg } from "@/features/companies/api/use-organization";
 import { BinCard } from "@/features/bins/components/bin-card";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 
 export function BinList() {
+  const { t } = useTranslation("bins");
   const { configs, selectedBin, setSelectedBin, hasCatchAll } = useBinConfigs();
   const { activeOrg } = useOrg();
   const { isLoading } = useQuery({ ...binsQueryOptions, enabled: !!activeOrg });
@@ -42,7 +44,7 @@ export function BinList() {
       </ScrollArea>
       {!hasCatchAll && (
         <p className="text-xs text-destructive">
-          One bin must be set as catch-all.
+          {t("binList.needCatchAll")}
         </p>
       )}
     </div>

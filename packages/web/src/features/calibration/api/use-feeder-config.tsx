@@ -15,6 +15,7 @@ import {
   useContext,
   useEffect,
 } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 interface FeederConfigContextValue {
@@ -30,6 +31,7 @@ export function FeederConfigProvider({
 }: {
   children: React.ReactNode;
 }) {
+  const { t } = useTranslation("calibration");
   const queryClient = useQueryClient();
   const { activeOrg } = useOrg();
   const { sendCommand, receiveResponse, registerPreTestHook } = useSerial();
@@ -46,19 +48,19 @@ export function FeederConfigProvider({
       try {
         const parsed = response ? JSON.parse(response) : null;
         if (parsed?.error) {
-          toast.error("Feeder calibration not synced", {
+          toast.error(t("useFeederConfig.toasts.notSynced"), {
             description: String(parsed.error),
           });
         }
       } catch {
-        toast.error("Feeder calibration not synced", {
+        toast.error(t("useFeederConfig.toasts.notSynced"), {
           description: response
-            ? `Unexpected response: ${response}`
-            : "No response from sorter.",
+            ? t("useFeederConfig.toasts.unexpectedResponse", { response })
+            : t("useFeederConfig.toasts.noResponse"),
         });
       }
     });
-  }, [registerPreTestHook, queryClient, sendCommand, receiveResponse]);
+  }, [registerPreTestHook, queryClient, sendCommand, receiveResponse, t]);
 
   const saveConfigMutation = useMutation({
     mutationFn: (calibration: FeederCalibration) =>
@@ -72,7 +74,7 @@ export function FeederConfigProvider({
     onError: (_err, _vars, context) => {
       if (context?.previous)
         queryClient.setQueryData(["feeder"], context.previous);
-      toast.error("Failed to save feeder config");
+      toast.error(t("useFeederConfig.toasts.saveFailed"));
     },
     onSuccess: (result) => {
       if (result.success && result.data) {

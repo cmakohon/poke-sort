@@ -7,6 +7,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { FeederCalibration } from "@magic-vault/shared";
+import { useTranslation } from "react-i18next";
 
 interface FeederCalibrationPanelProps {
   speedValue: number;
@@ -49,22 +50,24 @@ export function FeederCalibrationPanel({
   onSetPauseDuration,
   onSetSettleDuration,
 }: FeederCalibrationPanelProps) {
+  const { t } = useTranslation("calibration");
   return (
     <div className="grid grid-cols-1 md:grid-cols-3">
       <div className="rounded-lg border bg-sidebar p-2 flex flex-col gap-5">
-        <h2 className="text-sm font-bold font-heading">Feeder</h2>
+        <h2 className="text-sm font-bold font-heading">
+          {t("feederCalibrationPanel.heading")}
+        </h2>
         <div className="flex flex-col gap-2">
           <Tooltip>
             <TooltipTrigger
               render={
                 <p className="text-xs text-muted-foreground w-fit">
-                  Speed (PWM)
+                  {t("feederCalibrationPanel.speedLabel")}
                 </p>
               }
             />
             <TooltipContent>
-              Feeder motor speed as a raw PWM signal value (120 = slowest, 490
-              = fastest the motor controller accepts)
+              {t("feederCalibrationPanel.speedTooltip")}
             </TooltipContent>
           </Tooltip>
           <ButtonGroup className="w-full">
@@ -113,7 +116,7 @@ export function FeederCalibrationPanel({
               onClick={onSetSpeed}
               className="flex-1"
             >
-              Set Speed
+              {t("feederCalibrationPanel.setSpeed")}
             </Button>
           </ButtonGroup>
           {isLoading ? (
@@ -125,7 +128,9 @@ export function FeederCalibrationPanel({
           ) : null}
         </div>
         <div className="flex flex-col gap-2">
-          <p className="text-xs text-muted-foreground">Timeout (ms)</p>
+          <p className="text-xs text-muted-foreground">
+            {t("feederCalibrationPanel.timeoutLabel")}
+          </p>
           <ButtonGroup className="w-full">
             <Button
               variant="secondary"
@@ -146,7 +151,9 @@ export function FeederCalibrationPanel({
               -10
             </Button>
             <div className="flex flex-row flex-1 bg-background border-y justify-center px-2 items-center">
-              <p className="font-bold text-sm">{durationValue} ms</p>
+              <p className="font-bold text-sm">
+                {t("feederCalibrationPanel.msValue", { value: durationValue })}
+              </p>
             </div>
             <Button
               variant="secondary"
@@ -172,22 +179,26 @@ export function FeederCalibrationPanel({
               onClick={onSetDuration}
               className="flex-1"
             >
-              Set Timeout
+              {t("feederCalibrationPanel.setTimeout")}
             </Button>
           </ButtonGroup>
           {isLoading ? (
             <Skeleton className="h-3 w-16 rounded" />
           ) : calibration ? (
             <p className="text-xs text-muted-foreground text-center">
-              {calibration.duration} ms
+              {t("feederCalibrationPanel.msValue", { value: calibration.duration })}
             </p>
           ) : null}
         </div>
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">Pulse Duration (ms)</p>
+            <p className="text-xs text-muted-foreground">
+              {t("feederCalibrationPanel.pulseDurationLabel")}
+            </p>
             {pulseDurationValue <= 0 && (
-              <p className="text-xs text-muted-foreground italic">Continuous</p>
+              <p className="text-xs text-muted-foreground italic">
+                {t("feederCalibrationPanel.continuous")}
+              </p>
             )}
           </div>
           <ButtonGroup className="w-full">
@@ -209,7 +220,9 @@ export function FeederCalibrationPanel({
             </Button>
             <div className="flex flex-row flex-1 bg-background border-y justify-center px-2 items-center">
               <p className="font-bold text-sm">
-                {pulseDurationValue <= 0 ? "Continuous" : `${pulseDurationValue} ms`}
+                {pulseDurationValue <= 0
+                  ? t("feederCalibrationPanel.continuous")
+                  : t("feederCalibrationPanel.msValue", { value: pulseDurationValue })}
               </p>
             </div>
             <Button
@@ -236,7 +249,7 @@ export function FeederCalibrationPanel({
               onClick={() => onPulseDurationChange(0)}
               className="flex-1"
             >
-              Continuous Feed
+              {t("feederCalibrationPanel.continuousFeedButton")}
             </Button>
             <Button
               variant="secondary"
@@ -244,7 +257,7 @@ export function FeederCalibrationPanel({
               onClick={onSetPulseDuration}
               className="flex-1"
             >
-              Set Pulse Duration
+              {t("feederCalibrationPanel.setPulseDuration")}
             </Button>
           </ButtonGroup>
           {isLoading ? (
@@ -252,13 +265,17 @@ export function FeederCalibrationPanel({
           ) : calibration ? (
             <p className="text-xs text-muted-foreground text-center">
               {calibration.pulseDuration <= 0
-                ? "Continuous"
-                : `${calibration.pulseDuration} ms`}
+                ? t("feederCalibrationPanel.continuous")
+                : t("feederCalibrationPanel.msValue", {
+                    value: calibration.pulseDuration,
+                  })}
             </p>
           ) : null}
         </div>
         <div className="flex flex-col gap-2">
-          <p className="text-xs text-muted-foreground">Pause Duration (ms)</p>
+          <p className="text-xs text-muted-foreground">
+            {t("feederCalibrationPanel.pauseDurationLabel")}
+          </p>
           <ButtonGroup className="w-full">
             <Button
               variant="secondary"
@@ -277,7 +294,9 @@ export function FeederCalibrationPanel({
               -
             </Button>
             <div className="flex flex-row flex-1 bg-background border-y justify-center px-2 items-center">
-              <p className="font-bold text-sm">{pauseDurationValue} ms</p>
+              <p className="font-bold text-sm">
+                {t("feederCalibrationPanel.msValue", { value: pauseDurationValue })}
+              </p>
             </div>
             <Button
               variant="secondary"
@@ -303,22 +322,23 @@ export function FeederCalibrationPanel({
               onClick={onSetPauseDuration}
               className="flex-1"
             >
-              Set Pause Duration
+              {t("feederCalibrationPanel.setPauseDuration")}
             </Button>
           </ButtonGroup>
           {isLoading ? (
             <Skeleton className="h-3 w-16 rounded" />
           ) : calibration ? (
             <p className="text-xs text-muted-foreground text-center">
-              {calibration.pauseDuration} ms
+              {t("feederCalibrationPanel.msValue", { value: calibration.pauseDuration })}
             </p>
           ) : null}
         </div>
         <div className="flex flex-col gap-2">
-          <p className="text-xs text-muted-foreground">Settle Duration (ms)</p>
+          <p className="text-xs text-muted-foreground">
+            {t("feederCalibrationPanel.settleDurationLabel")}
+          </p>
           <p className="text-[10px] text-muted-foreground/70">
-            Extra time to keep feeding once the module 1 sensor sees the card, so it
-            travels all the way into the mechanism before the motor stops.
+            {t("feederCalibrationPanel.settleDurationDescription")}
           </p>
           <ButtonGroup className="w-full">
             <Button
@@ -338,7 +358,9 @@ export function FeederCalibrationPanel({
               -
             </Button>
             <div className="flex flex-row flex-1 bg-background border-y justify-center px-2 items-center">
-              <p className="font-bold text-sm">{settleDurationValue} ms</p>
+              <p className="font-bold text-sm">
+                {t("feederCalibrationPanel.msValue", { value: settleDurationValue })}
+              </p>
             </div>
             <Button
               variant="secondary"
@@ -364,14 +386,14 @@ export function FeederCalibrationPanel({
               onClick={onSetSettleDuration}
               className="flex-1"
             >
-              Set Settle Duration
+              {t("feederCalibrationPanel.setSettleDuration")}
             </Button>
           </ButtonGroup>
           {isLoading ? (
             <Skeleton className="h-3 w-16 rounded" />
           ) : calibration ? (
             <p className="text-xs text-muted-foreground text-center">
-              {calibration.settleDuration} ms
+              {t("feederCalibrationPanel.msValue", { value: calibration.settleDuration })}
             </p>
           ) : null}
         </div>

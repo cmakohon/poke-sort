@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { IconClockHour3, IconRotateClockwise2, IconX } from "@tabler/icons-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 export interface AuditEntry {
   guid: string;
@@ -46,6 +47,7 @@ export function AuditDrawer({
   onRevert,
   isReverting,
 }: AuditDrawerProps) {
+  const { t } = useTranslation("common");
   const [confirmGuid, setConfirmGuid] = useState<string | null>(null);
 
   function handleRevert(guid: string) {
@@ -83,7 +85,9 @@ export function AuditDrawer({
               ))}
             </div>
           ) : entries.length === 0 ? (
-            <p className="p-4 text-xs text-muted-foreground">No history yet.</p>
+            <p className="p-4 text-xs text-muted-foreground">
+              {t("auditDrawer.noHistory")}
+            </p>
           ) : (
             <div className="flex flex-col divide-y">
               {entries.map((entry, i) => (
@@ -98,7 +102,7 @@ export function AuditDrawer({
                       </p>
                       {i === 0 && (
                         <span className="text-xs text-muted-foreground italic">
-                          current
+                          {t("auditDrawer.current")}
                         </span>
                       )}
                     </div>
@@ -113,7 +117,7 @@ export function AuditDrawer({
                               disabled={isReverting}
                               onClick={() => handleRevert(entry.guid)}
                             >
-                              Confirm
+                              {t("auditDrawer.confirm")}
                             </Button>
                             <Button
                               size="sm"
@@ -122,7 +126,7 @@ export function AuditDrawer({
                               disabled={isReverting}
                               onClick={() => setConfirmGuid(null)}
                             >
-                              Cancel
+                              {t("auditDrawer.cancel")}
                             </Button>
                           </>
                         ) : (
@@ -133,7 +137,7 @@ export function AuditDrawer({
                             onClick={() => setConfirmGuid(entry.guid)}
                           >
                             <IconRotateClockwise2 size={10} />
-                            Revert
+                            {t("auditDrawer.revert")}
                           </Button>
                         )}
                       </div>

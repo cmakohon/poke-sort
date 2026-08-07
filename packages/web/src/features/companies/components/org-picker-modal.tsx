@@ -12,6 +12,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { IconBuilding, IconPlus } from "@tabler/icons-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { z } from "zod";
 import { useOrg } from "../api/use-organization";
@@ -20,6 +21,7 @@ const createSchema = z.object({ name: z.string().min(1) });
 type CreateValues = z.infer<typeof createSchema>;
 
 export function OrgPickerModal() {
+  const { t } = useTranslation("companies");
   const [showCreate, setShowCreate] = useState(false);
   const { orgs, activeOrg, isLoading, setActiveOrg } = useOrg();
 
@@ -49,7 +51,7 @@ export function OrgPickerModal() {
       setShowCreate(false);
     } catch (e: unknown) {
       toast.error(
-        e instanceof Error ? e.message : "Failed to create organization.",
+        e instanceof Error ? e.message : t("orgPickerModal.failedToCreate"),
       );
     }
   }
@@ -58,11 +60,11 @@ export function OrgPickerModal() {
     <Dialog open={!isLoading && !activeOrg}>
       <DialogContent showCloseButton={false}>
         <DialogHeader>
-          <DialogTitle>Choose an organization</DialogTitle>
+          <DialogTitle>{t("orgPickerModal.title")}</DialogTitle>
           <DialogDescription>
             {orgs.length === 0
-              ? "Create an organization to get started."
-              : "Select or create an organization to continue."}
+              ? t("orgPickerModal.createToGetStarted")
+              : t("orgPickerModal.selectOrCreate")}
           </DialogDescription>
         </DialogHeader>
 
@@ -86,7 +88,7 @@ export function OrgPickerModal() {
               onClick={() => setShowCreate(true)}
             >
               <IconPlus size={14} />
-              New organization
+              {t("orgPickerModal.newOrganization")}
             </Button>
           ) : (
             <form
@@ -94,12 +96,12 @@ export function OrgPickerModal() {
               className="flex gap-2"
             >
               <Input
-                placeholder="Organization name"
+                placeholder={t("orgPickerModal.organizationNamePlaceholder")}
                 {...form.register("name")}
                 autoFocus
               />
               <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? "Creating…" : "Create"}
+                {form.formState.isSubmitting ? t("orgPickerModal.creating") : t("orgPickerModal.create")}
               </Button>
             </form>
           )}

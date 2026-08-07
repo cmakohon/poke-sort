@@ -1,230 +1,257 @@
 import { cn } from "@/lib/utils";
 import { IconExternalLink } from "@tabler/icons-react";
+import type { TFunction } from "i18next";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Trans, useTranslation } from "react-i18next";
+
+type BuildT = TFunction<"build">;
 
 interface Row {
   key: string;
   qty: string;
-  part: ReactNode;
-  notes: ReactNode;
+  name: string;
+  part: (t: BuildT) => ReactNode;
+  notes: (t: BuildT) => ReactNode;
   buyUrl?: string;
 }
 
 interface Group {
-  title: string;
+  key: string;
   rows: Row[];
 }
 
 const GROUPS: Group[] = [
   {
-    title: "Electronics",
+    key: "electronics",
     rows: [
       {
         key: "arduino",
         qty: "1",
-        part: (
+        name: "Arduino Uno R4 Minima",
+        part: () => (
           <>
             Arduino Uno R4 Minima{" "}
             <span className="text-muted-foreground">(ABX0080)</span>
           </>
         ),
-        notes:
-          "Runs arduino/main/main.ino; USB connection to the host computer for Web Serial",
+        notes: (t) => (
+          <Trans
+            t={t}
+            i18nKey="bom.groups.electronics.items.arduino.notes"
+            values={{ path: "arduino/main/main.ino" }}
+            components={{
+              code: <code className="font-mono text-[11px]" />,
+            }}
+          />
+        ),
         buyUrl: "https://www.amazon.com/dp/B0C78K4CD4",
       },
       {
         key: "pca9685",
         qty: "1",
-        part: "Adafruit PCA9685 16-channel 12-bit PWM/servo driver",
-        notes: "I²C servo driver - drives all 10 servos",
+        name: "Adafruit PCA9685",
+        part: (t) => t("bom.groups.electronics.items.pca9685.part"),
+        notes: (t) => t("bom.groups.electronics.items.pca9685.notes"),
         buyUrl: "https://www.amazon.com/dp/B0CNVBWX2M",
       },
       {
         key: "sg90-positional",
         qty: "9",
-        part: "SG90 micro servo, positional (180°)",
-        notes:
-          "3 per module × 3 modules - bottom trapdoor, paddle gate, pusher",
+        name: "SG90 micro servo, positional",
+        part: (t) => t("bom.groups.electronics.items.sg90Positional.part"),
+        notes: (t) => t("bom.groups.electronics.items.sg90Positional.notes"),
         buyUrl: "https://www.amazon.com/dp/B07L2SF3R4",
       },
       {
         key: "sg90-continuous",
         qty: "1",
-        part: "SG90 servo, modified for continuous rotation",
-        notes: "Feeder - drives cards out of the hopper into module 1",
+        name: "SG90 servo, continuous rotation",
+        part: (t) => t("bom.groups.electronics.items.sg90Continuous.part"),
+        notes: (t) => t("bom.groups.electronics.items.sg90Continuous.notes"),
         buyUrl: "https://www.amazon.com/dp/B086ZGTLZB",
       },
     ],
   },
   {
-    title: "Sensing",
+    key: "sensing",
     rows: [
       {
         key: "ir-sensor",
         qty: "4",
-        part: (
+        name: "Reflective/obstacle IR sensor module",
+        part: (t) => (
           <>
-            Reflective/obstacle IR sensor module{" "}
+            {t("bom.groups.sensing.items.irSensor.part")}{" "}
             <span className="text-muted-foreground">
-              (3-pin: VCC, GND, digital OUT)
+              {t("bom.groups.sensing.items.irSensor.partSpec")}
             </span>
           </>
         ),
-        notes:
-          "One at the gate of modules 1, 2, 3, plus one in the hopper throat",
+        notes: (t) => t("bom.groups.sensing.items.irSensor.notes"),
         buyUrl: "https://www.amazon.com/dp/B0CWKWWKYL",
       },
     ],
   },
   {
-    title: "Power",
+    key: "power",
     rows: [
       {
         key: "psu",
         qty: "1",
-        part: "5V regulated power supply, 4–10A",
-        notes:
-          "Dedicated servo bus power into the PCA9685 V+ terminal - do not power 10 servos off the Arduino's onboard 5V",
+        name: "5V regulated power supply, 4-10A",
+        part: (t) => t("bom.groups.power.items.psu.part"),
+        notes: (t) => t("bom.groups.power.items.psu.notes"),
         buyUrl: "https://www.amazon.com/dp/B0B2DZJQCR",
       },
       {
         key: "usb-cable",
         qty: "1",
-        part: "USB-A–to–USB-C cable",
-        notes: "Arduino Uno R4 Minima ↔ host computer",
+        name: "USB-A-to-USB-C cable",
+        part: (t) => t("bom.groups.power.items.usbCable.part"),
+        notes: (t) => t("bom.groups.power.items.usbCable.notes"),
       },
       {
         key: "barrel-jack",
         qty: "1",
-        part: "DC barrel jack or screw-terminal pigtail",
-        notes: "Adapts the PSU output to the PCA9685's V+ / GND terminal",
+        name: "DC barrel jack or screw-terminal pigtail",
+        part: (t) => t("bom.groups.power.items.barrelJack.part"),
+        notes: (t) => t("bom.groups.power.items.barrelJack.notes"),
         buyUrl: "https://www.amazon.com/dp/B0CR8TZ41W",
       },
     ],
   },
   {
-    title: "Structural",
+    key: "structural",
     rows: [
       {
         key: "enclosure",
         qty: "1 set",
-        part: "3D-printed enclosure & module housings",
-        notes: (
-          <>
-            Print from{" "}
-            <a
-              href="https://github.com/dishwasher-detergent/mault/blob/master/3d%20model/card_sorter.3mf"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline underline-offset-2 hover:text-foreground"
-            >
-              card_sorter.3mf
-            </a>{" "}
-            (mesh, slicer-ready) or{" "}
-            <a
-              href="https://github.com/dishwasher-detergent/mault/blob/master/3d%20model/Card%20Sorter.f3d"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline underline-offset-2 hover:text-foreground"
-            >
-              Card Sorter.f3d
-            </a>{" "}
-            (Fusion 360 source)
-          </>
+        name: "3D-printed enclosure & module housings",
+        part: (t) => t("bom.groups.structural.items.enclosure.part"),
+        notes: (t) => (
+          <Trans
+            t={t}
+            i18nKey="bom.groups.structural.items.enclosure.notes"
+            components={{
+              mesh: (
+                <a
+                  href="https://github.com/dishwasher-detergent/mault/blob/master/3d%20model/card_sorter.3mf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-2 hover:text-foreground"
+                />
+              ),
+              source: (
+                <a
+                  href="https://github.com/dishwasher-detergent/mault/blob/master/3d%20model/Card%20Sorter.f3d"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-2 hover:text-foreground"
+                />
+              ),
+            }}
+          />
         ),
       },
       {
         key: "filament",
         qty: "-",
-        part: "PLA or PETG filament",
-        notes: "Quantity per your slicer's estimate for the model above",
+        name: "PLA or PETG filament",
+        part: (t) => t("bom.groups.structural.items.filament.part"),
+        notes: (t) => t("bom.groups.structural.items.filament.notes"),
         buyUrl: "https://www.amazon.com/dp/B0C14M5HR9",
       },
       {
         key: "o-ring",
         qty: "6",
-        part: "G20 o-ring",
-        notes: "Fitted onto the feeder roller for grip on the card face",
+        name: "G20 o-ring",
+        part: (t) => t("bom.groups.structural.items.oRing.part"),
+        notes: (t) => t("bom.groups.structural.items.oRing.notes"),
         buyUrl:
           "https://www.harborfreight.com/397-piece-metric-o-ring-assortment-67580.html",
       },
     ],
   },
   {
-    title: "Fasteners & wiring supplies",
+    key: "fasteners",
     rows: [
       {
         key: "m3x6-screw",
         qty: "22",
-        part: "M3×6 screw",
-        notes:
-          "14 attach each bin base to the housing; 8 attach the base panels to the base",
+        name: "M3x6 screw",
+        part: (t) => t("bom.groups.fasteners.items.m3x6Screw.part"),
+        notes: (t) => t("bom.groups.fasteners.items.m3x6Screw.notes"),
         buyUrl: "https://www.amazon.com/dp/B0CGNP4RXK",
       },
       {
         key: "m3-nut",
         qty: "8",
-        part: "M3 nut",
-        notes: "Paired with the base panel M3×6 screws",
+        name: "M3 nut",
+        part: (t) => t("bom.groups.fasteners.items.m3Nut.part"),
+        notes: (t) => t("bom.groups.fasteners.items.m3Nut.notes"),
         buyUrl: "https://www.amazon.com/dp/B0CGNP4RXK",
       },
       {
         key: "m3x8-screw",
         qty: "2",
-        part: "M3×8 screw",
-        notes: "Attaches the hopper tube",
+        name: "M3x8 screw",
+        part: (t) => t("bom.groups.fasteners.items.m3x8Screw.part"),
+        notes: (t) => t("bom.groups.fasteners.items.m3x8Screw.notes"),
         buyUrl: "https://www.amazon.com/dp/B0CGNP4RXK",
       },
       {
         key: "m2x4-screw",
         qty: "33",
-        part: (
+        name: "M2x4 screw",
+        part: (t) => (
           <>
-            M2×4 screw{" "}
-            <span className="text-muted-foreground">(11 per module)</span>
+            {t("bom.groups.fasteners.items.m2x4Screw.part")}{" "}
+            <span className="text-muted-foreground">
+              {t("bom.groups.fasteners.items.m2x4Screw.partSpec")}
+            </span>
           </>
         ),
-        notes:
-          "Per module: flapper (bottom/sides), pusher arms, and IR sensor mounts",
+        notes: (t) => t("bom.groups.fasteners.items.m2x4Screw.notes"),
         buyUrl: "https://www.amazon.com/dp/B0CGNP4RXK",
       },
       {
         key: "m2x6-screw",
         qty: "8",
-        part: "M2×6 screw",
-        notes:
-          "Mounts the Arduino and PCA9685 servo driver board to the base panels",
+        name: "M2x6 screw",
+        part: (t) => t("bom.groups.fasteners.items.m2x6Screw.part"),
+        notes: (t) => t("bom.groups.fasteners.items.m2x6Screw.notes"),
         buyUrl: "https://www.amazon.com/dp/B0CGNP4RXK",
       },
       {
         key: "servo-horn-screw",
         qty: "10",
-        part: "Servo horn screw (Included with servos)",
-        notes: "Included with each servo; secures the horn to the shaft",
+        name: "Servo horn screw",
+        part: (t) => t("bom.groups.fasteners.items.servoHornScrew.part"),
+        notes: (t) => t("bom.groups.fasteners.items.servoHornScrew.notes"),
       },
       {
         key: "hookup-wire",
         qty: "1 roll",
-        part: "Low Voltage Wire",
-        notes:
-          "IR sensor/Servos. Using these you may have to daisy chain some together, just electrical tape them to make sure they don't come apart.",
+        name: "Low Voltage Wire",
+        part: (t) => t("bom.groups.fasteners.items.hookupWire.part"),
+        notes: (t) => t("bom.groups.fasteners.items.hookupWire.notes"),
         buyUrl:
           "https://www.amazon.com/dp/B01EV70C78?ref_=ppx_hzsearch_conn_dt_b_fed_asin_title_9",
       },
       {
         key: "dupont-connectors",
         qty: "~50",
-        part: "Dupont Connectors (Optional)",
-        notes:
-          "These are only needed if you're making your own custom length wires.",
+        name: "Dupont Connectors",
+        part: (t) => t("bom.groups.fasteners.items.dupontConnectors.part"),
+        notes: (t) => t("bom.groups.fasteners.items.dupontConnectors.notes"),
         buyUrl: "https://www.amazon.com/dp/B07QGBKFYZ",
       },
       {
         key: "dupont-crimper",
         qty: "1",
-        part: "Dupont Crimper (Optional)",
-        notes:
-          "These are only needed if you're making your own custom length wires.",
+        name: "Dupont Crimper",
+        part: (t) => t("bom.groups.fasteners.items.dupontCrimper.part"),
+        notes: (t) => t("bom.groups.fasteners.items.dupontCrimper.notes"),
         buyUrl: "https://www.amazon.com/dp/B0D1FR76Q7",
       },
     ],
@@ -269,10 +296,12 @@ function GroupTable({
   checked: Record<string, boolean>;
   toggle: (key: string) => void;
 }) {
+  const { t } = useTranslation("build");
+
   return (
     <div>
       <h3 className="mb-2 font-heading text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-        {group.title}
+        {t(`bom.groups.${group.key}.title`)}
       </h3>
       <div className="overflow-x-auto rounded-lg border">
         <table className="w-full min-w-120 border-collapse text-xs/relaxed">
@@ -280,16 +309,16 @@ function GroupTable({
             <tr className="bg-secondary/40">
               <th className="w-8 border-b px-3 py-2" />
               <th className="w-16 border-b px-3 py-2 text-left font-mono text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
-                Qty
+                {t("bom.table.qty")}
               </th>
               <th className="border-b px-3 py-2 text-left font-mono text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
-                Part
+                {t("bom.table.part")}
               </th>
               <th className="border-b px-3 py-2 text-left font-mono text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
-                Notes
+                {t("bom.table.notes")}
               </th>
               <th className="w-12 border-b px-3 py-2 text-left font-mono text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
-                Buy
+                {t("bom.table.buy")}
               </th>
             </tr>
           </thead>
@@ -305,7 +334,9 @@ function GroupTable({
                 <td className="px-3 py-2.5">
                   <input
                     type="checkbox"
-                    aria-label={`Have ${row.qty === "-" ? "" : row.qty} part`}
+                    aria-label={t("bom.checkboxAriaLabel", {
+                      qty: row.qty === "-" ? "" : row.qty,
+                    })}
                     checked={!!checked[row.key]}
                     onChange={() => toggle(row.key)}
                     className="size-4 accent-primary"
@@ -321,10 +352,10 @@ function GroupTable({
                       "text-muted-foreground line-through decoration-muted-foreground/50",
                   )}
                 >
-                  {row.part}
+                  {row.part(t)}
                 </td>
                 <td className="px-3 py-2.5 text-muted-foreground">
-                  {row.notes}
+                  {row.notes(t)}
                 </td>
                 <td className="px-3 py-2.5">
                   {row.buyUrl && (
@@ -332,7 +363,7 @@ function GroupTable({
                       href={row.buyUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      aria-label={`Buy ${typeof row.part === "string" ? row.part : "part"}`}
+                      aria-label={t("bom.buyAriaLabel", { part: row.name })}
                       className="inline-flex items-center text-muted-foreground transition-colors hover:text-foreground"
                     >
                       <IconExternalLink size={14} />
@@ -349,6 +380,7 @@ function GroupTable({
 }
 
 export function BuildBom() {
+  const { t } = useTranslation("build");
   const { checked, toggle } = usePartsChecklist();
 
   const allRows = useMemo(() => GROUPS.flatMap((g) => g.rows), []);
@@ -360,20 +392,19 @@ export function BuildBom() {
   return (
     <section id="parts" className="mx-auto max-w-4xl px-4 py-16">
       <h2 className="font-heading text-2xl font-semibold tracking-tight md:text-3xl">
-        Bill of materials
+        {t("bom.heading")}
       </h2>
       <p className="mt-3 max-w-2xl text-sm/relaxed text-muted-foreground">
-        Quantities match the firmware exactly - 3 modules × 3 servos, 1 feeder,
-        4 IR sensors, 10 of the PCA9685's 16 channels in use. Channels 0–3 are
-        wired for status LEDs in firmware but aren't part of the current build.
-        Check off each part as you gather it - checkmarks are saved in this
-        browser.
+        {t("bom.description")}
       </p>
 
       <div className="mt-6">
         <div className="mb-1.5 flex items-center justify-between font-mono text-[11px] text-muted-foreground">
           <span>
-            {doneCount} of {allRows.length} parts
+            {t("bom.progress.partsCount", {
+              done: doneCount,
+              total: allRows.length,
+            })}
           </span>
           <span>{pct}%</span>
         </div>
@@ -388,7 +419,7 @@ export function BuildBom() {
       <div className="mt-8 flex flex-col gap-8">
         {GROUPS.map((group) => (
           <GroupTable
-            key={group.title}
+            key={group.key}
             group={group}
             checked={checked}
             toggle={toggle}

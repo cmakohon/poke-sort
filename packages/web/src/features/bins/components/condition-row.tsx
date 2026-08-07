@@ -26,6 +26,7 @@ import {
 import { cn } from "@/lib/utils";
 import { IconChevronDown, IconX } from "@tabler/icons-react";
 import { useCallback } from "react";
+import { useTranslation } from "react-i18next";
 
 function getFieldMeta(
   field: ConditionField,
@@ -43,6 +44,7 @@ function MultiSelect({
   value: string[];
   onChange: (value: string[]) => void;
 }) {
+  const { t } = useTranslation("bins");
   const selectedLabels = options
     .filter((opt) => value.includes(opt.value))
     .map((opt) => opt.label);
@@ -56,7 +58,9 @@ function MultiSelect({
         )}
       >
         <span className="truncate flex-1 text-left">
-          {selectedLabels.length > 0 ? selectedLabels.join(", ") : "Select..."}
+          {selectedLabels.length > 0
+            ? selectedLabels.join(", ")
+            : t("conditionRow.selectPlaceholder")}
         </span>
         <IconChevronDown className="size-4 opacity-50 shrink-0" />
       </DropdownMenuTrigger>
@@ -87,6 +91,7 @@ export function ConditionRow({
   onChange,
   onRemove,
 }: ConditionRowProps) {
+  const { t } = useTranslation("bins");
   const { fieldDefinitions } = useBinConfigs();
   const fieldMeta = getFieldMeta(condition.field, fieldDefinitions);
 
@@ -152,7 +157,7 @@ export function ConditionRow({
           onValueChange={(val) => handleValueChange(val as string)}
         >
           <SelectTrigger className="min-w-24 flex-1">
-            <SelectValue placeholder="Select...">
+            <SelectValue placeholder={t("conditionRow.selectPlaceholder")}>
               {
                 fieldMeta.options.find(
                   (opt) => opt.value === String(condition.value),
@@ -191,7 +196,7 @@ export function ConditionRow({
     return (
       <Input
         type="text"
-        placeholder="Value..."
+        placeholder={t("conditionRow.valuePlaceholder")}
         maxLength={CONDITION_STRING_MAX_LENGTH}
         className="min-w-24 flex-1"
         value={String(condition.value)}

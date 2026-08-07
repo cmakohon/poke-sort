@@ -8,6 +8,7 @@ import {
   IconRefresh,
 } from "@tabler/icons-react";
 import { cva, type VariantProps } from "class-variance-authority";
+import { useTranslation } from "react-i18next";
 
 const statusPill = cva(
   "absolute bottom-1 left-1 right-1 z-30 rounded-lg backdrop-blur-3xl border text-xs px-2 py-1 flex flex-row gap-1.5 items-center text-foreground",
@@ -46,12 +47,14 @@ export function ScannerOverlay({
   hasCatchAll,
   onRetryError,
 }: ScannerOverlayProps) {
+  const { t } = useTranslation("scanner");
+
   if (!isCameraActive) {
     return (
       <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/80 backdrop-blur-sm rounded-lg p-4">
         <div className="text-center text-xs text-muted-foreground">
           <IconCameraSpark className="mx-auto mb-2 size-5" />
-          <p>Connect a camera to start scanning.</p>
+          <p>{t("scannerOverlay.connectCamera")}</p>
         </div>
       </div>
     );
@@ -61,9 +64,7 @@ export function ScannerOverlay({
     return (
       <StatusPill variant="warning">
         <IconAlertTriangle className="size-3.5 shrink-0" />
-        <span>
-          No catch-all bin configured - unmatched cards won't be sorted.
-        </span>
+        <span>{t("scannerOverlay.noCatchAllBin")}</span>
       </StatusPill>
     );
   }
@@ -73,14 +74,14 @@ export function ScannerOverlay({
       return (
         <StatusPill variant="loading">
           <IconLoader2 className="size-3.5 animate-spin shrink-0" />
-          <span>Initializing scanner…</span>
+          <span>{t("scannerOverlay.initializing")}</span>
         </StatusPill>
       );
     case "requesting-camera":
       return (
         <StatusPill variant="loading">
           <IconCameraSpark className="size-3.5 shrink-0" />
-          <span>Requesting camera access…</span>
+          <span>{t("scannerOverlay.requestingCameraAccess")}</span>
         </StatusPill>
       );
     case "error":
@@ -101,25 +102,23 @@ export function ScannerOverlay({
       return (
         <StatusPill variant="loading">
           <IconLoader2 className="size-3.5 animate-spin shrink-0" />
-          <span>Identifying card…</span>
+          <span>{t("scannerOverlay.identifyingCard")}</span>
         </StatusPill>
       );
     case "paused":
-      return (
-        <StatusPill>Scanner paused - press Resume to continue.</StatusPill>
-      );
+      return <StatusPill>{t("scannerOverlay.paused")}</StatusPill>;
     case "duplicate":
       return (
         <StatusPill variant="warning">
           <IconAlertTriangle className="size-3.5 shrink-0" />
-          <span>Same card scanned - use Add Again to add it anyway.</span>
+          <span>{t("scannerOverlay.duplicate")}</span>
         </StatusPill>
       );
     case "no-match":
       return (
         <StatusPill variant="warning">
           <IconAlertTriangle className="size-3.5 shrink-0" />
-          <span>Card not recognized - try Scan Again or adjust lighting.</span>
+          <span>{t("scannerOverlay.noMatch")}</span>
         </StatusPill>
       );
     default:

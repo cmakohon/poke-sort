@@ -5,33 +5,33 @@ export const MODULES = [1, 2, 3] as const;
 export const SERVOS: ServoConfig[] = [
   {
     name: "bottom",
-    label: "Bottom Paddle",
+    labelKey: "servos.bottom.label",
     controlPositions: ["open"],
     defaultPosition: "open",
     calibrationPositions: [
-      { label: "Set Closed", key: "bottomClosed" },
-      { label: "Set Open", key: "bottomOpen" },
+      { labelKey: "servos.bottom.closed", key: "bottomClosed" },
+      { labelKey: "servos.bottom.open", key: "bottomOpen" },
     ],
   },
   {
     name: "paddle",
-    label: "Paddles",
+    labelKey: "servos.paddle.label",
     controlPositions: ["open"],
     defaultPosition: "open",
     calibrationPositions: [
-      { label: "Set Closed", key: "paddleClosed" },
-      { label: "Set Open", key: "paddleOpen" },
+      { labelKey: "servos.paddle.closed", key: "paddleClosed" },
+      { labelKey: "servos.paddle.open", key: "paddleOpen" },
     ],
   },
   {
     name: "pusher",
-    label: "Pusher",
+    labelKey: "servos.pusher.label",
     controlPositions: ["left", "right"],
     defaultPosition: "neutral",
     calibrationPositions: [
-      { label: "Set Left", key: "pusherLeft" },
-      { label: "Set Neutral", key: "pusherNeutral" },
-      { label: "Set Right", key: "pusherRight" },
+      { labelKey: "servos.pusher.left", key: "pusherLeft" },
+      { labelKey: "servos.pusher.neutral", key: "pusherNeutral" },
+      { labelKey: "servos.pusher.right", key: "pusherRight" },
     ],
   },
 ];

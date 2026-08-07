@@ -6,63 +6,35 @@ import {
   IconScan,
   IconStack2,
 } from "@tabler/icons-react";
+import { useTranslation } from "react-i18next";
 
 const FEATURES = [
-  {
-    icon: IconScan,
-    title: "Instant recognition",
-    description:
-      "No typing card names, no barcodes. Just show the card and Magic Vault knows what it is.",
-  },
-  {
-    icon: IconAdjustments,
-    title: "Rules you control",
-    description:
-      "Mix and match conditions - rarity, color, set, type and more - to route cards exactly where you want.",
-  },
-  {
-    icon: IconAlbum,
-    title: "Multiple collections",
-    description:
-      "Keep separate collections for trade binders, decks, or storage boxes, and switch between them freely.",
-  },
-  {
-    icon: IconChartBar,
-    title: "Know what you own",
-    description:
-      "See counts, rarities, and sets across your whole library - no more guessing what's in the box.",
-  },
-  {
-    icon: IconStack2,
-    title: "Every card logged",
-    description:
-      "Each scan is saved automatically, so your collection stays accurate without extra bookkeeping.",
-  },
-  {
-    icon: IconDeviceDesktop,
-    title: "Built for the table",
-    description:
-      "Pairs with a physical sorter, so cards land in real bins - not just another spreadsheet.",
-  },
-];
+  { key: "recognition", icon: IconScan },
+  { key: "rules", icon: IconAdjustments },
+  { key: "collections", icon: IconAlbum },
+  { key: "insights", icon: IconChartBar },
+  { key: "logging", icon: IconStack2 },
+  { key: "hardware", icon: IconDeviceDesktop },
+] as const;
 
 export function LandingFeatures() {
+  const { t } = useTranslation("landing");
+
   return (
     <section id="features" className="mx-auto max-w-6xl px-4 py-20">
       <div className="mx-auto max-w-2xl text-center">
         <h2 className="font-heading text-2xl font-semibold tracking-tight md:text-3xl">
-          Everything you need to get organized
+          {t("features.heading")}
         </h2>
         <p className="mt-3 text-sm/relaxed text-muted-foreground md:text-base/relaxed">
-          Magic Vault handles the sorting so you can spend more time playing and
-          less time digging through boxes.
+          {t("features.subtitle")}
         </p>
       </div>
 
       <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {FEATURES.map((feature) => (
           <div
-            key={feature.title}
+            key={feature.key}
             className="flex flex-col gap-3 rounded-lg border bg-card p-5"
           >
             <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
@@ -70,10 +42,10 @@ export function LandingFeatures() {
             </span>
             <div>
               <p className="font-heading text-sm font-semibold">
-                {feature.title}
+                {t(`features.items.${feature.key}.title`)}
               </p>
               <p className="mt-1 text-xs/relaxed text-muted-foreground">
-                {feature.description}
+                {t(`features.items.${feature.key}.description`)}
               </p>
             </div>
           </div>

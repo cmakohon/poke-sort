@@ -12,8 +12,10 @@ import { ScannerDebug } from "@/features/scanner/components/scanner-debug";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { IconCards } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 
 function MobileScanner() {
+  const { t } = useTranslation("scanner");
   const { cards } = useScannedCards();
 
   return (
@@ -29,7 +31,7 @@ function MobileScanner() {
             className="absolute bottom-5 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 bg-background/90 backdrop-blur-sm border rounded-full px-4 py-2 text-sm font-medium shadow-lg"
           >
             <IconCards size={16} />
-            {cards.length} {cards.length === 1 ? "card" : "cards"}
+            {t("appScanner.cardCount", { count: cards.length })}
           </button>
         </DrawerTrigger>
         <DrawerContent>

@@ -2,10 +2,12 @@ import { Button } from "@/components/ui/button";
 import { neon } from "@/lib/auth/client";
 import { IconAlertTriangle, IconLoader2 } from "@tabler/icons-react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 export function EmailVerificationBanner() {
+  const { t } = useTranslation("common");
   const { data, isPending } = neon.auth.useSession();
   const navigate = useNavigate();
   const [isSending, setIsSending] = useState(false);
@@ -21,13 +23,13 @@ export function EmailVerificationBanner() {
         email,
         type: "email-verification",
       });
-      toast.success("Verification code sent", {
-        description: `Check ${email} for a code.`,
+      toast.success(t("emailVerification.codeSentTitle"), {
+        description: t("emailVerification.codeSentDescription", { email }),
       });
       navigate("/app/verify-email");
     } catch {
-      toast.error("Couldn't send verification code", {
-        description: "Please try again in a moment.",
+      toast.error(t("emailVerification.codeFailedTitle"), {
+        description: t("emailVerification.codeFailedDescription"),
       });
     } finally {
       setIsSending(false);
@@ -37,7 +39,7 @@ export function EmailVerificationBanner() {
   return (
     <div className="flex items-center justify-center gap-2 border-b border-amber-500/30 bg-amber-400/20 px-4 py-1.5 text-xs text-amber-900 dark:bg-amber-400/10 dark:text-amber-200">
       <IconAlertTriangle className="size-3.5 shrink-0" />
-      <span>Please verify your email address ({email}) to secure your account.</span>
+      <span>{t("emailVerification.banner", { email })}</span>
       <Button
         variant="outline"
         size="xs"
@@ -46,7 +48,7 @@ export function EmailVerificationBanner() {
         className="border-amber-500/40 bg-transparent text-amber-900 hover:bg-amber-400/20 dark:text-amber-200 dark:hover:bg-amber-400/10"
       >
         {isSending && <IconLoader2 className="size-3 animate-spin" />}
-        Send code
+        {t("emailVerification.sendCode")}
       </Button>
       <Button
         variant="ghost"
@@ -54,7 +56,7 @@ export function EmailVerificationBanner() {
         onClick={() => navigate("/app/verify-email")}
         className="text-amber-900 hover:bg-amber-400/20 dark:text-amber-200 dark:hover:bg-amber-400/10"
       >
-        I have a code
+        {t("emailVerification.haveCode")}
       </Button>
     </div>
   );

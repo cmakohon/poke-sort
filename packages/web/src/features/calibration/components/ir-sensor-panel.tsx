@@ -6,6 +6,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useTranslation } from "react-i18next";
 
 interface IrSensorPanelProps {
   irStates: boolean[] | null;
@@ -24,16 +25,14 @@ export function IrSensorPanel({
   onRead,
   onToggleMonitor,
 }: IrSensorPanelProps) {
+  const { t } = useTranslation("calibration");
   return (
     <div className="flex flex-col gap-2">
       <Tooltip>
         <TooltipTrigger
-          render={<Label className="w-fit">IR Sensors</Label>}
+          render={<Label className="w-fit">{t("irSensorPanel.label")}</Label>}
         />
-        <TooltipContent>
-          Infrared sensors that detect when a card is present at each
-          module's feed path
-        </TooltipContent>
+        <TooltipContent>{t("irSensorPanel.tooltip")}</TooltipContent>
       </Tooltip>
       <div className="flex items-center gap-3">
         <Tooltip>
@@ -44,14 +43,13 @@ export function IrSensorPanel({
                 disabled={!isConnected}
                 onClick={onToggleMonitor}
               >
-                {isMonitoring ? "Stop" : "Monitor"}
+                {isMonitoring
+                  ? t("irSensorPanel.stop")
+                  : t("irSensorPanel.monitor")}
               </Button>
             }
           />
-          <TooltipContent>
-            Continuously poll the IR sensors and update the badges below in
-            real time
-          </TooltipContent>
+          <TooltipContent>{t("irSensorPanel.monitorTooltip")}</TooltipContent>
         </Tooltip>
         {!isMonitoring && (
           <Tooltip>
@@ -62,13 +60,11 @@ export function IrSensorPanel({
                   disabled={!isConnected}
                   onClick={onRead}
                 >
-                  Read
+                  {t("irSensorPanel.read")}
                 </Button>
               }
             />
-            <TooltipContent>
-              Take a single snapshot reading of the IR sensors
-            </TooltipContent>
+            <TooltipContent>{t("irSensorPanel.readTooltip")}</TooltipContent>
           </Tooltip>
         )}
         {([1, 2, 3] as const).map((m) => {
@@ -79,15 +75,15 @@ export function IrSensorPanel({
                 render={
                   <div className="flex items-center gap-1.5">
                     <Badge variant={detected ? "success" : "ghost"}>
-                      Module {m}
+                      {t("irSensorPanel.moduleLabel", { module: m })}
                     </Badge>
                   </div>
                 }
               />
               <TooltipContent>
                 {detected
-                  ? `A card is currently detected at Module ${m}'s IR sensor`
-                  : `No card currently detected at Module ${m}'s IR sensor`}
+                  ? t("irSensorPanel.detectedTooltip", { module: m })
+                  : t("irSensorPanel.notDetectedTooltip", { module: m })}
               </TooltipContent>
             </Tooltip>
           );
@@ -97,15 +93,14 @@ export function IrSensorPanel({
             render={
               <div className="flex items-center gap-1.5">
                 <Badge variant={hopperHasCards ? "success" : "ghost"}>
-                  {hopperHasCards === false ? "Hopper empty" : "Hopper"}
+                  {hopperHasCards === false
+                    ? t("irSensorPanel.hopperEmpty")
+                    : t("irSensorPanel.hopper")}
                 </Badge>
               </div>
             }
           />
-          <TooltipContent>
-            Whether the card hopper's IR sensor currently detects cards
-            waiting to be fed
-          </TooltipContent>
+          <TooltipContent>{t("irSensorPanel.hopperTooltip")}</TooltipContent>
         </Tooltip>
       </div>
     </div>

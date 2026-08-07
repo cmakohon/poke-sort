@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
+import { Trans, useTranslation } from "react-i18next";
 import { z } from "zod";
 
 type ConfirmMode =
@@ -35,14 +36,23 @@ export function DeleteDialog({
   title,
   description,
   confirm = { type: "simple" },
-  confirmLabel = "Delete",
+  confirmLabel,
   onConfirm,
 }: DeleteDialogProps) {
+  const { t } = useTranslation("common");
   const schema = z.object({ input: z.string() }).superRefine((data, ctx) => {
     if (confirm.type === "keyword" && data.input !== "delete") {
-      ctx.addIssue({ code: "custom", message: 'Type "delete" to confirm', path: ["input"] });
+      ctx.addIssue({
+        code: "custom",
+        message: t("deleteDialog.typeDeleteToConfirm"),
+        path: ["input"],
+      });
     } else if (confirm.type === "name" && data.input !== confirm.name) {
-      ctx.addIssue({ code: "custom", message: `Type "${confirm.name}" to confirm`, path: ["input"] });
+      ctx.addIssue({
+        code: "custom",
+        message: t("deleteDialog.typeNameToConfirm", { name: confirm.name }),
+        path: ["input"],
+      });
     }
   });
   type FormValues = z.infer<typeof schema>;
@@ -76,19 +86,22 @@ export function DeleteDialog({
 
   const label =
     confirm.type === "keyword" ? (
-      <>
-        Type{" "}
-        <span className="font-mono font-medium text-foreground">delete</span> to
-        confirm
-      </>
+      <Trans
+        t={t}
+        i18nKey="deleteDialog.typeKeywordLabel"
+        components={{
+          code: <span className="font-mono font-medium text-foreground" />,
+        }}
+      />
     ) : confirm.type === "name" ? (
-      <>
-        Type{" "}
-        <span className="font-mono font-medium text-foreground">
-          {confirm.name}
-        </span>{" "}
-        to confirm
-      </>
+      <Trans
+        t={t}
+        i18nKey="deleteDialog.typeNameLabel"
+        values={{ name: confirm.name }}
+        components={{
+          code: <span className="font-mono font-medium text-foreground" />,
+        }}
+      />
     ) : null;
 
   return (
@@ -119,14 +132,14 @@ export function DeleteDialog({
               variant="outline"
               onClick={() => onOpenChange(false)}
             >
-              Cancel
+              {t("actions.cancel")}
             </Button>
             <Button
               type="submit"
               variant="destructive"
               disabled={confirm.type !== "simple" && !isValid}
             >
-              {confirmLabel}
+              {confirmLabel ?? t("actions.delete")}
             </Button>
           </DialogFooter>
         </form>

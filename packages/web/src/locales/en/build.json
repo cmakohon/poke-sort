@@ -1,0 +1,358 @@
+{
+  "hero": {
+    "title": "Build the card sorter",
+    "description": "Parts list and assembly instructions for the physical sorting unit: a hopper feeds cards one at a time through three stacked routing modules, each capable of dropping a card into one of two side bins or passing it down to the next module - seven bins total, driven by an {{arduino}} over I²C.",
+    "firmwareLabel": "Firmware",
+    "enclosureLabel": "Enclosure",
+    "calibrationLabel": "Calibration",
+    "modulesIntro": "Each module has three servos - a <0>bottom</0> trapdoor, a <1>paddle</1> gate, and a left/right <2>pusher</2> - plus an IR sensor. Closing every trapdoor above the target bin and opening only the ones beneath it lets a card fall to the right module before the pusher ejects it.",
+    "moduleLabel": "Module {{n}}",
+    "binLabel": "Bin {{n}}",
+    "bin7Note": "catch-all, all three bottoms open"
+  },
+  "nav": {
+    "partsList": "Parts list",
+    "wiring": "Wiring",
+    "assembly": "Assembly",
+    "reportIssue": "Report an issue",
+    "joinDiscordAria": "Join the Discord",
+    "openApp": "Open app",
+    "getStarted": "Get started"
+  },
+  "footer": {
+    "openSource": "Open source",
+    "reportIssue": "Report an issue",
+    "signIn": "Sign in",
+    "copyright": "© {{year}} Magic Vault"
+  },
+  "bom": {
+    "heading": "Bill of materials",
+    "description": "Quantities match the firmware exactly - 3 modules × 3 servos, 1 feeder, 4 IR sensors, 10 of the PCA9685's 16 channels in use. Channels 0–3 are wired for status LEDs in firmware but aren't part of the current build. Check off each part as you gather it - checkmarks are saved in this browser.",
+    "progress": {
+      "partsCount": "{{done}} of {{total}} parts"
+    },
+    "table": {
+      "qty": "Qty",
+      "part": "Part",
+      "notes": "Notes",
+      "buy": "Buy"
+    },
+    "checkboxAriaLabel": "Have {{qty}} part",
+    "buyAriaLabel": "Buy {{part}}",
+    "groups": {
+      "electronics": {
+        "title": "Electronics",
+        "items": {
+          "arduino": {
+            "notes": "Runs <code>{{path}}</code>; USB connection to the host computer for Web Serial"
+          },
+          "pca9685": {
+            "part": "Adafruit PCA9685 16-channel 12-bit PWM/servo driver",
+            "notes": "I²C servo driver - drives all 10 servos"
+          },
+          "sg90Positional": {
+            "part": "SG90 micro servo, positional (180°)",
+            "notes": "3 per module × 3 modules - bottom trapdoor, paddle gate, pusher"
+          },
+          "sg90Continuous": {
+            "part": "SG90 servo, modified for continuous rotation",
+            "notes": "Feeder - drives cards out of the hopper into module 1"
+          }
+        }
+      },
+      "sensing": {
+        "title": "Sensing",
+        "items": {
+          "irSensor": {
+            "part": "Reflective/obstacle IR sensor module",
+            "partSpec": "(3-pin: VCC, GND, digital OUT)",
+            "notes": "One at the gate of modules 1, 2, 3, plus one in the hopper throat"
+          }
+        }
+      },
+      "power": {
+        "title": "Power",
+        "items": {
+          "psu": {
+            "part": "5V regulated power supply, 4–10A",
+            "notes": "Dedicated servo bus power into the PCA9685 V+ terminal - do not power 10 servos off the Arduino's onboard 5V"
+          },
+          "usbCable": {
+            "part": "USB-A–to–USB-C cable",
+            "notes": "Arduino Uno R4 Minima ↔ host computer"
+          },
+          "barrelJack": {
+            "part": "DC barrel jack or screw-terminal pigtail",
+            "notes": "Adapts the PSU output to the PCA9685's V+ / GND terminal"
+          }
+        }
+      },
+      "structural": {
+        "title": "Structural",
+        "items": {
+          "enclosure": {
+            "part": "3D-printed enclosure & module housings",
+            "notes": "Print from <mesh>card_sorter.3mf</mesh> (mesh, slicer-ready) or <source>Card Sorter.f3d</source> (Fusion 360 source)"
+          },
+          "filament": {
+            "part": "PLA or PETG filament",
+            "notes": "Quantity per your slicer's estimate for the model above"
+          },
+          "oRing": {
+            "part": "G20 o-ring",
+            "notes": "Fitted onto the feeder roller for grip on the card face"
+          }
+        }
+      },
+      "fasteners": {
+        "title": "Fasteners & wiring supplies",
+        "items": {
+          "m3x6Screw": {
+            "part": "M3×6 screw",
+            "notes": "14 attach each bin base to the housing; 8 attach the base panels to the base"
+          },
+          "m3Nut": {
+            "part": "M3 nut",
+            "notes": "Paired with the base panel M3×6 screws"
+          },
+          "m3x8Screw": {
+            "part": "M3×8 screw",
+            "notes": "Attaches the hopper tube"
+          },
+          "m2x4Screw": {
+            "part": "M2×4 screw",
+            "partSpec": "(11 per module)",
+            "notes": "Per module: flapper (bottom/sides), pusher arms, and IR sensor mounts"
+          },
+          "m2x6Screw": {
+            "part": "M2×6 screw",
+            "notes": "Mounts the Arduino and PCA9685 servo driver board to the base panels"
+          },
+          "servoHornScrew": {
+            "part": "Servo horn screw (Included with servos)",
+            "notes": "Included with each servo; secures the horn to the shaft"
+          },
+          "hookupWire": {
+            "part": "Low Voltage Wire",
+            "notes": "IR sensor/Servos. Using these you may have to daisy chain some together, just electrical tape them to make sure they don't come apart."
+          },
+          "dupontConnectors": {
+            "part": "Dupont Connectors (Optional)",
+            "notes": "These are only needed if you're making your own custom length wires."
+          },
+          "dupontCrimper": {
+            "part": "Dupont Crimper (Optional)",
+            "notes": "These are only needed if you're making your own custom length wires."
+          }
+        }
+      }
+    }
+  },
+  "wiring": {
+    "heading": "Wiring",
+    "description": "Everything hangs off one I²C bus (PCA9685) and four digital input pins (IR sensors). The PCA9685's logic side runs off the Arduino's 5V; its <pin>V+</pin> servo rail must come from the external supply, and that supply's ground must be tied back to the Arduino's ground - a floating servo ground is the most common reason a freshly wired unit won't move.",
+    "sections": {
+      "i2c": { "title": "I²C bus" },
+      "servoPower": { "title": "Servo power" },
+      "irSensors": { "title": "IR sensors" },
+      "channelMap": { "title": "PCA9685 channel map" },
+      "diagram": {
+        "title": "Wiring diagram",
+        "alt": "Wiring diagram showing the PCA9685, Arduino, servo, and IR sensor connections"
+      }
+    },
+    "i2cTable": {
+      "colPcaPin": "PCA9685 pin",
+      "colArduino": "Arduino Uno R4 Minima",
+      "vccLogic": "VCC (logic)"
+    },
+    "servoPowerTable": {
+      "colFrom": "From",
+      "colTo": "To",
+      "psuPlus": "External 5V PSU, +",
+      "psuMinus": "External 5V PSU, −",
+      "toPositive": "PCA9685 <pin>V+</pin> terminal block",
+      "toNegative": "PCA9685 <pin>GND</pin> terminal block <em>and</em> Arduino <pin>GND</pin>"
+    },
+    "irSensors": {
+      "description": "All four read active-<strong>LOW</strong> (pin goes low when a card is present) using the Arduino's internal pull-up - wire the sensor's digital <pin>OUT</pin> straight to the pin, no external pull-up resistor needed."
+    },
+    "irTable": {
+      "colSensor": "Sensor",
+      "colPin": "Arduino pin",
+      "moduleGate": "Module {{n}} gate",
+      "hopperThroat": "Hopper throat"
+    },
+    "channelTable": {
+      "colCh": "Ch.",
+      "colAssignment": "Assignment"
+    },
+    "channelMap": {
+      "unused": "Unused - reserved for LEDs in firmware, not part of this build",
+      "modulePart": "Module {{n}} - {{part}}",
+      "feeder": "Feeder (continuous rotation)"
+    },
+    "parts": {
+      "bottom": "bottom",
+      "paddle": "paddle",
+      "pusher": "pusher"
+    }
+  },
+  "assembly": {
+    "heading": "Assembly",
+    "description": "Eight phases, structural work first. Checkboxes are saved in this browser, so you can close the tab mid-build and pick back up later.",
+    "helpText": "Stuck on a step? <a>Join the Discord</a> if you need help.",
+    "progress": {
+      "stepsCount": "{{done}} of {{total}} steps"
+    },
+    "phaseLabel": "Phase {{n}}",
+    "phases": {
+      "print": {
+        "title": "Print the structural parts",
+        "steps": {
+          "printEnclosure": {
+            "text": "Slice and print the enclosure and three module housings from <mesh>card_sorter.3mf</mesh> (or re-export from <source>Card Sorter.f3d</source>).",
+            "note": "PLA is fine for the housings; PETG if the unit will sit somewhere warm."
+          },
+          "dryFit": {
+            "text": "Dry-fit each module housing before inserting any electronics - sand or adjust any tight servo pockets now."
+          },
+          "mountBoardsToPanels": {
+            "text": "Mount the Arduino and PCA9685 servo driver board to the base panels with 8 M2×6 screws."
+          },
+          "attachBasePanels": {
+            "text": "Attach the base panels to the base with 8 M3×6 screws and 8 M3 nuts.",
+            "note": "Do this after the Arduino and PCA9685 are mounted to the panels - the boards are much harder to reach once the panels are on the base."
+          }
+        }
+      },
+      "firmware": {
+        "title": "Flash the firmware",
+        "steps": {
+          "installLibraries": {
+            "text": "In the Arduino IDE, install the ArduinoJson and Adafruit PWM Servo Driver libraries.",
+            "note": "Library Manager → search each by name."
+          },
+          "uploadSketch": {
+            "text": "Select board \"Arduino Uno R4 Minima\", select the correct port, then upload arduino/main/main.ino."
+          },
+          "confirmReady": {
+            "text": "Open the Serial Monitor at 9600 baud and confirm you see {\"status\":\"ready\"} after the board resets."
+          }
+        }
+      },
+      "servos": {
+        "title": "Mount the servos",
+        "steps": {
+          "mountModuleServos": {
+            "text": "Install the bottom, paddle, and pusher servo into each of the 3 module housings (9 servos total).",
+            "note": "Center each servo at its neutral pulse before screwing down the horn, so mechanical range matches the firmware's open/closed travel."
+          },
+          "mountBottomFlapper": {
+            "text": "Attach the bottom flapper to the bottom servo's horn with M2×4 screws, servo held at its closed pulse so the flapper seats flush across the card path.",
+            "note": "This is the trapdoor a card falls through to reach the next module, or the current one on a match."
+          },
+          "mountSideFlappers": {
+            "text": "Before attaching anything, command each paddle servo through its full range to confirm the linkage can reach fully open without binding. Then, with the servo held at its closed position, attach the left and right flapper to the shared linkage with M2×4 screws (one pair per module) so both sit flush and even.",
+            "note": "One paddle servo drives both flappers together - they open and close as a pair, not independently. Fit the flappers closed first; the exact open-position pulse gets fine-tuned later from the Module Calibration Grid."
+          },
+          "mountPusherArm": {
+            "text": "Before fitting the arm, sweep the pusher servo through its full left-to-right range and find its true mechanical middle. With the servo held at that middle position, attach the card pusher arm to the horn with M2×4 screws so it sits centered between the left and right bins.",
+            "note": "Fitting the arm off-center biases the push distance to one side - the exact left/right pulses get fine-tuned later from the Module Calibration Grid."
+          },
+          "fitFeederOrings": {
+            "text": "Fit 6 G20 o-rings onto the feeder roller.",
+            "note": "These give the roller grip on the card face - space them evenly along the roller's length."
+          },
+          "mountFeederRoller": {
+            "text": "Attach the roller to the feeder module."
+          },
+          "mountFeederServo": {
+            "text": "Install the continuous-rotation feeder servo to the roller, at the base of the hopper."
+          },
+          "mountFeederWall": {
+            "text": "Attach the wall piece to the tube that guides cards from the hopper to the feeder roller.",
+            "note": "When mounting the wall, attach it to the feeder module first, then put 2 cards below the wall and slide it down before tighting it into place."
+          }
+        }
+      },
+      "irSensors": {
+        "title": "Mount the IR sensors",
+        "steps": {
+          "mountModuleIr": {
+            "text": "Fix one IR sensor at the gate of each module (1, 2, 3), aimed across the card path."
+          },
+          "mountHopperIr": {
+            "text": "Fix the fourth IR sensor in the hopper throat, just above the feeder.",
+            "note": "This one tells the feeder when the hopper is empty - placement matters more than the module sensors."
+          }
+        }
+      },
+      "wiring": {
+        "title": "Wire the electronics",
+        "steps": {
+          "wireI2c": {
+            "text": "Wire the PCA9685 to the Arduino's I²C bus (SDA/SCL) and 5V/GND for logic power.",
+            "note": "See the Wiring section above."
+          },
+          "wireServos": {
+            "text": "Wire all 10 servos into PCA9685 channels 0–13 per the channel map.",
+            "note": "There are wire channels, that use zip ties, in the side of the base to help keep everything neat."
+          },
+          "wireSensors": {
+            "text": "Wire the 4 IR sensors to D2–D5.",
+            "note": "For the power and ground, you will have to combine 4 wires into one, either with a breadboard or by twisting and soldering them together. You will need to manually calibrate the sensors to have a shorter throw, as to not get false positives."
+          },
+          "wirePower": {
+            "text": "Bring the external 5V supply into the PCA9685 V+/GND terminal, and tie its ground to the Arduino's ground.",
+            "note": "Skipping the common ground is the #1 cause of servos that twitch but never move correctly."
+          }
+        }
+      },
+      "powerOnTest": {
+        "title": "First power-on test",
+        "steps": {
+          "runTestCommand": {
+            "text": "With the external servo supply connected, send {\"test\": true} over serial.",
+            "note": "Cycles every bottom and paddle open, sweeps all pushers left then right, resets to neutral, then briefly spins the feeder."
+          },
+          "watchModules": {
+            "text": "Watch each module during the test - confirm nothing binds or grinds at the end of its travel.",
+            "note": "If a servo strains at open or closed, its housing cutout likely needs adjusting before calibration."
+          }
+        }
+      },
+      "calibrate": {
+        "title": "Calibrate from the app",
+        "steps": {
+          "connectSerial": {
+            "text": "Connect the Arduino to the app via Web Serial, then open /app/calibrate."
+          },
+          "calibrateModules": {
+            "text": "Module Calibration Grid - set the open/closed pulse for each bottom and paddle, and left/neutral/right for each pusher, module by module."
+          },
+          "calibrateFeeder": {
+            "text": "Feeder Calibration Panel - tune feed speed, pulse/pause timing, and settle duration against your actual hopper."
+          },
+          "checkIr": {
+            "text": "IR Sensor Panel - verify all 4 sensors report present/absent correctly with a card in hand."
+          },
+          "testBins": {
+            "text": "Bin Routing Controls - send a test card to each of the 7 bins in turn and confirm it lands correctly."
+          }
+        }
+      },
+      "loadRun": {
+        "title": "Load and run",
+        "steps": {
+          "loadHopper": {
+            "text": "Load the hopper and confirm the feeder stops pulsing once the hopper IR reads empty."
+          },
+          "fullPass": {
+            "text": "Run a full scan-to-bin pass end to end before leaving the unit unattended."
+          }
+        }
+      }
+    }
+  }
+}

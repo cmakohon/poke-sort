@@ -1,0 +1,61 @@
+{
+  "cardImageVectors": {
+    "heading": "Kartenbild-Vektoren",
+    "syncStatus": {
+      "idle": "Inaktiv",
+      "running": "Läuft",
+      "completed": "Abgeschlossen",
+      "failed": "Fehlgeschlagen",
+      "cancelled": "Abgebrochen"
+    },
+    "selectGamePlaceholder": "Spiel auswählen...",
+    "languagePlaceholder": "Sprache...",
+    "cancelButton": "Abbrechen",
+    "cancellingButton": "Wird abgebrochen...",
+    "startSyncButton": "Sync starten",
+    "startingButton": "Wird gestartet...",
+    "progressCount": "{{done}} / {{total}}",
+    "vectorizedCount": "{{count}} vektorisiert",
+    "skippedCount": "{{count}} übersprungen",
+    "etaRemaining": "noch ~{{duration}}",
+    "errorsCount": "{{count}} Fehler"
+  },
+  "log": {
+    "heading": "Protokoll",
+    "empty": "Keine Einträge"
+  },
+  "cardDatabase": {
+    "heading": "Kartendatenbank",
+    "cardCount_one": "{{count}} Karte",
+    "cardCount_other": "{{count}} Karten",
+    "searchPlaceholder": "Nach Name suchen...",
+    "loading": "Wird geladen...",
+    "loadError": "Karten konnten nicht geladen werden",
+    "revectorizeTitle": "Neu vektorisieren",
+    "empty": "Keine Karten gefunden",
+    "pageOf": "Seite {{page}} von {{total}}"
+  },
+  "syncCardById": {
+    "heading": "Karte per ID synchronisieren",
+    "description": "Ruft eine einzelne Karte ab und vektorisiert sie, fügt sie bei Bedarf neu zur Datenbank hinzu",
+    "cardIdPlaceholder": "Karten-ID...",
+    "syncButton": "Synchronisieren",
+    "syncingButton": "Wird synchronisiert..."
+  },
+  "dumpDatabase": {
+    "heading": "Kartendatenbank leeren",
+    "description": "Löscht Kartenbild-Vektoren dauerhaft, für ein Spiel oder alle",
+    "scopePlaceholder": "Bereich auswählen...",
+    "allGames": "Alle Spiele",
+    "dumpButton": "Leeren",
+    "dumpingButton": "Wird geleert...",
+    "dialogTitle": "Kartendatenbank leeren",
+    "confirmAll": "Dadurch werden alle Kartenbild-Vektoren dauerhaft gelöscht, das kann nicht rückgängig gemacht werden. Bist du sicher?",
+    "confirmScoped": "Dadurch werden alle Kartenbild-Vektoren für „{{scope}}“ dauerhaft gelöscht, das kann nicht rückgängig gemacht werden. Bist du sicher?"
+  },
+  "toasts": {
+    "revectorizeError": "Neu-Vektorisierung von {{name}} fehlgeschlagen",
+    "syncCardError": "Synchronisierung der Karte {{id}} fehlgeschlagen",
+    "dumpError": "Datenbank konnte nicht geleert werden"
+  }
+}

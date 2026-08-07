@@ -28,6 +28,7 @@ import {
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router-dom";
 
 const EXPANDED_KEY = "sidebarExpanded";
@@ -146,6 +147,7 @@ function BottomNavItem({ to, icon, label, end, badge }: NavItemDef) {
 }
 
 export function AppNav() {
+  const { t } = useTranslation("common");
   const { isAdmin } = useRole();
   const isMobile = useIsMobile();
   const { activeOrg } = useOrg();
@@ -209,32 +211,32 @@ export function AppNav() {
     {
       to: "/app",
       icon: <IconCameraSpark size={20} />,
-      label: "Scanner",
+      label: t("nav.scanner"),
       end: true,
       desktopOnly: true,
     },
     {
       to: "/app/collections",
       icon: <IconAlbum size={20} />,
-      label: "Collections",
+      label: t("nav.collections"),
       desktopOnly: true,
     },
     {
       to: "/app/monitor",
       icon: <IconHeartRateMonitor size={20} />,
-      label: "Monitor",
+      label: t("nav.monitor"),
       badge: hasLiveSessions,
     },
     {
       to: "/app/calibrate",
       icon: <IconAdjustments size={20} />,
-      label: "Calibrate",
+      label: t("nav.calibrate"),
       desktopOnly: true,
     },
     {
       to: "/app/settings",
       icon: <IconSettings size={20} />,
-      label: "Settings",
+      label: t("nav.settings"),
       desktopOnly: true,
     },
     ...(isAdmin
@@ -242,7 +244,7 @@ export function AppNav() {
           {
             to: "/app/admin",
             icon: <IconDatabaseCog size={20} />,
-            label: "Admin",
+            label: t("nav.admin"),
             desktopOnly: true,
           },
         ]
@@ -335,11 +337,15 @@ export function AppNav() {
         onClick={toggle}
         className={cn(expanded ? "h-8 mx-2" : "size-8")}
         variant="ghost"
-        title={expanded ? "Collapse sidebar ([)" : "Expand sidebar ([)"}
+        title={
+          expanded
+            ? t("nav.collapseSidebar")
+            : t("nav.expandSidebar")
+        }
       >
         {expanded ? (
           <>
-            Collapse
+            {t("nav.collapse")}
             <IconLayoutSidebarLeftCollapse size={16} />
           </>
         ) : (

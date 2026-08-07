@@ -5,6 +5,7 @@ import type { RuleGroupEditorProps } from "@/features/bins/types";
 import { BinCondition, BinRuleGroup, isRuleGroup } from "@magic-vault/shared";
 import { IconPlus, IconTrash } from "@tabler/icons-react";
 import { useCallback } from "react";
+import { useTranslation } from "react-i18next";
 
 function createCondition(): BinCondition {
   return {
@@ -29,6 +30,7 @@ export function RuleGroupEditor({
   onRemove,
   depth = 0,
 }: RuleGroupEditorProps) {
+  const { t } = useTranslation("bins");
   const updateCondition = useCallback(
     (index: number, updated: BinCondition | BinRuleGroup) => {
       const newConditions = [...group.conditions];
@@ -79,7 +81,7 @@ export function RuleGroupEditor({
             variant={group.combinator === "and" ? "secondary" : "outline"}
             onClick={() => toggleCombinator("and")}
           >
-            AND
+            {t("ruleGroupEditor.and")}
           </Button>
           <Button
             type="button"
@@ -87,7 +89,7 @@ export function RuleGroupEditor({
             variant={group.combinator === "or" ? "secondary" : "outline"}
             onClick={() => toggleCombinator("or")}
           >
-            OR
+            {t("ruleGroupEditor.or")}
           </Button>
         </ButtonGroup>
 
@@ -119,7 +121,7 @@ export function RuleGroupEditor({
         )}
         {group.conditions.length === 0 && (
           <p className="text-muted-foreground py-1.5 rounded-lg border px-3 text-xs bg-sidebar">
-            No conditions. Add a condition or group to get started.
+            {t("ruleGroupEditor.emptyState")}
           </p>
         )}
       </div>
@@ -131,11 +133,11 @@ export function RuleGroupEditor({
           variant="outline"
           onClick={addCondition}
         >
-          <IconPlus /> Condition
+          <IconPlus /> {t("ruleGroupEditor.addCondition")}
         </Button>
         {depth < 2 && (
           <Button size="sm" type="button" variant="outline" onClick={addGroup}>
-            <IconPlus /> Group
+            <IconPlus /> {t("ruleGroupEditor.addGroup")}
           </Button>
         )}
       </ButtonGroup>

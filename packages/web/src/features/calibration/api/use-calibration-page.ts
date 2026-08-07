@@ -12,9 +12,11 @@ import { useSerial } from "@/features/scanner/api/use-serial";
 import { DEFAULT_CALIBRATION, type ServoCalibration } from "@magic-vault/shared";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 export function useCalibrationPage() {
+  const { t } = useTranslation("calibration");
   const { isConnected, connect, disconnect, sendCommand, sendBin, sendTest, receiveResponse } =
     useSerial();
   const { configs, saveConfig, moveServo } = useModuleConfigs();
@@ -133,21 +135,23 @@ export function useCalibrationPage() {
 
   const handleTest = useCallback(async () => {
     if (isUnconfigured) {
-      toast.error("Modules not calibrated", {
-        description: "Configure all three modules before running the test sequence.",
+      toast.error(t("useCalibrationPage.toasts.notCalibrated"), {
+        description: t("useCalibrationPage.toasts.notCalibratedDescription"),
       });
       return;
     }
     setIsTesting(true);
-    toast.info("Running test sequence…");
+    toast.info(t("useCalibrationPage.toasts.runningTest"));
     const ok = await sendTest();
     setIsTesting(false);
     if (ok) {
-      toast.success("Test complete");
+      toast.success(t("useCalibrationPage.toasts.testComplete"));
     } else {
-      toast.error("Test failed", { description: "No response from sorter." });
+      toast.error(t("useCalibrationPage.toasts.testFailed"), {
+        description: t("useCalibrationPage.toasts.noResponse"),
+      });
     }
-  }, [sendTest, isUnconfigured]);
+  }, [sendTest, isUnconfigured, t]);
 
   const handleTestBin = useCallback(
     async (bin: number) => {
@@ -155,11 +159,11 @@ export function useCalibrationPage() {
       try {
         const response = await sendBin(bin);
         if (!response) {
-          toast.error(`Bin ${bin} failed`, {
-            description: "No response from sorter.",
+          toast.error(t("useCalibrationPage.toasts.binFailed", { bin }), {
+            description: t("useCalibrationPage.toasts.noResponse"),
           });
         } else if (typeof response === "object" && "error" in response) {
-          toast.error(`Bin ${bin} failed`, {
+          toast.error(t("useCalibrationPage.toasts.binFailed", { bin }), {
             description: (response as { error: string }).error,
           });
         }
@@ -167,24 +171,24 @@ export function useCalibrationPage() {
         setActiveBin(null);
       }
     },
-    [sendBin, setActiveBin],
+    [sendBin, setActiveBin, t],
   );
 
   const handleSampleRun = useCallback(async () => {
     setIsSampleRunning(true);
-    toast.info("Starting sample run…");
+    toast.info(t("useCalibrationPage.toasts.startingSampleRun"));
     try {
       for (let bin = 1; bin <= 7; bin++) {
         setActiveBin(bin);
         const response = await sendBin(bin);
         if (!response) {
-          toast.error(`Sample run stopped at bin ${bin}`, {
-            description: "No response from sorter.",
+          toast.error(t("useCalibrationPage.toasts.sampleRunStopped", { bin }), {
+            description: t("useCalibrationPage.toasts.noResponse"),
           });
           return;
         }
         if (typeof response === "object" && "error" in response) {
-          toast.error(`Sample run stopped at bin ${bin}`, {
+          toast.error(t("useCalibrationPage.toasts.sampleRunStopped", { bin }), {
             description: (response as { error: string }).error,
           });
           return;
@@ -192,12 +196,12 @@ export function useCalibrationPage() {
         // Brief pause between cards so the mechanism fully resets
         await new Promise<void>((r) => setTimeout(r, 500));
       }
-      toast.success("Sample run complete");
+      toast.success(t("useCalibrationPage.toasts.sampleRunComplete"));
     } finally {
       setActiveBin(null);
       setIsSampleRunning(false);
     }
-  }, [sendBin, setActiveBin]);
+  }, [sendBin, setActiveBin, t]);
 
   const handleCenterModule = useCallback(
     (module: 1 | 2 | 3) => {

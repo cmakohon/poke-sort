@@ -23,22 +23,30 @@ import { ScanRegionCalibrationPanel } from "@/features/calibration/components/sc
 import { IconClockHour3, IconDeviceUsb, IconDeviceUsbFilled } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 function ModuleHistoryBody({ entry }: { entry: ModuleConfigAuditEntry }) {
+  const { t } = useTranslation("calibration");
   const { calibration: c } = entry;
   return (
     <div className="flex flex-col gap-0.5">
       <div className="flex gap-2">
-        <span className="w-16 shrink-0 text-muted-foreground">Bottom</span>
+        <span className="w-16 shrink-0 text-muted-foreground">
+          {t("calibratePage.moduleHistory.bottom")}
+        </span>
         <span>{c.bottomClosed} / {c.bottomOpen}</span>
       </div>
       <div className="flex gap-2">
-        <span className="w-16 shrink-0 text-muted-foreground">Paddle</span>
+        <span className="w-16 shrink-0 text-muted-foreground">
+          {t("calibratePage.moduleHistory.paddle")}
+        </span>
         <span>{c.paddleClosed} / {c.paddleOpen}</span>
       </div>
       <div className="flex gap-2">
-        <span className="w-16 shrink-0 text-muted-foreground">Pusher</span>
+        <span className="w-16 shrink-0 text-muted-foreground">
+          {t("calibratePage.moduleHistory.pusher")}
+        </span>
         <span>{c.pusherLeft} / {c.pusherNeutral} / {c.pusherRight}</span>
       </div>
     </div>
@@ -46,19 +54,21 @@ function ModuleHistoryBody({ entry }: { entry: ModuleConfigAuditEntry }) {
 }
 
 function FeederHistoryBody({ entry }: { entry: FeederConfigAuditEntry }) {
+  const { t } = useTranslation("calibration");
   const { calibration: c } = entry;
   return (
     <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
-      <span className="text-muted-foreground">Speed</span><span>{c.speed}</span>
-      <span className="text-muted-foreground">Duration</span><span>{c.duration}ms</span>
-      <span className="text-muted-foreground">Pulse</span><span>{c.pulseDuration <= 0 ? "Continuous" : `${c.pulseDuration}ms`}</span>
-      <span className="text-muted-foreground">Pause</span><span>{c.pauseDuration}ms</span>
-      <span className="text-muted-foreground">Settle</span><span>{c.settleDuration}ms</span>
+      <span className="text-muted-foreground">{t("calibratePage.feederHistory.speed")}</span><span>{c.speed}</span>
+      <span className="text-muted-foreground">{t("calibratePage.feederHistory.duration")}</span><span>{t("calibratePage.feederHistory.msValue", { value: c.duration })}</span>
+      <span className="text-muted-foreground">{t("calibratePage.feederHistory.pulse")}</span><span>{c.pulseDuration <= 0 ? t("calibratePage.feederHistory.continuous") : t("calibratePage.feederHistory.msValue", { value: c.pulseDuration })}</span>
+      <span className="text-muted-foreground">{t("calibratePage.feederHistory.pause")}</span><span>{t("calibratePage.feederHistory.msValue", { value: c.pauseDuration })}</span>
+      <span className="text-muted-foreground">{t("calibratePage.feederHistory.settle")}</span><span>{t("calibratePage.feederHistory.msValue", { value: c.settleDuration })}</span>
     </div>
   );
 }
 
 export default function CalibratePage() {
+  const { t } = useTranslation("calibration");
   const queryClient = useQueryClient();
   const [moduleHistoryOpen, setModuleHistoryOpen] = useState(false);
   const [feederHistoryOpen, setFeederHistoryOpen] = useState(false);
@@ -84,10 +94,10 @@ export default function CalibratePage() {
         queryClient.setQueryData(modulesQueryOptions.queryKey, result.data);
         queryClient.invalidateQueries({ queryKey: ["modules", "history"] });
         setModuleHistoryOpen(false);
-        toast.success("Reverted module calibration");
+        toast.success(t("calibratePage.toasts.moduleReverted"));
       }
     },
-    onError: () => toast.error("Failed to revert"),
+    onError: () => toast.error(t("calibratePage.toasts.revertFailed")),
   });
 
   const revertFeederMutation = useMutation({
@@ -97,20 +107,22 @@ export default function CalibratePage() {
         queryClient.setQueryData(feederQueryOptions.queryKey, result.data);
         queryClient.invalidateQueries({ queryKey: ["feeder", "history"] });
         setFeederHistoryOpen(false);
-        toast.success("Reverted feeder calibration");
+        toast.success(t("calibratePage.toasts.feederReverted"));
       }
     },
-    onError: () => toast.error("Failed to revert"),
+    onError: () => toast.error(t("calibratePage.toasts.revertFailed")),
   });
 
   const moduleHistoryEntries = useMemo((): AuditEntry[] => {
     return (moduleHistoryResult?.data ?? []).map((entry: ModuleConfigAuditEntry) => ({
       guid: entry.guid,
       createdAt: entry.createdAt,
-      label: `Module ${entry.moduleNumber}`,
+      label: t("calibratePage.moduleHistory.moduleLabel", {
+        module: entry.moduleNumber,
+      }),
       body: <ModuleHistoryBody entry={entry} />,
     }));
-  }, [moduleHistoryResult]);
+  }, [moduleHistoryResult, t]);
 
   const feederHistoryEntries = useMemo((): AuditEntry[] => {
     return (feederHistoryResult?.data ?? []).map((entry: FeederConfigAuditEntry) => ({
@@ -172,12 +184,12 @@ export default function CalibratePage() {
         {isConnected ? (
           <Button variant="outline" onClick={disconnect}>
             <IconDeviceUsbFilled />
-            Disconnect
+            {t("calibratePage.disconnect")}
           </Button>
         ) : (
           <Button onClick={connect}>
             <IconDeviceUsb />
-            Connect Device
+            {t("calibratePage.connectDevice")}
           </Button>
         )}
         <Button
@@ -185,11 +197,11 @@ export default function CalibratePage() {
           disabled={!isConnected || isTesting || isUnconfigured}
           onClick={handleTest}
         >
-          {isTesting ? "Testing…" : "Run Test"}
+          {isTesting ? t("calibratePage.testing") : t("calibratePage.runTest")}
         </Button>
         {isUnconfigured && (
           <span className="text-xs text-muted-foreground">
-            Calibrate all modules before running the test
+            {t("calibratePage.calibrateBeforeTest")}
           </span>
         )}
       </div>
@@ -219,20 +231,20 @@ export default function CalibratePage() {
       />
 
       <div className="flex flex-col gap-2">
-        <Label>Scan Region</Label>
+        <Label>{t("calibratePage.scanRegionLabel")}</Label>
         <ScanRegionCalibrationPanel />
       </div>
 
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <Label>Feeder Calibration</Label>
+          <Label>{t("calibratePage.feederCalibrationLabel")}</Label>
           <button
             type="button"
             onClick={() => setFeederHistoryOpen(true)}
             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
             <IconClockHour3 size={12} />
-            History
+            {t("calibratePage.history")}
           </button>
         </div>
         <FeederCalibrationPanel
@@ -259,14 +271,14 @@ export default function CalibratePage() {
 
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <Label>Module Calibration</Label>
+          <Label>{t("calibratePage.moduleCalibrationLabel")}</Label>
           <button
             type="button"
             onClick={() => setModuleHistoryOpen(true)}
             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
             <IconClockHour3 size={12} />
-            History
+            {t("calibratePage.history")}
           </button>
         </div>
         <ModuleCalibrationGrid
@@ -286,7 +298,7 @@ export default function CalibratePage() {
       <AuditDrawer
         open={feederHistoryOpen}
         onOpenChange={setFeederHistoryOpen}
-        title="Feeder History"
+        title={t("calibratePage.feederHistoryTitle")}
         entries={feederHistoryEntries}
         isLoading={feederHistoryLoading}
         onRevert={(guid) => revertFeederMutation.mutate(guid)}
@@ -296,7 +308,7 @@ export default function CalibratePage() {
       <AuditDrawer
         open={moduleHistoryOpen}
         onOpenChange={setModuleHistoryOpen}
-        title="Module History"
+        title={t("calibratePage.moduleHistoryTitle")}
         entries={moduleHistoryEntries}
         isLoading={moduleHistoryLoading}
         onRevert={(guid) => revertModuleMutation.mutate(guid)}

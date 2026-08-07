@@ -13,16 +13,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { IconTrash } from "@tabler/icons-react";
 import { Controller, useForm } from "react-hook-form";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { z } from "zod";
 
 type OrgRole = "owner" | "admin" | "member";
-
-const ROLE_LABELS: Record<OrgRole, string> = {
-  owner: "Owner",
-  admin: "Admin",
-  member: "Member",
-};
 
 const renameSchema = z.object({ name: z.string().min(1) });
 const inviteSchema = z.object({
@@ -34,6 +29,12 @@ type RenameValues = z.infer<typeof renameSchema>;
 type InviteValues = z.infer<typeof inviteSchema>;
 
 export function OrgSettings() {
+  const { t } = useTranslation("companies");
+  const ROLE_LABELS: Record<OrgRole, string> = {
+    owner: t("orgSettings.roleOwner"),
+    admin: t("orgSettings.roleAdmin"),
+    member: t("orgSettings.roleMember"),
+  };
   const { refetch: refetchOrgs } = neon.auth.useListOrganizations();
   const { data: activeOrg, refetch: refetchActive } =
     neon.auth.useActiveOrganization();
@@ -66,9 +67,9 @@ export function OrgSettings() {
       if (error) throw new Error(error.message);
       renameForm.reset();
       await refetchActive();
-      toast.success("Organization renamed.");
+      toast.success(t("orgSettings.organizationRenamed"));
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Failed to rename.");
+      toast.error(e instanceof Error ? e.message : t("orgSettings.failedToRename"));
     }
   }
 
@@ -83,9 +84,9 @@ export function OrgSettings() {
       if (error) throw new Error(error.message);
       inviteForm.reset();
       await refetchActive();
-      toast.success("Invite sent.");
+      toast.success(t("orgSettings.inviteSent"));
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Failed to send invite.");
+      toast.error(e instanceof Error ? e.message : t("orgSettings.failedToSendInvite"));
     }
   }
 
@@ -96,9 +97,9 @@ export function OrgSettings() {
       });
       if (error) throw new Error(error.message);
       await refetchActive();
-      toast.success("Invite cancelled.");
+      toast.success(t("orgSettings.inviteCancelled"));
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Failed to cancel invite.");
+      toast.error(e instanceof Error ? e.message : t("orgSettings.failedToCancelInvite"));
     }
   }
 
@@ -112,7 +113,7 @@ export function OrgSettings() {
       if (error) throw new Error(error.message);
       await refetchActive();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Failed to update role.");
+      toast.error(e instanceof Error ? e.message : t("orgSettings.failedToUpdateRole"));
     }
   }
 
@@ -126,9 +127,9 @@ export function OrgSettings() {
       if (error) throw new Error(error.message);
       setRemoveMemberTarget(null);
       await refetchActive();
-      toast.success("Member removed.");
+      toast.success(t("orgSettings.memberRemoved"));
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Failed to remove member.");
+      toast.error(e instanceof Error ? e.message : t("orgSettings.failedToRemoveMember"));
     }
   }
 
@@ -140,9 +141,9 @@ export function OrgSettings() {
       });
       if (error) throw new Error(error.message);
       await refetchOrgs();
-      toast.success("Organization deleted.");
+      toast.success(t("orgSettings.organizationDeleted"));
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Failed to delete.");
+      toast.error(e instanceof Error ? e.message : t("orgSettings.failedToDelete"));
     }
   }
 
@@ -154,8 +155,7 @@ export function OrgSettings() {
     <div className="flex flex-col gap-6">
       {!activeOrg && (
         <p className="text-sm text-muted-foreground">
-          No organization selected. Use the organization menu in the sidebar to
-          create or switch organizations.
+          {t("orgSettings.noOrgSelected")}
         </p>
       )}
 
@@ -166,7 +166,7 @@ export function OrgSettings() {
               onSubmit={renameForm.handleSubmit(handleRename)}
               className="flex flex-col gap-2"
             >
-              <h3 className="text-sm font-medium">Rename "{activeOrg.name}"</h3>
+              <h3 className="text-sm font-medium">{t("orgSettings.renameHeading", { name: activeOrg.name })}</h3>
               <div className="flex gap-2">
                 <Input
                   placeholder={activeOrg.name}
@@ -177,14 +177,14 @@ export function OrgSettings() {
                   type="submit"
                   disabled={renameForm.formState.isSubmitting}
                 >
-                  {renameForm.formState.isSubmitting ? "Saving…" : "Rename"}
+                  {renameForm.formState.isSubmitting ? t("orgSettings.saving") : t("orgSettings.rename")}
                 </Button>
               </div>
             </form>
           )}
 
           <div className="flex flex-col gap-2">
-            <h3 className="text-sm font-medium">Members</h3>
+            <h3 className="text-sm font-medium">{t("orgSettings.membersHeading")}</h3>
             <div className="flex flex-col divide-y divide-border rounded-lg border">
               {activeOrg.members.map((m) => (
                 <div
@@ -212,8 +212,8 @@ export function OrgSettings() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="member">Member</SelectItem>
+                        <SelectItem value="admin">{t("orgSettings.roleAdmin")}</SelectItem>
+                        <SelectItem value="member">{t("orgSettings.roleMember")}</SelectItem>
                       </SelectContent>
                     </Select>
                   ) : (
@@ -242,14 +242,14 @@ export function OrgSettings() {
 
           {canManage && (
             <div className="flex flex-col gap-3">
-              <h3 className="text-sm font-medium">Invite member</h3>
+              <h3 className="text-sm font-medium">{t("orgSettings.inviteMemberHeading")}</h3>
               <form
                 onSubmit={inviteForm.handleSubmit(handleInvite)}
                 className="flex gap-2"
               >
                 <Input
                   type="email"
-                  placeholder="Email address"
+                  placeholder={t("orgSettings.emailPlaceholder")}
                   {...inviteForm.register("email")}
                   className="flex-1"
                 />
@@ -262,8 +262,8 @@ export function OrgSettings() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="member">Member</SelectItem>
+                        <SelectItem value="admin">{t("orgSettings.roleAdmin")}</SelectItem>
+                        <SelectItem value="member">{t("orgSettings.roleMember")}</SelectItem>
                       </SelectContent>
                     </Select>
                   )}
@@ -272,14 +272,14 @@ export function OrgSettings() {
                   type="submit"
                   disabled={inviteForm.formState.isSubmitting}
                 >
-                  {inviteForm.formState.isSubmitting ? "Sending…" : "Invite"}
+                  {inviteForm.formState.isSubmitting ? t("orgSettings.sending") : t("orgSettings.invite")}
                 </Button>
               </form>
 
               {pendingInvites.length > 0 && (
                 <div className="flex flex-col gap-1">
                   <p className="text-xs text-muted-foreground">
-                    Pending invites
+                    {t("orgSettings.pendingInvites")}
                   </p>
                   <div className="flex flex-col divide-y divide-border rounded-lg border">
                     {pendingInvites.map((inv) => (
@@ -310,12 +310,12 @@ export function OrgSettings() {
 
           {isOwner && (
             <div className="flex flex-col gap-3 bg-destructive rounded-lg p-4 text-destructive-foreground">
-              <h3 className="text-sm font-medium">Danger zone</h3>
+              <h3 className="text-sm font-medium">{t("orgSettings.dangerZoneHeading")}</h3>
               <p className="text-xs">
-                Permanently deletes "{activeOrg.name}" and all its data.
+                {t("orgSettings.deleteWarning", { name: activeOrg.name })}
               </p>
               <Button variant="secondary" size="sm" onClick={() => setDeleteOrgOpen(true)}>
-                Delete organization
+                {t("orgSettings.deleteOrganization")}
               </Button>
             </div>
           )}
@@ -326,8 +326,8 @@ export function OrgSettings() {
     <DeleteDialog
       open={!!removeMemberTarget}
       onOpenChange={(open) => { if (!open) setRemoveMemberTarget(null); }}
-      title="Remove member"
-      description={`Remove "${removeMemberTarget?.name}" from this organization? They will lose access immediately.`}
+      title={t("orgSettings.removeMemberTitle")}
+      description={t("orgSettings.removeMemberDescription", { name: removeMemberTarget?.name })}
       confirm={{ type: "simple" }}
       onConfirm={handleRemoveMember}
     />
@@ -335,8 +335,8 @@ export function OrgSettings() {
     <DeleteDialog
       open={deleteOrgOpen}
       onOpenChange={setDeleteOrgOpen}
-      title="Delete organization"
-      description={`Permanently deletes "${activeOrg?.name}" and all its data. This cannot be undone.`}
+      title={t("orgSettings.deleteOrgTitle")}
+      description={t("orgSettings.deleteOrgDescription", { name: activeOrg?.name })}
       confirm={{ type: "name", name: activeOrg?.name ?? "" }}
       onConfirm={handleDelete}
     />

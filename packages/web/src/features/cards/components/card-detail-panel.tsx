@@ -34,6 +34,7 @@ import {
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 function formatManaCost(manaCost: string): string {
   return manaCost.replace(/[{}]/g, " ").trim().replace(/\s+/g, " ");
@@ -72,6 +73,7 @@ export function CardDetailPanel({
   currentIndex,
   total,
 }: CardDetailPanelProps) {
+  const { t } = useTranslation("cards");
   const [editing, setEditing] = useState(false);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -172,7 +174,7 @@ export function CardDetailPanel({
     candidates.find((c) => c.id === selectedId) ?? currentCard;
   const hasMultipleCandidates = candidates.length > 1;
 
-  const cardName = selectedCard?.name ?? "Card Details";
+  const cardName = selectedCard?.name ?? t("cardDetailPanel.cardDetailsFallback");
   const typeLine = selectedCard?.typeLine ?? "";
 
   return (
@@ -183,7 +185,7 @@ export function CardDetailPanel({
           variant="ghost"
           className="shrink-0 size-7"
           onClick={onClose}
-          aria-label="Back to card list"
+          aria-label={t("cardDetailPanel.backToList")}
         >
           <IconX />
         </Button>
@@ -193,7 +195,7 @@ export function CardDetailPanel({
             variant="ghost"
             onClick={onPrev}
             disabled={!hasPrev}
-            aria-label="Previous card"
+            aria-label={t("cardDetailPanel.previousCard")}
           >
             <IconChevronUp />
           </Button>
@@ -202,7 +204,7 @@ export function CardDetailPanel({
             variant="ghost"
             onClick={onNext}
             disabled={!hasNext}
-            aria-label="Next card"
+            aria-label={t("cardDetailPanel.nextCard")}
           >
             <IconChevronDown />
           </Button>
@@ -236,17 +238,17 @@ export function CardDetailPanel({
                       <div className="w-40 aspect-[2.5/3.5] rounded-lg overflow-hidden border shadow-sm shrink-0">
                         <img
                           src={capturedImageUrl}
-                          alt="Scanned"
+                          alt={t("cardDetailPanel.scannedAlt")}
                           className="w-full h-full object-cover"
                         />
                       </div>
                       <p className="text-sm text-muted-foreground leading-snug">
-                        Your scanned card - select the correct version below
+                        {t("cardDetailPanel.selectCorrectVersion")}
                       </p>
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground font-medium">
-                      Multiple close matches - select the correct version:
+                      {t("cardDetailPanel.multipleMatches")}
                     </p>
                   )}
                   <div className="flex gap-3 overflow-x-auto pb-1">
@@ -308,12 +310,12 @@ export function CardDetailPanel({
                     {capturedImageUrl && (
                       <>
                         <p className="text-xs text-muted-foreground">
-                          Captured scan
+                          {t("cardDetailPanel.capturedScan")}
                         </p>
                         <div className="w-44 aspect-[2.5/3.5] rounded-lg overflow-hidden border">
                           <img
                             src={capturedImageUrl}
-                            alt="Scanned"
+                            alt={t("cardDetailPanel.scannedAlt")}
                             className="w-full h-full object-cover"
                           />
                         </div>
@@ -356,7 +358,7 @@ export function CardDetailPanel({
                     {binNumber != null && (
                       <div className="flex flex-col gap-1.5">
                         <p className="text-xs font-medium text-muted-foreground">
-                          Bin location
+                          {t("cardDetailPanel.binLocation")}
                         </p>
                         <div className="w-48 rounded-lg border">
                           <BinLocationDiagram
@@ -373,7 +375,7 @@ export function CardDetailPanel({
                     )}
                     {selectedCard.artist && (
                       <p className="text-xs text-muted-foreground">
-                        Art by {selectedCard.artist}
+                        {t("cardDetailPanel.artBy", { artist: selectedCard.artist })}
                       </p>
                     )}
                     {selectedCard.sourceUrl && (
@@ -383,7 +385,7 @@ export function CardDetailPanel({
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 text-sm text-primary hover:underline w-fit"
                       >
-                        View source
+                        {t("cardDetailPanel.viewSource")}
                         <IconExternalLink className="h-3.5 w-3.5" />
                       </a>
                     )}
@@ -398,7 +400,7 @@ export function CardDetailPanel({
                   }}
                   disabled={!scanId}
                 />
-                Foil
+                {t("cardDetailPanel.foil")}
               </Label>
               <div className="flex gap-3 pt-1">
                 <Button
@@ -409,11 +411,11 @@ export function CardDetailPanel({
                   }}
                 >
                   <IconPencil className="size-4" />
-                  Correct Card
+                  {t("cardDetailPanel.correctCard")}
                 </Button>
                 <Button variant="destructive" onClick={() => onRemove?.()}>
                   <IconTrash className="size-4" />
-                  Remove
+                  {t("cardDetailPanel.remove")}
                 </Button>
               </div>
             </>
@@ -424,12 +426,12 @@ export function CardDetailPanel({
                   <div className="w-40 aspect-[2.5/3.5] rounded-lg overflow-hidden border shadow-sm shrink-0">
                     <img
                       src={capturedImageUrl}
-                      alt="Scanned"
+                      alt={t("cardDetailPanel.scannedAlt")}
                       className="w-full h-full object-cover"
                     />
                   </div>
                   <p className="text-sm text-muted-foreground leading-snug">
-                    Your scanned card - search for the correct version below
+                    {t("cardDetailPanel.searchForCorrectVersion")}
                   </p>
                 </div>
               )}
@@ -437,7 +439,7 @@ export function CardDetailPanel({
                 <div className="relative flex-1">
                   <IconSearch className="absolute left-2 top-1/2 -translate-y-1/2 size-3 text-muted-foreground" />
                   <Input
-                    placeholder="Search by card name..."
+                    placeholder={t("cardDetailPanel.searchPlaceholder")}
                     value={query}
                     onChange={(e) => handleInputChange(e.target.value)}
                     className="pl-7"
@@ -450,11 +452,11 @@ export function CardDetailPanel({
                     onValueChange={(value) => setSelectedSet(value)}
                   >
                     <SelectTrigger className="w-40 shrink-0">
-                      <SelectValue placeholder="All sets" />
+                      <SelectValue placeholder={t("cardDetailPanel.allSets")} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">
-                        All sets ({results.length})
+                        {t("cardDetailPanel.allSetsCount", { count: results.length })}
                       </SelectItem>
                       {sets.map((s) => (
                         <SelectItem key={s.code} value={s.code}>
@@ -475,14 +477,14 @@ export function CardDetailPanel({
                   filteredResults.length === 0 &&
                   query.trim().length === 0 && (
                     <p className="text-center text-sm text-muted-foreground py-8">
-                      Start typing to search for cards
+                      {t("cardDetailPanel.startTyping")}
                     </p>
                   )}
                 {!loading &&
                   filteredResults.length === 0 &&
                   query.trim().length >= 2 && (
                     <p className="text-center text-sm text-muted-foreground py-8">
-                      No cards found
+                      {t("cardDetailPanel.noCardsFound")}
                     </p>
                   )}
                 {!loading && filteredResults.length > 0 && (
@@ -520,7 +522,7 @@ export function CardDetailPanel({
                   setSelectedSet("all");
                 }}
               >
-                Cancel
+                {t("cardDetailPanel.cancel")}
               </Button>
             </>
           )}
