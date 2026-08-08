@@ -79,6 +79,7 @@ function normalizeScryfallCard(raw: ScryfallApiCard): PlayingCard {
     price: raw.prices.usd != null ? Number.parseFloat(raw.prices.usd) : null,
     sourceUrl: raw.scryfall_uri,
     cmc: raw.cmc,
+    raw,
   };
 }
 

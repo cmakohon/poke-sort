@@ -21,6 +21,11 @@ export function getByPath(card: SourceCard, path: string): unknown {
   }, card);
 }
 
+function getRawRoot(card: SourceCard): SourceCard | undefined {
+  const raw = (card as { raw?: unknown }).raw;
+  return raw && typeof raw === "object" ? (raw as SourceCard) : undefined;
+}
+
 function getCardValue(
   card: SourceCard,
   field: BinCondition["field"],
@@ -29,12 +34,19 @@ function getCardValue(
   const meta = fieldDefinitions.find((f) => f.field === field);
   if (!meta) return "";
 
-  const raw = getByPath(card, meta.path);
+  const rawRoot = getRawRoot(card);
+  const rawValue = rawRoot ? getByPath(rawRoot, meta.path) : undefined;
+  const value = rawValue !== undefined ? rawValue : getByPath(card, meta.path);
+
   if (meta.type === "numeric") {
-    return typeof raw === "number" ? raw : parseFloat(String(raw ?? "0")) || 0;
+    return typeof value === "number"
+      ? value
+      : parseFloat(String(value ?? "0")) || 0;
   }
-  if (Array.isArray(raw)) return raw as string[];
-  return raw === undefined || raw === null ? "" : (raw as string | number);
+  if (Array.isArray(value)) return value as string[];
+  return value === undefined || value === null
+    ? ""
+    : (value as string | number);
 }
 
 function evaluateCondition(

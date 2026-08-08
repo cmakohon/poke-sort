@@ -21,6 +21,7 @@ export interface PlayingCard {
   price: number | null;
   sourceUrl?: string;
   cmc?: number;
+  raw?: unknown;
 }
 
 export interface PlayingCardWithDistance extends PlayingCard {

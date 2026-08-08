@@ -117,6 +117,7 @@ function normalizePokemonCard(raw: PokemonCardDetail): PlayingCard {
     price: resolvePrice(raw.pricing),
     sourceUrl: `https://tcgdex.dev/cards/${raw.id}`,
     cmc: raw.retreat,
+    raw,
   };
 }
 

@@ -56,6 +56,7 @@ function normalizeGundamCard(raw: GundamCard): PlayingCard {
     price: null,
     sourceUrl: raw.detail_url ?? undefined,
     cmc: typeof raw.cost === "number" ? raw.cost : undefined,
+    raw,
   };
 }
 
