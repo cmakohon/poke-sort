@@ -15,16 +15,6 @@ export const createSetSchema = z.object({
 
 export type CreateSetFormValues = z.infer<typeof createSetSchema>;
 
-const conditionFieldValues = [
-  "rarity",
-  "color_identity",
-  "type_line",
-  "set",
-  "price_usd",
-  "cmc",
-  "name",
-] as const;
-
 const conditionOperatorValues = [
   "equals",
   "not_equals",
@@ -43,7 +33,7 @@ const conditionOperatorValues = [
 
 export const binConditionSchema = z.object({
   id: z.string(),
-  field: z.enum(conditionFieldValues),
+  field: z.string().min(1),
   operator: z.enum(conditionOperatorValues),
   value: z.union([
     z.string().max(CONDITION_STRING_MAX_LENGTH),
