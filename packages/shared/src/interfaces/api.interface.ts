@@ -1,4 +1,4 @@
-import type { PlayingCard } from "./scryfall.interface";
+import type { PlayingCard } from "./card.interface";
 
 export interface SearchCardMatch {
   id: string;
@@ -22,6 +22,7 @@ export type SyncStatus =
 export interface SyncState {
   status: SyncStatus;
   gameKey: string;
+  lang: string;
   total: number;
   processed: number;
   skipped: number;

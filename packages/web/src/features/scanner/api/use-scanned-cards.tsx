@@ -33,6 +33,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 const ScannedCardsContext = createContext<ScannedCardsContextValue | null>(
@@ -44,6 +45,7 @@ export function ScannedCardsProvider({
 }: {
   children: React.ReactNode;
 }) {
+  const { t } = useTranslation("scanner");
   const [cards, setCards] = useState<ScannedCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { configs: binConfigs, fieldDefinitions } = useBinConfigs();
@@ -130,8 +132,8 @@ export function ScannedCardsProvider({
     if (!sent) {
       autoFeedRef.current = false;
       setAutoFeedState(false);
-      toast.error("Auto-feed failed", {
-        description: "Could not send feeder command.",
+      toast.error(t("scannedCards.autoFeedFailed.title"), {
+        description: t("scannedCards.autoFeedFailed.description"),
       });
       void reportSerialEvent({
         command: "auto-feed",
@@ -144,8 +146,8 @@ export function ScannedCardsProvider({
     if (!response) {
       autoFeedRef.current = false;
       setAutoFeedState(false);
-      toast.error("Auto-feed timeout", {
-        description: "Feeder did not respond in time.",
+      toast.error(t("scannedCards.autoFeedTimeout.title"), {
+        description: t("scannedCards.autoFeedTimeout.description"),
       });
       void reportSerialEvent({
         command: "auto-feed",
@@ -160,9 +162,8 @@ export function ScannedCardsProvider({
         autoFeedRef.current = false;
         setAutoFeedState(false);
         pauseHookRef.current?.();
-        toast.error("Feeder empty", {
-          description:
-            "No cards remaining in the hopper. Add more cards to continue.",
+        toast.error(t("scannedCards.feederEmpty.title"), {
+          description: t("scannedCards.feederEmpty.description"),
           duration: Infinity,
           dismissible: true,
         });
@@ -174,7 +175,7 @@ export function ScannedCardsProvider({
       } else if (parsed.error) {
         autoFeedRef.current = false;
         setAutoFeedState(false);
-        toast.error("Feeder error", {
+        toast.error(t("scannedCards.feederError.title"), {
           description: String(parsed.error),
           duration: Infinity,
           dismissible: true,
@@ -190,12 +191,12 @@ export function ScannedCardsProvider({
     } catch {
       autoFeedRef.current = false;
       setAutoFeedState(false);
-      toast.error("Auto-feed error", {
-        description: "Unexpected response from feeder.",
+      toast.error(t("scannedCards.autoFeedError.title"), {
+        description: t("scannedCards.autoFeedError.description"),
       });
       void reportSerialEvent({ command: "auto-feed", sent: true, response });
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const prev = prevCollectionGuidRef.current;
@@ -249,17 +250,16 @@ export function ScannedCardsProvider({
     ) => {
       const collection = activeCollectionRef.current;
       if (!collection) {
-        toast.error("No collection selected", {
-          description: "Create or select a collection before scanning.",
+        toast.error(t("scannedCards.noCollectionSelected.title"), {
+          description: t("scannedCards.noCollectionSelected.description"),
         });
         return;
       }
 
       const lock = locksRef.current?.[collection.guid];
       if (lock && lock.userId !== currentUserIdRef.current) {
-        toast.error("Collection locked", {
-          description:
-            "Another org member is currently scanning into this collection.",
+        toast.error(t("scannedCards.collectionLocked.title"), {
+          description: t("scannedCards.collectionLocked.description"),
         });
         return;
       }
@@ -286,9 +286,8 @@ export function ScannedCardsProvider({
         .then((result) => {
           if (!result.success) {
             setCards((prev) => prev.filter((c) => c.scanId !== record.scanId));
-            toast.error("Collection locked", {
-              description:
-                "Another org member is currently scanning into this collection.",
+            toast.error(t("scannedCards.collectionLocked.title"), {
+              description: t("scannedCards.collectionLocked.description"),
             });
           }
         })
@@ -301,8 +300,10 @@ export function ScannedCardsProvider({
       ) {
         serialRef.current.sendBin(matchedBin.binNumber).then((response) => {
           if (!response) {
-            toast.error("Routing failed", {
-              description: `No response from sorter for bin ${matchedBin.binNumber}.`,
+            toast.error(t("scannedCards.routingFailed.title"), {
+              description: t("scannedCards.routingFailed.description", {
+                binNumber: matchedBin.binNumber,
+              }),
             });
             void reportSerialEvent({
               command: "bin",
@@ -317,9 +318,8 @@ export function ScannedCardsProvider({
           }
           const res = response as Record<string, unknown>;
           if (res.empty) {
-            toast.error("Feeder empty", {
-              description:
-                "No cards remaining in the hopper. Add more cards to continue.",
+            toast.error(t("scannedCards.feederEmpty.title"), {
+              description: t("scannedCards.feederEmpty.description"),
               duration: Infinity,
               dismissible: true,
             });
@@ -336,7 +336,7 @@ export function ScannedCardsProvider({
             return;
           }
           if (res.error) {
-            toast.error("Sorter error", {
+            toast.error(t("scannedCards.sorterError.title"), {
               description: String(res.error),
               duration: Infinity,
               dismissible: true,
@@ -358,7 +358,7 @@ export function ScannedCardsProvider({
         });
       }
     },
-    [triggerAutoFeed],
+    [triggerAutoFeed, t],
   );
 
   const sendCatchAllBin = useCallback(() => {
@@ -370,8 +370,10 @@ export function ScannedCardsProvider({
     ) {
       serialRef.current.sendBin(catchAll.binNumber).then((response) => {
         if (!response) {
-          toast.error("Routing failed", {
-            description: `No response from sorter for catch-all bin ${catchAll.binNumber}.`,
+          toast.error(t("scannedCards.routingFailedCatchAll.title"), {
+            description: t("scannedCards.routingFailedCatchAll.description", {
+              binNumber: catchAll.binNumber,
+            }),
           });
           void reportSerialEvent({
             command: "bin",
@@ -385,9 +387,8 @@ export function ScannedCardsProvider({
         }
         const res = response as Record<string, unknown>;
         if (res.empty) {
-          toast.error("Feeder empty", {
-            description:
-              "No cards remaining in the hopper. Add more cards to continue.",
+          toast.error(t("scannedCards.feederEmpty.title"), {
+            description: t("scannedCards.feederEmpty.description"),
             duration: Infinity,
             dismissible: true,
           });
@@ -403,7 +404,7 @@ export function ScannedCardsProvider({
           return;
         }
         if (res.error) {
-          toast.error("Sorter error", {
+          toast.error(t("scannedCards.sorterError.title"), {
             description: String(res.error),
             duration: Infinity,
             dismissible: true,
@@ -423,7 +424,7 @@ export function ScannedCardsProvider({
         }
       });
     }
-  }, [triggerAutoFeed]);
+  }, [triggerAutoFeed, t]);
 
   const removeCard = useCallback((scanId: string) => {
     const collection = activeCollectionRef.current;

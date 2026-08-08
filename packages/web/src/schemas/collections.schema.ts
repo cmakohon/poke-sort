@@ -10,6 +10,7 @@ const nameSchema = z
 export const createCollectionSchema = z.object({
   name: nameSchema,
   gameGuid: z.string().min(1, "Game is required"),
+  lang: z.string().min(1, "Language is required"),
 });
 
 export type CreateCollectionFormValues = z.infer<typeof createCollectionSchema>;

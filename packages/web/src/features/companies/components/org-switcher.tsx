@@ -20,6 +20,7 @@ import {
 } from "@tabler/icons-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -29,6 +30,7 @@ const createSchema = z.object({ name: z.string().min(1) });
 type CreateValues = z.infer<typeof createSchema>;
 
 export function OrgSwitcher({ side = "right" }: { side?: "right" | "top" }) {
+  const { t } = useTranslation("companies");
   const { orgs, activeOrg, setActiveOrg } = useOrg();
   const navigate = useNavigate();
   const [createOpen, setCreateOpen] = useState(false);
@@ -53,10 +55,10 @@ export function OrgSwitcher({ side = "right" }: { side?: "right" | "top" }) {
       if (data) await setActiveOrg(data.id);
       form.reset();
       setCreateOpen(false);
-      toast.success(`Organization "${name.trim()}" created.`);
+      toast.success(t("orgSwitcher.organizationCreated", { name: name.trim() }));
     } catch (e: unknown) {
       toast.error(
-        e instanceof Error ? e.message : "Failed to create organization.",
+        e instanceof Error ? e.message : t("orgSwitcher.failedToCreate"),
       );
     }
   }
@@ -85,7 +87,7 @@ export function OrgSwitcher({ side = "right" }: { side?: "right" | "top" }) {
           className="w-64"
         >
           <DropdownMenuGroup>
-            <DropdownMenuLabel>Organizations</DropdownMenuLabel>
+            <DropdownMenuLabel>{t("orgSwitcher.organizations")}</DropdownMenuLabel>
             {orgs.map((org) => (
               <DropdownMenuItem
                 key={org.id}
@@ -101,11 +103,11 @@ export function OrgSwitcher({ side = "right" }: { side?: "right" | "top" }) {
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => setCreateOpen(true)}>
             <IconPlus size={14} />
-            New organization
+            {t("orgSwitcher.newOrganization")}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => navigate("/app/settings")}>
             <IconSettings size={14} />
-            Manage organizations
+            {t("orgSwitcher.manageOrganizations")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -116,19 +118,19 @@ export function OrgSwitcher({ side = "right" }: { side?: "right" | "top" }) {
           setCreateOpen(open);
           if (!open) form.reset();
         }}
-        title="New Organization"
-        description="Create a new organization to scope your bins, collections, and calibration."
+        title={t("orgSwitcher.newOrganizationTitle")}
+        description={t("orgSwitcher.newOrganizationDescription")}
         footer={
           <>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>
-              Cancel
+              {t("orgSwitcher.cancel")}
             </Button>
             <Button
               type="submit"
               form="create-org-form"
               disabled={form.formState.isSubmitting}
             >
-              {form.formState.isSubmitting ? "Creating…" : "Create"}
+              {form.formState.isSubmitting ? t("orgSwitcher.creating") : t("orgSwitcher.create")}
             </Button>
           </>
         }
@@ -136,7 +138,7 @@ export function OrgSwitcher({ side = "right" }: { side?: "right" | "top" }) {
       >
         <form id="create-org-form" onSubmit={form.handleSubmit(handleCreate)}>
           <Input
-            placeholder="Organization name"
+            placeholder={t("orgSwitcher.organizationNamePlaceholder")}
             {...form.register("name")}
             autoFocus
           />

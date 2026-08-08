@@ -9,30 +9,6 @@ export const GUNDAM_HEADERS: Record<string, string> = {
   Accept: "application/json",
 };
 
-const NOT_LEGAL: PlayingCard["legalities"] = {
-  standard: "not_legal",
-  future: "not_legal",
-  historic: "not_legal",
-  timeless: "not_legal",
-  gladiator: "not_legal",
-  pioneer: "not_legal",
-  modern: "not_legal",
-  legacy: "not_legal",
-  pauper: "not_legal",
-  vintage: "not_legal",
-  penny: "not_legal",
-  commander: "not_legal",
-  oathbreaker: "not_legal",
-  standardbrawl: "not_legal",
-  brawl: "not_legal",
-  alchemy: "not_legal",
-  paupercommander: "not_legal",
-  duel: "not_legal",
-  oldschool: "not_legal",
-  premodern: "not_legal",
-  predh: "not_legal",
-};
-
 interface GundamCard {
   product_id: string;
   card_number: string;
@@ -48,7 +24,6 @@ interface GundamCard {
   effect: string;
   image_url: string;
   detail_url: string | null;
-  keyword_effects?: { keyword: string; value: number | null }[];
 }
 
 function proxiedImageUrl(url: string): string {
@@ -63,80 +38,25 @@ function normalizeGundamCard(raw: GundamCard): PlayingCard {
     String(raw.card_number ?? id)
       .split("-")
       .pop() ?? "";
-  const colors = raw.color ? [raw.color] : [];
-  const keywords = Array.isArray(raw.keyword_effects)
-    ? raw.keyword_effects.map((k) => k.keyword).filter(Boolean)
-    : [];
 
   return {
-    object: "card",
     id,
-    oracle_id: id,
     name: raw.name ?? "",
-    lang: "en",
-    released_at: "",
-    uri: raw.detail_url ?? "",
-    scryfall_uri: raw.detail_url ?? "",
-    layout: "normal",
-    highres_image: true,
-    image_status: "highres_scan",
-    image_uris: image
-      ? {
-          small: image,
-          normal: image,
-          large: image,
-          png: image,
-          art_crop: image,
-          border_crop: image,
-        }
-      : undefined,
-    cmc: typeof raw.cost === "number" ? raw.cost : 0,
-    type_line: raw.card_type ?? "",
-    oracle_text: raw.effect || undefined,
+    image: image ? { small: image, normal: image } : null,
+    set: setCode,
+    setName: raw.set_name || setCode,
+    collectorNumber,
+    rarity: (raw.rarity ?? "").toLowerCase(),
+    typeLine: raw.card_type ?? "",
+    text: raw.effect || undefined,
     power: raw.ap != null ? String(raw.ap) : undefined,
     toughness: raw.hp != null ? String(raw.hp) : undefined,
-    colors,
-    color_identity: colors,
-    keywords,
-    legalities: NOT_LEGAL,
-    games: [],
-    reserved: false,
-    game_changer: false,
-    foil: false,
-    nonfoil: true,
-    finishes: ["nonfoil"],
-    oversized: false,
-    promo: false,
-    reprint: false,
-    variation: false,
-    set_id: setCode,
-    set: setCode,
-    set_name: raw.set_name || setCode,
-    set_type: "expansion",
-    set_uri: "",
-    set_search_uri: "",
-    scryfall_set_uri: "",
-    rulings_uri: "",
-    prints_search_uri: "",
-    collector_number: collectorNumber,
-    digital: false,
-    rarity: (raw.rarity ?? "").toLowerCase(),
-    artist: "",
-    artist_ids: [],
-    border_color: "black",
-    frame: "2015",
-    full_art: false,
-    textless: false,
-    booster: false,
-    story_spotlight: false,
-    prices: {
-      usd: null,
-      usd_foil: null,
-      usd_etched: null,
-      eur: null,
-      eur_foil: null,
-      tix: null,
-    },
+    colorIdentity: raw.color ? [raw.color] : [],
+    artist: undefined,
+    price: null,
+    sourceUrl: raw.detail_url ?? undefined,
+    cmc: typeof raw.cost === "number" ? raw.cost : undefined,
+    raw,
   };
 }
 

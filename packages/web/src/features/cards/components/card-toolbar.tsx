@@ -14,13 +14,20 @@ import { CardFilterPopover } from "@/features/cards/components/card-filter-popov
 import type { CardToolbarProps } from "@/features/cards/types";
 import type { FieldMeta } from "@magic-vault/shared";
 import { IconCheckbox, IconDownload, IconTrash } from "@tabler/icons-react";
+import type { TFunction } from "i18next";
 import { Fragment, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 // Numeric/enum fields both have a defined "low to high" order (a numeric
 // value, or a field's own `options` order); string fields sort
 // alphabetically. See compareByField in use-card-filter-sort.ts.
-function sortLabels(type: FieldMeta["type"]): [asc: string, desc: string] {
-  return type === "string" ? ["A-Z", "Z-A"] : ["Low-High", "High-Low"];
+function sortLabels(
+  type: FieldMeta["type"],
+  t: TFunction<"cards">,
+): [asc: string, desc: string] {
+  return type === "string"
+    ? [t("cardToolbar.sortAscString"), t("cardToolbar.sortDescString")]
+    : [t("cardToolbar.sortAscDefault"), t("cardToolbar.sortDescDefault")];
 }
 
 export function CardToolbar({
@@ -41,6 +48,7 @@ export function CardToolbar({
   availableRarities,
   availableColors,
 }: CardToolbarProps) {
+  const { t } = useTranslation("cards");
   const [isClearing, setIsClearing] = useState(false);
   const [clearAllDialogOpen, setClearAllDialogOpen] = useState(false);
 
@@ -60,19 +68,19 @@ export function CardToolbar({
     <div className="flex flex-row gap-2 items-center w-full">
       {watchers && watchers.length > 0 && <WatcherStack watchers={watchers} />}
       <Input
-        placeholder="Search by name, set, type..."
+        placeholder={t("cardToolbar.searchPlaceholder")}
         value={searchQuery}
         onChange={(e) => onSearchChange(e.target.value)}
         className="flex-1"
       />
       <Select value={sortKey} onValueChange={onSortChange}>
         <SelectTrigger className="w-full sm:w-64">
-          <SelectValue placeholder="Sort by..." />
+          <SelectValue placeholder={t("cardToolbar.sortPlaceholder")} />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="scan-desc">Scan Order</SelectItem>
+          <SelectItem value="scan-desc">{t("cardToolbar.scanOrder")}</SelectItem>
           {sortableFields.map((field) => {
-            const [asc, desc] = sortLabels(field.type);
+            const [asc, desc] = sortLabels(field.type, t);
             return (
               <Fragment key={field.field}>
                 <SelectItem value={`${field.field}-asc`}>
@@ -100,7 +108,7 @@ export function CardToolbar({
           onClick={onToggleSelectAll}
           disabled={!hasCards}
           className="shrink-0"
-          title={allSelected ? "Deselect all" : "Select all"}
+          title={allSelected ? t("cardToolbar.deselectAll") : t("cardToolbar.selectAll")}
         >
           <IconCheckbox className="size-4" />
         </Button>
@@ -113,17 +121,17 @@ export function CardToolbar({
             onClick={onExport}
             disabled={!hasCards}
             className="shrink-0"
-            title="Session summary & export"
+            title={t("cardToolbar.sessionSummaryExport")}
           >
             <IconDownload className="size-4" />
           </Button>
           <DynamicDialog
             open={clearAllDialogOpen}
             onOpenChange={setClearAllDialogOpen}
-            title="Delete Scanned Cards"
-            description={`This will permanently delete all cards from your collection. This action cannot be undone.`}
+            title={t("cardToolbar.deleteScannedCardsTitle")}
+            description={t("cardToolbar.deleteScannedCardsDescription")}
             trigger={
-              <Button variant="outline" size="icon" title="Clear all cards">
+              <Button variant="outline" size="icon" title={t("cardToolbar.clearAllCardsTitle")}>
                 <IconTrash className="size-4" />
               </Button>
             }
@@ -133,14 +141,14 @@ export function CardToolbar({
                   variant="outline"
                   onClick={() => setClearAllDialogOpen(false)}
                 >
-                  Cancel
+                  {t("cardToolbar.cancel")}
                 </Button>
                 <Button
                   variant="destructive"
                   onClick={handleClear}
                   disabled={isClearing}
                 >
-                  {isClearing ? "Clearing..." : "Clear All"}
+                  {isClearing ? t("cardToolbar.clearing") : t("cardToolbar.clearAll")}
                 </Button>
               </>
             }

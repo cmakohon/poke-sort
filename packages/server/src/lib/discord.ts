@@ -1,11 +1,4 @@
-import {
-  FIELD_DEFINITIONS,
-  getByPath,
-  getCardFaceName,
-  getCardImageUris,
-  type FieldMeta,
-  type PlayingCard,
-} from "@magic-vault/shared";
+import type { PlayingCard } from "@magic-vault/shared";
 import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { orgSettings } from "../db/schema";
@@ -35,26 +28,8 @@ function resolveImageUrl(url: string): string {
   return `${base}${url.startsWith("/") ? "" : "/"}${url}`;
 }
 
-function findPrice(
-  card: PlayingCard,
-  fieldDefinitions: FieldMeta[],
-): string | null {
-  if (card.prices?.usd) return card.prices.usd;
-
-  const priceField = fieldDefinitions.find(
-    (f) => f.type === "numeric" && /price/i.test(`${f.field} ${f.label}`),
-  );
-  if (!priceField) return null;
-
-  const raw = getByPath(card, priceField.path);
-  const num =
-    typeof raw === "number" ? raw : Number.parseFloat(String(raw ?? ""));
-  return Number.isFinite(num) ? num.toFixed(2) : null;
-}
-
 export interface CardScannedEmbedOptions {
   isFoil?: boolean;
-  fieldDefinitions?: FieldMeta[];
   collectionName?: string;
   gameName?: string;
   collectionGuid?: string;
@@ -64,27 +39,22 @@ export function buildCardScannedEmbed(
   card: PlayingCard,
   options: CardScannedEmbedOptions = {},
 ): DiscordEmbed {
-  const {
-    isFoil,
-    fieldDefinitions = FIELD_DEFINITIONS,
-    collectionName,
-    gameName,
-    collectionGuid,
-  } = options;
+  const { isFoil, collectionName, gameName, collectionGuid } = options;
 
-  const price = findPrice(card, fieldDefinitions);
-  const lines = [`**Price:** ${price ? `$${price}` : "N/A"}`];
+  const lines = [
+    `**Price:** ${card.price != null ? `$${card.price.toFixed(2)}` : "N/A"}`,
+  ];
   if (isFoil) lines.push("**Foil**");
   if (collectionName) lines.push(`**Collection:** ${collectionName}`);
   if (gameName) lines.push(`**Game:** ${gameName}`);
 
-  const imageUrl = getCardImageUris(card)?.normal;
+  const imageUrl = card.image?.normal;
   const monitorUrl = collectionGuid
     ? `${process.env.WEB_URL ?? "http://localhost:5173"}/app/monitor/${collectionGuid}`
     : undefined;
 
   return {
-    title: getCardFaceName(card),
+    title: card.name,
     description: lines.join("\n"),
     color: CARD_SCANNED_COLOR,
     timestamp: new Date().toISOString(),

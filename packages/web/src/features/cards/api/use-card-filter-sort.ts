@@ -77,7 +77,7 @@ export function useCardFilterSort(
 
     if (filters.colors.length > 0) {
       result = result.filter((entry) => {
-        const identity = entry.card.color_identity ?? [];
+        const identity = entry.card.colorIdentity ?? [];
         if (filters.colors.includes("C") && identity.length === 0) return true;
         return filters.colors.some((c) => c !== "C" && identity.includes(c));
       });
@@ -121,11 +121,11 @@ export function useCardFilterSort(
         const c = entry.card;
         return (
           c.name.toLowerCase().includes(query) ||
-          c.set_name.toLowerCase().includes(query) ||
+          c.setName.toLowerCase().includes(query) ||
           c.set.toLowerCase().includes(query) ||
-          c.type_line.toLowerCase().includes(query) ||
-          c.collector_number.toLowerCase().includes(query) ||
-          (c.oracle_text?.toLowerCase().includes(query) ?? false)
+          c.typeLine.toLowerCase().includes(query) ||
+          c.collectorNumber.toLowerCase().includes(query) ||
+          (c.text?.toLowerCase().includes(query) ?? false)
         );
       });
     }

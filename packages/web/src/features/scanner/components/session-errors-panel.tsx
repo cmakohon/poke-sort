@@ -1,12 +1,14 @@
 import type { SessionError } from "@/features/scanner/api/use-session-monitor";
+import { useTranslation } from "react-i18next";
 
 export function SessionErrorsPanel({ errors }: { errors: SessionError[] }) {
+  const { t } = useTranslation("scanner");
   if (errors.length === 0) return null;
 
   return (
     <div className="rounded-lg border border-destructive/30 bg-destructive/5 overflow-hidden">
       <p className="text-[10px] font-medium text-destructive uppercase tracking-wide px-2 pt-2 pb-1.5">
-        Errors
+        {t("sessionErrorsPanel.heading")}
       </p>
       <div className="flex flex-col divide-y divide-destructive/10 max-h-48 overflow-y-auto">
         {errors.map((err) => (

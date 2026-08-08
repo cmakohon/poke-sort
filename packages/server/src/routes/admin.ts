@@ -57,6 +57,7 @@ router.get("/sync/sources", requireAuth, requireRole("admin"), (c) => {
   const sources = Object.values(SYNC_SOURCES).map((s) => ({
     gameKey: s.gameKey,
     label: s.label,
+    languages: s.languages,
   }));
   return c.json({ success: true, data: sources });
 });
@@ -64,9 +65,11 @@ router.get("/sync/sources", requireAuth, requireRole("admin"), (c) => {
 // POST /admin/sync
 router.post("/sync", requireAuth, requireRole("admin"), async (c) => {
   let gameKey: string | undefined;
+  let lang = "en";
   try {
-    const body = await c.req.json<{ gameKey?: string }>();
+    const body = await c.req.json<{ gameKey?: string; lang?: string }>();
     gameKey = body.gameKey;
+    if (body.lang) lang = body.lang;
   } catch {
     // no/invalid body
   }
@@ -74,14 +77,24 @@ router.post("/sync", requireAuth, requireRole("admin"), async (c) => {
   if (!gameKey) {
     return c.json({ success: false, message: "gameKey is required." }, 400);
   }
-  if (!SYNC_SOURCES[gameKey]) {
+  const source = SYNC_SOURCES[gameKey];
+  if (!source) {
     return c.json(
       { success: false, message: `Unknown sync source: ${gameKey}` },
       400,
     );
   }
+  if (!source.languages.includes(lang)) {
+    return c.json(
+      {
+        success: false,
+        message: `${source.label} does not support language: ${lang}`,
+      },
+      400,
+    );
+  }
 
-  startSync(c.req.header("X-Org-Id"), gameKey);
+  startSync(c.req.header("X-Org-Id"), gameKey, lang);
   return c.json({ success: true, data: getStatus() });
 });
 
@@ -107,6 +120,7 @@ router.get("/cards", requireAuth, requireRole("admin"), async (c) => {
         id: cardImageVectors.id,
         scryfallId: cardImageVectors.scryfallId,
         gameKey: cardImageVectors.gameKey,
+        lang: cardImageVectors.lang,
         name: cardImageVectors.name,
         setCode: cardImageVectors.setCode,
         updatedAt: cardImageVectors.updatedAt,
@@ -122,7 +136,106 @@ router.get("/cards", requireAuth, requireRole("admin"), async (c) => {
   return c.json({ success: true, data: { cards: rows, total, page, limit } });
 });
 
-// POST /admin/cards/:scryfallId/revectorize — re-fetch image and regenerate embedding,
+// Fetches a single card by id from its source, vectorizes its image, and
+// upserts it into the card database — used to both add a missing card and
+// to re-vectorize an existing one.
+async function syncOneCard(
+  gameKey: string,
+  scryfallId: string,
+  lang: string,
+): Promise<
+  | { success: true; message: string }
+  | { success: false; message: string; status: 400 | 404 | 502 }
+> {
+  const source = SYNC_SOURCES[gameKey];
+  if (!source) {
+    return {
+      success: false,
+      message: `Unknown sync source: ${gameKey}`,
+      status: 400,
+    };
+  }
+  const baseUrl = await resolveGameDataSourceUrl(gameKey, source.defaultUrl);
+
+  const card = await source.fetchOne(scryfallId, baseUrl);
+  if (!card) {
+    return {
+      success: false,
+      message: `Card not found via ${source.label}`,
+      status: 404,
+    };
+  }
+  if (!card.imageUrl) {
+    return {
+      success: false,
+      message: "No image available for this card",
+      status: 400,
+    };
+  }
+
+  const imageRes = await fetch(card.imageUrl, { headers: source.fetchHeaders });
+  if (!imageRes.ok) {
+    return {
+      success: false,
+      message: "Failed to download card image",
+      status: 502,
+    };
+  }
+  const buffer = Buffer.from(await imageRes.arrayBuffer());
+  const embedding = await vectorizeImageFromBuffer(buffer);
+
+  await db
+    .insert(cardImageVectors)
+    .values({
+      scryfallId,
+      gameKey,
+      lang,
+      name: card.name,
+      setCode: card.setCode,
+      embedding,
+    })
+    .onConflictDoUpdate({
+      target: cardImageVectors.scryfallId,
+      set: { gameKey, lang, name: card.name, setCode: card.setCode, embedding, updatedAt: new Date() },
+    });
+
+  return { success: true, message: `Synced: ${card.name}` };
+}
+
+// POST /admin/cards/sync — fetch + vectorize a single card by id, adding it
+// to the database if it isn't already there
+router.post("/cards/sync", requireAuth, requireRole("admin"), async (c) => {
+  let gameKey: string | undefined;
+  let scryfallId: string | undefined;
+  let lang = "en";
+  try {
+    const body = await c.req.json<{
+      gameKey?: string;
+      scryfallId?: string;
+      lang?: string;
+    }>();
+    gameKey = body.gameKey;
+    scryfallId = body.scryfallId?.trim();
+    if (body.lang) lang = body.lang;
+  } catch {
+    // no/invalid body
+  }
+
+  if (!gameKey || !scryfallId) {
+    return c.json(
+      { success: false, message: "gameKey and scryfallId are required." },
+      400,
+    );
+  }
+
+  const result = await syncOneCard(gameKey, scryfallId, lang);
+  if (!result.success) {
+    return c.json({ success: false, message: result.message }, result.status);
+  }
+  return c.json({ success: true, message: result.message });
+});
+
+// POST /admin/cards/:scryfallId/revectorize — re-fetch image and regenerate embedding
 router.post(
   "/cards/:scryfallId/revectorize",
   requireAuth,
@@ -132,7 +245,7 @@ router.post(
 
     const existing = await db.query.cardImageVectors.findFirst({
       where: (t, { eq }) => eq(t.scryfallId, scryfallId),
-      columns: { gameKey: true },
+      columns: { gameKey: true, lang: true },
     });
     if (!existing) {
       return c.json(
@@ -143,57 +256,15 @@ router.post(
         404,
       );
     }
-    const gameKey = existing.gameKey;
-    const source = SYNC_SOURCES[gameKey];
-    if (!source) {
-      return c.json(
-        { success: false, message: `Unknown sync source: ${gameKey}` },
-        400,
-      );
-    }
-    const baseUrl = await resolveGameDataSourceUrl(gameKey, source.defaultUrl);
 
-    const card = await source.fetchOne(scryfallId, baseUrl);
-    if (!card) {
-      return c.json(
-        { success: false, message: `Card not found via ${source.label}` },
-        404,
-      );
+    const result = await syncOneCard(existing.gameKey, scryfallId, existing.lang);
+    if (!result.success) {
+      return c.json({ success: false, message: result.message }, result.status);
     }
-    if (!card.imageUrl) {
-      return c.json(
-        { success: false, message: "No image available for this card" },
-        400,
-      );
-    }
-
-    const imageRes = await fetch(card.imageUrl, {
-      headers: source.fetchHeaders,
+    return c.json({
+      success: true,
+      message: result.message.replace("Synced:", "Re-vectorized:"),
     });
-    if (!imageRes.ok) {
-      return c.json(
-        { success: false, message: "Failed to download card image" },
-        502,
-      );
-    }
-    const buffer = Buffer.from(await imageRes.arrayBuffer());
-    const embedding = await vectorizeImageFromBuffer(buffer);
-
-    await db
-      .insert(cardImageVectors)
-      .values({
-        scryfallId,
-        gameKey,
-        name: card.name,
-        setCode: card.setCode,
-        embedding,
-      })
-      .onConflictDoUpdate({
-        target: cardImageVectors.scryfallId,
-        set: { embedding, updatedAt: new Date() },
-      });
-
-    return c.json({ success: true, message: `Re-vectorized: ${card.name}` });
   },
 );
 

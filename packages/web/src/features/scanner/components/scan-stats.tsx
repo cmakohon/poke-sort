@@ -4,6 +4,7 @@ import { useScannedCards } from "@/features/scanner/api/use-scanned-cards";
 import { computeStats } from "@/features/scanner/lib/compute-stats";
 import { cn } from "@/lib/utils";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 export function formatUsd(value: number): string {
   return `$${value.toFixed(2)}`;
@@ -20,6 +21,7 @@ export function formatElapsed(ms: number): string {
 }
 
 export function ScanStats() {
+  const { t } = useTranslation("scanner");
   const [expandedSets, setExpandedSets] = useState(false);
   const { cards, elapsedMs, isTimerActive } = useScannedCards();
   const { filters, toggleRarity, toggleColor, toggleSet } = useCardFilters();
@@ -29,7 +31,7 @@ export function ScanStats() {
   if (!stats) {
     return (
       <div className="rounded-lg bg-input/20 dark:bg-input/30 border border-input text-xs font-semibold text-muted-foreground p-2">
-        Scan cards to see their stats.
+        {t("scanStats.emptyState")}
       </div>
     );
   }
@@ -37,23 +39,23 @@ export function ScanStats() {
   const visibleSets = expandedSets ? stats.sets : stats.sets.slice(0, 5);
 
   const statCards: { label: string; value: string; indicator?: boolean }[] = [
-    { label: "Total Cards", value: String(stats.totalCount) },
-    { label: "Unique", value: String(stats.uniqueCount) },
+    { label: t("scanStats.totalCards"), value: String(stats.totalCount) },
+    { label: t("scanStats.unique"), value: String(stats.uniqueCount) },
   ];
   if (stats.hasPricing) {
     statCards.push(
-      { label: "Total Value", value: formatUsd(stats.totalValue) },
-      { label: "Avg Value", value: formatUsd(stats.avgValue) },
+      { label: t("scanStats.totalValue"), value: formatUsd(stats.totalValue) },
+      { label: t("scanStats.avgValue"), value: formatUsd(stats.avgValue) },
     );
   }
   statCards.push(
     {
-      label: "Session Time",
+      label: t("scanStats.sessionTime"),
       value: formatElapsed(elapsedMs),
       indicator: isTimerActive,
     },
     {
-      label: "Cards / hr",
+      label: t("scanStats.cardsPerHour"),
       value:
         elapsedMs > 0
           ? String(Math.round((cards.length / elapsedMs) * 3_600_000))
@@ -83,7 +85,7 @@ export function ScanStats() {
           {stats.mostValuable && (
             <div className="p-2 border-t border-input">
               <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-                Most Valuable
+                {t("scanStats.mostValuable")}
               </p>
               <div className="flex flex-row justify-between items-center">
                 <p className="text-xs font-semibold truncate">
@@ -99,7 +101,7 @@ export function ScanStats() {
         {stats.rarities.length > 0 && (
           <div className="rounded-lg bg-input/20 dark:bg-input/30 border border-input p-2">
             <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
-              By Rarity
+              {t("scanStats.byRarity")}
             </p>
             <div className="flex flex-col gap-1">
               {stats.rarities.map((r) => {
@@ -133,7 +135,7 @@ export function ScanStats() {
         {stats.colors.length > 0 && (
           <div className="rounded-lg bg-input/20 dark:bg-input/30 border border-input p-2">
             <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
-              By Color
+              {t("scanStats.byColor")}
             </p>
             <div className="flex flex-col gap-1">
               {stats.colors.map((c) => {
@@ -166,7 +168,7 @@ export function ScanStats() {
         )}
         <div className="rounded-lg bg-input/20 dark:bg-input/30 border border-input p-2">
           <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
-            By Set
+            {t("scanStats.bySet")}
           </p>
           <div className="flex flex-col gap-1">
             {visibleSets.map((s) => {
@@ -204,8 +206,8 @@ export function ScanStats() {
               onClick={() => setExpandedSets((prev) => !prev)}
             >
               {expandedSets
-                ? "Show less"
-                : `Show all ${stats.sets.length} sets`}
+                ? t("scanStats.showLess")
+                : t("scanStats.showAllSets", { count: stats.sets.length })}
             </button>
           )}
         </div>

@@ -12,6 +12,7 @@ import type { Game } from "@magic-vault/shared";
 import { IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
   GameFormDialog,
@@ -20,6 +21,7 @@ import {
 } from "./game-form-dialog";
 
 export function GamesManager() {
+  const { t } = useTranslation("games");
   const queryClient = useQueryClient();
   const [formGame, setFormGame] = useState<Game | null | undefined>(undefined);
   const [deleteTarget, setDeleteTarget] = useState<Game | null>(null);
@@ -41,13 +43,13 @@ export function GamesManager() {
       }),
     onSuccess: (r) => {
       if (!r.success || !r.data) {
-        toast.error(r.message || "Failed to create game");
+        toast.error(r.message || t("gamesManager.toasts.createError"));
         return;
       }
       setGames([...(gamesQuery.data ?? []), r.data]);
-      toast.success(`Created ${r.data.name}`);
+      toast.success(t("gamesManager.toasts.createSuccess", { name: r.data.name }));
     },
-    onError: () => toast.error("Failed to create game"),
+    onError: () => toast.error(t("gamesManager.toasts.createError")),
   });
 
   const updateMutation = useMutation({
@@ -61,7 +63,7 @@ export function GamesManager() {
       }),
     onSuccess: (r) => {
       if (!r.success || !r.data) {
-        toast.error(r.message || "Failed to update game");
+        toast.error(r.message || t("gamesManager.toasts.updateError"));
         return;
       }
       setGames(
@@ -69,22 +71,22 @@ export function GamesManager() {
           g.guid === r.data!.guid ? r.data! : g,
         ),
       );
-      toast.success(`Saved ${r.data.name}`);
+      toast.success(t("gamesManager.toasts.updateSuccess", { name: r.data.name }));
     },
-    onError: () => toast.error("Failed to update game"),
+    onError: () => toast.error(t("gamesManager.toasts.updateError")),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (guid: string) => deleteGame(guid),
     onSuccess: (r, guid) => {
       if (!r.success) {
-        toast.error(r.message || "Failed to delete game");
+        toast.error(r.message || t("gamesManager.toasts.deleteError"));
         return;
       }
       setGames((gamesQuery.data ?? []).filter((g) => g.guid !== guid));
-      toast.success("Game deleted");
+      toast.success(t("gamesManager.toasts.deleteSuccess"));
     },
-    onError: () => toast.error("Failed to delete game"),
+    onError: () => toast.error(t("gamesManager.toasts.deleteError")),
   });
 
   async function handleSubmit(values: GameFormValues) {
@@ -99,22 +101,21 @@ export function GamesManager() {
     <div className="rounded-lg border overflow-hidden">
       <div className="px-4 py-3 border-b flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium">Games</p>
+          <p className="text-sm font-medium">{t("gamesManager.heading")}</p>
           <p className="text-xs text-muted-foreground">
-            Configure which trading card games can be scanned into and how their
-            cards are matched against bin rules.
+            {t("gamesManager.description")}
           </p>
         </div>
         <Button size="sm" onClick={() => setFormGame(null)}>
           <IconPlus size={14} />
-          Add game
+          {t("gamesManager.addGame")}
         </Button>
       </div>
 
       <div className="divide-y">
         {gamesQuery.isLoading && (
           <p className="text-xs text-muted-foreground text-center py-6">
-            Loading...
+            {t("gamesManager.loading")}
           </p>
         )}
         {gamesQuery.data?.map((game) => (
@@ -123,13 +124,17 @@ export function GamesManager() {
               <div className="flex items-center gap-2">
                 <p className="text-sm font-medium truncate">{game.name}</p>
                 <Badge variant={game.isActive ? "success" : "outline"}>
-                  {game.isActive ? "Active" : "Inactive"}
+                  {game.isActive
+                    ? t("gamesManager.active")
+                    : t("gamesManager.inactive")}
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground truncate">
-                {game.key} · {game.fieldDefinitions.length} field
-                {game.fieldDefinitions.length === 1 ? "" : "s"} ·{" "}
-                {game.dataSourceUrl}
+                {game.key} ·{" "}
+                {t("gamesManager.fieldCount", {
+                  count: game.fieldDefinitions.length,
+                })}{" "}
+                · {game.dataSourceUrl}
               </p>
             </div>
             <ButtonGroup>
@@ -137,7 +142,7 @@ export function GamesManager() {
                 size="icon"
                 variant="ghost"
                 onClick={() => setFormGame(game)}
-                title="Edit"
+                title={t("gamesManager.editTitle")}
               >
                 <IconPencil size={14} />
               </Button>
@@ -145,7 +150,7 @@ export function GamesManager() {
                 size="icon"
                 variant="ghost"
                 onClick={() => setDeleteTarget(game)}
-                title="Delete"
+                title={t("gamesManager.deleteTitle")}
               >
                 <IconTrash size={14} />
               </Button>
@@ -154,7 +159,7 @@ export function GamesManager() {
         ))}
         {gamesQuery.data?.length === 0 && (
           <p className="text-xs text-muted-foreground text-center py-6">
-            No games configured yet
+            {t("gamesManager.empty")}
           </p>
         )}
       </div>
@@ -173,8 +178,10 @@ export function GamesManager() {
         onOpenChange={(open) => {
           if (!open) setDeleteTarget(null);
         }}
-        title="Delete game"
-        description={`Permanently delete "${deleteTarget?.name}"? Collections using this game will keep their scanned cards, but no new cards can be matched against it.`}
+        title={t("gamesManager.deleteDialog.title")}
+        description={t("gamesManager.deleteDialog.description", {
+          name: deleteTarget?.name ?? "",
+        })}
         confirm={{ type: "name", name: deleteTarget?.name ?? "" }}
         onConfirm={() => {
           if (deleteTarget) deleteMutation.mutate(deleteTarget.guid);

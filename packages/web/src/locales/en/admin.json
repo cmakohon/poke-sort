@@ -1,0 +1,61 @@
+{
+  "cardImageVectors": {
+    "heading": "Card Image Vectors",
+    "syncStatus": {
+      "idle": "Idle",
+      "running": "Running",
+      "completed": "Completed",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    },
+    "selectGamePlaceholder": "Select a game...",
+    "languagePlaceholder": "Language...",
+    "cancelButton": "Cancel",
+    "cancellingButton": "Cancelling...",
+    "startSyncButton": "Start Sync",
+    "startingButton": "Starting...",
+    "progressCount": "{{done}} / {{total}}",
+    "vectorizedCount": "{{count}} vectorized",
+    "skippedCount": "{{count}} skipped",
+    "etaRemaining": "~{{duration}} remaining",
+    "errorsCount": "{{count}} errors"
+  },
+  "log": {
+    "heading": "Log",
+    "empty": "No Logs"
+  },
+  "cardDatabase": {
+    "heading": "Card Database",
+    "cardCount_one": "{{count}} card",
+    "cardCount_other": "{{count}} cards",
+    "searchPlaceholder": "Search by name...",
+    "loading": "Loading...",
+    "loadError": "Failed to load cards",
+    "revectorizeTitle": "Re-vectorize",
+    "empty": "No cards found",
+    "pageOf": "Page {{page}} of {{total}}"
+  },
+  "syncCardById": {
+    "heading": "Sync Card by ID",
+    "description": "Fetch and vectorize a single card, adding it if it isn't in the database yet",
+    "cardIdPlaceholder": "Card ID...",
+    "syncButton": "Sync",
+    "syncingButton": "Syncing..."
+  },
+  "dumpDatabase": {
+    "heading": "Dump Card Database",
+    "description": "Permanently delete card image vectors, for one game or all of them",
+    "scopePlaceholder": "Select scope...",
+    "allGames": "All games",
+    "dumpButton": "Dump",
+    "dumpingButton": "Dumping...",
+    "dialogTitle": "Dump card database",
+    "confirmAll": "This will permanently delete all card image vectors and cannot be undone. Are you sure?",
+    "confirmScoped": "This will permanently delete all \"{{scope}}\" card image vectors and cannot be undone. Are you sure?"
+  },
+  "toasts": {
+    "revectorizeError": "Failed to re-vectorize {{name}}",
+    "syncCardError": "Failed to sync card {{id}}",
+    "dumpError": "Failed to dump database"
+  }
+}

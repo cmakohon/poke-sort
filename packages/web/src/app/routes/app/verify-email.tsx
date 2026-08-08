@@ -21,10 +21,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { IconLoader2, IconMailCheck } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 export default function VerifyEmailPage() {
+  const { t } = useTranslation("auth");
   const navigate = useNavigate();
   const { data, refetch } = neon.auth.useSession();
   const email = data?.user?.email;
@@ -45,13 +47,15 @@ export default function VerifyEmailPage() {
     try {
       const { error } = await neon.auth.emailOtp.verifyEmail({ email, otp });
       if (error) throw error;
-      toast.success("Email verified");
+      toast.success(t("verifyEmail.successTitle"));
       await refetch();
       navigate("/app", { replace: true });
     } catch (error) {
       form.setError("otp", {
         message:
-          error instanceof Error ? error.message : "Invalid or expired code",
+          error instanceof Error
+            ? error.message
+            : t("verifyEmail.invalidCode"),
       });
     }
   };
@@ -64,11 +68,11 @@ export default function VerifyEmailPage() {
         email,
         type: "email-verification",
       });
-      toast.success("Verification code sent", {
-        description: `Check ${email} for a new code.`,
+      toast.success(t("verifyEmail.resendSuccessTitle"), {
+        description: t("verifyEmail.resendSuccessDescription", { email }),
       });
     } catch {
-      toast.error("Couldn't send verification code");
+      toast.error(t("verifyEmail.resendErrorTitle"));
     } finally {
       setIsResending(false);
     }
@@ -80,10 +84,12 @@ export default function VerifyEmailPage() {
         <CardHeader>
           <div className="flex items-center gap-2 mb-1">
             <IconMailCheck className="size-5 text-primary" />
-            <CardTitle>Verify your email</CardTitle>
+            <CardTitle>{t("verifyEmail.title")}</CardTitle>
           </div>
           <CardDescription>
-            Enter the 6-digit code we sent to {email ?? "your email address"}.
+            {t("verifyEmail.description", {
+              email: email ?? t("verifyEmail.fallbackEmail"),
+            })}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -96,7 +102,9 @@ export default function VerifyEmailPage() {
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid || undefined}>
-                  <FieldLabel htmlFor="otp">Verification code</FieldLabel>
+                  <FieldLabel htmlFor="otp">
+                    {t("verifyEmail.codeLabel")}
+                  </FieldLabel>
                   <InputOTP
                     id="otp"
                     maxLength={6}
@@ -131,7 +139,7 @@ export default function VerifyEmailPage() {
               {form.formState.isSubmitting && (
                 <IconLoader2 className="size-4 animate-spin" />
               )}
-              Verify email
+              {t("verifyEmail.submit")}
             </Button>
             <Button
               type="button"
@@ -141,7 +149,7 @@ export default function VerifyEmailPage() {
               className="w-full"
             >
               {isResending && <IconLoader2 className="size-4 animate-spin" />}
-              Resend code
+              {t("verifyEmail.resend")}
             </Button>
           </form>
         </CardContent>

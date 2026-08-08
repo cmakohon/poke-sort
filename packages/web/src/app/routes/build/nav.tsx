@@ -4,9 +4,11 @@ import { neon } from "@/lib/auth/client";
 import { DISCORD_URL } from "@/lib/links";
 import { cn } from "@/lib/utils";
 import { IconBrandDiscord, IconPigFilled } from "@tabler/icons-react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 export function BuildNav() {
+  const { t } = useTranslation("build");
   const { data, isPending } = neon.auth.useSession();
   const isSignedIn = !isPending && !!data?.user;
 
@@ -24,19 +26,19 @@ export function BuildNav() {
 
         <nav className="hidden items-center gap-6 text-xs/relaxed font-medium text-muted-foreground md:flex">
           <a href="#parts" className="transition-colors hover:text-foreground">
-            Parts list
+            {t("nav.partsList")}
           </a>
           <a
             href="#wiring"
             className="transition-colors hover:text-foreground"
           >
-            Wiring
+            {t("nav.wiring")}
           </a>
           <a
             href="#assembly"
             className="transition-colors hover:text-foreground"
           >
-            Assembly
+            {t("nav.assembly")}
           </a>
           <a
             href="https://github.com/dishwasher-detergent/mault/issues/new"
@@ -44,7 +46,7 @@ export function BuildNav() {
             rel="noopener noreferrer"
             className="transition-colors hover:text-foreground"
           >
-            Report an issue
+            {t("nav.reportIssue")}
           </a>
         </nav>
 
@@ -53,7 +55,7 @@ export function BuildNav() {
             href={DISCORD_URL}
             target="_blank"
             rel="noreferrer"
-            aria-label="Join the Discord"
+            aria-label={t("nav.joinDiscordAria")}
             className="text-muted-foreground transition-colors hover:text-foreground"
           >
             <IconBrandDiscord size={18} />
@@ -64,14 +66,14 @@ export function BuildNav() {
               to="/app"
               className={cn(buttonVariants({ variant: "default", size: "lg" }))}
             >
-              Open app
+              {t("nav.openApp")}
             </Link>
           ) : (
             <Link
               to="/auth/sign-up"
               className={cn(buttonVariants({ variant: "default", size: "lg" }))}
             >
-              Get started
+              {t("nav.getStarted")}
             </Link>
           )}
         </div>

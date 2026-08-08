@@ -1,0 +1,150 @@
+{
+  "servos": {
+    "bottom": {
+      "label": "Unteres Paddel",
+      "closed": "Geschlossen setzen",
+      "open": "Offen setzen"
+    },
+    "paddle": {
+      "label": "Paddel",
+      "closed": "Geschlossen setzen",
+      "open": "Offen setzen"
+    },
+    "pusher": {
+      "label": "Schieber",
+      "left": "Links setzen",
+      "neutral": "Neutral setzen",
+      "right": "Rechts setzen"
+    }
+  },
+  "binRoutingControls": {
+    "label": "Fach-Routing",
+    "feed": "Zuführen",
+    "binActive": "Fach {{bin}}…",
+    "running": "Läuft…",
+    "sampleRun": "Testlauf",
+    "binButton": "Fach {{bin}}"
+  },
+  "feederCalibrationPanel": {
+    "heading": "Zuführung",
+    "speedLabel": "Geschwindigkeit (PWM)",
+    "speedTooltip": "Motorgeschwindigkeit der Zuführung als roher PWM-Signalwert (120 = langsamste, 490 = schnellste vom Motorcontroller akzeptierte Geschwindigkeit)",
+    "setSpeed": "Geschwindigkeit setzen",
+    "timeoutLabel": "Timeout (ms)",
+    "setTimeout": "Timeout setzen",
+    "msValue": "{{value}} ms",
+    "pulseDurationLabel": "Impulsdauer (ms)",
+    "continuous": "Dauerbetrieb",
+    "continuousFeedButton": "Dauerhafte Zuführung",
+    "setPulseDuration": "Impulsdauer setzen",
+    "pauseDurationLabel": "Pausendauer (ms)",
+    "setPauseDuration": "Pausendauer setzen",
+    "settleDurationLabel": "Einlaufzeit (ms)",
+    "settleDurationDescription": "Zusätzliche Zeit, um die Zuführung fortzusetzen, nachdem der Sensor von Modul 1 die Karte erkannt hat, damit sie vollständig in den Mechanismus einläuft, bevor der Motor stoppt.",
+    "setSettleDuration": "Einlaufzeit setzen"
+  },
+  "irSensorPanel": {
+    "label": "IR-Sensoren",
+    "tooltip": "Infrarotsensoren, die erkennen, wann eine Karte im Zuführpfad jedes Moduls vorhanden ist",
+    "stop": "Stopp",
+    "monitor": "Überwachen",
+    "monitorTooltip": "Fragt die IR-Sensoren fortlaufend ab und aktualisiert die Badges unten in Echtzeit",
+    "read": "Lesen",
+    "readTooltip": "Nimmt eine einzelne Momentaufnahme der IR-Sensoren auf",
+    "moduleLabel": "Modul {{module}}",
+    "detectedTooltip": "Am IR-Sensor von Modul {{module}} wird derzeit eine Karte erkannt",
+    "notDetectedTooltip": "Am IR-Sensor von Modul {{module}} wird derzeit keine Karte erkannt",
+    "hopperEmpty": "Zuführbehälter leer",
+    "hopper": "Zuführbehälter",
+    "hopperTooltip": "Ob der IR-Sensor des Kartenbehälters derzeit auf die Zuführung wartende Karten erkennt"
+  },
+  "ledControls": {
+    "label": "LEDs",
+    "ledLabel": "LED {{led}}"
+  },
+  "moduleCalibrationGrid": {
+    "moduleHeading": "Modul {{module}}",
+    "resetTo": "Auf {{position}} zurücksetzen",
+    "sliderTooltip": "Rohe Servo-Impulsposition (120-490). Verwende zuerst die Positionsschaltflächen oben und dann eine \"Setzen\"-Schaltfläche, um dies als Kalibrierungspunkt zu speichern.",
+    "positions": {
+      "open": "Offen",
+      "left": "Links",
+      "right": "Rechts",
+      "neutral": "Neutral"
+    }
+  },
+  "scanRegionCalibrationPanel": {
+    "instructions": "Ziehe das Rechteck, um es zu verschieben, oder ziehe den Griff, um die Größe zu ändern. Richte es an einer Karte in Modul 1 aus.",
+    "connecting": "Verbindung wird hergestellt…",
+    "reconnectWebcam": "Webcam erneut verbinden",
+    "connectWebcam": "Webcam verbinden",
+    "waitingForCamera": "Warte auf Kamera…",
+    "resetToDefault": "Auf Standard zurücksetzen",
+    "saving": "Wird gespeichert…",
+    "saveScanRegion": "Scanbereich speichern",
+    "savedSummary": "Gespeichert: {{coverage}}% Abdeckung, {{offsetX}}% / {{offsetY}}% Versatz"
+  },
+  "useCalibrationPage": {
+    "toasts": {
+      "notCalibrated": "Module nicht kalibriert",
+      "notCalibratedDescription": "Kalibriere alle drei Module, bevor du die Testsequenz ausführst.",
+      "runningTest": "Testsequenz läuft…",
+      "testComplete": "Test abgeschlossen",
+      "testFailed": "Test fehlgeschlagen",
+      "noResponse": "Keine Antwort vom Sortierer.",
+      "binFailed": "Fach {{bin}} fehlgeschlagen",
+      "startingSampleRun": "Testlauf wird gestartet…",
+      "sampleRunStopped": "Testlauf bei Fach {{bin}} gestoppt",
+      "sampleRunComplete": "Testlauf abgeschlossen"
+    }
+  },
+  "useFeederConfig": {
+    "toasts": {
+      "notSynced": "Zuführungskalibrierung nicht synchronisiert",
+      "unexpectedResponse": "Unerwartete Antwort: {{response}}",
+      "noResponse": "Keine Antwort vom Sortierer.",
+      "saveFailed": "Zuführungskonfiguration konnte nicht gespeichert werden"
+    }
+  },
+  "useModuleConfigs": {
+    "toasts": {
+      "notSynced": "Kalibrierung von Modul {{module}} nicht synchronisiert",
+      "unexpectedResponse": "Unerwartete Antwort: {{response}}",
+      "noResponse": "Keine Antwort vom Sortierer.",
+      "saveFailed": "Modulkonfiguration konnte nicht gespeichert werden"
+    }
+  },
+  "calibratePage": {
+    "moduleHistory": {
+      "bottom": "Unten",
+      "paddle": "Paddel",
+      "pusher": "Schieber",
+      "moduleLabel": "Modul {{module}}"
+    },
+    "feederHistory": {
+      "speed": "Geschwindigkeit",
+      "duration": "Dauer",
+      "pulse": "Impuls",
+      "pause": "Pause",
+      "settle": "Einlaufzeit",
+      "continuous": "Dauerbetrieb",
+      "msValue": "{{value}}ms"
+    },
+    "toasts": {
+      "moduleReverted": "Modulkalibrierung zurückgesetzt",
+      "feederReverted": "Zuführungskalibrierung zurückgesetzt",
+      "revertFailed": "Zurücksetzen fehlgeschlagen"
+    },
+    "disconnect": "Trennen",
+    "connectDevice": "Gerät verbinden",
+    "testing": "Wird getestet…",
+    "runTest": "Test ausführen",
+    "calibrateBeforeTest": "Kalibriere alle Module, bevor du den Test ausführst",
+    "scanRegionLabel": "Scanbereich",
+    "feederCalibrationLabel": "Zuführungskalibrierung",
+    "history": "Verlauf",
+    "moduleCalibrationLabel": "Modulkalibrierung",
+    "feederHistoryTitle": "Zuführungsverlauf",
+    "moduleHistoryTitle": "Modulverlauf"
+  }
+}

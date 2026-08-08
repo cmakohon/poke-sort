@@ -17,6 +17,7 @@ import { useIsMobile } from "@/hooks/use-is-mobile";
 import { FIELD_DEFINITIONS } from "@magic-vault/shared";
 import { IconCards, IconLoader2, IconWifiOff } from "@tabler/icons-react";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 
 function CardGrid({
@@ -28,30 +29,31 @@ function CardGrid({
   status: string;
   cardCount: number;
 }) {
+  const { t } = useTranslation("scanner");
   return (
     <>
       {status === "connecting" && cardCount === 0 && (
         <div className="flex items-center justify-center h-32 text-muted-foreground text-sm gap-2">
           <IconLoader2 size={16} className="animate-spin" />
-          Loading session…
+          {t("monitorPage.loadingSession")}
         </div>
       )}
       {status === "error" && (
         <div className="flex items-center justify-center h-32 text-destructive text-sm gap-2">
           <IconWifiOff size={16} />
-          Could not connect.
+          {t("monitorPage.connectFailed")}
         </div>
       )}
       {status === "connected" && cardCount === 0 && (
         <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
-          No cards scanned yet.
+          {t("monitorPage.noCardsScannedYet")}
         </div>
       )}
       {status === "connected" &&
         cardCount > 0 &&
         filteredAndSorted.length === 0 && (
           <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
-            No cards match the search query.
+            {t("monitorPage.noCardsMatchSearch")}
           </div>
         )}
       <div className="grid grid-cols-3 @md:grid-cols-4 @4xl:grid-cols-6 @5xl:grid-cols-8 gap-2 p-4">
@@ -69,6 +71,7 @@ function CardGrid({
 }
 
 export default function MonitorPage() {
+  const { t } = useTranslation("scanner");
   const { collectionGuid } = useParams<{ collectionGuid: string }>();
   const { collection, cards, viewers, errors, status } =
     useSessionMonitor(collectionGuid);
@@ -103,7 +106,9 @@ export default function MonitorPage() {
         <InitialsAvatar
           name={locks[collectionGuid].displayName}
           variant="scanner"
-          tooltip={`${locks[collectionGuid].displayName} is scanning`}
+          tooltip={t("monitorPage.isScanningTooltip", {
+            name: locks[collectionGuid].displayName,
+          })}
         />
       )}
       {otherViewers.map((v) => (
@@ -111,7 +116,7 @@ export default function MonitorPage() {
           key={v.userId}
           name={v.displayName}
           variant="neutral"
-          tooltip={`${v.displayName} is watching`}
+          tooltip={t("monitorPage.isWatchingTooltip", { name: v.displayName })}
         />
       ))}
     </>
@@ -133,11 +138,13 @@ export default function MonitorPage() {
           <DrawerTrigger className="flex items-center justify-center gap-2 mx-3 mb-3 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors shrink-0">
             <IconCards className="size-4" />
             {cards.length > 0
-              ? `View ${cards.length} card${cards.length === 1 ? "" : "s"}`
-              : "View Cards"}
+              ? t("monitorPage.viewCards", { count: cards.length })
+              : t("monitorPage.viewCardsEmpty")}
           </DrawerTrigger>
           <DrawerContent className="max-h-[85vh]">
-            <DrawerTitle className="sr-only">Scanned Cards</DrawerTitle>
+            <DrawerTitle className="sr-only">
+              {t("monitorPage.scannedCardsTitle")}
+            </DrawerTitle>
             <div className="flex flex-col overflow-hidden flex-1 min-h-0 pt-2">
               <div className="px-2 pb-2 border-b @container">
                 <CardToolbar

@@ -1,9 +1,15 @@
+import { createInterface } from "node:readline";
+import { Readable } from "node:stream";
+import type { ReadableStream as NodeWebReadableStream } from "node:stream/web";
+import { createGunzip } from "node:zlib";
 import type { SyncSource, SyncSourceCard } from "../card-search/sync-types";
 import { SCRYFALL_DEFAULT_URL, SCRYFALL_HEADERS } from "./search";
 
 type ScryfallBulkCard = {
   id: string;
   name: string;
+  printed_name?: string;
+  lang: string;
   set: string;
   image_uris?: { png?: string; large?: string };
 };
@@ -16,43 +22,74 @@ function apiRoot(baseUrl: string): string {
   }
 }
 
-async function fetchCards(
+async function downloadBulkData(
   baseUrl: string,
   addLog: (msg: string) => void,
+  bulkType: string,
+  lang: string | undefined,
+  signal?: AbortSignal,
 ): Promise<SyncSourceCard[]> {
   addLog("Fetching Scryfall bulk data catalog...");
 
   const catalogRes = await fetch(`${apiRoot(baseUrl)}/bulk-data`, {
     headers: SCRYFALL_HEADERS,
+    signal,
   });
   if (!catalogRes.ok) {
     throw new Error(`Scryfall catalog fetch failed: ${catalogRes.status}`);
   }
   const catalog = (await catalogRes.json()) as {
-    data: { type: string; download_uri: string }[];
+    data: { type: string; jsonl_download_uri: string }[];
   };
 
-  const artEntry = catalog.data.find((e) => e.type === "unique_artwork");
-  if (!artEntry)
-    throw new Error("Could not find unique_artwork bulk data entry");
+  const entry = catalog.data.find((e) => e.type === bulkType);
+  if (!entry) throw new Error(`Could not find ${bulkType} bulk data entry`);
 
-  addLog("Downloading bulk artwork data...");
+  addLog(`Downloading bulk "${bulkType}" data...`);
 
-  const bulkRes = await fetch(artEntry.download_uri, {
+  const bulkRes = await fetch(entry.jsonl_download_uri, {
     headers: SCRYFALL_HEADERS,
+    signal,
   });
-  if (!bulkRes.ok)
+  if (!bulkRes.ok || !bulkRes.body)
     throw new Error(`Bulk data download failed: ${bulkRes.status}`);
 
-  const cards = (await bulkRes.json()) as ScryfallBulkCard[];
-  addLog(`Downloaded ${cards.length} cards.`);
+  const cards: SyncSourceCard[] = [];
+  let seen = 0;
+  const lines = createInterface({
+    input: Readable.fromWeb(
+      bulkRes.body as NodeWebReadableStream<Uint8Array>,
+    ).pipe(createGunzip()),
+    crlfDelay: Infinity,
+  });
 
-  return cards.map((c) => ({
-    id: c.id,
-    name: c.name,
-    setCode: c.set,
-    imageUrl: c.image_uris?.png ?? c.image_uris?.large,
-  }));
+  for await (const line of lines) {
+    if (!line) continue;
+    seen++;
+    const raw = JSON.parse(line) as ScryfallBulkCard;
+    if (lang && raw.lang !== lang) continue;
+    cards.push({
+      id: raw.id,
+      name: raw.printed_name ?? raw.name,
+      setCode: raw.set,
+      imageUrl: raw.image_uris?.png ?? raw.image_uris?.large,
+    });
+  }
+
+  addLog(`Scanned ${seen} cards, kept ${cards.length}.`);
+
+  return cards;
+}
+
+async function fetchCards(
+  baseUrl: string,
+  addLog: (msg: string) => void,
+  lang: string = "en",
+  signal?: AbortSignal,
+): Promise<SyncSourceCard[]> {
+  return lang === "en"
+    ? downloadBulkData(baseUrl, addLog, "unique_artwork", undefined, signal)
+    : downloadBulkData(baseUrl, addLog, "all_cards", lang, signal);
 }
 
 async function fetchOne(id: string, baseUrl: string) {
@@ -75,6 +112,7 @@ export const scryfallSyncSource: SyncSource = {
   label: "Magic: The Gathering (Scryfall)",
   defaultUrl: SCRYFALL_DEFAULT_URL,
   fetchHeaders: SCRYFALL_HEADERS,
+  languages: ["en", "de"],
   fetchCards,
   fetchOne,
 };

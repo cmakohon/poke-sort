@@ -1,5 +1,6 @@
 import { useBinConfigs } from "@/features/bins/api/use-bin-configs";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 const MODULES = [
   { module: 1, left: 1, right: 2 },
@@ -19,6 +20,7 @@ function BinCell({
   isCatchAll: boolean;
   inverted: boolean;
 }) {
+  const { t } = useTranslation("bins");
   return (
     <div
       className={cn(
@@ -30,7 +32,7 @@ function BinCell({
             : "text-muted-foreground",
       )}
     >
-      <span>Bin {binNumber}</span>
+      <span>{t("binLocationDiagram.binLabel", { number: binNumber })}</span>
       {isCatchAll && (
         <span
           className={cn(
@@ -42,7 +44,7 @@ function BinCell({
                 : "text-muted-foreground/70",
           )}
         >
-          Catch-all
+          {t("binLocationDiagram.catchAll")}
         </span>
       )}
     </div>

@@ -16,9 +16,12 @@ export interface SyncSource {
   label: string;
   defaultUrl: string;
   fetchHeaders: Record<string, string>;
+  languages: string[];
   fetchCards(
     baseUrl: string,
     addLog: (msg: string) => void,
+    lang?: string,
+    signal?: AbortSignal,
   ): Promise<SyncSourceCard[]>;
   fetchOne(id: string, baseUrl: string): Promise<SyncSourceCardDetail | null>;
 }

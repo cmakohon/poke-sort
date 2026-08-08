@@ -1,6 +1,7 @@
 import type { Collection, ScannedCard } from "@magic-vault/shared";
 import { createSessionEventSource } from "@/lib/api/session";
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 type ConnectionStatus = "connecting" | "connected" | "error" | "closed";
 
@@ -24,6 +25,7 @@ export interface SessionMonitorState {
 }
 
 export function useSessionMonitor(collectionGuid: string | undefined): SessionMonitorState {
+  const { t } = useTranslation("scanner");
   const [collection, setCollection] = useState<Collection | null>(null);
   const [cards, setCards] = useState<ScannedCard[]>([]);
   const [viewers, setViewers] = useState<SessionViewer[]>([]);
@@ -110,7 +112,7 @@ export function useSessionMonitor(collectionGuid: string | undefined): SessionMo
 
       es.onerror = () => {
         setStatus("error");
-        pushError("Connection to session lost.");
+        pushError(t("sessionMonitor.connectionLost"));
       };
 
       es.onopen = () => {
@@ -126,7 +128,7 @@ export function useSessionMonitor(collectionGuid: string | undefined): SessionMo
       esRef.current = null;
       setStatus("closed");
     };
-  }, [collectionGuid]);
+  }, [collectionGuid, t]);
 
   return { collection, cards, viewers, errors, status };
 }

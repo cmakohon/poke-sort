@@ -6,6 +6,7 @@ export interface AdminCard {
   id: number;
   scryfallId: string;
   gameKey: string;
+  lang: string;
   name: string;
   setCode: string;
   updatedAt: string;
@@ -21,6 +22,7 @@ export interface AdminCardsPage {
 export interface SyncSourceInfo {
   gameKey: string;
   label: string;
+  languages: string[];
 }
 
 export async function listSyncSources(): Promise<{
@@ -30,11 +32,14 @@ export async function listSyncSources(): Promise<{
   return apiGet<{ success: boolean; data: SyncSourceInfo[] }>("/api/admin/sync/sources");
 }
 
-export async function startSync(gameKey: string): Promise<{
+export async function startSync(gameKey: string, lang: string = "en"): Promise<{
   success: boolean;
   data: SyncState;
 }> {
-  return apiPost<{ success: boolean; data: SyncState }>("/api/admin/sync", { gameKey });
+  return apiPost<{ success: boolean; data: SyncState }>("/api/admin/sync", {
+    gameKey,
+    lang,
+  });
 }
 
 export async function cancelSync(): Promise<{
@@ -89,6 +94,18 @@ export async function revectorizeCard(
   return apiPost<{ success: boolean; message: string }>(
     `/api/admin/cards/${encodeURIComponent(scryfallId)}/revectorize`,
   );
+}
+
+export async function syncCardById(
+  gameKey: string,
+  scryfallId: string,
+  lang: string = "en",
+): Promise<{ success: boolean; message: string }> {
+  return apiPost<{ success: boolean; message: string }>("/api/admin/cards/sync", {
+    gameKey,
+    scryfallId,
+    lang,
+  });
 }
 
 export async function createSyncEventSource(): Promise<EventSource> {

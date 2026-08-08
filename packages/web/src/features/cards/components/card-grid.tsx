@@ -31,11 +31,13 @@ import {
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 const PAGE_SIZE = 96;
 
 export function CardGrid() {
+  const { t } = useTranslation("cards");
   const {
     activeCollection,
     deleteCollection,
@@ -177,15 +179,15 @@ export function CardGrid() {
       <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
         <IconAlbum className="size-10" />
         <div className="text-center">
-          <p className="text-sm font-medium">No collection selected</p>
+          <p className="text-sm font-medium">{t("cardGrid.noCollectionSelected")}</p>
           <p className="text-xs">
-            Create or select a collection to start scanning
+            {t("cardGrid.createOrSelectCollection")}
           </p>
         </div>
         <Button
           variant="outline"
           size="sm"
-          render={<Link to="/app/collections">Manage Collections</Link>}
+          render={<Link to="/app/collections">{t("cardGrid.manageCollections")}</Link>}
         ></Button>
       </div>
     );
@@ -195,8 +197,8 @@ export function CardGrid() {
     return (
       <>
         <div className="flex flex-col items-center justify-center py-16 text-muted-foreground flex-1">
-          <p className="text-sm font-medium">No cards scanned yet</p>
-          <p className="text-xs">Scan a card to get started</p>
+          <p className="text-sm font-medium">{t("cardGrid.noCardsScanned")}</p>
+          <p className="text-xs">{t("cardGrid.scanToGetStarted")}</p>
         </div>
         {scanner?.isCameraActive && (
           <div className="sticky bottom-0 z-10 bg-background/80 backdrop-blur-2xl p-2 border-t">
@@ -218,12 +220,12 @@ export function CardGrid() {
                           onClick={scanner.handleFeed}
                           disabled={!scanner.isReady || scanner.isFeeding}
                         >
-                          {scanner.isFeeding ? "Feeding…" : "Feed"}
+                          {scanner.isFeeding ? t("cardGrid.feeding") : t("cardGrid.feed")}
                         </Button>
                       }
                     />
                     <TooltipContent>
-                      Advance one card from the hopper into the scanner
+                      {t("cardGrid.feedTooltip")}
                     </TooltipContent>
                   </Tooltip>
                   <Tooltip>
@@ -240,8 +242,8 @@ export function CardGrid() {
                     />
                     <TooltipContent>
                       {autoFeed
-                        ? "Auto-feed on — next card feeds automatically after each scan"
-                        : "Auto-feed off — feed each card manually"}
+                        ? t("cardGrid.autoFeedOnTooltip")
+                        : t("cardGrid.autoFeedOffTooltip")}
                     </TooltipContent>
                   </Tooltip>
                   <Tooltip>
@@ -260,7 +262,7 @@ export function CardGrid() {
                       }
                     />
                     <TooltipContent>
-                      Clear device (opens all bottom paddles)
+                      {t("cardGrid.clearDeviceTooltip")}
                     </TooltipContent>
                   </Tooltip>
                 </>
@@ -327,10 +329,10 @@ export function CardGrid() {
       {filteredAndSorted.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 text-muted-foreground flex-1">
           <p className="text-sm font-medium">
-            No cards match the current filters
+            {t("cardGrid.noCardsMatchFilters")}
           </p>
           <p className="text-xs">
-            Try adjusting your search, sort, or filter options
+            {t("cardGrid.tryAdjusting")}
           </p>
         </div>
       )}
@@ -361,7 +363,7 @@ export function CardGrid() {
               <IconChevronLeft />
             </Button>
             <span className="text-sm text-muted-foreground">
-              Page {clampedPage + 1} of {pageCount}
+              {t("cardGrid.pageOf", { page: clampedPage + 1, total: pageCount })}
             </span>
             <Button
               variant="outline"
@@ -397,12 +399,12 @@ export function CardGrid() {
                             onClick={scanner.handleFeed}
                             disabled={!scanner.isReady || scanner.isFeeding}
                           >
-                            {scanner.isFeeding ? "Feeding…" : "Feed"}
+                            {scanner.isFeeding ? t("cardGrid.feeding") : t("cardGrid.feed")}
                           </Button>
                         }
                       />
                       <TooltipContent>
-                        Advance one card from the hopper into the scanner
+                        {t("cardGrid.feedTooltip")}
                       </TooltipContent>
                     </Tooltip>
                     <Tooltip>
@@ -419,8 +421,8 @@ export function CardGrid() {
                       />
                       <TooltipContent>
                         {autoFeed
-                          ? "Auto-feed on — next card feeds automatically after each scan"
-                          : "Auto-feed off — feed each card manually"}
+                          ? t("cardGrid.autoFeedOnTooltip")
+                          : t("cardGrid.autoFeedOffTooltip")}
                       </TooltipContent>
                     </Tooltip>
                     <Tooltip>
@@ -439,7 +441,7 @@ export function CardGrid() {
                         }
                       />
                       <TooltipContent>
-                        Clear device (opens all bottom paddles)
+                        {t("cardGrid.clearDeviceTooltip")}
                       </TooltipContent>
                     </Tooltip>
                   </>
@@ -453,20 +455,19 @@ export function CardGrid() {
                   <div className="w-px h-5 bg-border mx-1 shrink-0" />
                 )}
                 <span className="text-sm text-muted-foreground">
-                  {selectedIds.size} {selectedIds.size === 1 ? "card" : "cards"}{" "}
-                  selected
+                  {t("cardGrid.cardsSelected", { count: selectedIds.size })}
                 </span>
                 <Button
                   variant="ghost"
                   onClick={() => setSelectedIds(new Set())}
                 >
-                  Clear
+                  {t("cardGrid.clear")}
                 </Button>
                 <Button
                   variant="destructive"
                   onClick={() => setConfirmOpen(true)}
                 >
-                  Delete
+                  {t("cardGrid.delete")}
                 </Button>
               </>
             )}
@@ -486,8 +487,8 @@ export function CardGrid() {
       <DeleteDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        title={`Delete ${selectedIds.size} ${selectedIds.size === 1 ? "card" : "cards"}?`}
-        description={`This will permanently remove the selected ${selectedIds.size === 1 ? "card" : "cards"} from your collection. This action cannot be undone.`}
+        title={t("cardGrid.deleteCardsTitle", { count: selectedIds.size })}
+        description={t("cardGrid.deleteCardsDescription", { count: selectedIds.size })}
         confirm={{ type: "keyword" }}
         onConfirm={handleBulkDelete}
       />

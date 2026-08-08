@@ -12,6 +12,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useTranslation } from "react-i18next";
 
 const CameraContext = createContext<CameraContextValue | null>(null);
 
@@ -51,6 +52,7 @@ async function acquireStream(deviceId?: string): Promise<MediaStream> {
 }
 
 export function CameraProvider({ children }: { children: React.ReactNode }) {
+  const { t } = useTranslation("scanner");
   const isMobile = useIsMobile();
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [status, setStatus] = useState<CameraStatus>("idle");
@@ -92,12 +94,12 @@ export function CameraProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       const msg =
         err instanceof DOMException && err.name === "NotAllowedError"
-          ? "Camera permission denied. Please allow camera access and try again."
-          : "Could not access camera. Please check your device.";
+          ? t("camera.permissionDenied")
+          : t("camera.accessError");
       setErrorMessage(msg);
       setStatus("error");
     }
-  }, []);
+  }, [t]);
 
   const setZoom = useCallback((value: number) => {
     const track = streamRef.current?.getVideoTracks()[0];

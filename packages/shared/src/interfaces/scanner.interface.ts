@@ -1,4 +1,4 @@
-import type { PlayingCardWithDistance } from "./scryfall.interface";
+import type { PlayingCardWithDistance } from "./card.interface";
 
 export interface Point {
   x: number;

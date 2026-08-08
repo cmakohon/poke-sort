@@ -1,8 +1,10 @@
 import { useCollections } from "@/features/collections/api/use-collections";
 import { IconAlertTriangle, IconX } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 export function GameSwitchAlert() {
+  const { t } = useTranslation("scanner");
   const { activeCollection } = useCollections();
   const gameKey = activeCollection?.game?.key;
   const prevGameKeyRef = useRef(gameKey);
@@ -29,8 +31,7 @@ export function GameSwitchAlert() {
         className="mt-0.5 shrink-0 text-amber-500"
       />
       <p className="flex-1 text-[11px]/relaxed text-amber-600 dark:text-amber-400">
-        When switching game types, you may have to re-adjust the feeder
-        module tube wall.
+        {t("gameSwitchAlert.message")}
       </p>
       <button
         type="button"

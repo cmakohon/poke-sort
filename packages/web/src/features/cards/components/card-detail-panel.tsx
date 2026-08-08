@@ -17,8 +17,6 @@ import { useCollections } from "@/features/collections/api/use-collections";
 import { useScannedCards } from "@/features/scanner/api/use-scanned-cards";
 import { cn } from "@/lib/utils";
 import {
-  getCardFaceName,
-  getCardImageUris,
   QUERY_MIN_LENGTH,
   type PlayingCard,
   type PlayingCardWithDistance,
@@ -36,13 +34,10 @@ import {
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 function formatManaCost(manaCost: string): string {
   return manaCost.replace(/[{}]/g, " ").trim().replace(/\s+/g, " ");
-}
-
-function formatPrice(label: string, value: string | null): string | null {
-  return value ? `${label}: $${value}` : null;
 }
 
 interface CardDetailPanelProps {
@@ -78,6 +73,7 @@ export function CardDetailPanel({
   currentIndex,
   total,
 }: CardDetailPanelProps) {
+  const { t } = useTranslation("cards");
   const [editing, setEditing] = useState(false);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -162,7 +158,7 @@ export function CardDetailPanel({
   const sets = useMemo(() => {
     const setMap = new Map<string, string>();
     for (const card of results) {
-      if (!setMap.has(card.set)) setMap.set(card.set, card.set_name);
+      if (!setMap.has(card.set)) setMap.set(card.set, card.setName);
     }
     return Array.from(setMap.entries())
       .map(([code, name]) => ({ code, name }))
@@ -178,18 +174,8 @@ export function CardDetailPanel({
     candidates.find((c) => c.id === selectedId) ?? currentCard;
   const hasMultipleCandidates = candidates.length > 1;
 
-  const prices = selectedCard
-    ? [
-        formatPrice("USD", selectedCard.prices.usd),
-        formatPrice("Foil", selectedCard.prices.usd_foil),
-        formatPrice("EUR", selectedCard.prices.eur),
-      ].filter(Boolean)
-    : [];
-
-  const cardName = selectedCard
-    ? getCardFaceName(selectedCard)
-    : "Card Details";
-  const typeLine = selectedCard?.type_line ?? "";
+  const cardName = selectedCard?.name ?? t("cardDetailPanel.cardDetailsFallback");
+  const typeLine = selectedCard?.typeLine ?? "";
 
   return (
     <div className="flex h-full">
@@ -199,7 +185,7 @@ export function CardDetailPanel({
           variant="ghost"
           className="shrink-0 size-7"
           onClick={onClose}
-          aria-label="Back to card list"
+          aria-label={t("cardDetailPanel.backToList")}
         >
           <IconX />
         </Button>
@@ -209,7 +195,7 @@ export function CardDetailPanel({
             variant="ghost"
             onClick={onPrev}
             disabled={!hasPrev}
-            aria-label="Previous card"
+            aria-label={t("cardDetailPanel.previousCard")}
           >
             <IconChevronUp />
           </Button>
@@ -218,7 +204,7 @@ export function CardDetailPanel({
             variant="ghost"
             onClick={onNext}
             disabled={!hasNext}
-            aria-label="Next card"
+            aria-label={t("cardDetailPanel.nextCard")}
           >
             <IconChevronDown />
           </Button>
@@ -252,17 +238,17 @@ export function CardDetailPanel({
                       <div className="w-40 aspect-[2.5/3.5] rounded-lg overflow-hidden border shadow-sm shrink-0">
                         <img
                           src={capturedImageUrl}
-                          alt="Scanned"
+                          alt={t("cardDetailPanel.scannedAlt")}
                           className="w-full h-full object-cover"
                         />
                       </div>
                       <p className="text-sm text-muted-foreground leading-snug">
-                        Your scanned card - select the correct version below
+                        {t("cardDetailPanel.selectCorrectVersion")}
                       </p>
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground font-medium">
-                      Multiple close matches - select the correct version:
+                      {t("cardDetailPanel.multipleMatches")}
                     </p>
                   )}
                   <div className="flex gap-3 overflow-x-auto pb-1">
@@ -284,11 +270,7 @@ export function CardDetailPanel({
                             )}
                           >
                             <img
-                              src={
-                                getCardImageUris(c)?.normal ||
-                                getCardImageUris(c)?.small ||
-                                ""
-                              }
+                              src={c.image?.normal || c.image?.small || ""}
                               alt={c.name}
                               className="w-full h-full object-cover"
                             />
@@ -305,7 +287,7 @@ export function CardDetailPanel({
                                   : "text-muted-foreground",
                               )}
                             >
-                              {c.set.toUpperCase()} #{c.collector_number}
+                              {c.set.toUpperCase()} #{c.collectorNumber}
                             </p>
                           </div>
                         </button>
@@ -320,12 +302,7 @@ export function CardDetailPanel({
                   <div className="shrink-0 flex flex-col gap-3 items-center">
                     <div className="w-44 aspect-[2.5/3.5] rounded-lg overflow-hidden border shadow-sm">
                       <img
-                        src={
-                          (selectedCard
-                            ? getCardImageUris(selectedCard)
-                            : undefined
-                          )?.normal || ""
-                        }
+                        src={selectedCard?.image?.normal || ""}
                         alt={selectedCard?.name}
                         className="w-full h-full object-cover"
                       />
@@ -333,12 +310,12 @@ export function CardDetailPanel({
                     {capturedImageUrl && (
                       <>
                         <p className="text-xs text-muted-foreground">
-                          Captured scan
+                          {t("cardDetailPanel.capturedScan")}
                         </p>
                         <div className="w-44 aspect-[2.5/3.5] rounded-lg overflow-hidden border">
                           <img
                             src={capturedImageUrl}
-                            alt="Scanned"
+                            alt={t("cardDetailPanel.scannedAlt")}
                             className="w-full h-full object-cover"
                           />
                         </div>
@@ -347,83 +324,73 @@ export function CardDetailPanel({
                   </div>
                 )}
 
-                {selectedCard &&
-                  (() => {
-                    const face = selectedCard.card_faces?.[0];
-                    const manaCost = selectedCard.mana_cost ?? face?.mana_cost;
-                    const oracleText =
-                      selectedCard.oracle_text ?? face?.oracle_text;
-                    const power = selectedCard.power ?? face?.power;
-                    const toughness = selectedCard.toughness ?? face?.toughness;
-                    const artist = selectedCard.artist ?? face?.artist;
-                    return (
-                      <div className="flex flex-col gap-3 min-w-0 flex-1">
-                        {manaCost && (
-                          <p className="text-sm text-muted-foreground">
-                            {formatManaCost(manaCost)}
-                          </p>
-                        )}
-                        {oracleText && (
-                          <p className="text-sm whitespace-pre-line leading-relaxed">
-                            {oracleText}
-                          </p>
-                        )}
-                        {power != null && toughness != null && (
-                          <p className="text-sm font-semibold">
-                            {power}/{toughness}
-                          </p>
-                        )}
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-                          <div
-                            className="size-2 rounded-full shrink-0"
-                            style={{
-                              backgroundColor: `var(--${selectedCard.rarity})`,
-                            }}
+                {selectedCard && (
+                  <div className="flex flex-col gap-3 min-w-0 flex-1">
+                    {selectedCard.manaCost && (
+                      <p className="text-sm text-muted-foreground">
+                        {formatManaCost(selectedCard.manaCost)}
+                      </p>
+                    )}
+                    {selectedCard.text && (
+                      <p className="text-sm whitespace-pre-line leading-relaxed">
+                        {selectedCard.text}
+                      </p>
+                    )}
+                    {selectedCard.power != null &&
+                      selectedCard.toughness != null && (
+                        <p className="text-sm font-semibold">
+                          {selectedCard.power}/{selectedCard.toughness}
+                        </p>
+                      )}
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                      <div
+                        className="size-2 rounded-full shrink-0"
+                        style={{
+                          backgroundColor: `var(--${selectedCard.rarity})`,
+                        }}
+                      />
+                      <span className="capitalize">{selectedCard.rarity}</span>
+                      <span>·</span>
+                      <span>
+                        {selectedCard.setName} #{selectedCard.collectorNumber}
+                      </span>
+                    </div>
+                    {binNumber != null && (
+                      <div className="flex flex-col gap-1.5">
+                        <p className="text-xs font-medium text-muted-foreground">
+                          {t("cardDetailPanel.binLocation")}
+                        </p>
+                        <div className="w-48 rounded-lg border">
+                          <BinLocationDiagram
+                            binNumber={binNumber}
+                            inverted={false}
                           />
-                          <span className="capitalize">
-                            {selectedCard.rarity}
-                          </span>
-                          <span>·</span>
-                          <span>
-                            {selectedCard.set_name} #
-                            {selectedCard.collector_number}
-                          </span>
                         </div>
-                        {binNumber != null && (
-                          <div className="flex flex-col gap-1.5">
-                            <p className="text-xs font-medium text-muted-foreground">
-                              Bin location
-                            </p>
-                            <div className="w-48 rounded-lg border">
-                              <BinLocationDiagram
-                                binNumber={binNumber}
-                                inverted={false}
-                              />
-                            </div>
-                          </div>
-                        )}
-                        {prices.length > 0 && (
-                          <p className="text-xs text-muted-foreground">
-                            {prices.join(" · ")}
-                          </p>
-                        )}
-                        {artist && (
-                          <p className="text-xs text-muted-foreground">
-                            Art by {artist}
-                          </p>
-                        )}
-                        <a
-                          href={selectedCard.scryfall_uri}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-sm text-primary hover:underline w-fit"
-                        >
-                          View source
-                          <IconExternalLink className="h-3.5 w-3.5" />
-                        </a>
                       </div>
-                    );
-                  })()}
+                    )}
+                    {selectedCard.price != null && (
+                      <p className="text-xs text-muted-foreground">
+                        ${selectedCard.price.toFixed(2)}
+                      </p>
+                    )}
+                    {selectedCard.artist && (
+                      <p className="text-xs text-muted-foreground">
+                        {t("cardDetailPanel.artBy", { artist: selectedCard.artist })}
+                      </p>
+                    )}
+                    {selectedCard.sourceUrl && (
+                      <a
+                        href={selectedCard.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-sm text-primary hover:underline w-fit"
+                      >
+                        {t("cardDetailPanel.viewSource")}
+                        <IconExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                    )}
+                  </div>
+                )}
               </div>
               <Label className="flex items-center gap-2 w-fit">
                 <Switch
@@ -433,23 +400,22 @@ export function CardDetailPanel({
                   }}
                   disabled={!scanId}
                 />
-                Foil
+                {t("cardDetailPanel.foil")}
               </Label>
               <div className="flex gap-3 pt-1">
                 <Button
                   variant="outline"
                   onClick={() => {
                     setEditing(true);
-                    if (selectedCard)
-                      handleInputChange(getCardFaceName(selectedCard));
+                    if (selectedCard) handleInputChange(selectedCard.name);
                   }}
                 >
                   <IconPencil className="size-4" />
-                  Correct Card
+                  {t("cardDetailPanel.correctCard")}
                 </Button>
                 <Button variant="destructive" onClick={() => onRemove?.()}>
                   <IconTrash className="size-4" />
-                  Remove
+                  {t("cardDetailPanel.remove")}
                 </Button>
               </div>
             </>
@@ -460,12 +426,12 @@ export function CardDetailPanel({
                   <div className="w-40 aspect-[2.5/3.5] rounded-lg overflow-hidden border shadow-sm shrink-0">
                     <img
                       src={capturedImageUrl}
-                      alt="Scanned"
+                      alt={t("cardDetailPanel.scannedAlt")}
                       className="w-full h-full object-cover"
                     />
                   </div>
                   <p className="text-sm text-muted-foreground leading-snug">
-                    Your scanned card - search for the correct version below
+                    {t("cardDetailPanel.searchForCorrectVersion")}
                   </p>
                 </div>
               )}
@@ -473,7 +439,7 @@ export function CardDetailPanel({
                 <div className="relative flex-1">
                   <IconSearch className="absolute left-2 top-1/2 -translate-y-1/2 size-3 text-muted-foreground" />
                   <Input
-                    placeholder="Search by card name..."
+                    placeholder={t("cardDetailPanel.searchPlaceholder")}
                     value={query}
                     onChange={(e) => handleInputChange(e.target.value)}
                     className="pl-7"
@@ -486,11 +452,11 @@ export function CardDetailPanel({
                     onValueChange={(value) => setSelectedSet(value)}
                   >
                     <SelectTrigger className="w-40 shrink-0">
-                      <SelectValue placeholder="All sets" />
+                      <SelectValue placeholder={t("cardDetailPanel.allSets")} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">
-                        All sets ({results.length})
+                        {t("cardDetailPanel.allSetsCount", { count: results.length })}
                       </SelectItem>
                       {sets.map((s) => (
                         <SelectItem key={s.code} value={s.code}>
@@ -511,14 +477,14 @@ export function CardDetailPanel({
                   filteredResults.length === 0 &&
                   query.trim().length === 0 && (
                     <p className="text-center text-sm text-muted-foreground py-8">
-                      Start typing to search for cards
+                      {t("cardDetailPanel.startTyping")}
                     </p>
                   )}
                 {!loading &&
                   filteredResults.length === 0 &&
                   query.trim().length >= 2 && (
                     <p className="text-center text-sm text-muted-foreground py-8">
-                      No cards found
+                      {t("cardDetailPanel.noCardsFound")}
                     </p>
                   )}
                 {!loading && filteredResults.length > 0 && (
@@ -530,9 +496,9 @@ export function CardDetailPanel({
                         className="relative w-full h-auto aspect-[2.5/3.5] p-0 rounded overflow-hidden group"
                         onClick={() => handleSelect(card)}
                       >
-                        {getCardImageUris(card)?.small ? (
+                        {card.image?.small ? (
                           <img
-                            src={getCardImageUris(card)!.small}
+                            src={card.image.small}
                             alt={card.name}
                             className="w-full h-full object-cover"
                           />
@@ -540,7 +506,7 @@ export function CardDetailPanel({
                           <div className="w-10 h-14 bg-muted rounded shrink-0" />
                         )}
                         <div className="absolute bottom-0 inset-x-0 bg-black/70 text-white text-[10px] leading-tight px-1 py-0.5 text-center truncate">
-                          {card.set.toUpperCase()} #{card.collector_number}
+                          {card.set.toUpperCase()} #{card.collectorNumber}
                         </div>
                       </Button>
                     ))}
@@ -556,7 +522,7 @@ export function CardDetailPanel({
                   setSelectedSet("all");
                 }}
               >
-                Cancel
+                {t("cardDetailPanel.cancel")}
               </Button>
             </>
           )}

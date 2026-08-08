@@ -1,9 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
-import { Field, FieldError, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { DynamicDialog } from "@/components/ui/responsive-dialog";
+import { Field, FieldLabel } from "@/components/ui/field";
 import {
   Select,
   SelectContent,
@@ -21,15 +19,11 @@ import {
   collectionsQueryOptions,
   releaseScanLock,
 } from "@/features/collections/api/collections";
+import { CreateCollectionDialog } from "@/features/collections/components/create-collection-dialog";
 import { useCollectionLocks } from "@/features/collections/api/use-collection-locks";
 import { useCollections } from "@/features/collections/api/use-collections";
 import { useOrg } from "@/features/companies/api/use-organization";
-import { gamesQueryOptions } from "@/features/games/api/games";
-import {
-  createCollectionSchema,
-  type CreateCollectionFormValues,
-} from "@/schemas/collections.schema";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { LANGUAGE_LABELS } from "@/lib/languages";
 import {
   IconEdit,
   IconLoader2,
@@ -40,28 +34,20 @@ import {
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
 export function CollectionSwitcher() {
-  const {
-    collections,
-    activeCollection,
-    isActivating,
-    isMutating,
-    createCollection,
-    activateCollection,
-  } = useCollections();
+  const { t } = useTranslation("collections");
+  const { collections, activeCollection, isActivating, activateCollection } =
+    useCollections();
   const { activeOrg } = useOrg();
   const { isLoading } = useQuery({
     ...collectionsQueryOptions,
     enabled: !!activeOrg,
   });
-  const { data: games = [] } = useQuery(gamesQueryOptions);
-  const activeGames = games.filter((g) => g.isActive);
   const { locks, currentUserId, isLockedByOther } = useCollectionLocks();
-  const [createOpen, setCreateOpen] = useState(false);
   const [releasing, setReleasing] = useState(false);
 
   const isLockedByMe = !!(
@@ -75,50 +61,13 @@ export function CollectionSwitcher() {
     setReleasing(true);
     try {
       await releaseScanLock(activeCollection.guid);
-      toast.success("Session released");
+      toast.success(t("switcher.sessionReleased"));
     } catch {
-      toast.error("Failed to release session");
+      toast.error(t("switcher.releaseFailed"));
     } finally {
       setReleasing(false);
     }
-  }, [activeCollection]);
-
-  const form = useForm<CreateCollectionFormValues>({
-    resolver: zodResolver(createCollectionSchema),
-    defaultValues: { name: "", gameGuid: "" },
-    mode: "onChange",
-  });
-
-  const handleCreate = useCallback(
-    async (values: CreateCollectionFormValues) => {
-      const isDuplicate = collections.some(
-        (c) => c.name.trim().toLowerCase() === values.name.trim().toLowerCase(),
-      );
-      if (isDuplicate) {
-        form.setError("name", {
-          type: "manual",
-          message: "A collection with this name already exists",
-        });
-        return;
-      }
-      await createCollection(values.name, values.gameGuid);
-      form.reset();
-      setCreateOpen(false);
-    },
-    [createCollection, collections, form],
-  );
-
-  const handleCreateDialogChange = useCallback(
-    (open: boolean) => {
-      setCreateOpen(open);
-      if (open) {
-        form.reset({ name: "", gameGuid: activeGames[0]?.guid ?? "" });
-      } else {
-        form.reset();
-      }
-    },
-    [form, activeGames],
-  );
+  }, [activeCollection, t]);
 
   const handleShare = useCallback(() => {
     if (!activeCollection) return;
@@ -126,15 +75,14 @@ export function CollectionSwitcher() {
     navigator.clipboard
       .writeText(url)
       .then(() => {
-        toast.success("Monitor link copied", {
-          description:
-            "Share this link with org members to let them watch the session.",
+        toast.success(t("switcher.monitorLinkCopied"), {
+          description: t("switcher.monitorLinkCopiedDescription"),
         });
       })
       .catch(() => {
-        toast.error("Could not copy link", { description: url });
+        toast.error(t("switcher.copyLinkFailed"), { description: url });
       });
-  }, [activeCollection]);
+  }, [activeCollection, t]);
 
   if (isLoading) {
     return (
@@ -149,10 +97,15 @@ export function CollectionSwitcher() {
   return (
     <Field>
       <span className="flex items-center gap-1.5">
-        <FieldLabel>Collection</FieldLabel>
+        <FieldLabel>{t("switcher.label")}</FieldLabel>
         {activeCollection?.game && (
           <Badge variant="secondary" className="shrink-0">
             {activeCollection.game.name}
+          </Badge>
+        )}
+        {activeCollection && (
+          <Badge variant="outline" className="shrink-0">
+            {LANGUAGE_LABELS[activeCollection.lang] ?? activeCollection.lang}
           </Badge>
         )}
       </span>
@@ -166,7 +119,7 @@ export function CollectionSwitcher() {
             className="flex-1 overflow-hidden"
             disabled={isActivating}
           >
-            <SelectValue placeholder="No collection selected">
+            <SelectValue placeholder={t("switcher.noCollectionSelected")}>
               <span className="flex items-center gap-1.5 min-w-0">
                 {isActivating && (
                   <IconLoader2 className="size-3 animate-spin shrink-0 text-muted-foreground" />
@@ -175,7 +128,7 @@ export function CollectionSwitcher() {
                   <IconLock size={11} className="shrink-0 text-amber-500" />
                 )}
                 <span className="truncate">
-                  {activeCollection?.name ?? "No collection"}
+                  {activeCollection?.name ?? t("switcher.noCollection")}
                 </span>
               </span>
             </SelectValue>
@@ -204,7 +157,7 @@ export function CollectionSwitcher() {
             })}
             {collections.length === 0 && (
               <div className="px-2 py-3 text-xs text-muted-foreground text-center">
-                No collections yet
+                {t("switcher.noCollectionsYet")}
               </div>
             )}
           </SelectContent>
@@ -220,7 +173,7 @@ export function CollectionSwitcher() {
               </Button>
             }
           />
-          <TooltipContent>Manage Collections</TooltipContent>
+          <TooltipContent>{t("switcher.manageCollections")}</TooltipContent>
         </Tooltip>
 
         <Tooltip>
@@ -236,7 +189,7 @@ export function CollectionSwitcher() {
               </Button>
             }
           />
-          <TooltipContent>Copy monitor link</TooltipContent>
+          <TooltipContent>{t("switcher.copyMonitorLink")}</TooltipContent>
         </Tooltip>
 
         {isLockedByMe && (
@@ -258,112 +211,28 @@ export function CollectionSwitcher() {
                 </Button>
               }
             />
-            <TooltipContent>Give up session</TooltipContent>
+            <TooltipContent>{t("switcher.giveUpSession")}</TooltipContent>
           </Tooltip>
         )}
 
         <Tooltip>
-          <DynamicDialog
-            open={createOpen}
-            onOpenChange={handleCreateDialogChange}
-            title="New Collection"
-            description="Create a new collection to scan cards into."
-            trigger={
+          <CreateCollectionDialog
+            trigger={({ disabled, noGames }) => (
               <TooltipTrigger
                 render={
                   <Button
                     variant="outline"
                     size="icon"
-                    disabled={isMutating || activeGames.length === 0}
-                    title={
-                      activeGames.length === 0
-                        ? "Ask an admin to add a game before creating a collection"
-                        : undefined
-                    }
+                    disabled={disabled}
+                    title={noGames ? t("switcher.noGamesHint") : undefined}
                   >
                     <IconPlus />
                   </Button>
                 }
               />
-            }
-            footer={
-              <>
-                <Button
-                  variant="outline"
-                  onClick={() => handleCreateDialogChange(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={form.handleSubmit(handleCreate)}
-                  disabled={!form.formState.isValid || isMutating}
-                >
-                  {isMutating && (
-                    <IconLoader2 className="size-4 animate-spin" />
-                  )}
-                  Create
-                </Button>
-              </>
-            }
-            footerClassName="flex-col-reverse md:flex-row"
-          >
-            <form
-              onSubmit={form.handleSubmit(handleCreate)}
-              className="flex flex-col gap-4"
-            >
-              <Controller
-                name="name"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid || undefined}>
-                    <FieldLabel htmlFor="collection-name">
-                      Collection name
-                    </FieldLabel>
-                    <Input
-                      {...field}
-                      id="collection-name"
-                      placeholder="e.g. Commander Collection, Draft Haul..."
-                      aria-invalid={fieldState.invalid}
-                      autoFocus
-                    />
-                    {fieldState.invalid && (
-                      <FieldError errors={[fieldState.error]} />
-                    )}
-                  </Field>
-                )}
-              />
-              <Controller
-                name="gameGuid"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid || undefined}>
-                    <FieldLabel htmlFor="collection-game">Game</FieldLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger id="collection-game">
-                        <SelectValue placeholder="Select a game...">
-                          {
-                            activeGames.find((g) => g.guid === field.value)
-                              ?.name
-                          }
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {activeGames.map((game) => (
-                          <SelectItem key={game.guid} value={game.guid}>
-                            {game.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {fieldState.invalid && (
-                      <FieldError errors={[fieldState.error]} />
-                    )}
-                  </Field>
-                )}
-              />
-            </form>
-          </DynamicDialog>
-          <TooltipContent>New Collection</TooltipContent>
+            )}
+          />
+          <TooltipContent>{t("switcher.newCollection")}</TooltipContent>
         </Tooltip>
       </ButtonGroup>
     </Field>

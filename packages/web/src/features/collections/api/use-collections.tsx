@@ -27,6 +27,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 const ACTIVE_KEY = "activeCollectionGuid";
@@ -37,7 +38,11 @@ interface CollectionsContextValue {
   isLoading: boolean;
   isActivating: boolean;
   isMutating: boolean;
-  createCollection: (name: string, gameGuid: string) => Promise<void>;
+  createCollection: (
+    name: string,
+    gameGuid: string,
+    lang: string,
+  ) => Promise<void>;
   renameCollection: (guid: string, name: string) => Promise<void>;
   activateCollection: (guid: string) => Promise<void>;
   deleteCollection: (guid: string) => Promise<void>;
@@ -51,6 +56,7 @@ export function CollectionsProvider({
 }: {
   children: React.ReactNode;
 }) {
+  const { t } = useTranslation("collections");
   const queryClient = useQueryClient();
   const { activeOrg } = useOrg();
   const { data: collections = [], isLoading } = useQuery({
@@ -93,8 +99,15 @@ export function CollectionsProvider({
   }
 
   const createMutation = useMutation({
-    mutationFn: ({ name, gameGuid }: { name: string; gameGuid: string }) =>
-      createCollectionFn(name, gameGuid),
+    mutationFn: ({
+      name,
+      gameGuid,
+      lang,
+    }: {
+      name: string;
+      gameGuid: string;
+      lang: string;
+    }) => createCollectionFn(name, gameGuid, lang),
     onSuccess: async (r, { name }) => {
       if (r.success && r.data) {
         setCollections(r.data);
@@ -125,7 +138,7 @@ export function CollectionsProvider({
         }
       }
     },
-    onError: () => toast.error("Failed to create collection"),
+    onError: () => toast.error(t("errors.createFailed")),
   });
 
   const renameMutation = useMutation({
@@ -134,7 +147,7 @@ export function CollectionsProvider({
     onSuccess: (r) => {
       if (r.success && r.data) setCollections(r.data);
     },
-    onError: () => toast.error("Failed to rename collection"),
+    onError: () => toast.error(t("errors.renameFailed")),
   });
 
   const deleteMutation = useMutation({
@@ -142,7 +155,7 @@ export function CollectionsProvider({
     onSuccess: (r) => {
       if (r.success && r.data) setCollections(r.data);
     },
-    onError: () => toast.error("Failed to delete collection"),
+    onError: () => toast.error(t("errors.deleteFailed")),
   });
 
   const emptyMutation = useMutation({
@@ -156,7 +169,7 @@ export function CollectionsProvider({
         );
       }
     },
-    onError: () => toast.error("Failed to empty collection"),
+    onError: () => toast.error(t("errors.emptyFailed")),
   });
 
   const isMutating =
@@ -166,8 +179,8 @@ export function CollectionsProvider({
     emptyMutation.isPending;
 
   const create = useCallback(
-    async (name: string, gameGuid: string) => {
-      await createMutation.mutateAsync({ name, gameGuid });
+    async (name: string, gameGuid: string, lang: string) => {
+      await createMutation.mutateAsync({ name, gameGuid, lang });
     },
     [createMutation],
   );

@@ -27,6 +27,7 @@ import {
   listSyncSources,
   revectorizeCard,
   startSync,
+  syncCardById,
 } from "@/lib/api/admin";
 import type { SyncState } from "@magic-vault/shared";
 import {
@@ -36,14 +37,17 @@ import {
 } from "@tabler/icons-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
   DEFAULT_SYNC_STATE,
   formatDuration,
+  LANGUAGE_LABELS,
   STATUS_COLORS,
 } from "./admin.constants";
 
 export default function AdminPage() {
+  const { t } = useTranslation("admin");
   const { activeOrg } = useOrg();
   const [syncState, setSyncState] = useState<SyncState>(DEFAULT_SYNC_STATE);
   const [now, setNow] = useState(() => Date.now());
@@ -57,7 +61,11 @@ export default function AdminPage() {
     new Set(),
   );
   const [syncGameKey, setSyncGameKey] = useState<string | null>(null);
+  const [syncLang, setSyncLang] = useState<string>("en");
   const [dumpGameKey, setDumpGameKey] = useState<string>("__all__");
+  const [syncCardGameKey, setSyncCardGameKey] = useState<string | null>(null);
+  const [syncCardLang, setSyncCardLang] = useState<string>("en");
+  const [syncCardIdInput, setSyncCardIdInput] = useState("");
 
   const sourcesQuery = useQuery({
     queryKey: ["admin", "sync-sources"],
@@ -167,7 +175,7 @@ export default function AdminPage() {
       toast.success(result.message);
       cardsQuery.refetch();
     } catch {
-      toast.error(`Failed to re-vectorize ${name}`);
+      toast.error(t("toasts.revectorizeError", { name }));
     } finally {
       setRevectorizingIds((prev) => {
         const next = new Set(prev);
@@ -177,8 +185,24 @@ export default function AdminPage() {
     }
   }
 
-  const startSyncMutation = useMutation({ mutationFn: startSync });
+  const startSyncMutation = useMutation({
+    mutationFn: ({ gameKey, lang }: { gameKey: string; lang: string }) =>
+      startSync(gameKey, lang),
+  });
   const cancelSyncMutation = useMutation({ mutationFn: cancelSync });
+  const syncCardMutation = useMutation({
+    mutationFn: () =>
+      syncCardById(syncCardGameKey!, syncCardIdInput.trim(), syncCardLang),
+    onSuccess: (result) => {
+      toast.success(result.message);
+      setSyncCardIdInput("");
+      cardsQuery.refetch();
+      cardGamesQuery.refetch();
+    },
+    onError: () => {
+      toast.error(t("toasts.syncCardError", { id: syncCardIdInput.trim() }));
+    },
+  });
   const dumpMutation = useMutation({
     mutationFn: (gameKey?: string) => dumpCards(gameKey),
     onSuccess: (result) => {
@@ -188,9 +212,7 @@ export default function AdminPage() {
       cardGamesQuery.refetch();
     },
     onError: (err) => {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to dump database",
-      );
+      toast.error(err instanceof Error ? err.message : t("toasts.dumpError"));
     },
   });
 
@@ -201,41 +223,76 @@ export default function AdminPage() {
     ? now - new Date(syncState.startedAt).getTime()
     : 0;
   const etaMs =
-    done > 0 && total > done
-      ? (elapsedMs / done) * (total - done)
-      : null;
+    done > 0 && total > done ? (elapsedMs / done) * (total - done) : null;
   const isRunning = syncState.status === "running";
+  const selectedSource = sourcesQuery.data?.find(
+    (s) => s.gameKey === syncGameKey,
+  );
+  const selectedCardSource = sourcesQuery.data?.find(
+    (s) => s.gameKey === syncCardGameKey,
+  );
 
   return (
     <div className="flex flex-col p-6 max-w-4xl mx-auto w-full h-full overlflow-hidden">
       <div className="rounded-lg rounded-b-none border p-4 flex flex-col gap-4">
         <div className="flex items-center justify-between gap-3">
           <div className="flex flex-col gap-0.5 min-w-0">
-            <p className="text-sm font-medium">Card Image Vectors</p>
+            <p className="text-sm font-medium">
+              {t("cardImageVectors.heading")}
+            </p>
             <p
               className="text-xs font-medium"
               style={{ color: STATUS_COLORS[syncState.status] }}
             >
-              {syncState.status.charAt(0).toUpperCase() +
-                syncState.status.slice(1)}
+              {t(`cardImageVectors.syncStatus.${syncState.status}`)}
               {isRunning &&
                 ` — ${
                   sourcesQuery.data?.find(
                     (s) => s.gameKey === syncState.gameKey,
                   )?.label ?? syncState.gameKey
+                }${
+                  syncState.lang !== "en"
+                    ? ` (${LANGUAGE_LABELS[syncState.lang] ?? syncState.lang})`
+                    : ""
                 }`}
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {!isRunning && (
-              <Select value={syncGameKey} onValueChange={setSyncGameKey}>
+              <Select
+                value={syncGameKey}
+                onValueChange={(value) => {
+                  setSyncGameKey(value);
+                  const source = sourcesQuery.data?.find(
+                    (s) => s.gameKey === value,
+                  );
+                  setSyncLang(source?.languages[0] ?? "en");
+                }}
+              >
                 <SelectTrigger className="w-56">
-                  <SelectValue placeholder="Select a game..." />
+                  <SelectValue placeholder={t("cardImageVectors.selectGamePlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
                   {(sourcesQuery.data ?? []).map((source) => (
                     <SelectItem key={source.gameKey} value={source.gameKey}>
                       {source.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {!isRunning && (selectedSource?.languages.length ?? 0) > 1 && (
+              <Select
+                value={syncLang}
+                onValueChange={(value) => setSyncLang(value ?? "en")}
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder={t("cardImageVectors.languagePlaceholder")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {selectedSource?.languages.map((lang) => (
+                    <SelectItem key={lang} value={lang}>
+                      {LANGUAGE_LABELS[lang] ?? lang}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -247,16 +304,25 @@ export default function AdminPage() {
                 disabled={cancelSyncMutation.isPending}
                 onClick={() => cancelSyncMutation.mutate()}
               >
-                {cancelSyncMutation.isPending ? "Cancelling..." : "Cancel"}
+                {cancelSyncMutation.isPending
+                  ? t("cardImageVectors.cancellingButton")
+                  : t("cardImageVectors.cancelButton")}
               </Button>
             ) : (
               <Button
                 disabled={
                   isRunning || startSyncMutation.isPending || !syncGameKey
                 }
-                onClick={() => startSyncMutation.mutate(syncGameKey!)}
+                onClick={() =>
+                  startSyncMutation.mutate({
+                    gameKey: syncGameKey!,
+                    lang: syncLang,
+                  })
+                }
               >
-                {startSyncMutation.isPending ? "Starting..." : "Start Sync"}
+                {startSyncMutation.isPending
+                  ? t("cardImageVectors.startingButton")
+                  : t("cardImageVectors.startSyncButton")}
               </Button>
             )}
           </div>
@@ -271,16 +337,26 @@ export default function AdminPage() {
               />
             </div>
             <div className="flex gap-4 text-xs text-muted-foreground tabular-nums">
+              <span>{t("cardImageVectors.progressCount", { done, total })}</span>
               <span>
-                {done} / {total}
+                {t("cardImageVectors.vectorizedCount", {
+                  count: syncState.processed,
+                })}
               </span>
-              <span>{syncState.processed} vectorized</span>
-              <span>{syncState.skipped} skipped</span>
+              <span>
+                {t("cardImageVectors.skippedCount", { count: syncState.skipped })}
+              </span>
               {isRunning && etaMs !== null && (
-                <span>~{formatDuration(etaMs)} remaining</span>
+                <span>
+                  {t("cardImageVectors.etaRemaining", {
+                    duration: formatDuration(etaMs),
+                  })}
+                </span>
               )}
               {syncState.errors > 0 && (
-                <span className="text-red-500">{syncState.errors} errors</span>
+                <span className="text-red-500">
+                  {t("cardImageVectors.errorsCount", { count: syncState.errors })}
+                </span>
               )}
             </div>
             {isRunning && syncState.currentCard && (
@@ -294,7 +370,9 @@ export default function AdminPage() {
 
       <div className="rounded-lg rounded-t-none border border-t-0 overflow-hidden">
         <div className="px-3 py-2 border-b bg-muted/30">
-          <p className="text-xs font-medium text-muted-foreground">Log</p>
+          <p className="text-xs font-medium text-muted-foreground">
+            {t("log.heading")}
+          </p>
         </div>
         <div
           ref={logRef}
@@ -311,7 +389,7 @@ export default function AdminPage() {
             ))
           ) : (
             <p className="text-muted-foreground whitespace-pre-wrap break-all">
-              No Logs
+              {t("log.empty")}
             </p>
           )}
         </div>
@@ -320,15 +398,19 @@ export default function AdminPage() {
       <div className="rounded-lg border mt-4 overflow-hidden flex flex-col flex-none h-96">
         <div className="px-4 py-3 border-b flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
-            <p className="text-sm font-medium shrink-0">Card Database</p>
+            <p className="text-sm font-medium shrink-0">
+              {t("cardDatabase.heading")}
+            </p>
             {cardsQuery.data && (
               <p className="text-xs text-muted-foreground tabular-nums">
-                {cardsQuery.data.total.toLocaleString()} cards
+                {t("cardDatabase.cardCount", {
+                  count: cardsQuery.data.total,
+                })}
               </p>
             )}
           </div>
           <Input
-            placeholder="Search by name..."
+            placeholder={t("cardDatabase.searchPlaceholder")}
             value={cardSearchInput}
             onChange={(e) => handleSearchInput(e.target.value)}
             className="h-7 text-xs max-w-48"
@@ -338,12 +420,12 @@ export default function AdminPage() {
         <div className="divide-y min-h-0 overflow-y-auto">
           {cardsQuery.isLoading && (
             <p className="text-xs text-muted-foreground text-center py-6">
-              Loading...
+              {t("cardDatabase.loading")}
             </p>
           )}
           {cardsQuery.isError && (
             <p className="text-xs text-destructive text-center py-6">
-              Failed to load cards
+              {t("cardDatabase.loadError")}
             </p>
           )}
           {cardsQuery.data?.cards.map((card) => (
@@ -356,6 +438,7 @@ export default function AdminPage() {
               </p>
               <p className="text-xs text-muted-foreground uppercase font-mono shrink-0">
                 {card.gameKey} · {card.setCode}
+                {card.lang !== "en" ? ` · ${card.lang}` : ""}
               </p>
               <p className="text-xs text-muted-foreground tabular-nums shrink-0 hidden sm:block">
                 {new Date(card.updatedAt).toLocaleDateString()}
@@ -365,7 +448,7 @@ export default function AdminPage() {
                 variant="ghost"
                 disabled={revectorizingIds.has(card.scryfallId)}
                 onClick={() => handleRevectorize(card.scryfallId, card.name)}
-                title="Re-vectorize"
+                title={t("cardDatabase.revectorizeTitle")}
               >
                 <IconRefresh
                   className={
@@ -377,7 +460,7 @@ export default function AdminPage() {
           ))}
           {cardsQuery.data?.cards.length === 0 && (
             <p className="text-xs text-muted-foreground text-center py-6">
-              No cards found
+              {t("cardDatabase.empty")}
             </p>
           )}
         </div>
@@ -385,7 +468,7 @@ export default function AdminPage() {
         {cardsQuery.data && totalPages > 1 && (
           <div className="border-t px-4 py-2 flex items-center justify-between">
             <p className="text-xs text-muted-foreground">
-              Page {cardPage} of {totalPages}
+              {t("cardDatabase.pageOf", { page: cardPage, total: totalPages })}
             </p>
             <div className="flex gap-1">
               <Button
@@ -415,9 +498,75 @@ export default function AdminPage() {
 
       <div className="rounded-lg border p-4 flex items-center justify-between mt-4 gap-3">
         <div className="flex flex-col gap-0.5 min-w-0">
-          <p className="text-sm font-medium">Dump Card Database</p>
+          <p className="text-sm font-medium">{t("syncCardById.heading")}</p>
           <p className="text-xs text-muted-foreground">
-            Permanently delete card image vectors, for one game or all of them
+            {t("syncCardById.description")}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Select
+            value={syncCardGameKey}
+            onValueChange={(value) => {
+              setSyncCardGameKey(value);
+              const source = sourcesQuery.data?.find(
+                (s) => s.gameKey === value,
+              );
+              setSyncCardLang(source?.languages[0] ?? "en");
+            }}
+          >
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder={t("cardImageVectors.selectGamePlaceholder")} />
+            </SelectTrigger>
+            <SelectContent>
+              {(sourcesQuery.data ?? []).map((source) => (
+                <SelectItem key={source.gameKey} value={source.gameKey}>
+                  {source.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {(selectedCardSource?.languages.length ?? 0) > 1 && (
+            <Select
+              value={syncCardLang}
+              onValueChange={(value) => setSyncCardLang(value ?? "en")}
+            >
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder={t("cardImageVectors.languagePlaceholder")} />
+              </SelectTrigger>
+              <SelectContent>
+                {selectedCardSource?.languages.map((lang) => (
+                  <SelectItem key={lang} value={lang}>
+                    {LANGUAGE_LABELS[lang] ?? lang}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <Input
+            placeholder={t("syncCardById.cardIdPlaceholder")}
+            value={syncCardIdInput}
+            onChange={(e) => setSyncCardIdInput(e.target.value)}
+          />
+          <Button
+            disabled={
+              !syncCardGameKey ||
+              !syncCardIdInput.trim() ||
+              syncCardMutation.isPending
+            }
+            onClick={() => syncCardMutation.mutate()}
+          >
+            {syncCardMutation.isPending
+              ? t("syncCardById.syncingButton")
+              : t("syncCardById.syncButton")}
+          </Button>
+        </div>
+      </div>
+
+      <div className="rounded-lg border p-4 flex items-center justify-between mt-4 gap-3">
+        <div className="flex flex-col gap-0.5 min-w-0">
+          <p className="text-sm font-medium">{t("dumpDatabase.heading")}</p>
+          <p className="text-xs text-muted-foreground">
+            {t("dumpDatabase.description")}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -426,10 +575,10 @@ export default function AdminPage() {
             onValueChange={(value) => setDumpGameKey(value ?? "__all__")}
           >
             <SelectTrigger className="w-48">
-              <SelectValue placeholder="Select scope..." />
+              <SelectValue placeholder={t("dumpDatabase.scopePlaceholder")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="__all__">All games</SelectItem>
+              <SelectItem value="__all__">{t("dumpDatabase.allGames")}</SelectItem>
               {(cardGamesQuery.data ?? []).map((g) => (
                 <SelectItem key={g.gameKey} value={g.gameKey}>
                   {g.gameKey} ({g.count})
@@ -441,15 +590,15 @@ export default function AdminPage() {
             <DialogTrigger
               render={<Button variant="destructive" disabled={isRunning} />}
             >
-              Dump
+              {t("dumpDatabase.dumpButton")}
             </DialogTrigger>
             <DialogContent showCloseButton={false}>
               <DialogHeader>
-                <DialogTitle>Dump card database</DialogTitle>
+                <DialogTitle>{t("dumpDatabase.dialogTitle")}</DialogTitle>
                 <DialogDescription>
                   {dumpGameKey === "__all__"
-                    ? "This will permanently delete all card image vectors and cannot be undone. Are you sure?"
-                    : `This will permanently delete all "${dumpGameKey}" card image vectors and cannot be undone. Are you sure?`}
+                    ? t("dumpDatabase.confirmAll")
+                    : t("dumpDatabase.confirmScoped", { scope: dumpGameKey })}
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter showCloseButton>
@@ -462,7 +611,9 @@ export default function AdminPage() {
                     )
                   }
                 >
-                  {dumpMutation.isPending ? "Dumping..." : "Dump"}
+                  {dumpMutation.isPending
+                    ? t("dumpDatabase.dumpingButton")
+                    : t("dumpDatabase.dumpButton")}
                 </Button>
               </DialogFooter>
             </DialogContent>

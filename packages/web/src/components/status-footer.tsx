@@ -1,15 +1,16 @@
-import { useCameraContext } from "@/features/scanner/api/use-camera";
-import { useScannedCards } from "@/features/scanner/api/use-scanned-cards";
-import { useSerial } from "@/features/scanner/api/use-serial";
-import { createSyncEventSource } from "@/lib/api/admin";
-import { useRole } from "@/hooks/use-role";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useCameraContext } from "@/features/scanner/api/use-camera";
+import { useScannedCards } from "@/features/scanner/api/use-scanned-cards";
+import { useSerial } from "@/features/scanner/api/use-serial";
+import { useRole } from "@/hooks/use-role";
+import { createSyncEventSource } from "@/lib/api/admin";
 import type { SyncState } from "@magic-vault/shared";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 
 export function FooterDivider() {
@@ -25,16 +26,23 @@ const DEFAULT_SYNC_STATE: SyncState = {
   errors: 0,
   startedAt: null,
   logs: [],
+  lang: "en",
 };
 
-function StatusDot({ variant }: { variant: "success" | "warning" | "error" | "muted" }) {
+function StatusDot({
+  variant,
+}: {
+  variant: "success" | "warning" | "error" | "muted";
+}) {
   const colors = {
     success: "bg-green-500",
     warning: "bg-amber-500 animate-pulse",
     error: "bg-red-500",
     muted: "bg-muted-foreground/30",
   };
-  return <span className={`size-1.5 rounded-full shrink-0 ${colors[variant]}`} />;
+  return (
+    <span className={`size-1.5 rounded-full shrink-0 ${colors[variant]}`} />
+  );
 }
 
 function StatusItem({
@@ -58,6 +66,7 @@ function StatusItem({
 }
 
 function SyncStatusItem() {
+  const { t } = useTranslation("common");
   const [syncState, setSyncState] = useState<SyncState>(DEFAULT_SYNC_STATE);
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -106,7 +115,8 @@ function SyncStatusItem() {
   const { status, total, processed, skipped } = syncState;
   const done = processed + skipped;
 
-  const visible = status !== "idle" && status !== "cancelled" && pathname !== "/app/admin";
+  const visible =
+    status !== "idle" && status !== "cancelled" && pathname !== "/app/admin";
   if (!visible) return null;
 
   const dot =
@@ -120,17 +130,22 @@ function SyncStatusItem() {
 
   const countLabel =
     status === "running" && total > 0
-      ? `Sync ${done.toLocaleString()}/${total.toLocaleString()}`
-      : `Sync ${status}`;
+      ? t("statusFooter.syncProgress", {
+          done: done.toLocaleString(),
+          total: total.toLocaleString(),
+        })
+      : t("statusFooter.syncStatus", { status });
 
   const tooltip =
     status === "running"
-      ? `Syncing card image vectors${syncState.currentCard ? `: ${syncState.currentCard}` : "…"}`
+      ? syncState.currentCard
+        ? t("statusFooter.syncingCard", { card: syncState.currentCard })
+        : t("statusFooter.syncing")
       : status === "completed"
-        ? "Card image vector sync completed"
+        ? t("statusFooter.syncCompleted")
         : status === "failed"
-          ? "Card image vector sync failed"
-          : "Card image vector sync";
+          ? t("statusFooter.syncFailed")
+          : t("statusFooter.sync");
 
   return (
     <Tooltip>
@@ -154,12 +169,13 @@ function SyncStatusItem() {
 }
 
 export function StatusFooter() {
+  const { t } = useTranslation("common");
   const { status: cameraStatus } = useCameraContext();
   const { isConnected, isReady } = useSerial();
   const { cards } = useScannedCards();
 
   const totalValue = cards.reduce(
-    (sum, { card }) => sum + parseFloat(card.prices.usd ?? "0"),
+    (sum, { card }) => sum + (card.price ?? 0),
     0,
   );
 
@@ -174,33 +190,43 @@ export function StatusFooter() {
 
   const cameraTooltip =
     cameraStatus === "ready"
-      ? "Camera connected"
+      ? t("statusFooter.cameraConnected")
       : cameraStatus === "error"
-        ? "Camera error"
+        ? t("statusFooter.cameraError")
         : cameraStatus === "requesting"
-          ? "Requesting camera access…"
-          : "No camera";
+          ? t("statusFooter.cameraRequesting")
+          : t("statusFooter.cameraNone");
 
   const deviceDot = !isConnected ? "muted" : !isReady ? "warning" : "success";
   const deviceTooltip = !isConnected
-    ? "No sorter connected"
+    ? t("statusFooter.sorterDisconnected")
     : !isReady
-      ? "Sorter connected, running self-test…"
-      : "Sorter ready";
+      ? t("statusFooter.sorterSelfTest")
+      : t("statusFooter.sorterReady");
 
   return (
     <div className="flex items-center gap-3 text-muted-foreground">
       <div className="flex items-center gap-3">
-        <StatusItem label="Camera" dot={cameraDot} tooltip={cameraTooltip} />
-        <StatusItem label="Sorter" dot={deviceDot} tooltip={deviceTooltip} />
+        <StatusItem
+          label={t("statusFooter.camera")}
+          dot={cameraDot}
+          tooltip={cameraTooltip}
+        />
+        <StatusItem
+          label={t("statusFooter.sorter")}
+          dot={deviceDot}
+          tooltip={deviceTooltip}
+        />
         <SyncStatusItem />
       </div>
       {cards.length > 0 && (
         <>
           <FooterDivider />
           <p className="text-xs tabular-nums">
-            {cards.length} card{cards.length !== 1 ? "s" : ""} · $
-            {totalValue.toFixed(2)}
+            {t("statusFooter.cardTotal", {
+              count: cards.length,
+              value: totalValue.toFixed(2),
+            })}
           </p>
         </>
       )}

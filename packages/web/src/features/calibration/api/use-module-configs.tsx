@@ -12,6 +12,7 @@ import {
 } from "@magic-vault/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createContext, useCallback, useContext, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 const ModuleConfigsContext = createContext<ModuleConfigsContextValue | null>(
@@ -30,6 +31,7 @@ export function ModuleConfigsProvider({
 }: {
   children: React.ReactNode;
 }) {
+  const { t } = useTranslation("calibration");
   const queryClient = useQueryClient();
   const { activeOrg } = useOrg();
   const { sendCommand, receiveResponse, registerPreTestHook } = useSerial();
@@ -50,20 +52,28 @@ export function ModuleConfigsProvider({
         try {
           const parsed = response ? JSON.parse(response) : null;
           if (parsed?.error) {
-            toast.error(`Module ${config.moduleNumber} calibration not synced`, {
-              description: String(parsed.error),
-            });
+            toast.error(
+              t("useModuleConfigs.toasts.notSynced", {
+                module: config.moduleNumber,
+              }),
+              { description: String(parsed.error) },
+            );
           }
         } catch {
-          toast.error(`Module ${config.moduleNumber} calibration not synced`, {
-            description: response
-              ? `Unexpected response: ${response}`
-              : "No response from sorter.",
-          });
+          toast.error(
+            t("useModuleConfigs.toasts.notSynced", {
+              module: config.moduleNumber,
+            }),
+            {
+              description: response
+                ? t("useModuleConfigs.toasts.unexpectedResponse", { response })
+                : t("useModuleConfigs.toasts.noResponse"),
+            },
+          );
         }
       }
     });
-  }, [registerPreTestHook, queryClient, sendCommand, receiveResponse]);
+  }, [registerPreTestHook, queryClient, sendCommand, receiveResponse, t]);
 
   const saveConfigMutation = useMutation({
     mutationFn: ({
@@ -88,7 +98,7 @@ export function ModuleConfigsProvider({
     onError: (_err, _vars, context) => {
       if (context?.previous)
         queryClient.setQueryData(["modules"], context.previous);
-      toast.error("Failed to save module config");
+      toast.error(t("useModuleConfigs.toasts.saveFailed"));
     },
     onSuccess: (result, { moduleNumber, calibration }) => {
       if (result.success && result.data) {

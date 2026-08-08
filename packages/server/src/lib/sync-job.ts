@@ -2,12 +2,12 @@ import type { SyncState, SyncStatus } from "@magic-vault/shared";
 import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { cardImageVectors } from "../db/schema";
+import { resolveGameDataSourceUrl } from "./card-search/resolve";
+import type { SyncSource, SyncSourceCard } from "./card-search/sync-types";
+import { sendDiscordNotification } from "./discord";
 import { gundamSyncSource } from "./gundam/sync";
 import { pokemonSyncSource } from "./pokemon/sync";
 import { scryfallSyncSource } from "./scryfall/sync";
-import type { SyncSource } from "./card-search/sync-types";
-import { resolveGameDataSourceUrl } from "./card-search/resolve";
-import { sendDiscordNotification } from "./discord";
 import { vectorizeImageFromBuffer } from "./vectorize";
 
 export const SYNC_SOURCES: Record<string, SyncSource> = {
@@ -21,6 +21,7 @@ type SseWriter = (event: string, data: unknown) => void;
 let state: SyncState = {
   status: "idle",
   gameKey: "",
+  lang: "en",
   total: 0,
   processed: 0,
   skipped: 0,
@@ -30,6 +31,7 @@ let state: SyncState = {
 };
 
 let cancelFlag = false;
+let abortController: AbortController | null = null;
 const writers = new Set<SseWriter>();
 
 function addLog(msg: string) {
@@ -60,19 +62,27 @@ export function subscribeSSE(writer: SseWriter): () => void {
 export function cancelSync(): void {
   if (state.status === "running") {
     cancelFlag = true;
+    abortController?.abort();
   }
 }
 
-export function startSync(orgId: string | undefined, gameKey: string): void {
+export function startSync(
+  orgId: string | undefined,
+  gameKey: string,
+  lang: string = "en",
+): void {
   if (state.status === "running") return;
 
   const source = SYNC_SOURCES[gameKey];
   if (!source) return;
+  if (!source.languages.includes(lang)) return;
 
   cancelFlag = false;
+  abortController = new AbortController();
   state = {
     status: "running",
     gameKey,
+    lang,
     total: 0,
     processed: 0,
     skipped: 0,
@@ -82,7 +92,7 @@ export function startSync(orgId: string | undefined, gameKey: string): void {
   };
 
   emit("status", getStatus());
-  runSync(source).catch((err) => {
+  runSync(source, lang).catch((err) => {
     state = { ...state, status: "failed" };
     const msg = err instanceof Error ? err.message : String(err);
     addLog(`Fatal error: ${msg}`);
@@ -98,15 +108,39 @@ export function startSync(orgId: string | undefined, gameKey: string): void {
   });
 }
 
-async function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+const VECTORIZE_CONCURRENCY = parseInt(
+  process.env.VECTORIZE_CONCURRENCY ?? "10",
+);
 
-async function runSync(source: SyncSource): Promise<void> {
-  const baseUrl = await resolveGameDataSourceUrl(source.gameKey, source.defaultUrl);
+async function runSync(source: SyncSource, lang: string): Promise<void> {
+  const baseUrl = await resolveGameDataSourceUrl(
+    source.gameKey,
+    source.defaultUrl,
+  );
   addLog(`Using data source: ${baseUrl}`);
 
-  const cards = await source.fetchCards(baseUrl, addLog);
+  let cards: Awaited<ReturnType<SyncSource["fetchCards"]>>;
+  try {
+    cards = await source.fetchCards(
+      baseUrl,
+      addLog,
+      lang,
+      abortController?.signal,
+    );
+  } catch (err) {
+    if (cancelFlag) {
+      state = { ...state, status: "cancelled" };
+      addLog("Sync cancelled by user.");
+      emit("done", {
+        status: "cancelled" as SyncStatus,
+        processed: state.processed,
+        skipped: state.skipped,
+        errors: state.errors,
+      });
+      return;
+    }
+    throw err;
+  }
   state = { ...state, total: cards.length };
   emit("status", getStatus());
 
@@ -119,22 +153,10 @@ async function runSync(source: SyncSource): Promise<void> {
   const existingSet = new Set(existing.map((r) => r.id));
 
   addLog(
-    `Found ${existingSet.size} existing ${source.label} cards in DB. Starting vectorization...`,
+    `Found ${existingSet.size} existing ${source.label} cards in DB. Starting vectorization (${VECTORIZE_CONCURRENCY} in parallel)...`,
   );
 
-  for (const card of cards) {
-    if (cancelFlag) {
-      state = { ...state, status: "cancelled" };
-      addLog("Sync cancelled by user.");
-      emit("done", {
-        status: "cancelled" as SyncStatus,
-        processed: state.processed,
-        skipped: state.skipped,
-        errors: state.errors,
-      });
-      return;
-    }
-
+  async function processCard(card: SyncSourceCard): Promise<void> {
     if (!card.imageUrl || existingSet.has(card.id)) {
       state = { ...state, skipped: state.skipped + 1 };
       emit("progress", {
@@ -143,12 +165,16 @@ async function runSync(source: SyncSource): Promise<void> {
         errors: state.errors,
         currentCard: card.name,
       });
-      continue;
+      return;
     }
 
     try {
-      const imageRes = await fetch(card.imageUrl, { headers: source.fetchHeaders });
-      if (!imageRes.ok) throw new Error(`Image fetch failed: ${imageRes.status}`);
+      const imageRes = await fetch(card.imageUrl, {
+        headers: source.fetchHeaders,
+        signal: abortController?.signal,
+      });
+      if (!imageRes.ok)
+        throw new Error(`Image fetch failed: ${imageRes.status}`);
       const buffer = Buffer.from(await imageRes.arrayBuffer());
       const embedding = await vectorizeImageFromBuffer(buffer);
 
@@ -157,6 +183,7 @@ async function runSync(source: SyncSource): Promise<void> {
         .values({
           scryfallId: card.id,
           gameKey: source.gameKey,
+          lang,
           name: card.name,
           setCode: card.setCode,
           embedding,
@@ -168,25 +195,52 @@ async function runSync(source: SyncSource): Promise<void> {
       addLog(
         `[${state.processed + state.skipped}/${state.total}] ${card.name} (${card.setCode})`,
       );
-      emit("progress", {
-        processed: state.processed,
-        skipped: state.skipped,
-        errors: state.errors,
-        currentCard: card.name,
-      });
-
-      await sleep(100);
     } catch (err) {
       state = { ...state, errors: state.errors + 1 };
       const msg = err instanceof Error ? err.message : String(err);
       addLog(`Error: ${card.name}: ${msg}`);
-      emit("progress", {
-        processed: state.processed,
-        skipped: state.skipped,
-        errors: state.errors,
-        currentCard: card.name,
-      });
     }
+
+    emit("progress", {
+      processed: state.processed,
+      skipped: state.skipped,
+      errors: state.errors,
+      currentCard: card.name,
+    });
+  }
+
+  let nextIndex = 0;
+  let cancelled = false;
+
+  async function worker(): Promise<void> {
+    for (;;) {
+      if (cancelFlag) {
+        cancelled = true;
+        return;
+      }
+      const index = nextIndex++;
+      if (index >= cards.length) return;
+      await processCard(cards[index]);
+    }
+  }
+
+  await Promise.all(
+    Array.from(
+      { length: Math.min(VECTORIZE_CONCURRENCY, cards.length) },
+      worker,
+    ),
+  );
+
+  if (cancelled) {
+    state = { ...state, status: "cancelled" };
+    addLog("Sync cancelled by user.");
+    emit("done", {
+      status: "cancelled" as SyncStatus,
+      processed: state.processed,
+      skipped: state.skipped,
+      errors: state.errors,
+    });
+    return;
   }
 
   state = { ...state, status: "completed" };

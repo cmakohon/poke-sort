@@ -44,6 +44,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -55,6 +56,7 @@ function countConditions(group: BinRuleGroup): number {
 }
 
 function BinSnapshotSummary({ snapshot }: { snapshot: BinConfig[] }) {
+  const { t } = useTranslation("bins");
   return (
     <div className="flex flex-col gap-0.5">
       {snapshot.map((bin) => {
@@ -62,14 +64,14 @@ function BinSnapshotSummary({ snapshot }: { snapshot: BinConfig[] }) {
         return (
           <div key={bin.binNumber} className="flex gap-2">
             <span className="w-10 shrink-0 text-muted-foreground">
-              Bin {bin.binNumber}
+              {t("presetSelector.binLabel", { number: bin.binNumber })}
             </span>
             <span>
               {bin.isCatchAll
-                ? "catch-all"
+                ? t("presetSelector.catchAll")
                 : count === 0
-                  ? "no rules"
-                  : `${count} condition${count !== 1 ? "s" : ""}`}
+                  ? t("presetSelector.noRules")
+                  : t("presetSelector.conditionCount", { count })}
             </span>
           </div>
         );
@@ -79,6 +81,7 @@ function BinSnapshotSummary({ snapshot }: { snapshot: BinConfig[] }) {
 }
 
 export function PresetSelector({ readOnly }: PresetSelectorProps) {
+  const { t } = useTranslation("bins");
   const {
     sets,
     activateSet,
@@ -114,10 +117,10 @@ export function PresetSelector({ readOnly }: PresetSelectorProps) {
           queryKey: ["bins", "history", selectedSet?.guid],
         });
         setHistoryOpen(false);
-        toast.success("Reverted to previous bin set state");
+        toast.success(t("presetSelector.revertSuccess"));
       }
     },
-    onError: () => toast.error("Failed to revert"),
+    onError: () => toast.error(t("presetSelector.revertFailed")),
   });
 
   const historyEntries = useMemo((): AuditEntry[] => {
@@ -199,7 +202,7 @@ export function PresetSelector({ readOnly }: PresetSelectorProps) {
 
   return (
     <Field>
-      <FieldLabel>Sorting Logic</FieldLabel>
+      <FieldLabel>{t("presetSelector.sortingLogic")}</FieldLabel>
       <ButtonGroup className="w-full">
         <Select
           key={selectedSet?.guid ?? ""}
@@ -210,7 +213,7 @@ export function PresetSelector({ readOnly }: PresetSelectorProps) {
             className="flex-1 overflow-hidden"
             disabled={isActivating}
           >
-            <SelectValue placeholder="Select a set...">
+            <SelectValue placeholder={t("presetSelector.selectSetPlaceholder")}>
               <span className="flex items-center gap-1.5 min-w-0">
                 {isActivating && (
                   <IconLoader2 className="size-3 animate-spin shrink-0 text-muted-foreground" />
@@ -246,7 +249,7 @@ export function PresetSelector({ readOnly }: PresetSelectorProps) {
                   </Button>
                 }
               ></TooltipTrigger>
-              <TooltipContent>Edit Sorting Logic</TooltipContent>
+              <TooltipContent>{t("presetSelector.editSortingLogic")}</TooltipContent>
             </Tooltip>
           </>
         ) : (
@@ -262,16 +265,18 @@ export function PresetSelector({ readOnly }: PresetSelectorProps) {
             <DeleteDialog
               open={deleteDialogOpen}
               onOpenChange={setDeleteDialogOpen}
-              title="Delete Set"
-              description={`Permanently deletes "${selectedSet?.name}". This cannot be undone.`}
+              title={t("presetSelector.deleteSetTitle")}
+              description={t("presetSelector.deleteSetDescription", {
+                name: selectedSet?.name,
+              })}
               confirm={{ type: "name", name: selectedSet?.name ?? "" }}
               onConfirm={handleDelete}
             />
             <DynamicDialog
               open={renameDialogOpen}
               onOpenChange={handleRenameDialogChange}
-              title="Rename Set"
-              description="Enter a new name for this set."
+              title={t("presetSelector.renameSetTitle")}
+              description={t("presetSelector.renameSetDescription")}
               trigger={
                 <Button
                   variant="outline"
@@ -287,7 +292,7 @@ export function PresetSelector({ readOnly }: PresetSelectorProps) {
                     variant="outline"
                     onClick={() => setRenameDialogOpen(false)}
                   >
-                    Cancel
+                    {t("presetSelector.cancel")}
                   </Button>
                   <Button
                     onClick={renameForm.handleSubmit(handleRename)}
@@ -296,7 +301,7 @@ export function PresetSelector({ readOnly }: PresetSelectorProps) {
                     {isPresetMutating && (
                       <IconLoader2 className="size-4 animate-spin" />
                     )}
-                    Rename
+                    {t("presetSelector.rename")}
                   </Button>
                 </>
               }
@@ -309,12 +314,12 @@ export function PresetSelector({ readOnly }: PresetSelectorProps) {
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid || undefined}>
                       <FieldLabel htmlFor="rename-set-name">
-                        Set name
+                        {t("presetSelector.setNameLabel")}
                       </FieldLabel>
                       <Input
                         {...field}
                         id="rename-set-name"
-                        placeholder="Set name..."
+                        placeholder={t("presetSelector.setNamePlaceholder")}
                         aria-invalid={fieldState.invalid}
                         autoFocus
                       />
@@ -329,8 +334,8 @@ export function PresetSelector({ readOnly }: PresetSelectorProps) {
             <DynamicDialog
               open={createDialogOpen}
               onOpenChange={handleCreateDialogChange}
-              title="New Set"
-              description="Create a new set with 7 empty bins."
+              title={t("presetSelector.newSetTitle")}
+              description={t("presetSelector.newSetDescription")}
               trigger={
                 <Button
                   variant="outline"
@@ -346,7 +351,7 @@ export function PresetSelector({ readOnly }: PresetSelectorProps) {
                     variant="outline"
                     onClick={() => handleCreateDialogChange(false)}
                   >
-                    Cancel
+                    {t("presetSelector.cancel")}
                   </Button>
                   <Button
                     onClick={createForm.handleSubmit(handleCreate)}
@@ -355,7 +360,7 @@ export function PresetSelector({ readOnly }: PresetSelectorProps) {
                     {isPresetMutating && (
                       <IconLoader2 className="size-4 animate-spin" />
                     )}
-                    Create
+                    {t("presetSelector.create")}
                   </Button>
                 </>
               }
@@ -367,11 +372,13 @@ export function PresetSelector({ readOnly }: PresetSelectorProps) {
                   control={createForm.control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid || undefined}>
-                      <FieldLabel htmlFor="set-name">Set name</FieldLabel>
+                      <FieldLabel htmlFor="set-name">
+                        {t("presetSelector.setNameLabel")}
+                      </FieldLabel>
                       <Input
                         {...field}
                         id="set-name"
-                        placeholder="Set name..."
+                        placeholder={t("presetSelector.setNamePlaceholder")}
                         aria-invalid={fieldState.invalid}
                         autoFocus
                       />
@@ -396,7 +403,7 @@ export function PresetSelector({ readOnly }: PresetSelectorProps) {
                   </Button>
                 }
               ></TooltipTrigger>
-              <TooltipContent>View History</TooltipContent>
+              <TooltipContent>{t("presetSelector.viewHistory")}</TooltipContent>
             </Tooltip>
           </>
         )}
@@ -405,7 +412,7 @@ export function PresetSelector({ readOnly }: PresetSelectorProps) {
       <AuditDrawer
         open={historyOpen}
         onOpenChange={setHistoryOpen}
-        title="Bin Set History"
+        title={t("presetSelector.historyTitle")}
         entries={historyEntries}
         isLoading={historyLoading}
         onRevert={(guid) => revertMutation.mutate(guid)}

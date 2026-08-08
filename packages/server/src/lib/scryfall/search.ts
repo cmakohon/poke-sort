@@ -9,6 +9,80 @@ export const SCRYFALL_HEADERS = {
   Accept: "application/json",
 };
 
+interface ScryfallImageUris {
+  small: string;
+  normal: string;
+}
+
+interface ScryfallCardFace {
+  name?: string;
+  printed_name?: string;
+  mana_cost?: string;
+  oracle_text?: string;
+  printed_text?: string;
+  power?: string;
+  toughness?: string;
+  artist?: string;
+  image_uris?: ScryfallImageUris;
+}
+
+interface ScryfallApiCard {
+  id: string;
+  lang?: string;
+  name: string;
+  printed_name?: string;
+  image_uris?: ScryfallImageUris;
+  card_faces?: ScryfallCardFace[];
+  mana_cost?: string;
+  cmc?: number;
+  type_line: string;
+  printed_type_line?: string;
+  oracle_text?: string;
+  printed_text?: string;
+  power?: string;
+  toughness?: string;
+  color_identity: string[];
+  set: string;
+  set_name: string;
+  collector_number: string;
+  rarity: string;
+  artist?: string;
+  scryfall_uri: string;
+  prices: { usd: string | null };
+}
+
+function normalizeScryfallCard(raw: ScryfallApiCard): PlayingCard {
+  const face = raw.card_faces?.[0];
+  const imageUris = raw.image_uris ?? face?.image_uris;
+
+  return {
+    id: raw.id,
+    name: raw.printed_name ?? face?.printed_name ?? face?.name ?? raw.name,
+    image: imageUris
+      ? { small: imageUris.small, normal: imageUris.normal }
+      : null,
+    set: raw.set,
+    setName: raw.set_name,
+    collectorNumber: raw.collector_number,
+    rarity: raw.rarity,
+    typeLine: raw.printed_type_line ?? raw.type_line,
+    text:
+      raw.printed_text ??
+      face?.printed_text ??
+      raw.oracle_text ??
+      face?.oracle_text,
+    manaCost: raw.mana_cost ?? face?.mana_cost,
+    power: raw.power ?? face?.power,
+    toughness: raw.toughness ?? face?.toughness,
+    colorIdentity: raw.color_identity,
+    artist: raw.artist ?? face?.artist,
+    price: raw.prices.usd != null ? Number.parseFloat(raw.prices.usd) : null,
+    sourceUrl: raw.scryfall_uri,
+    cmc: raw.cmc,
+    raw,
+  };
+}
+
 export async function Search(
   query: string,
   baseUrl: string = SCRYFALL_DEFAULT_URL,
@@ -40,11 +114,11 @@ export async function Search(
     };
   }
 
-  const data = (await response.json()) as { data: PlayingCard[] };
+  const data = (await response.json()) as { data: ScryfallApiCard[] };
 
   return {
     message: "Cards successfully retrieved.",
-    data: data.data,
+    data: data.data.map(normalizeScryfallCard),
     success: true,
   };
 }
@@ -64,10 +138,12 @@ export async function SearchById(
     };
   }
 
+  const raw = (await response.json()) as ScryfallApiCard;
+
   return {
     success: true,
     message: "Successfully fetched card by id.",
-    data: await response.json(),
+    data: normalizeScryfallCard(raw),
   };
 }
 

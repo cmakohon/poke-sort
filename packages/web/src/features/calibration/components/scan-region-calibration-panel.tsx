@@ -20,6 +20,7 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react";
+import { useTranslation } from "react-i18next";
 
 function clampRegion(region: ScanRegion): ScanRegion {
   return {
@@ -79,6 +80,7 @@ type DragState =
     };
 
 export function ScanRegionCalibrationPanel() {
+  const { t } = useTranslation("calibration");
   const { activeOrg } = useOrg();
   const queryClient = useQueryClient();
   const queryOpts = orgSettingsQueryOptions(activeOrg?.id);
@@ -283,8 +285,7 @@ export function ScanRegionCalibrationPanel() {
   return (
     <div className="flex flex-col gap-2">
       <p className="text-xs text-muted-foreground">
-        Drag the box to move it, or drag the handle to resize. Line it up with a
-        card sitting at module 1.
+        {t("scanRegionCalibrationPanel.instructions")}
       </p>
 
       <div className="flex flex-col gap-2 w-full max-w-sm mx-auto md:mx-0">
@@ -296,10 +297,10 @@ export function ScanRegionCalibrationPanel() {
         >
           <IconCameraSpark />
           {isConnecting
-            ? "Connecting…"
+            ? t("scanRegionCalibrationPanel.connecting")
             : isCameraActive
-              ? "Reconnect Webcam"
-              : "Connect Webcam"}
+              ? t("scanRegionCalibrationPanel.reconnectWebcam")
+              : t("scanRegionCalibrationPanel.connectWebcam")}
         </Button>
 
         <div className="relative overflow-hidden bg-background w-full rounded-lg border aspect-[2.5/3.5]">
@@ -333,7 +334,7 @@ export function ScanRegionCalibrationPanel() {
           {!isCameraActive && (
             <div className="absolute inset-0 flex items-center justify-center p-4 text-center">
               <p className="text-xs text-muted-foreground">
-                {errorMessage || "Waiting for camera…"}
+                {errorMessage || t("scanRegionCalibrationPanel.waitingForCamera")}
               </p>
             </div>
           )}
@@ -344,26 +345,32 @@ export function ScanRegionCalibrationPanel() {
             variant="outline"
             size="icon"
             onClick={() => setDraft({ ...DEFAULT_SCAN_REGION })}
-            title="Reset to default"
+            title={t("scanRegionCalibrationPanel.resetToDefault")}
           >
             <IconRotate size={14} />
-            <span className="sr-only">Reset to default</span>
+            <span className="sr-only">
+              {t("scanRegionCalibrationPanel.resetToDefault")}
+            </span>
           </Button>
           <Button
             disabled={draft === null || saveMutation.isPending}
             onClick={() => saveMutation.mutate(region)}
             className="flex-1"
           >
-            {saveMutation.isPending ? "Saving…" : "Save Scan Region"}
+            {saveMutation.isPending
+              ? t("scanRegionCalibrationPanel.saving")
+              : t("scanRegionCalibrationPanel.saveScanRegion")}
           </Button>
         </div>
         {isLoading ? (
           <Skeleton className="h-3 w-40 rounded" />
         ) : (
           <p className="text-xs text-muted-foreground">
-            Saved: {Math.round(savedRegion.coverage * 100)}% coverage,{" "}
-            {Math.round(savedRegion.offsetX * 100)}% /{" "}
-            {Math.round(savedRegion.offsetY * 100)}% offset
+            {t("scanRegionCalibrationPanel.savedSummary", {
+              coverage: Math.round(savedRegion.coverage * 100),
+              offsetX: Math.round(savedRegion.offsetX * 100),
+              offsetY: Math.round(savedRegion.offsetY * 100),
+            })}
           </p>
         )}
       </div>

@@ -8,7 +8,6 @@ import {
 import { BinLocationDiagram } from "@/features/bins/components/bin-location-diagram";
 import type { ScannedCardItemProps } from "@/features/cards/types";
 import { cn } from "@/lib/utils";
-import { getCardImageUris } from "@magic-vault/shared";
 import {
   IconCheck,
   IconDownload,
@@ -16,6 +15,7 @@ import {
   IconSparkles,
 } from "@tabler/icons-react";
 import { memo } from "react";
+import { useTranslation } from "react-i18next";
 
 export const ScannedCardItem = memo(function ScannedCardItem({
   card,
@@ -27,6 +27,7 @@ export const ScannedCardItem = memo(function ScannedCardItem({
   isFoil = false,
   isDownloaded = false,
 }: ScannedCardItemProps) {
+  const { t } = useTranslation("cards");
   return (
     <div
       className={cn(
@@ -39,7 +40,7 @@ export const ScannedCardItem = memo(function ScannedCardItem({
           {hasAlternatives && (
             <div
               className="absolute top-1 left-1 z-20 rounded-full bg-amber-500 p-0.5 shadow-md"
-              title="Multiple close matches - tap to review"
+              title={t("scannedCardItem.multipleMatchesTooltip")}
             >
               <IconHelpCircle className="size-3 text-white" />
             </div>
@@ -50,7 +51,7 @@ export const ScannedCardItem = memo(function ScannedCardItem({
                 "absolute top-1 z-20 rounded-full p-0.5 shadow-md bg-gradient-to-br from-fuchsia-400 via-cyan-400 to-amber-300",
                 hasAlternatives ? "left-6" : "left-1",
               )}
-              title="Foil"
+              title={t("scannedCardItem.foil")}
             >
               <IconSparkles className="size-3 text-white" />
             </div>
@@ -70,15 +71,14 @@ export const ScannedCardItem = memo(function ScannedCardItem({
                 }
               />
               <TooltipContent>
-                How closely the scanned image matches this card, based on visual
-                similarity search
+                {t("scannedCardItem.matchTooltip")}
               </TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger
                 render={
                   <Badge variant="secondary" className="shadow-md">
-                    Bin {binNumber}
+                    {t("scannedCardItem.bin", { number: binNumber })}
                   </Badge>
                 }
               />
@@ -88,7 +88,7 @@ export const ScannedCardItem = memo(function ScannedCardItem({
             </Tooltip>
           </div>
           <img
-            src={getCardImageUris(card)?.normal || ""}
+            src={card.image?.normal || ""}
             alt={card.name}
             className="w-full h-full object-cover"
           />
@@ -117,17 +117,17 @@ export const ScannedCardItem = memo(function ScannedCardItem({
             {card.set}
           </p>
           <p className="text-xs text-muted-foreground">
-            #{card.collector_number}
+            #{card.collectorNumber}
           </p>
           {isDownloaded && (
-            <span title="Downloaded">
+            <span title={t("scannedCardItem.downloaded")}>
               <IconDownload className="size-3 text-muted-foreground shrink-0" />
             </span>
           )}
         </div>
-        {card.prices?.usd && (
+        {card.price != null && (
           <p className="text-xs font-medium text-muted-foreground">
-            ${card.prices.usd}
+            ${card.price.toFixed(2)}
           </p>
         )}
       </div>

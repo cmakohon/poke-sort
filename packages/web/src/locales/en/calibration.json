@@ -1,0 +1,150 @@
+{
+  "servos": {
+    "bottom": {
+      "label": "Bottom Paddle",
+      "closed": "Set Closed",
+      "open": "Set Open"
+    },
+    "paddle": {
+      "label": "Paddles",
+      "closed": "Set Closed",
+      "open": "Set Open"
+    },
+    "pusher": {
+      "label": "Pusher",
+      "left": "Set Left",
+      "neutral": "Set Neutral",
+      "right": "Set Right"
+    }
+  },
+  "binRoutingControls": {
+    "label": "Bin Routing",
+    "feed": "Feed",
+    "binActive": "Bin {{bin}}…",
+    "running": "Running…",
+    "sampleRun": "Sample Run",
+    "binButton": "Bin {{bin}}"
+  },
+  "feederCalibrationPanel": {
+    "heading": "Feeder",
+    "speedLabel": "Speed (PWM)",
+    "speedTooltip": "Feeder motor speed as a raw PWM signal value (120 = slowest, 490 = fastest the motor controller accepts)",
+    "setSpeed": "Set Speed",
+    "timeoutLabel": "Timeout (ms)",
+    "setTimeout": "Set Timeout",
+    "msValue": "{{value}} ms",
+    "pulseDurationLabel": "Pulse Duration (ms)",
+    "continuous": "Continuous",
+    "continuousFeedButton": "Continuous Feed",
+    "setPulseDuration": "Set Pulse Duration",
+    "pauseDurationLabel": "Pause Duration (ms)",
+    "setPauseDuration": "Set Pause Duration",
+    "settleDurationLabel": "Settle Duration (ms)",
+    "settleDurationDescription": "Extra time to keep feeding once the module 1 sensor sees the card, so it travels all the way into the mechanism before the motor stops.",
+    "setSettleDuration": "Set Settle Duration"
+  },
+  "irSensorPanel": {
+    "label": "IR Sensors",
+    "tooltip": "Infrared sensors that detect when a card is present at each module's feed path",
+    "stop": "Stop",
+    "monitor": "Monitor",
+    "monitorTooltip": "Continuously poll the IR sensors and update the badges below in real time",
+    "read": "Read",
+    "readTooltip": "Take a single snapshot reading of the IR sensors",
+    "moduleLabel": "Module {{module}}",
+    "detectedTooltip": "A card is currently detected at Module {{module}}'s IR sensor",
+    "notDetectedTooltip": "No card currently detected at Module {{module}}'s IR sensor",
+    "hopperEmpty": "Hopper empty",
+    "hopper": "Hopper",
+    "hopperTooltip": "Whether the card hopper's IR sensor currently detects cards waiting to be fed"
+  },
+  "ledControls": {
+    "label": "LEDs",
+    "ledLabel": "LED {{led}}"
+  },
+  "moduleCalibrationGrid": {
+    "moduleHeading": "Module {{module}}",
+    "resetTo": "Reset to {{position}}",
+    "sliderTooltip": "Raw servo pulse position (120-490). Use the position buttons above, then a \"Set\" button to save this as a calibration point.",
+    "positions": {
+      "open": "Open",
+      "left": "Left",
+      "right": "Right",
+      "neutral": "Neutral"
+    }
+  },
+  "scanRegionCalibrationPanel": {
+    "instructions": "Drag the box to move it, or drag the handle to resize. Line it up with a card sitting at module 1.",
+    "connecting": "Connecting…",
+    "reconnectWebcam": "Reconnect Webcam",
+    "connectWebcam": "Connect Webcam",
+    "waitingForCamera": "Waiting for camera…",
+    "resetToDefault": "Reset to default",
+    "saving": "Saving…",
+    "saveScanRegion": "Save Scan Region",
+    "savedSummary": "Saved: {{coverage}}% coverage, {{offsetX}}% / {{offsetY}}% offset"
+  },
+  "useCalibrationPage": {
+    "toasts": {
+      "notCalibrated": "Modules not calibrated",
+      "notCalibratedDescription": "Configure all three modules before running the test sequence.",
+      "runningTest": "Running test sequence…",
+      "testComplete": "Test complete",
+      "testFailed": "Test failed",
+      "noResponse": "No response from sorter.",
+      "binFailed": "Bin {{bin}} failed",
+      "startingSampleRun": "Starting sample run…",
+      "sampleRunStopped": "Sample run stopped at bin {{bin}}",
+      "sampleRunComplete": "Sample run complete"
+    }
+  },
+  "useFeederConfig": {
+    "toasts": {
+      "notSynced": "Feeder calibration not synced",
+      "unexpectedResponse": "Unexpected response: {{response}}",
+      "noResponse": "No response from sorter.",
+      "saveFailed": "Failed to save feeder config"
+    }
+  },
+  "useModuleConfigs": {
+    "toasts": {
+      "notSynced": "Module {{module}} calibration not synced",
+      "unexpectedResponse": "Unexpected response: {{response}}",
+      "noResponse": "No response from sorter.",
+      "saveFailed": "Failed to save module config"
+    }
+  },
+  "calibratePage": {
+    "moduleHistory": {
+      "bottom": "Bottom",
+      "paddle": "Paddle",
+      "pusher": "Pusher",
+      "moduleLabel": "Module {{module}}"
+    },
+    "feederHistory": {
+      "speed": "Speed",
+      "duration": "Duration",
+      "pulse": "Pulse",
+      "pause": "Pause",
+      "settle": "Settle",
+      "continuous": "Continuous",
+      "msValue": "{{value}}ms"
+    },
+    "toasts": {
+      "moduleReverted": "Reverted module calibration",
+      "feederReverted": "Reverted feeder calibration",
+      "revertFailed": "Failed to revert"
+    },
+    "disconnect": "Disconnect",
+    "connectDevice": "Connect Device",
+    "testing": "Testing…",
+    "runTest": "Run Test",
+    "calibrateBeforeTest": "Calibrate all modules before running the test",
+    "scanRegionLabel": "Scan Region",
+    "feederCalibrationLabel": "Feeder Calibration",
+    "history": "History",
+    "moduleCalibrationLabel": "Module Calibration",
+    "feederHistoryTitle": "Feeder History",
+    "moduleHistoryTitle": "Module History"
+  }
+}

@@ -1,8 +1,11 @@
 import { DISCORD_URL } from "@/lib/links";
 import { IconBrandDiscord, IconPigFilled } from "@tabler/icons-react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 export function LandingFooter() {
+  const { t } = useTranslation("landing");
+
   return (
     <footer className="border-t">
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 py-8 sm:flex-row">
@@ -20,28 +23,28 @@ export function LandingFooter() {
             href="#features"
             className="transition-colors hover:text-foreground"
           >
-            Features
+            {t("nav.features")}
           </a>
           <a
             href="#how-it-works"
             className="transition-colors hover:text-foreground"
           >
-            How it works
+            {t("nav.howItWorks")}
           </a>
           <a
             href="#open-source"
             className="transition-colors hover:text-foreground"
           >
-            Open source
+            {t("nav.openSource")}
           </a>
           <Link to="/build" className="transition-colors hover:text-foreground">
-            Build
+            {t("nav.build")}
           </Link>
           <Link
             to="/auth/sign-in"
             className="transition-colors hover:text-foreground"
           >
-            Sign in
+            {t("nav.signIn")}
           </Link>
         </nav>
 
@@ -50,13 +53,16 @@ export function LandingFooter() {
             href={DISCORD_URL}
             target="_blank"
             rel="noreferrer"
-            aria-label="Join the Discord"
+            aria-label={t("nav.discordAriaLabel")}
             className="text-muted-foreground transition-colors hover:text-foreground"
           >
             <IconBrandDiscord size={18} />
           </a>
           <p className="text-xs text-muted-foreground">
-            © {new Date().getFullYear()} Magic Vault · v{__APP_VERSION__}
+            {t("footer.copyright", {
+              year: new Date().getFullYear(),
+              version: __APP_VERSION__,
+            })}
           </p>
         </div>
       </div>

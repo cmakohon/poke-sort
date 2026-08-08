@@ -3,6 +3,7 @@ import type { SyncState } from "@magic-vault/shared";
 export const DEFAULT_SYNC_STATE: SyncState = {
   status: "idle",
   gameKey: "",
+  lang: "en",
   total: 0,
   processed: 0,
   skipped: 0,
@@ -10,6 +11,8 @@ export const DEFAULT_SYNC_STATE: SyncState = {
   startedAt: null,
   logs: [],
 };
+
+export { LANGUAGE_LABELS } from "@/lib/languages";
 
 export const STATUS_COLORS: Record<SyncState["status"], string> = {
   idle: "var(--muted-foreground)",
