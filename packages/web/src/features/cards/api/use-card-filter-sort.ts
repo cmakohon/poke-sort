@@ -1,4 +1,4 @@
-import { getByPath, type FieldMeta, type ScannedCard } from "@magic-vault/shared";
+import { getCardValue, type FieldMeta, type ScannedCard } from "@magic-vault/shared";
 import { useEffect, useMemo, useState } from "react";
 import type { CardFilters } from "@/features/cards/types";
 
@@ -26,14 +26,17 @@ function splitSortKey(sortKey: string): { field: string; dir: "asc" | "desc" } {
 // position in `options`, since that's the only place a game defines a
 // meaningful order for its own enum values (there's no universal rarity
 // scale across games).
-function compareByField(a: ScannedCard, b: ScannedCard, meta: FieldMeta): number {
-  const va = getByPath(a.card, meta.path);
-  const vb = getByPath(b.card, meta.path);
+function compareByField(
+  a: ScannedCard,
+  b: ScannedCard,
+  meta: FieldMeta,
+  fieldDefinitions: FieldMeta[],
+): number {
+  const va = getCardValue(a.card, meta.field, fieldDefinitions);
+  const vb = getCardValue(b.card, meta.field, fieldDefinitions);
 
   if (meta.type === "numeric") {
-    const na = typeof va === "number" ? va : Number.parseFloat(String(va ?? "")) || 0;
-    const nb = typeof vb === "number" ? vb : Number.parseFloat(String(vb ?? "")) || 0;
-    return na - nb;
+    return (va as number) - (vb as number);
   }
 
   if (meta.type === "enum" && meta.options) {
@@ -138,7 +141,7 @@ export function useCardFilterSort(
 
     const mul = dir === "asc" ? 1 : -1;
     const sorted = [...result];
-    sorted.sort((a, b) => mul * compareByField(a, b, meta));
+    sorted.sort((a, b) => mul * compareByField(a, b, meta, fieldDefinitions));
     return sorted;
   }, [cards, searchQuery, sortKey, filters, fieldDefinitions]);
 

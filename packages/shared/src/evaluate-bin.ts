@@ -26,7 +26,7 @@ function getRawRoot(card: SourceCard): SourceCard | undefined {
   return raw && typeof raw === "object" ? (raw as SourceCard) : undefined;
 }
 
-function getCardValue(
+export function getCardValue(
   card: SourceCard,
   field: BinCondition["field"],
   fieldDefinitions: FieldMeta[],
