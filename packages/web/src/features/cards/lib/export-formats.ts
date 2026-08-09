@@ -3,7 +3,7 @@ import type {
   PlayingCardWithDistance,
   ScannedCard,
 } from "@magic-vault/shared";
-import { getByPath } from "@magic-vault/shared";
+import { getCardValue } from "@magic-vault/shared";
 
 function csvEscape(val: string): string {
   return val.includes(",") || val.includes('"')
@@ -158,9 +158,9 @@ export function exportToCsv(
       String(quantity),
       isFoil ? "True" : "False",
       ...fieldDefinitions.map((f) => {
-        const raw = getByPath(card, f.path);
-        if (Array.isArray(raw)) return csvEscape(raw.join("; "));
-        return csvEscape(raw == null ? "" : String(raw));
+        const value = getCardValue(card, f.field, fieldDefinitions);
+        if (Array.isArray(value)) return csvEscape(value.join("; "));
+        return csvEscape(String(value));
       }),
     ],
   );
