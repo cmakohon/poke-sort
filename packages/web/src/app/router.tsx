@@ -12,6 +12,7 @@ import VerifyEmailPage from "@/app/routes/app/verify-email";
 import AuthPage from "@/app/routes/auth";
 import BuildGuidePage from "@/app/routes/build";
 import LandingPage from "@/app/routes/index";
+import NotFoundPage from "@/app/routes/not-found";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { useRole } from "@/hooks/use-role";
 import { RedirectToSignIn, SignedIn } from "@neondatabase/neon-js/auth/react";
@@ -113,5 +114,9 @@ export const router = createBrowserRouter([
         ],
       },
     ],
+  },
+  {
+    path: "*",
+    element: <NotFoundPage />,
   },
 ]);
