@@ -254,10 +254,11 @@ async function runSync(source: SyncSource, lang: string): Promise<void> {
     }
 
     try {
-      const imageRes = await fetchImageWithRetry(
-        card.imageUrl,
-        source.fetchHeaders,
-      );
+      // Detail fetch runs alongside the image download rather than after it.
+      const [imageRes, extras] = await Promise.all([
+        fetchImageWithRetry(card.imageUrl, source.fetchHeaders),
+        source.fetchExtras?.(card, baseUrl, abortController?.signal) ?? card,
+      ]);
       const buffer = Buffer.from(await imageRes.arrayBuffer());
       const embedding = await vectorizeImageFromBuffer(buffer);
 
@@ -271,6 +272,9 @@ async function runSync(source: SyncSource, lang: string): Promise<void> {
         name: card.name,
         setCode: card.setCode,
         embedding,
+        collectorNumber: extras.collectorNumber ?? null,
+        setTotal: extras.setTotal ?? null,
+        cardData: extras.data ?? null,
       });
       addLog(`[${state.total}] embedded ${card.name} (${card.setCode})`);
 

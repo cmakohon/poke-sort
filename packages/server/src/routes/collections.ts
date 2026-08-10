@@ -88,6 +88,11 @@ function toScannedCard(row: {
   isFoil?: boolean | null;
   isDownloaded?: boolean | null;
   alternativeMatches?: unknown;
+  variant?: string | null;
+  originalCardId?: string | null;
+  originalDistance?: number | null;
+  originalScore?: number | null;
+  wasCorrected?: boolean | null;
 }): ScannedCard {
   return {
     scanId: row.guid!,
@@ -103,6 +108,11 @@ function toScannedCard(row: {
     isDownloaded: row.isDownloaded ?? undefined,
     alternativeMatches:
       (row.alternativeMatches as PlayingCardWithDistance[] | null) ?? undefined,
+    variant: row.variant ?? undefined,
+    originalCardId: row.originalCardId ?? undefined,
+    originalDistance: row.originalDistance ?? undefined,
+    originalScore: row.originalScore ?? undefined,
+    wasCorrected: row.wasCorrected ?? undefined,
   };
 }
 
@@ -433,6 +443,11 @@ router.get("/:guid/cards", requireAuth, requireOrg, async (c) => {
           isFoil: collectionCards.isFoil,
           isDownloaded: collectionCards.isDownloaded,
           alternativeMatches: collectionCards.alternativeMatches,
+          variant: collectionCards.variant,
+          originalCardId: collectionCards.originalCardId,
+          originalDistance: collectionCards.originalDistance,
+          originalScore: collectionCards.originalScore,
+          wasCorrected: collectionCards.wasCorrected,
         })
         .from(collectionCards)
         .where(eq(collectionCards.collectionId, collection.id))
@@ -590,10 +605,24 @@ router.post("/:guid/cards", requireAuth, requireOrg, async (c) => {
 router.put("/:guid/cards/:scanId", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
   const { guid, scanId } = c.req.param();
-  const { card, binNumber, isFoil } = await c.req.json<{
+  const {
+    card,
+    binNumber,
+    isFoil,
+    variant,
+    originalCardId,
+    originalDistance,
+    originalScore,
+    wasCorrected,
+  } = await c.req.json<{
     card?: PlayingCardWithDistance;
     binNumber?: number;
     isFoil?: boolean;
+    variant?: string;
+    originalCardId?: string;
+    originalDistance?: number;
+    originalScore?: number;
+    wasCorrected?: boolean;
   }>();
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
@@ -605,6 +634,7 @@ router.put("/:guid/cards/:scanId", requireAuth, requireOrg, async (c) => {
           card: true,
           binNumber: true,
           isFoil: true,
+          wasCorrected: true,
         },
       });
       if (!existing) return { success: false, message: "Card not found." };
@@ -616,6 +646,17 @@ router.put("/:guid/cards/:scanId", requireAuth, requireOrg, async (c) => {
         updates.binNumber = binNumber ?? null;
       }
       if (isFoil !== undefined) updates.isFoil = isFoil;
+      if (variant !== undefined) updates.variant = variant;
+
+      // Written once, on the first correction: what the pipeline had predicted
+      // before a human overruled it. Overwriting on a second correction would
+      // replace the model's answer with the human's previous one.
+      if (wasCorrected && !existing.wasCorrected) {
+        updates.wasCorrected = true;
+        updates.originalCardId = originalCardId ?? null;
+        updates.originalDistance = originalDistance ?? null;
+        updates.originalScore = originalScore ?? null;
+      }
 
       await tx
         .update(collectionCards)
@@ -847,6 +888,11 @@ router.get("/:guid/stream", async (c) => {
             isFoil: collectionCards.isFoil,
             isDownloaded: collectionCards.isDownloaded,
             alternativeMatches: collectionCards.alternativeMatches,
+            variant: collectionCards.variant,
+            originalCardId: collectionCards.originalCardId,
+            originalDistance: collectionCards.originalDistance,
+            originalScore: collectionCards.originalScore,
+            wasCorrected: collectionCards.wasCorrected,
           })
           .from(collectionCards)
           .where(eq(collectionCards.collectionId, collection.id))

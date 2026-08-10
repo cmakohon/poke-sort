@@ -37,6 +37,9 @@ export async function importPack(
         lang: header.lang,
         name: card.name,
         setCode: card.setCode,
+        collectorNumber: card.collectorNumber ?? null,
+        setTotal: card.setTotal ?? null,
+        cardData: card.data ?? null,
         embedding: Array.from(embeddings[i]),
       });
     }

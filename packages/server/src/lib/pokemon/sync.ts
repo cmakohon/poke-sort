@@ -9,7 +9,40 @@ interface PokemonListCard {
 }
 
 interface PokemonDetailCard extends PokemonListCard {
-  set?: { id: string };
+  set?: { id: string; cardCount?: { official?: number } };
+}
+
+/**
+ * The list endpoint only returns {id, localId, name, image}; everything the
+ * rule engine and re-ranker need lives on the per-card detail. There is no bulk
+ * detail endpoint, so this is one request per card — cheap next to downloading
+ * and embedding the image, which the sync already does for every card.
+ */
+async function fetchDetail(
+  id: string,
+  baseUrl: string,
+  signal?: AbortSignal,
+): Promise<PokemonDetailCard | null> {
+  try {
+    const res = await fetch(`${baseUrl}/${id}`, {
+      headers: POKEMON_HEADERS,
+      signal,
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as PokemonDetailCard;
+  } catch {
+    // Non-fatal: the card still gets an embedding, just without the extras.
+    return null;
+  }
+}
+
+function extrasFrom(detail: PokemonDetailCard | null) {
+  if (!detail) return {};
+  return {
+    collectorNumber: detail.localId,
+    setTotal: detail.set?.cardCount?.official,
+    data: detail,
+  };
 }
 
 const PAGE_LIMIT = 1000;
@@ -53,17 +86,23 @@ async function fetchCards(
 }
 
 async function fetchOne(id: string, baseUrl: string) {
-  const res = await fetch(`${baseUrl}/${id}`, { headers: POKEMON_HEADERS });
-  if (!res.ok) return null;
-
-  const raw = (await res.json()) as PokemonDetailCard;
+  const raw = await fetchDetail(id, baseUrl);
   if (!raw) return null;
 
   return {
     name: raw.name,
     setCode: raw.set?.id ?? raw.id.split("-")[0] ?? "",
     imageUrl: highResUrl(raw.image),
+    ...extrasFrom(raw),
   };
+}
+
+async function fetchExtras(
+  card: { id: string },
+  baseUrl: string,
+  signal?: AbortSignal,
+) {
+  return extrasFrom(await fetchDetail(card.id, baseUrl, signal));
 }
 
 export const pokemonSyncSource: SyncSource = {
@@ -74,4 +113,5 @@ export const pokemonSyncSource: SyncSource = {
   languages: ["en"],
   fetchCards,
   fetchOne,
+  fetchExtras,
 };

@@ -1,3 +1,4 @@
+import { rarityColor } from "@/features/cards/lib/rarity-color";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Input } from "@/components/ui/input";
@@ -346,7 +347,7 @@ export function CardDetailPanel({
                       <div
                         className="size-2 rounded-full shrink-0"
                         style={{
-                          backgroundColor: `var(--${selectedCard.rarity})`,
+                          backgroundColor: rarityColor(selectedCard.rarity),
                         }}
                       />
                       <span className="capitalize">{selectedCard.rarity}</span>

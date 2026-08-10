@@ -1,6 +1,7 @@
 import {
   type PlayingCard,
   type PlayingCardWithDistance,
+  type ScanOutcome,
   type ScannedCard,
   evaluateCardBin,
   getCatchAllBin,
@@ -47,6 +48,10 @@ export function ScannedCardsProvider({
 }) {
   const { t } = useTranslation("scanner");
   const [cards, setCards] = useState<ScannedCard[]>([]);
+  // correctCard needs the pre-correction record to preserve what the pipeline
+  // originally predicted, and runs from a stable callback.
+  const cardsRef = useRef<ScannedCard[]>(cards);
+  cardsRef.current = cards;
   const [isLoading, setIsLoading] = useState(true);
   const { configs: binConfigs, fieldDefinitions } = useBinConfigs();
   const { sendBin, sendCommand, receiveResponse, isConnected, isReady } =
@@ -247,6 +252,7 @@ export function ScannedCardsProvider({
       card: PlayingCardWithDistance,
       capturedImageUrl?: string,
       alternativeMatches?: PlayingCardWithDistance[],
+      outcome?: ScanOutcome,
     ) => {
       const collection = activeCollectionRef.current;
       if (!collection) {
@@ -264,11 +270,21 @@ export function ScannedCardsProvider({
         return;
       }
 
-      const matchedBin = evaluateCardBin(
+      const needsReview = outcome?.tier === "review";
+
+      // An uncertain card is routed to the catch-all rather than to whichever
+      // bin its (possibly wrong) identification implies. Setting a handful of
+      // cards aside for a human beats confidently mis-sorting them, which is
+      // silent and only discovered much later.
+      const ruleBin = evaluateCardBin(
         card,
         binConfigsRef.current,
         fieldDefinitionsRef.current,
       );
+      const matchedBin = needsReview
+        ? getCatchAllBin(binConfigsRef.current)
+        : ruleBin;
+
       const record: ScannedCard = {
         scanId: generateScanId(),
         card,
@@ -278,6 +294,8 @@ export function ScannedCardsProvider({
         alternativeMatches: alternativeMatches?.length
           ? alternativeMatches
           : undefined,
+        score: outcome?.score,
+        needsReview: needsReview || undefined,
       };
 
       setCards((prev) => [record, ...prev]);
@@ -455,10 +473,31 @@ export function ScannedCardsProvider({
       binConfigsRef.current,
       fieldDefinitionsRef.current,
     );
+
+    // Capture what the pipeline had originally decided before overwriting it.
+    // Each correction is a labelled example of a wrong identification — the
+    // cheapest eval data there is, and it used to be destroyed here (the row
+    // was overwritten and distance reset to 0, erasing the evidence).
+    const previous = cardsRef.current.find((entry) => entry.scanId === scanId);
+    const provenance = previous?.wasCorrected
+      ? {} // already recorded; don't overwrite with the last correction
+      : {
+          originalCardId: previous?.card.id,
+          originalDistance: previous?.card.distance,
+          originalScore: previous?.score,
+          wasCorrected: true,
+        };
+
     setCards((prev) =>
       prev.map((entry) =>
         entry.scanId === scanId
-          ? { ...entry, card: corrected, binNumber: matchedBin?.binNumber }
+          ? {
+              ...entry,
+              ...provenance,
+              card: corrected,
+              binNumber: matchedBin?.binNumber,
+              needsReview: undefined,
+            }
           : entry,
       ),
     );
@@ -468,6 +507,7 @@ export function ScannedCardsProvider({
         scanId,
         corrected,
         matchedBin?.binNumber,
+        provenance,
       ).catch((err) => console.error("Failed to update card:", err));
     }
   }, []);

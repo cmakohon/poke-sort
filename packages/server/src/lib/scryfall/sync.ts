@@ -11,6 +11,7 @@ type ScryfallBulkCard = {
   printed_name?: string;
   lang: string;
   set: string;
+  collector_number?: string;
   image_uris?: { png?: string; large?: string };
 };
 
@@ -73,6 +74,10 @@ async function downloadBulkData(
       name: raw.printed_name ?? raw.name,
       setCode: raw.set,
       imageUrl: raw.image_uris?.png ?? raw.image_uris?.large,
+      // Scryfall's bulk feed already carries the whole card, so unlike TCGdex
+      // there is no per-card detail request to make.
+      collectorNumber: raw.collector_number,
+      data: raw,
     });
   }
 
@@ -98,12 +103,15 @@ async function fetchOne(id: string, baseUrl: string) {
   const card = (await res.json()) as {
     name: string;
     set: string;
+    collector_number?: string;
     image_uris?: { png?: string; large?: string };
   };
   return {
     name: card.name,
     setCode: card.set,
     imageUrl: card.image_uris?.png ?? card.image_uris?.large,
+    collectorNumber: card.collector_number,
+    data: card,
   };
 }
 

@@ -9,7 +9,9 @@
     "db:socket": "pglite-server --db ./.mault/db --port 5432",
     "db:studio": "drizzle-kit studio",
     "export:pack": "tsx --env-file-if-exists ../../.env scripts/export-pack.ts",
-    "backfill:card-shape": "tsx --env-file-if-exists ../../.env scripts/backfill-card-shape.ts"
+    "backfill:card-shape": "tsx --env-file-if-exists ../../.env scripts/backfill-card-shape.ts",
+    "eval:build": "tsx eval/build-fixtures.ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "@electric-sql/pglite": "0.5.4",
@@ -19,6 +21,8 @@
     "@magic-vault/shared": "workspace:*",
     "drizzle-orm": "^0.45.1",
     "hono": "^4.12.2",
+    "sharp": "^0.34.5",
+    "tesseract.js": "^7.0.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -27,6 +31,7 @@
     "drizzle-kit": "^0.31.9",
     "tsup": "^8.4.0",
     "tsx": "^4.19.3",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.10"
   }
 }

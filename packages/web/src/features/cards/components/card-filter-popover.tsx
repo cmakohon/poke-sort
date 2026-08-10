@@ -1,3 +1,4 @@
+import { rarityColor } from "@/features/cards/lib/rarity-color";
 import { Button } from "@/components/ui/button";
 import { DynamicPopover } from "@/components/ui/responsive-popover";
 import { Slider } from "@/components/ui/slider";
@@ -145,13 +146,13 @@ export function CardFilterPopover({
                     )}
                     style={
                       active
-                        ? { backgroundColor: `var(--${rarity.key})` }
+                        ? { backgroundColor: rarityColor(rarity.key) }
                         : undefined
                     }
                   >
                     <span
                       className="size-2 rounded-full shrink-0"
-                      style={{ backgroundColor: `var(--${rarity.key})` }}
+                      style={{ backgroundColor: rarityColor(rarity.key) }}
                     />
                     {rarity.label}
                   </button>

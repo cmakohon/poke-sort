@@ -1,3 +1,4 @@
+import { rarityColor } from "@/features/cards/lib/rarity-color";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -182,7 +183,7 @@ export function SessionSummaryDialog({
                         <div className="flex items-center gap-1.5">
                           <div
                             className="size-2 rounded-full shrink-0"
-                            style={{ backgroundColor: `var(--${r.key})` }}
+                            style={{ backgroundColor: rarityColor(r.key) }}
                           />
                           <span>{r.label}</span>
                         </div>

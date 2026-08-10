@@ -1,6 +1,7 @@
 import type {
   PlayingCard,
   PlayingCardWithDistance,
+  ScanOutcome,
   ScannedCard,
   ScannerStatus,
 } from "@magic-vault/shared";
@@ -38,6 +39,7 @@ export interface ScannedCardsContextValue {
     card: PlayingCardWithDistance,
     capturedImageUrl?: string,
     alternativeMatches?: PlayingCardWithDistance[],
+    outcome?: ScanOutcome,
   ) => void;
   sendCatchAllBin: () => void;
   registerCardArrivedHook: (fn: () => void) => () => void;

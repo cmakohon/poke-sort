@@ -26,6 +26,9 @@ async function main() {
       id: cardImageVectors.scryfallId,
       name: cardImageVectors.name,
       setCode: cardImageVectors.setCode,
+      collectorNumber: cardImageVectors.collectorNumber,
+      setTotal: cardImageVectors.setTotal,
+      data: cardImageVectors.cardData,
       embedding: cardImageVectors.embedding,
     })
     .from(cardImageVectors)
@@ -50,7 +53,14 @@ async function main() {
       lang,
       dim,
       createdAt: new Date().toISOString(),
-      cards: rows.map((r) => ({ id: r.id, name: r.name, setCode: r.setCode })),
+      cards: rows.map((r) => ({
+        id: r.id,
+        name: r.name,
+        setCode: r.setCode,
+        collectorNumber: r.collectorNumber,
+        setTotal: r.setTotal,
+        data: r.data,
+      })),
     },
     rows.map((r) => r.embedding),
   );

@@ -29,15 +29,21 @@ interface PokemonAbility {
   effect?: string;
 }
 
+type PokemonVariant =
+  | "normal"
+  | "reverse"
+  | "holo"
+  | "firstEdition"
+  | "wPromo";
+
 interface PokemonPricing {
   cardmarket?: { avg?: number };
-  tcgplayer?: {
-    normal?: { marketPrice?: number };
-    reverse?: { marketPrice?: number };
-  };
+  tcgplayer?: Partial<
+    Record<PokemonVariant | "holofoil" | "reverseHolofoil", { marketPrice?: number }>
+  >;
 }
 
-interface PokemonCardDetail extends PokemonCardBrief {
+export interface PokemonCardDetail extends PokemonCardBrief {
   category?: string;
   illustrator?: string;
   rarity?: string;
@@ -68,16 +74,47 @@ function assetUrl(image: string, quality: "low" | "high"): string {
   return `/api/cards/image-proxy?url=${encodeURIComponent(`${image}/${quality}.webp`)}`;
 }
 
-function resolvePrice(pricing: PokemonPricing | undefined): number | null {
+/**
+ * TCGplayer keys prices by printing. Preferring `normal` unconditionally meant
+ * a reverse holo — often worth several times a normal — was priced as a normal
+ * whenever both existed. Prefer the variant actually in hand; only fall back to
+ * whatever is available when it is unknown.
+ */
+const PRICE_KEYS: Record<PokemonVariant, string[]> = {
+  normal: ["normal"],
+  reverse: ["reverseHolofoil", "reverse"],
+  holo: ["holofoil", "holo"],
+  firstEdition: ["firstEdition", "holofoil", "normal"],
+  wPromo: ["normal"],
+};
+
+const FALLBACK_ORDER = [
+  "normal",
+  "holofoil",
+  "holo",
+  "reverseHolofoil",
+  "reverse",
+];
+
+function resolvePrice(
+  pricing: PokemonPricing | undefined,
+  variant?: PokemonVariant,
+): number | null {
   if (!pricing) return null;
-  const usd =
-    pricing.tcgplayer?.normal?.marketPrice ??
-    pricing.tcgplayer?.reverse?.marketPrice;
-  if (usd != null) return usd;
+  const tcg = pricing.tcgplayer ?? {};
+  const order = variant ? [...PRICE_KEYS[variant], ...FALLBACK_ORDER] : FALLBACK_ORDER;
+
+  for (const key of order) {
+    const price = tcg[key as keyof typeof tcg]?.marketPrice;
+    if (price != null) return price;
+  }
   return pricing.cardmarket?.avg ?? null;
 }
 
-function normalizePokemonCard(raw: PokemonCardDetail): PlayingCard {
+export function normalizePokemonCard(
+  raw: PokemonCardDetail,
+  variant?: PokemonVariant,
+): PlayingCard {
   const small = raw.image ? assetUrl(raw.image, "low") : "";
   const large = raw.image ? assetUrl(raw.image, "high") : "";
   const attackText = (raw.attacks ?? [])
@@ -114,7 +151,7 @@ function normalizePokemonCard(raw: PokemonCardDetail): PlayingCard {
     toughness: raw.hp != null ? String(raw.hp) : undefined,
     colorIdentity: raw.types ?? [],
     artist: raw.illustrator ?? undefined,
-    price: resolvePrice(raw.pricing),
+    price: resolvePrice(raw.pricing, variant),
     sourceUrl: `https://tcgdex.dev/cards/${raw.id}`,
     cmc: raw.retreat,
     raw,
@@ -175,7 +212,7 @@ export async function Search(
     message: "Cards successfully retrieved.",
     data: details
       .filter((d): d is PokemonCardDetail => d !== null)
-      .map(normalizePokemonCard),
+      .map((card) => normalizePokemonCard(card)),
     success: true,
   };
 }

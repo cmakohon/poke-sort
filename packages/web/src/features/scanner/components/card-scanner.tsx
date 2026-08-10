@@ -73,9 +73,14 @@ export function CardScanner({ className, compact }: CardScannerProps) {
     allowDuplicates,
     setAllowDuplicates,
   } = useCardScanner({
-    onSearchResults: (cards, capturedImageUrl) => {
+    // cards[0] is the pipeline's answer, but it is only sorted automatically
+    // when the outcome says "accept". A "review" outcome still records the
+    // scan — so the identification can be corrected, and the correction kept
+    // as an eval example — while routing the card to the catch-all instead of
+    // acting on an identification the pipeline is not confident about.
+    onSearchResults: (cards, capturedImageUrl, outcome) => {
       if (cards.length > 0) {
-        addCard(cards[0], capturedImageUrl, cards.slice(1));
+        addCard(cards[0], capturedImageUrl, cards.slice(1), outcome);
       }
     },
     onNoMatch: sendCatchAllBin,

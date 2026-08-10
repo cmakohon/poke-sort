@@ -16,12 +16,18 @@
  */
 
 export const PACK_MAGIC = "mault-pack";
-export const PACK_VERSION = 1;
+// v2 adds collectorNumber / setTotal / data to each card entry.
+export const PACK_VERSION = 2;
 
 export interface PackCard {
   id: string;
   name: string;
   setCode: string;
+  /** Printed collector number; with setTotal reconstructs e.g. "58/102". */
+  collectorNumber?: string | null;
+  setTotal?: number | null;
+  /** Full upstream card object — what bin rules and re-ranking read. */
+  data?: unknown;
 }
 
 export interface PackHeader {

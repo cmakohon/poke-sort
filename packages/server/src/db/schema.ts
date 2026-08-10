@@ -1,6 +1,8 @@
 import {
   boolean,
   customType,
+  doublePrecision,
+  index,
   integer,
   jsonb,
   pgTable,
@@ -37,11 +39,26 @@ export const cardImageVectors = pgTable(
     name: text("name").notNull(),
     setCode: text("set_code").notNull(),
     embedding: vector("embedding").notNull(),
+    // The printed collector number ("58") and the set's official count ("102").
+    // Together they reconstruct "58/102" across every Pokemon era, which is the
+    // single strongest disambiguator between the dozens of reprints that share
+    // a name and look nearly identical to an image embedding.
+    collectorNumber: text("collector_number"),
+    setTotal: integer("set_total"),
+    // The full upstream card object (TCGdex detail / Scryfall card).
+    //
+    // Denormalised deliberately: re-ranking needs these fields for all ~50
+    // candidates, and the bin rule engine resolves its `path`s against this
+    // object (see getCardValue in evaluate-bin.ts). Fetching it per candidate
+    // over the network would be both slow and, for a local-first app, wrong.
+    cardData: jsonb("card_data"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => [
     unique("card_image_vectors_scryfall_face_idx").on(table.scryfallId),
+    index("cards_game_lang_idx").on(table.gameKey, table.lang),
+    index("cards_collector_number_idx").on(table.collectorNumber),
   ],
 );
 
@@ -182,6 +199,19 @@ export const collectionCards = pgTable(
     isFoil: boolean("is_foil").notNull().default(false),
     isDownloaded: boolean("is_downloaded").notNull().default(false),
     alternativeMatches: jsonb("alternative_matches"),
+    // Which printing this is (normal / reverse / holo / firstEdition). Drives
+    // pricing and is expressible as a bin rule.
+    variant: text("variant"),
+    // What the pipeline originally decided, preserved when a human corrects it.
+    //
+    // `correctCard()` used to overwrite the row and reset distance to 0,
+    // destroying the evidence that the model was wrong. Every correction is a
+    // labelled example — the cheapest eval data available, and it was being
+    // deleted on every use.
+    originalCardId: text("original_card_id"),
+    originalDistance: doublePrecision("original_distance"),
+    originalScore: doublePrecision("original_score"),
+    wasCorrected: boolean("was_corrected").notNull().default(false),
     orgId: text("org_id").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },

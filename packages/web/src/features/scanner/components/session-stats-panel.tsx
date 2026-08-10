@@ -1,3 +1,4 @@
+import { rarityColor } from "@/features/cards/lib/rarity-color";
 import { formatUsd } from "@/features/scanner/components/scan-stats";
 import type { ScanStats } from "@/features/scanner/lib/compute-stats";
 import { useTranslation } from "react-i18next";
@@ -82,7 +83,7 @@ export function SessionStatsPanel({
                 <div className="flex items-center gap-1.5">
                   <div
                     className="size-2.5 rounded-full"
-                    style={{ backgroundColor: `var(--${r.key})` }}
+                    style={{ backgroundColor: rarityColor(r.key) }}
                   />
                   <span>{r.label}</span>
                 </div>

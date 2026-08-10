@@ -1,5 +1,4 @@
 import { searchByImage } from "@/features/cards/api/card";
-import { getCardById } from "@/features/cards/api/card-search";
 import { useCollections } from "@/features/collections/api/use-collections";
 import { orgSettingsQueryOptions } from "@/features/settings/api/org-settings";
 import { useOrg } from "@/hooks/use-org";
@@ -18,6 +17,8 @@ import {
   DEFAULT_SCAN_REGION,
   type CardContour,
   type CardScannerProps,
+  type IdentifyTier,
+  type PlayingCard,
   type PlayingCardWithDistance,
   type ScanRegion,
   type ScannerStatus,
@@ -66,6 +67,8 @@ async function searchCardImage(
 ): Promise<{
   card: PlayingCardWithDistance | null;
   alternativeMatches: PlayingCardWithDistance[];
+  tier: IdentifyTier;
+  score?: number;
   debugImageUrl: string;
 }> {
   const warpedCanvas = contour ? extractCardImage(canvas, contour) : canvas;
@@ -75,27 +78,42 @@ async function searchCardImage(
   formData.append("image", blob, "card.jpg");
   if (collectionGuid) formData.append("collectionGuid", collectionGuid);
 
+  const empty = {
+    card: null,
+    alternativeMatches: [],
+    tier: "no-match" as IdentifyTier,
+    debugImageUrl,
+  };
+
   const { data } = await searchByImage(formData);
-  if (!data || data.length === 0)
-    return { card: null, alternativeMatches: [], debugImageUrl };
+  if (!data || data.candidates.length === 0) return empty;
 
-  const closeMatches = data.filter(
-    (m) => m.distance - data[0].distance <= CLOSE_MATCH_DELTA,
+  // Candidates arrive already hydrated and already re-ranked by the server.
+  //
+  // They used to be re-fetched here one HTTP call per candidate, and any
+  // candidate whose fetch failed was silently dropped — which quietly promoted
+  // #2 to be the answer with no indication that it had happened.
+  const hydrated = data.candidates
+    .filter((candidate) => candidate.card !== null)
+    .map((candidate) => ({
+      ...(candidate.card as PlayingCard),
+      distance: candidate.distance,
+    }));
+
+  if (hydrated.length === 0) return empty;
+
+  const [card, ...rest] = hydrated;
+  const alternativeMatches = rest.filter(
+    (m) => m.distance - card.distance <= CLOSE_MATCH_DELTA,
   );
-  const resolved = await Promise.all(
-    closeMatches.map((m) =>
-      getCardById(m.scryfallId, collectionGuid).then((r) =>
-        r.data ? { ...r.data, distance: m.distance } : null,
-      ),
-    ),
-  );
 
-  const cards = resolved.filter(Boolean) as PlayingCardWithDistance[];
-  if (cards.length === 0)
-    return { card: null, alternativeMatches: [], debugImageUrl };
-
-  const [card, ...alternativeMatches] = cards;
-  return { card, alternativeMatches, debugImageUrl };
+  return {
+    card,
+    alternativeMatches,
+    tier: data.tier,
+    score: data.candidates[0].score,
+    debugImageUrl,
+  };
 }
 
 export function useCardScanner({
@@ -209,7 +227,7 @@ export function useCardScanner({
       }
 
       try {
-        const { card, alternativeMatches, debugImageUrl } =
+        const { card, alternativeMatches, tier, score, debugImageUrl } =
           await searchCardImage(
             canvas,
             contour,
@@ -218,7 +236,9 @@ export function useCardScanner({
         setDebugImageUrl(debugImageUrl);
         debugImageUrlRef.current = debugImageUrl;
 
-        if (card) {
+        // "no-match" means the pipeline had candidates but none it would stand
+        // behind — treat it the same as having found nothing.
+        if (card && tier !== "no-match") {
           if (
             checkDuplicate &&
             !allowDuplicates &&
@@ -231,6 +251,7 @@ export function useCardScanner({
             onSearchResultsRef.current?.(
               [card, ...alternativeMatches],
               debugImageUrl,
+              { tier, score },
             );
             updateStatus("scanning");
           }
@@ -375,6 +396,7 @@ export function useCardScanner({
       onSearchResultsRef.current?.(
         [duplicateCard],
         debugImageUrlRef.current ?? undefined,
+        { tier: "accept" },
       );
       setDuplicateCard(null);
       updateStatus("scanning");

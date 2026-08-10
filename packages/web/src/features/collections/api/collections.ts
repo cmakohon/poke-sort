@@ -54,15 +54,25 @@ export async function addCollectionCard(
   throw new Error(`API error: ${res.status}`);
 }
 
+/** What the pipeline predicted before a human corrected it. */
+export type CorrectionProvenance = Partial<
+  Pick<
+    ScannedCard,
+    "originalCardId" | "originalDistance" | "originalScore" | "wasCorrected"
+  >
+>;
+
 export async function updateCollectionCard(
   guid: string,
   scanId: string,
   card: ScannedCard["card"],
   binNumber?: number,
+  provenance?: CorrectionProvenance,
 ): Promise<Result<ScannedCard>> {
   return apiPut<Result<ScannedCard>>(`/api/collections/${guid}/cards/${scanId}`, {
     card,
     binNumber,
+    ...provenance,
   });
 }
 

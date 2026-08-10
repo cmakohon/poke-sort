@@ -1,3 +1,4 @@
+import { rarityColor } from "@/features/cards/lib/rarity-color";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -111,7 +112,7 @@ export const ScannedCardItem = memo(function ScannedCardItem({
         <div className="flex flex-row items-center gap-2">
           <div
             className="size-3 rounded-full shrink-0"
-            style={{ backgroundColor: `var(--${card.rarity})` }}
+            style={{ backgroundColor: rarityColor(card.rarity) }}
           />
           <p className="text-xs font-semibold uppercase" title={card.set}>
             {card.set}
