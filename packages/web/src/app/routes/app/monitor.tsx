@@ -73,17 +73,19 @@ function CardGrid({
 export default function MonitorPage() {
   const { t } = useTranslation("scanner");
   const { collectionGuid } = useParams<{ collectionGuid: string }>();
-  const { collection, cards, viewers, errors, status } =
+  const { collection, cards, viewers, viewerId, errors, status } =
     useSessionMonitor(collectionGuid);
-  const { locks, currentUserId } = useCollectionLocks();
+  const { locks } = useCollectionLocks();
   const isMobile = useIsMobile();
 
   const isScanning = !!(collectionGuid && locks[collectionGuid]);
   const scannerUserId = collectionGuid
     ? locks[collectionGuid]?.userId
     : undefined;
+  // Exclude self by connection id, not account id: every watcher is the same
+  // local user, so the account id would filter out all the other devices too.
   const otherViewers = viewers.filter(
-    (v) => v.userId !== scannerUserId && v.userId !== currentUserId,
+    (v) => v.userId !== scannerUserId && v.userId !== viewerId,
   );
   const stats = useMemo(() => computeStats(cards), [cards]);
   const fieldDefinitions =

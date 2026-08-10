@@ -18,7 +18,7 @@ import {
   saveSet as saveSetAction,
 } from "@/features/bins/api/sort-bins";
 import { useCollections } from "@/features/collections/api/use-collections";
-import { useOrg } from "@/features/companies/api/use-organization";
+import { useOrg } from "@/hooks/use-org";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createContext,

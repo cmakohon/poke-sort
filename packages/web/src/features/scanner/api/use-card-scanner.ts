@@ -1,8 +1,8 @@
 import { searchByImage } from "@/features/cards/api/card";
 import { getCardById } from "@/features/cards/api/card-search";
 import { useCollections } from "@/features/collections/api/use-collections";
-import { orgSettingsQueryOptions } from "@/features/companies/api/org-settings";
-import { useOrg } from "@/features/companies/api/use-organization";
+import { orgSettingsQueryOptions } from "@/features/settings/api/org-settings";
+import { useOrg } from "@/hooks/use-org";
 import { useCameraContext } from "@/features/scanner/api/use-camera";
 import {
   CARD_SETTLE_DELAY_MS,

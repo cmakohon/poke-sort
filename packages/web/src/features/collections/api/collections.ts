@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPost, apiPut, getAuthHeaders } from "@/lib/api/client";
+import { API_BASE, apiDelete, apiGet, apiPost, apiPut } from "@/lib/api/client";
 import type { Collection, Result, ScannedCard } from "@magic-vault/shared";
 import { queryOptions } from "@tanstack/react-query";
 
@@ -40,15 +40,13 @@ export async function loadCollectionCards(guid: string): Promise<Result<ScannedC
   return apiGet<Result<ScannedCard[]>>(`/api/collections/${guid}/cards`);
 }
 
-const API_BASE = import.meta.env.VITE_API_URL ?? "";
-
 export async function addCollectionCard(
   guid: string,
   record: ScannedCard,
 ): Promise<Result<ScannedCard>> {
   const res = await fetch(`${API_BASE}/api/collections/${guid}/cards`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...(await getAuthHeaders()) },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(record),
   });
   // Return body for both success and 423 (locked)

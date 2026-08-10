@@ -4,7 +4,8 @@ import type {
   PlayingCardWithDistance,
   ScannedCard,
 } from "@magic-vault/shared";
-import { and, count, desc, eq, sql } from "drizzle-orm";
+import { LOCAL_ORG_ID, LOCAL_USER_ID } from "@magic-vault/shared";
+import { and, count, desc, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { authQuery, db, type Transaction } from "../db";
@@ -24,9 +25,9 @@ import {
 } from "../lib/session-stream";
 import {
   getUserDisplayName,
+  LOCAL_JWT_CLAIMS,
   requireAuth,
   requireOrg,
-  verifyToken,
   type AppEnv,
 } from "../middleware/auth";
 
@@ -151,25 +152,10 @@ router.get("/", requireAuth, requireOrg, async (c) => {
   }
 });
 
-// GET /collections/lock-events — SSE stream of lock_acquired / lock_released for all org collections
+// GET /collections/lock-events — SSE stream of lock_acquired / lock_released for all local collections
 router.get("/lock-events", async (c) => {
-  const token = c.req.query("token");
-  const orgId = c.req.query("orgId");
-
-  if (!token || !orgId)
-    return c.json({ success: false, message: "Unauthorized" }, 401);
-
-  const payload = await verifyToken(token);
-  if (!payload?.sub)
-    return c.json({ success: false, message: "Unauthorized" }, 401);
-
-  const rows = await db.execute<{ role: string }>(
-    sql`SELECT role FROM neon_auth.member WHERE "organizationId" = ${orgId} AND "userId" = ${payload.sub} LIMIT 1`,
-  );
-  if (!rows.rows[0])
-    return c.json({ success: false, message: "Forbidden" }, 403);
-
-  const jwtClaims = JSON.stringify({ sub: payload.sub, role: "authenticated" });
+  const orgId = LOCAL_ORG_ID;
+  const jwtClaims = LOCAL_JWT_CLAIMS;
 
   return streamSSE(c, async (stream) => {
     // Send current lock state as initial event
@@ -761,28 +747,19 @@ router.post("/:guid/debug/error", requireAuth, requireOrg, async (c) => {
   return c.json({ success: true, data: null });
 });
 
-// GET /collections/:guid/stream — SSE, auth via ?token= and ?orgId= query params
+// GET /collections/:guid/stream — SSE
 router.get("/:guid/stream", async (c) => {
   const guid = c.req.param("guid");
-  const token = c.req.query("token");
-  const orgId = c.req.query("orgId");
+  const orgId = LOCAL_ORG_ID;
+  const jwtClaims = LOCAL_JWT_CLAIMS;
 
-  if (!token || !orgId)
-    return c.json({ success: false, message: "Unauthorized" }, 401);
+  const viewerDisplayName = await getUserDisplayName(LOCAL_USER_ID);
 
-  const payload = await verifyToken(token);
-  if (!payload?.sub)
-    return c.json({ success: false, message: "Unauthorized" }, 401);
-
-  const rows = await db.execute<{ role: string }>(
-    sql`SELECT role FROM neon_auth.member WHERE "organizationId" = ${orgId} AND "userId" = ${payload.sub} LIMIT 1`,
-  );
-  if (!rows.rows[0])
-    return c.json({ success: false, message: "Forbidden" }, 403);
-
-  const jwtClaims = JSON.stringify({ sub: payload.sub, role: "authenticated" });
-
-  const viewerDisplayName = await getUserDisplayName(payload.sub);
+  // Every watcher is the same local user, so identity has to come from the
+  // connection rather than the account — otherwise a second device watching
+  // the same session is indistinguishable from the first, and the client
+  // cannot tell which entry in `viewers` is itself. Echoed back in `init`.
+  const viewerId = crypto.randomUUID();
 
   return streamSSE(c, async (stream) => {
     const writer = (event: string, data: unknown) => {
@@ -792,7 +769,7 @@ router.get("/:guid/stream", async (c) => {
     // Subscribe first so viewers_updated includes this viewer
     const unsubscribe = subscribeSession(
       guid,
-      payload.sub!,
+      viewerId,
       viewerDisplayName,
       writer,
     );
@@ -860,6 +837,7 @@ router.get("/:guid/stream", async (c) => {
           } satisfies Collection,
           cards: cardRows.map(toScannedCard),
           viewers: getSessionViewers(guid),
+          viewerId,
         };
       });
 

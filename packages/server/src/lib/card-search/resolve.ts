@@ -1,5 +1,4 @@
 import { authQuery, db } from "../../db";
-import { gundamAdapter } from "../gundam/search";
 import { pokemonAdapter } from "../pokemon/search";
 import { scryfallAdapter } from "../scryfall/search";
 import { withCache } from "./cache";
@@ -7,7 +6,6 @@ import type { CardSearchAdapter } from "./types";
 
 const ADAPTERS_BY_GAME_KEY: Record<string, CardSearchAdapter> = {
   mtg: withCache(scryfallAdapter),
-  gundam: withCache(gundamAdapter),
   pokemon: withCache(pokemonAdapter),
 };
 

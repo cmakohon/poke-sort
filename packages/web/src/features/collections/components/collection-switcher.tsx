@@ -22,7 +22,7 @@ import {
 import { CreateCollectionDialog } from "@/features/collections/components/create-collection-dialog";
 import { useCollectionLocks } from "@/features/collections/api/use-collection-locks";
 import { useCollections } from "@/features/collections/api/use-collections";
-import { useOrg } from "@/features/companies/api/use-organization";
+import { useOrg } from "@/hooks/use-org";
 import { LANGUAGE_LABELS } from "@/lib/languages";
 import {
   IconEdit,

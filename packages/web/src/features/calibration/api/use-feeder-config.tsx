@@ -2,7 +2,7 @@ import {
   feederQueryOptions,
   saveFeederConfig,
 } from "@/features/calibration/api/feeder-config";
-import { useOrg } from "@/features/companies/api/use-organization";
+import { useOrg } from "@/hooks/use-org";
 import { useSerial } from "@/features/scanner/api/use-serial";
 import {
   DEFAULT_FEEDER_CALIBRATION,

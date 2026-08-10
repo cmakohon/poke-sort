@@ -1,4 +1,3 @@
-import AccountPage from "@/app/routes/app/account";
 import AdminPage from "@/app/routes/app/admin";
 import BinsPage from "@/app/routes/app/bins";
 import CalibratePage from "@/app/routes/app/calibrate";
@@ -8,34 +7,15 @@ import AppLayout from "@/app/routes/app/layout";
 import MonitorPage from "@/app/routes/app/monitor";
 import MonitorSessionsPage from "@/app/routes/app/monitor-sessions";
 import SettingsPage from "@/app/routes/app/settings";
-import VerifyEmailPage from "@/app/routes/app/verify-email";
-import AuthPage from "@/app/routes/auth";
 import BuildGuidePage from "@/app/routes/build";
 import LandingPage from "@/app/routes/index";
 import NotFoundPage from "@/app/routes/not-found";
 import { useIsMobile } from "@/hooks/use-is-mobile";
-import { useRole } from "@/hooks/use-role";
-import { RedirectToSignIn, SignedIn } from "@neondatabase/neon-js/auth/react";
 import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
 
-function AuthGuard() {
-  return (
-    <>
-      <SignedIn>
-        <Outlet />
-      </SignedIn>
-      <RedirectToSignIn />
-    </>
-  );
-}
-
-function AdminGuard() {
-  const { isAdmin, isPending } = useRole();
-  if (isPending) return null;
-  if (!isAdmin) return <Navigate to="/app" replace />;
-  return <Outlet />;
-}
-
+// AuthGuard and AdminGuard are gone: there is no sign-in, and the single local
+// user is always admin. DesktopOnlyGuard stays — it is about screen size, not
+// permissions, and still routes phones to the read-only monitor view.
 function DesktopOnlyGuard() {
   const isMobile = useIsMobile();
   if (isMobile) return <Navigate to="/app/monitor" replace />;
@@ -52,66 +32,44 @@ export const router = createBrowserRouter([
     element: <BuildGuidePage />,
   },
   {
-    path: "/auth/:path",
-    element: <AuthPage />,
-  },
-  {
-    element: <AuthGuard />,
+    element: <AppLayout />,
     children: [
       {
-        path: "/app/verify-email",
-        element: <VerifyEmailPage />,
-      },
-      {
-        element: <AppLayout />,
+        element: <DesktopOnlyGuard />,
         children: [
           {
-            element: <DesktopOnlyGuard />,
-            children: [
-              {
-                path: "/app",
-                element: <ScannerPage />,
-              },
-              {
-                path: "/app/collections",
-                element: <CollectionsPage />,
-              },
-              {
-                path: "/app/collections/:collectionGuid/bins",
-                element: <BinsPage />,
-              },
-              {
-                path: "/app/calibrate",
-                element: <CalibratePage />,
-              },
-              {
-                path: "/app/settings",
-                element: <SettingsPage />,
-              },
-              {
-                element: <AdminGuard />,
-                children: [
-                  {
-                    path: "/app/admin",
-                    element: <AdminPage />,
-                  },
-                ],
-              },
-              {
-                path: "/app/account/:path",
-                element: <AccountPage />,
-              },
-            ],
+            path: "/app",
+            element: <ScannerPage />,
           },
           {
-            path: "/app/monitor",
-            element: <MonitorSessionsPage />,
+            path: "/app/collections",
+            element: <CollectionsPage />,
           },
           {
-            path: "/app/monitor/:collectionGuid",
-            element: <MonitorPage />,
+            path: "/app/collections/:collectionGuid/bins",
+            element: <BinsPage />,
+          },
+          {
+            path: "/app/calibrate",
+            element: <CalibratePage />,
+          },
+          {
+            path: "/app/settings",
+            element: <SettingsPage />,
+          },
+          {
+            path: "/app/admin",
+            element: <AdminPage />,
           },
         ],
+      },
+      {
+        path: "/app/monitor",
+        element: <MonitorSessionsPage />,
+      },
+      {
+        path: "/app/monitor/:collectionGuid",
+        element: <MonitorPage />,
       },
     ],
   },

@@ -18,7 +18,7 @@ https://makerworld.com/en/models/3066180-tcg-card-sorting-machine#profileId-3451
 ## Features
 
 - Live webcam scanning with automatic card detection and identification; captures wait for the card to physically settle at the sensor before the shot is taken
-- Multi-TCG support: pluggable card-search adapters per game (Scryfall/MTG built in, plus Gundam Card Game), with each game's own admin-configurable field definitions driving sorting, filtering, and bin rules
+- Multi-TCG support: pluggable card-search adapters per game (Pokémon via TCGdex and Magic via Scryfall), with each game's own admin-configurable field definitions driving sorting, filtering, and bin rules
 - Rule-based sort bins, grouped by collection, with and/or rule trees across each game's own card fields (color, rarity, price, set, etc.)
 - Card grid sorting (by name, price, rarity, etc.) adapts automatically to whichever game a collection uses
 - Multiple collections per organization, each with their own bin configuration and card history

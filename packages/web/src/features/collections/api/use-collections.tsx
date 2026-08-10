@@ -11,7 +11,7 @@ import {
   deleteCollection as deleteCollectionFn,
   renameCollection as renameCollectionFn,
 } from "@/features/collections/api/collections";
-import { useOrg } from "@/features/companies/api/use-organization";
+import { useOrg } from "@/hooks/use-org";
 import {
   createDefaultCatchAllOnlyBins,
   createDefaultColorBins,

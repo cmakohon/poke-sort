@@ -29,9 +29,6 @@ export function BuildFooter() {
           >
             {t("footer.reportIssue")}
           </a>
-          <Link to="/auth/sign-in" className="transition-colors hover:text-foreground">
-            {t("footer.signIn")}
-          </Link>
         </nav>
 
         <p className="text-xs text-muted-foreground">

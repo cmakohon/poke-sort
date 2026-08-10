@@ -1,7 +1,6 @@
 import { AppLoadingGate } from "@/app/app-loading-gate";
 import { BinConfigsProvider } from "@/features/bins/api/use-bin-configs";
 import { CardFiltersProvider } from "@/features/cards/api/use-card-filters";
-import { OrgPickerModal } from "@/features/companies/components/org-picker-modal";
 import { FeederConfigProvider } from "@/features/calibration/api/use-feeder-config";
 import { ModuleConfigsProvider } from "@/features/calibration/api/use-module-configs";
 import { CollectionLocksProvider } from "@/features/collections/api/use-collection-locks";
@@ -11,8 +10,8 @@ import { ScannedCardsProvider } from "@/features/scanner/api/use-scanned-cards";
 import { ScannerIslandProvider } from "@/features/scanner/api/use-scanner-island";
 import { SerialProvider } from "@/features/scanner/api/use-serial";
 import { DocumentTitleUpdater } from "@/features/scanner/components/document-title-updater";
-import { orgSettingsQueryOptions } from "@/features/companies/api/org-settings";
-import { useOrg } from "@/features/companies/api/use-organization";
+import { orgSettingsQueryOptions } from "@/features/settings/api/org-settings";
+import { useOrg } from "@/hooks/use-org";
 import { applyPrimaryColor, resetPrimaryColor, THEME_COLORS } from "@/lib/primary-color";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
@@ -59,7 +58,6 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
                   <ScannedCardsProvider>
                     <CardFiltersProvider>
                       <AppLoadingGate>{children}</AppLoadingGate>
-                      <OrgPickerModal />
                       <DocumentTitleUpdater />
                     </CardFiltersProvider>
                   </ScannedCardsProvider>

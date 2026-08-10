@@ -159,7 +159,7 @@ router.put("/:guid/active", requireAuth, requireOrg, async (c) => {
       if (!target) return { message: "Set not found.", success: false };
 
       // Only one active set per game (or per "no game") - activating a
-      // Gundam set shouldn't deactivate an already-active Magic set.
+      // Pokemon set shouldn't deactivate an already-active Magic set.
       await tx
         .update(binSets)
         .set({ isActive: false })

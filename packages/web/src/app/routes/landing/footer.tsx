@@ -40,12 +40,6 @@ export function LandingFooter() {
           <Link to="/build" className="transition-colors hover:text-foreground">
             {t("nav.build")}
           </Link>
-          <Link
-            to="/auth/sign-in"
-            className="transition-colors hover:text-foreground"
-          >
-            {t("nav.signIn")}
-          </Link>
         </nav>
 
         <div className="flex items-center gap-4">

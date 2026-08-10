@@ -1,5 +1,5 @@
+import { LOCAL_USER_ID } from "@magic-vault/shared";
 import { createLockEventsSource } from "@/lib/api/session";
-import { neon } from "@/lib/auth/client";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 
 export interface ScanLockInfo {
@@ -26,21 +26,14 @@ export function CollectionLocksProvider({
   children: React.ReactNode;
 }) {
   const [locks, setLocks] = useState<Record<string, ScanLockInfo>>({});
-  const { data: sessionData } = neon.auth.useSession();
-  const session = sessionData as {
-    session?: { activeOrganizationId?: string | null };
-    user?: { id?: string };
-  } | null;
-  const currentUserId = session?.user?.id;
-  const orgId =
-    session?.session?.activeOrganizationId ??
-    localStorage.getItem("activeOrgId");
+  // Single local user, so lock ownership is a constant. `isLockedByOther` is
+  // therefore always false: one machine cannot lock itself out. Two scanners
+  // racing for the same collection is not a scenario for a desktop build.
+  const currentUserId = LOCAL_USER_ID;
 
   const esRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
-    if (!orgId) return;
-
     let cancelled = false;
 
     createLockEventsSource()
@@ -92,7 +85,7 @@ export function CollectionLocksProvider({
       esRef.current?.close();
       esRef.current = null;
     };
-  }, [orgId]);
+  }, []);
 
   const isLockedByOther = (guid: string) => {
     const lock = locks[guid];

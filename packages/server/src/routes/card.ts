@@ -138,8 +138,6 @@ router.get("/search/:id", requireAuth, async (c) => {
 
 const ALLOWED_IMAGE_HOSTS = new Set([
   "cards.scryfall.io",
-  "gundam-gcg.com",
-  "www.gundam-gcg.com",
   "assets.tcgdex.net",
 ]);
 

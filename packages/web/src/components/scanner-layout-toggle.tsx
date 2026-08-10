@@ -1,8 +1,8 @@
 import {
   orgSettingsQueryOptions,
   saveOrgSettings,
-} from "@/features/companies/api/org-settings";
-import { useOrg } from "@/features/companies/api/use-organization";
+} from "@/features/settings/api/org-settings";
+import { useOrg } from "@/hooks/use-org";
 import { cn } from "@/lib/utils";
 import { DEFAULT_SCAN_REGION } from "@magic-vault/shared";
 import { IconLayoutColumns, IconLayoutRows } from "@tabler/icons-react";
