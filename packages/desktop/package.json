@@ -8,7 +8,7 @@
   "scripts": {
     "build": "tsup",
     "dev": "pnpm -w run build && electron dist/main.cjs",
-    "bundle:server": "rm -rf .server-bundle && pnpm --filter @magic-vault/server deploy --prod .server-bundle",
+    "bundle:server": "rm -rf .server-bundle && pnpm --filter @magic-vault/server deploy --prod .server-bundle && node scripts/prune-bundle.mjs",
     "dist": "pnpm -w run build && pnpm bundle:server && electron-builder",
     "dist:dir": "pnpm -w run build && pnpm bundle:server && electron-builder --dir"
   },

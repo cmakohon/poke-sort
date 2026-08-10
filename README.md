@@ -104,7 +104,11 @@ pnpm --filter @magic-vault/desktop dist   # produce an installer in packages/des
 `dist` fetches the SigLIP weights into `.models` if absent (~100 MB) and bundles
 them, so a fresh install never needs the network to scan. It also runs
 `pnpm deploy` to flatten the server's dependency tree — a plain copy of pnpm's
-symlinked `node_modules` produces an app that cannot resolve its native modules.
+symlinked `node_modules` produces an app that cannot resolve its native modules —
+and then `scripts/prune-bundle.mjs`, which drops onnxruntime binaries for other
+platforms, the unused browser ONNX backend, source maps and type packages
+(~436 MB down to ~102 MB). The pruner assumes the build host matches the build
+target; set `PRUNE_PLATFORM` / `PRUNE_ARCH` to cross-build.
 
 Inside the app the Hono server runs in an Electron `utilityProcess` on a random
 loopback port and serves the SPA itself, so the API is same-origin.
