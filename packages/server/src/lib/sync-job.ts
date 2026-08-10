@@ -110,6 +110,9 @@ const VECTORIZE_CONCURRENCY = parseInt(
   process.env.VECTORIZE_CONCURRENCY ?? "10",
 );
 
+/** Rows per insert statement. ~250 x 768 floats keeps a statement near 2 MB. */
+const WRITE_BATCH_SIZE = 250;
+
 async function runSync(source: SyncSource, lang: string): Promise<void> {
   const baseUrl = await resolveGameDataSourceUrl(
     source.gameKey,
@@ -154,6 +157,40 @@ async function runSync(source: SyncSource, lang: string): Promise<void> {
     `Found ${existingSet.size} existing ${source.label} cards in DB. Starting vectorization (${VECTORIZE_CONCURRENCY} in parallel)...`,
   );
 
+  // PGlite serialises everything through a single connection, so the workers
+  // below only fetch and embed in parallel — the writes funnel through one
+  // batched, chained writer. This also replaces the previous row-at-a-time
+  // insert, which was the slower pattern even against Neon.
+  let pending: (typeof cardImageVectors.$inferInsert)[] = [];
+  let writeChain: Promise<void> = Promise.resolve();
+
+  async function writeBatch(
+    batch: (typeof cardImageVectors.$inferInsert)[],
+  ): Promise<void> {
+    try {
+      await db.insert(cardImageVectors).values(batch).onConflictDoNothing();
+      state = { ...state, processed: state.processed + batch.length };
+    } catch (err) {
+      state = { ...state, errors: state.errors + batch.length };
+      const msg = err instanceof Error ? err.message : String(err);
+      addLog(`Error: batch of ${batch.length} failed to write: ${msg}`);
+    }
+    emit("progress", {
+      processed: state.processed,
+      skipped: state.skipped,
+      errors: state.errors,
+    });
+  }
+
+  /** Chained, so only one write is ever in flight. */
+  function flush(): Promise<void> {
+    if (pending.length === 0) return writeChain;
+    const batch = pending;
+    pending = [];
+    writeChain = writeChain.then(() => writeBatch(batch));
+    return writeChain;
+  }
+
   async function processCard(card: SyncSourceCard): Promise<void> {
     if (!card.imageUrl || existingSet.has(card.id)) {
       state = { ...state, skipped: state.skipped + 1 };
@@ -176,35 +213,31 @@ async function runSync(source: SyncSource, lang: string): Promise<void> {
       const buffer = Buffer.from(await imageRes.arrayBuffer());
       const embedding = await vectorizeImageFromBuffer(buffer);
 
-      await db
-        .insert(cardImageVectors)
-        .values({
-          scryfallId: card.id,
-          gameKey: source.gameKey,
-          lang,
-          name: card.name,
-          setCode: card.setCode,
-          embedding,
-        })
-        .onConflictDoNothing();
-
+      // Claim the id immediately so a duplicate in the same run is skipped
+      // rather than embedded twice while this one sits in the buffer.
       existingSet.add(card.id);
-      state = { ...state, processed: state.processed + 1 };
-      addLog(
-        `[${state.processed + state.skipped}/${state.total}] ${card.name} (${card.setCode})`,
-      );
+      pending.push({
+        scryfallId: card.id,
+        gameKey: source.gameKey,
+        lang,
+        name: card.name,
+        setCode: card.setCode,
+        embedding,
+      });
+      addLog(`[${state.total}] embedded ${card.name} (${card.setCode})`);
+
+      if (pending.length >= WRITE_BATCH_SIZE) await flush();
     } catch (err) {
       state = { ...state, errors: state.errors + 1 };
       const msg = err instanceof Error ? err.message : String(err);
       addLog(`Error: ${card.name}: ${msg}`);
+      emit("progress", {
+        processed: state.processed,
+        skipped: state.skipped,
+        errors: state.errors,
+        currentCard: card.name,
+      });
     }
-
-    emit("progress", {
-      processed: state.processed,
-      skipped: state.skipped,
-      errors: state.errors,
-      currentCard: card.name,
-    });
   }
 
   let nextIndex = 0;
@@ -228,6 +261,11 @@ async function runSync(source: SyncSource, lang: string): Promise<void> {
       worker,
     ),
   );
+
+  // Drain whatever the last partial batch left behind — including on cancel,
+  // so work already paid for in embedding time is not thrown away.
+  await flush();
+  await writeChain;
 
   if (cancelled) {
     state = { ...state, status: "cancelled" };

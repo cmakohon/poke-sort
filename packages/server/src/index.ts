@@ -1,11 +1,13 @@
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { migrateDatabase } from "./db/migrate";
 import { seedDatabase } from "./db/seed";
 import type { AppEnv } from "./middleware/auth";
 import { adminRouter } from "./routes/admin";
 import { sortBinsRouter } from "./routes/bins";
 import { cardRouter } from "./routes/card";
+import { capturesRouter } from "./routes/captures";
 import { collectionsRouter } from "./routes/collections";
 import { feederRouter } from "./routes/feeder";
 import { gamesRouter } from "./routes/games";
@@ -27,6 +29,7 @@ app.use(
 );
 
 app.route("/cards", cardRouter);
+app.route("/captures", capturesRouter);
 app.route("/bins", sortBinsRouter);
 app.route("/collections", collectionsRouter);
 app.route("/modules", moduleConfigsRouter);
@@ -36,16 +39,18 @@ app.route("/notifications", notificationsRouter);
 app.route("/org-settings", orgSettingsRouter);
 app.route("/admin", adminRouter);
 
-// Seeding is a hard prerequisite, not best-effort: with no `games` rows the
-// bin rule engine has no field definitions and nothing can be sorted, so a
-// failure here should stop the boot rather than serve a broken app.
-seedDatabase()
+// Migrate then seed, both hard prerequisites rather than best-effort: with no
+// schema, or no `games` rows to give the bin rule engine its field definitions,
+// nothing can be sorted — so a failure here should stop the boot rather than
+// serve a broken app.
+migrateDatabase()
+  .then(seedDatabase)
   .then(() => {
     serve({ fetch: app.fetch, port: PORT, hostname: "0.0.0.0" }, () => {
       console.log(`[server] Running on port:${PORT}`);
     });
   })
   .catch((err) => {
-    console.error("[server] Failed to seed database:", err);
+    console.error("[server] Failed to prepare database:", err);
     process.exit(1);
   });
