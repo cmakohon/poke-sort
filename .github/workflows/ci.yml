@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [dev, master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Typecheck, lint, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.1.3
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typecheck server
+        run: pnpm --filter @magic-vault/server exec tsc --noEmit -p tsconfig.json
+
+      - name: Typecheck desktop
+        run: pnpm --filter @magic-vault/desktop exec tsc --noEmit -p tsconfig.json
+
+      - name: Lint
+        run: pnpm lint
+
+      # `tsc -b` runs as part of the web build.
+      - name: Build
+        run: pnpm build

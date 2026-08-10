@@ -11,10 +11,49 @@ import {
   subscribeSSE,
   SYNC_SOURCES,
 } from "../lib/sync-job";
+import { countCards, importPack } from "../lib/pack/import";
 import { vectorizeImageFromBuffer } from "../lib/vectorize";
 import { requireAuth, requireRole, type AppEnv } from "../middleware/auth";
 
 const router = new Hono<AppEnv>();
+
+// GET /admin/catalog/:gameKey — is this game's catalog populated?
+// Drives the first-run prompt: an empty catalog means nothing can be scanned.
+router.get("/catalog/:gameKey", requireAuth, requireRole("admin"), async (c) => {
+  const gameKey = c.req.param("gameKey");
+  const lang = c.req.query("lang") ?? "en";
+  return c.json({
+    success: true,
+    data: { gameKey, lang, count: await countCards(gameKey, lang) },
+  });
+});
+
+// POST /admin/catalog/import-pack — load a prebuilt embedding pack from disk.
+// Embedding the catalog locally is a multi-hour CPU job; this is the path
+// users are expected to take.
+router.post("/catalog/import-pack", requireAuth, requireRole("admin"), async (c) => {
+  const { path: packPath } = await c.req.json<{ path?: string }>();
+  if (!packPath?.trim()) {
+    return c.json({ success: false, message: "A pack path is required." }, 400);
+  }
+
+  try {
+    const { header, inserted } = await importPack(packPath);
+    return c.json({
+      success: true,
+      data: {
+        gameKey: header.gameKey,
+        lang: header.lang,
+        cards: header.count,
+        inserted,
+      },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[admin] Pack import failed:", err);
+    return c.json({ success: false, message }, 400);
+  }
+});
 
 // GET /admin/sync/stream — SSE (must be before GET /admin/sync)
 router.get("/sync/stream", async (c) => {

@@ -23,3 +23,31 @@ export const CAPTURES_DIR = path.join(DATA_DIR, "captures");
  */
 export const MIGRATIONS_DIR =
   process.env.MAULT_MIGRATIONS_DIR ?? path.resolve(__dirname, "../../../drizzle");
+
+/**
+ * When set, the built SPA is served from this directory and the API becomes
+ * same-origin. The desktop shell sets it; `pnpm dev` leaves it unset so Vite
+ * keeps serving the app with HMR.
+ */
+export const STATIC_DIR = process.env.MAULT_STATIC_DIR
+  ? path.resolve(process.env.MAULT_STATIC_DIR)
+  : null;
+
+/**
+ * Port 0 asks the OS for a free port — what the desktop shell wants, since a
+ * fixed port could collide with anything else on the machine. The real port is
+ * reported back over the utilityProcess message channel.
+ */
+export const PORT = parseInt(process.env.PORT ?? "3001", 10);
+
+/** Loopback-only in the packaged app; the dev server stays reachable on the LAN
+ * so a phone can open the monitor view. */
+export const HOST = process.env.MAULT_HOST ?? "0.0.0.0";
+
+/** Where the bundled SigLIP weights live (transformers.js `env.cacheDir`). */
+export const MODEL_DIR = process.env.MAULT_MODEL_DIR
+  ? path.resolve(process.env.MAULT_MODEL_DIR)
+  : null;
+
+/** Refuse to fetch weights from the network — the packaged app ships them. */
+export const MODELS_OFFLINE = process.env.MAULT_MODELS_OFFLINE === "1";

@@ -1,6 +1,10 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { serve } from "@hono/node-server";
+import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { HOST, PORT, STATIC_DIR } from "./config";
 import { migrateDatabase } from "./db/migrate";
 import { seedDatabase } from "./db/seed";
 import type { AppEnv } from "./middleware/auth";
@@ -15,29 +19,55 @@ import { moduleConfigsRouter } from "./routes/module-configs";
 import { notificationsRouter } from "./routes/notifications";
 import { orgSettingsRouter } from "./routes/org-settings";
 
+/**
+ * Present only when Electron runs this file inside a `utilityProcess`; the
+ * server is otherwise a plain Node process and knows nothing about Electron.
+ */
+const parentPort = (
+  process as NodeJS.Process & {
+    parentPort?: { postMessage(message: unknown): void };
+  }
+).parentPort;
+
 const app = new Hono<AppEnv>();
-const PORT = parseInt(process.env.PORT ?? "3001");
 
-// Still needed while the Vite dev server is a separate origin. Phase 3 serves
-// the built SPA from this server, at which point this can go.
-app.use(
-  cors({
-    origin: process.env.WEB_URL ?? "http://localhost:5173",
-    allowMethods: ["GET", "POST", "PUT", "DELETE"],
-    allowHeaders: ["Content-Type"],
-  }),
-);
+// Only needed when the Vite dev server is a separate origin. In the packaged
+// app the SPA is served from this same server, so there is no cross-origin
+// request to permit — and no handler is registered.
+if (!STATIC_DIR) {
+  app.use(
+    cors({
+      origin: process.env.WEB_URL ?? "http://localhost:5173",
+      allowMethods: ["GET", "POST", "PUT", "DELETE"],
+      allowHeaders: ["Content-Type"],
+    }),
+  );
+}
 
-app.route("/cards", cardRouter);
-app.route("/captures", capturesRouter);
-app.route("/bins", sortBinsRouter);
-app.route("/collections", collectionsRouter);
-app.route("/modules", moduleConfigsRouter);
-app.route("/feeder", feederRouter);
-app.route("/games", gamesRouter);
-app.route("/notifications", notificationsRouter);
-app.route("/org-settings", orgSettingsRouter);
-app.route("/admin", adminRouter);
+// Mounted under /api so the dev server and the packaged app expose the exact
+// same paths. Vite used to strip the prefix, which meant the two environments
+// disagreed about every URL.
+app.route("/api/cards", cardRouter);
+app.route("/api/captures", capturesRouter);
+app.route("/api/bins", sortBinsRouter);
+app.route("/api/collections", collectionsRouter);
+app.route("/api/modules", moduleConfigsRouter);
+app.route("/api/feeder", feederRouter);
+app.route("/api/games", gamesRouter);
+app.route("/api/notifications", notificationsRouter);
+app.route("/api/org-settings", orgSettingsRouter);
+app.route("/api/admin", adminRouter);
+
+if (STATIC_DIR) {
+  const indexHtml = readFileSync(path.join(STATIC_DIR, "index.html"), "utf-8");
+
+  app.use("/*", serveStatic({ root: path.relative(process.cwd(), STATIC_DIR) }));
+
+  // History fallback. React Router's createBrowserRouter needs deep links like
+  // /app/collections to resolve to index.html — which is also why the app is
+  // served over http rather than file://, where no such fallback is possible.
+  app.get("*", (c) => c.html(indexHtml));
+}
 
 // Migrate then seed, both hard prerequisites rather than best-effort: with no
 // schema, or no `games` rows to give the bin rule engine its field definitions,
@@ -46,8 +76,10 @@ app.route("/admin", adminRouter);
 migrateDatabase()
   .then(seedDatabase)
   .then(() => {
-    serve({ fetch: app.fetch, port: PORT, hostname: "0.0.0.0" }, () => {
-      console.log(`[server] Running on port:${PORT}`);
+    serve({ fetch: app.fetch, port: PORT, hostname: HOST }, (info) => {
+      console.log(`[server] Running on http://${HOST}:${info.port}`);
+      // The desktop shell asks for port 0 and learns the real one here.
+      parentPort?.postMessage({ type: "listening", port: info.port });
     });
   })
   .catch((err) => {

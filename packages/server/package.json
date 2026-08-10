@@ -8,6 +8,7 @@
     "db:generate": "drizzle-kit generate",
     "db:socket": "pglite-server --db ./.mault/db --port 5432",
     "db:studio": "drizzle-kit studio",
+    "export:pack": "tsx --env-file-if-exists ../../.env scripts/export-pack.ts",
     "backfill:card-shape": "tsx --env-file-if-exists ../../.env scripts/backfill-card-shape.ts"
   },
   "dependencies": {
