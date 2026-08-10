@@ -2,6 +2,8 @@
   "name": "@magic-vault/desktop",
   "version": "1.0.1",
   "private": true,
+  "description": "Mault — TCG card scanner and physical sorter",
+  "author": "dishwasher-detergent",
   "main": "dist/main.cjs",
   "scripts": {
     "build": "tsup",

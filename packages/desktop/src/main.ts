@@ -32,6 +32,33 @@ const MIGRATIONS_DIR = app.isPackaged
 
 let serverProcess: UtilityProcess | null = null;
 let mainWindow: BrowserWindow | null = null;
+let serverStart: Promise<number> | null = null;
+let permissionsWired = false;
+
+/**
+ * Shown while the server migrates, seeds and warms up — several seconds on a
+ * first run. Without it the app is a bouncing dock icon and nothing else.
+ */
+const SPLASH = `data:text/html,${encodeURIComponent(`
+<body style="margin:0;height:100vh;display:grid;place-items:center;background:#000;color:#888;
+             font:14px system-ui,-apple-system,sans-serif">Starting Mault…</body>`)}`;
+
+const errorPage = (message: string) => `data:text/html,${encodeURIComponent(`
+<body style="margin:0;height:100vh;display:grid;place-items:center;background:#000;color:#f87171;
+             font:14px system-ui,-apple-system,sans-serif;text-align:center;padding:2rem">
+  <div><p><strong>Mault could not start.</strong></p><pre style="color:#888;white-space:pre-wrap">${message}</pre></div>
+</body>`)}`;
+
+/**
+ * The server is started at most once per app run. PGlite is single-process, so
+ * a second server against the same data directory is not a slow path — it is
+ * corruption. This is reachable on macOS: closing the window does not quit the
+ * app, and clicking the dock icon builds a new one.
+ */
+function ensureServer(): Promise<number> {
+  if (!serverStart) serverStart = startServer();
+  return serverStart;
+}
 
 /**
  * The Hono server runs in a utilityProcess rather than the main process so a
@@ -76,6 +103,10 @@ function startServer(): Promise<number> {
     child.on("exit", (code) => {
       clearTimeout(timer);
       serverProcess = null;
+      // Clear the memoised start so a reopened window boots a fresh server
+      // rather than pointing at a port nothing is listening on. (A no-op for
+      // the promise itself if it already resolved.)
+      serverStart = null;
       reject(new Error(`Server exited with code ${code}`));
     });
   });
@@ -128,8 +159,10 @@ function wireSerialPermissions(win: BrowserWindow, origin: string): void {
 }
 
 async function createWindow(): Promise<void> {
-  const port = await startServer();
-  const appUrl = DEV_URL ?? `http://127.0.0.1:${port}`;
+  if (mainWindow) {
+    mainWindow.focus();
+    return;
+  }
 
   mainWindow = new BrowserWindow({
     width: 1440,
@@ -144,17 +177,38 @@ async function createWindow(): Promise<void> {
       nodeIntegration: false,
     },
   });
-
-  // The origin the handlers check must be the origin the page is actually
-  // served from — a mismatch here is the silent-failure mode.
-  wireSerialPermissions(mainWindow, new URL(appUrl).origin);
-
-  mainWindow.once("ready-to-show", () => mainWindow?.show());
-  await mainWindow.loadURL(appUrl);
-
-  mainWindow.on("closed", () => {
+  const win = mainWindow;
+  win.on("closed", () => {
     mainWindow = null;
   });
+
+  // Paint before waiting on the server, so the app appears immediately.
+  await win.loadURL(SPLASH);
+  win.show();
+
+  let port: number;
+  try {
+    port = await ensureServer();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[desktop] Server failed to start:", err);
+    // Surface it in the window rather than quitting silently.
+    await win.loadURL(errorPage(message));
+    return;
+  }
+
+  const appUrl = DEV_URL ?? `http://127.0.0.1:${port}`;
+
+  // The origin the handlers check must be the origin the page is actually
+  // served from — a mismatch here is the silent-failure mode. Wired once:
+  // these are session-level listeners and would otherwise stack up if the
+  // window were closed and reopened.
+  if (!permissionsWired) {
+    wireSerialPermissions(win, new URL(appUrl).origin);
+    permissionsWired = true;
+  }
+
+  await win.loadURL(appUrl);
 }
 
 ipcMain.handle("mault:get-preferred-serial-port", () => loadPreferredPortId());
@@ -163,18 +217,26 @@ ipcMain.handle("mault:set-preferred-serial-port", (_e, portId: string | null) =>
   return portId;
 });
 
-app.whenReady().then(async () => {
-  try {
-    await createWindow();
-  } catch (err) {
-    console.error("[desktop] Failed to start:", err);
-    app.quit();
-  }
-
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) void createWindow();
+// Two copies of the app would open the same PGlite directory, which is not a
+// contention problem but a corruption one. Hand the second launch's focus to
+// the window that already exists instead.
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.on("second-instance", () => {
+    if (!mainWindow) return;
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
   });
-});
+
+  app.whenReady().then(() => {
+    void createWindow();
+
+    app.on("activate", () => {
+      void createWindow();
+    });
+  });
+}
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
