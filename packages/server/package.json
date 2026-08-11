@@ -11,7 +11,8 @@
     "export:pack": "tsx --env-file-if-exists ../../.env scripts/export-pack.ts",
     "backfill:card-shape": "tsx --env-file-if-exists ../../.env scripts/backfill-card-shape.ts",
     "eval:build": "tsx eval/build-fixtures.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "eval:hnsw": "tsx eval/hnsw-recall.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "0.5.4",
