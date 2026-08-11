@@ -79,7 +79,7 @@ const coverage = z.number().min(SCAN_COVERAGE_MIN).max(SCAN_COVERAGE_MAX);
 /** Signed: the capture window moves either way from the centre of the frame. */
 const offset = z.number().min(-SCAN_OFFSET_LIMIT).max(SCAN_OFFSET_LIMIT);
 
-const OrgSettingsSchema = z
+export const OrgSettingsSchema = z
   .object({
     primaryColor: z.string().max(64).nullable().optional(),
     scannerLayout: z.string().max(64).nullable().optional(),

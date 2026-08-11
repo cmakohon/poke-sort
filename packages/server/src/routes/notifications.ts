@@ -38,7 +38,7 @@ router.get("/", requireAuth, requireOrg, async (c) => {
 });
 
 /** Mirrors SerialEventReport; `response` is opaque device output, so unknown. */
-const SerialEventSchema = z
+export const SerialEventSchema = z
   .object({
     command: z.enum(["connect", "test", "feeder", "auto-feed", "bin", "jam"]),
     sent: z.boolean(),
@@ -53,7 +53,7 @@ const SerialEventSchema = z
  * rather than at send time — an unparseable value would otherwise sit in the
  * database and fail silently on every notification.
  */
-const NotificationSettingsSchema = z
+export const NotificationSettingsSchema = z
   .object({
     discordWebhookUrl: z.union([z.string().url(), z.literal(""), z.null()]),
   })

@@ -36,7 +36,10 @@ import {
  */
 
 const servoPulse = z.number().int().min(SERVO_PULSE_MIN).max(SERVO_PULSE_MAX);
-const durationMs = z.number().int().min(0).max(60_000);
+// Ten minutes. The calibration UI clamps these only at the bottom, so any
+// ceiling here is the API inventing a limit the screen does not have — this one
+// is set where no plausible feed timing reaches it, rather than at a guess.
+const durationMs = z.number().int().min(0).max(600_000);
 /** A fraction of the frame, as the calibration UI expresses it. */
 const coverage = z.number().min(SCAN_COVERAGE_MIN).max(SCAN_COVERAGE_MAX);
 /** Signed: the capture window moves either way from the centre of the frame. */

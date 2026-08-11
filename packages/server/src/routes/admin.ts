@@ -4,7 +4,7 @@ import { z } from "zod";
 import { parseBody } from "../lib/validate";
 
 /** Optional filter for the destructive catalog clear; absent means every game. */
-const ClearSchema = z.object({ gameKey: z.string().trim().min(1).optional() }).strict();
+export const ClearSchema = z.object({ gameKey: z.string().trim().min(1).optional() }).strict();
 import { streamSSE } from "hono/streaming";
 import { db } from "../db";
 import { cardImageVectors } from "../db/schema";

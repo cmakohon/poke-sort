@@ -71,7 +71,7 @@ const DefaultBinInitSchema = z
   })
   .strict();
 
-const CreateSetSchema = z
+export const CreateSetSchema = z
   .object({
     name: z.string().trim().min(1).max(SET_NAME_MAX_LENGTH),
     initialBins: z.array(DefaultBinInitSchema).optional(),
@@ -86,11 +86,11 @@ const ActivateSetSchema = z
   })
   .strict();
 
-const UpdateBinSchema = z
+export const UpdateBinSchema = z
   .object({ rules: RuleGroupSchema, isCatchAll: z.boolean().optional() })
   .strict();
 
-const RenameSetSchema = z
+export const RenameSetSchema = z
   .object({ name: z.string().trim().min(1).max(SET_NAME_MAX_LENGTH) })
   .strict();
 
