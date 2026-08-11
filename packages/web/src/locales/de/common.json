@@ -11,17 +11,7 @@
     "expandSidebar": "Seitenleiste ausklappen ([)"
   },
   "breadcrumb": {
-    "account": "Konto",
     "sortingLogic": "Sortierlogik"
-  },
-  "emailVerification": {
-    "banner": "Bitte bestätige deine E-Mail-Adresse ({{email}}), um dein Konto abzusichern.",
-    "sendCode": "Code senden",
-    "haveCode": "Ich habe einen Code",
-    "codeSentTitle": "Bestätigungscode gesendet",
-    "codeSentDescription": "Prüfe {{email}} auf einen Code.",
-    "codeFailedTitle": "Bestätigungscode konnte nicht gesendet werden",
-    "codeFailedDescription": "Bitte versuche es gleich noch einmal."
   },
   "statusFooter": {
     "camera": "Kamera",

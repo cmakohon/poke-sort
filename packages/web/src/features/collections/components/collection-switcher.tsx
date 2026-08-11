@@ -71,7 +71,7 @@ export function CollectionSwitcher() {
 
   const handleShare = useCallback(() => {
     if (!activeCollection) return;
-    const url = `${window.location.origin}/app/monitor/${activeCollection.guid}`;
+    const url = `${window.location.origin}/monitor/${activeCollection.guid}`;
     navigator.clipboard
       .writeText(url)
       .then(() => {
@@ -167,7 +167,7 @@ export function CollectionSwitcher() {
           <TooltipTrigger
             render={
               <Button nativeButton={false} variant="outline" size="icon">
-                <Link to="/app/collections">
+                <Link to="/collections">
                   <IconEdit />
                 </Link>
               </Button>

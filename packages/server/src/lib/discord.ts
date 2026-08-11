@@ -50,7 +50,7 @@ export function buildCardScannedEmbed(
 
   const imageUrl = card.image?.normal;
   const monitorUrl = collectionGuid
-    ? `${process.env.WEB_URL ?? "http://localhost:5173"}/app/monitor/${collectionGuid}`
+    ? `${process.env.WEB_URL ?? "http://localhost:5173"}/monitor/${collectionGuid}`
     : undefined;
 
   return {

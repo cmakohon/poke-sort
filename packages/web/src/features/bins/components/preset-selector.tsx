@@ -242,7 +242,7 @@ export function PresetSelector({ readOnly }: PresetSelectorProps) {
                     disabled={!activeCollection}
                   >
                     <Link
-                      to={`/app/collections/${activeCollection?.guid}/bins`}
+                      to={`/collections/${activeCollection?.guid}/bins`}
                     >
                       <IconEdit />
                     </Link>

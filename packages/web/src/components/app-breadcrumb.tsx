@@ -11,31 +11,28 @@ function useBreadcrumbs(): Crumb[] {
   const { pathname } = useLocation();
   const { collections } = useCollections();
 
-  if (pathname === "/app") return [{ label: t("nav.scanner") }];
-  if (pathname === "/app/collections")
-    return [{ label: t("nav.collections") }];
-  if (pathname === "/app/calibrate") return [{ label: t("nav.calibrate") }];
-  if (pathname === "/app/settings") return [{ label: t("nav.settings") }];
-  if (pathname === "/app/admin") return [{ label: t("nav.admin") }];
-  if (pathname === "/app/monitor") return [{ label: t("nav.monitor") }];
-  if (pathname.startsWith("/app/account/"))
-    return [{ label: t("breadcrumb.account") }];
+  if (pathname === "/") return [{ label: t("nav.scanner") }];
+  if (pathname === "/collections") return [{ label: t("nav.collections") }];
+  if (pathname === "/calibrate") return [{ label: t("nav.calibrate") }];
+  if (pathname === "/settings") return [{ label: t("nav.settings") }];
+  if (pathname === "/admin") return [{ label: t("nav.admin") }];
+  if (pathname === "/monitor") return [{ label: t("nav.monitor") }];
 
-  const binsMatch = pathname.match(/^\/app\/collections\/([^/]+)\/bins$/);
+  const binsMatch = pathname.match(/^\/collections\/([^/]+)\/bins$/);
   if (binsMatch) {
     const collection = collections.find((c) => c.guid === binsMatch[1]);
     return [
-      { label: t("nav.collections"), to: "/app/collections" },
+      { label: t("nav.collections"), to: "/collections" },
       { label: collection?.name ?? "…" },
       { label: t("breadcrumb.sortingLogic") },
     ];
   }
 
-  const monitorMatch = pathname.match(/^\/app\/monitor\/([^/]+)$/);
+  const monitorMatch = pathname.match(/^\/monitor\/([^/]+)$/);
   if (monitorMatch) {
     const collection = collections.find((c) => c.guid === monitorMatch[1]);
     return [
-      { label: t("nav.monitor"), to: "/app/monitor" },
+      { label: t("nav.monitor"), to: "/monitor" },
       { label: collection?.name ?? "…" },
     ];
   }

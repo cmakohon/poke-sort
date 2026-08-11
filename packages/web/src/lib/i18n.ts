@@ -3,25 +3,21 @@ import { initReactI18next } from "react-i18next";
 
 import adminDe from "@/locales/de/admin.json";
 import binsDe from "@/locales/de/bins.json";
-import buildDe from "@/locales/de/build.json";
 import calibrationDe from "@/locales/de/calibration.json";
 import cardsDe from "@/locales/de/cards.json";
 import collectionsDe from "@/locales/de/collections.json";
 import commonDe from "@/locales/de/common.json";
 import gamesDe from "@/locales/de/games.json";
-import landingDe from "@/locales/de/landing.json";
 import notificationsDe from "@/locales/de/notifications.json";
 import scannerDe from "@/locales/de/scanner.json";
 import settingsDe from "@/locales/de/settings.json";
 import adminEn from "@/locales/en/admin.json";
 import binsEn from "@/locales/en/bins.json";
-import buildEn from "@/locales/en/build.json";
 import calibrationEn from "@/locales/en/calibration.json";
 import cardsEn from "@/locales/en/cards.json";
 import collectionsEn from "@/locales/en/collections.json";
 import commonEn from "@/locales/en/common.json";
 import gamesEn from "@/locales/en/games.json";
-import landingEn from "@/locales/en/landing.json";
 import notificationsEn from "@/locales/en/notifications.json";
 import scannerEn from "@/locales/en/scanner.json";
 import settingsEn from "@/locales/en/settings.json";
@@ -41,8 +37,6 @@ const LANGUAGE_STORAGE_KEY = "language";
 const resources = {
   en: {
     common: commonEn,
-    landing: landingEn,
-    build: buildEn,
     collections: collectionsEn,
     scanner: scannerEn,
     bins: binsEn,
@@ -55,8 +49,6 @@ const resources = {
   },
   de: {
     common: commonDe,
-    landing: landingDe,
-    build: buildDe,
     collections: collectionsDe,
     scanner: scannerDe,
     bins: binsDe,

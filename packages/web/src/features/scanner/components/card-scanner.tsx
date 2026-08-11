@@ -346,7 +346,7 @@ export function CardScanner({ className, compact }: CardScannerProps) {
           onScannerConnect={connect}
           onScannerDisconnect={disconnect}
           onScannerRetry={sendTest}
-          onCalibrate={() => navigate("/app/calibrate")}
+          onCalibrate={() => navigate("/calibrate")}
           onAutoFeedChange={setAutoFeed}
           onAllowDuplicatesChange={setAllowDuplicates}
         />

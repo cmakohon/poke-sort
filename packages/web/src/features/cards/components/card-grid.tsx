@@ -187,7 +187,7 @@ export function CardGrid() {
         <Button
           variant="outline"
           size="sm"
-          render={<Link to="/app/collections">{t("cardGrid.manageCollections")}</Link>}
+          render={<Link to="/collections">{t("cardGrid.manageCollections")}</Link>}
         ></Button>
       </div>
     );

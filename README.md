@@ -2,6 +2,19 @@
 
 A TCG card scanner and physical sorter. A webcam identifies cards via AI image embeddings, a rule engine decides which bin each card belongs in, and an Arduino-driven feeder and servo mechanism physically routes the card there.
 
+## Working plan
+
+The local-first migration plan — phase write-ups, what shipped, what is still
+open — lives outside the repo at:
+
+```
+~/.claude/plans/parsed-mixing-hearth.md
+```
+
+It is the source of truth for in-flight work and is not checked in (it is a
+personal working document, not project documentation). Read it first when
+picking this project back up.
+
 ## MakerWorld
 
 https://makerworld.com/en/models/3066180-tcg-card-sorting-machine#profileId-3451252
@@ -26,7 +39,6 @@ https://makerworld.com/en/models/3066180-tcg-card-sorting-machine#profileId-3451
 - Discord notifications for sorter errors/jams, plus an optional per-card-scanned notification with the card's image, name, price, collection/game, and a link to watch the session live
 - Branding and scanner layout settings
 - Feeder, servo, and camera scan-region calibration tools: the camera's capture region can be dragged/resized live against the feed to match different webcam mountings and fields of view
-- In-app hardware build guide (`/build`) with bill of materials, wiring diagrams, and assembly instructions
 
 ## Stack
 
@@ -43,7 +55,7 @@ https://makerworld.com/en/models/3066180-tcg-card-sorting-machine#profileId-3451
 packages/
 ├── shared/   @magic-vault/shared  - types, constants, evaluate-bin rule engine
 ├── server/   @magic-vault/server  - Hono API, Drizzle schema, embedded PGlite database
-├── web/      @magic-vault/web     - React SPA (scanner, bins, collections, admin, build guide)
+├── web/      @magic-vault/web     - React SPA (scanner, bins, collections, calibration, admin)
 └── desktop/  @magic-vault/desktop - Electron shell: window, utilityProcess, Web Serial permissions
 arduino/      Arduino sketch (arduino/main/main.ino)
 "3d model"/   Printable enclosure/module design (Fusion 360 + .3mf)
@@ -127,7 +139,9 @@ catalog sync works but is slow and depends on the image CDN staying friendly.
 
 ## Hardware
 
-The full bill of materials, wiring diagrams, and assembly instructions live in the app at `/build`. In short:
+The full bill of materials, wiring diagrams, and assembly instructions are in the
+[upstream project's build guide](https://github.com/dishwasher-detergent/mault) —
+this fork ships only the app. In short:
 
 - Arduino Uno R4 Minima, driving a PCA9685 servo controller over I2C
 - 9 positional SG90 servos (3 per module: trapdoor, paddle gate, pusher) plus 1 continuous-rotation SG90 for the feeder
