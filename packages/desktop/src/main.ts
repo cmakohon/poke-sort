@@ -65,19 +65,40 @@ function ensureServer(): Promise<number> {
  * Adopts the data directory left behind by the app's previous name.
  *
  * `userData` is derived from `productName`, so renaming Mault to PokeSort moves
- * it — the old directory (database, scan captures, imported catalog) would just
- * be orphaned, and the app would look like a fresh install. Renaming it across
- * is instant and safe: it only fires when the new location does not exist yet,
- * so it can never clobber real data, and it no-ops on every subsequent boot.
+ * it — the old directory (database, scan captures, imported catalog) would
+ * otherwise be orphaned and the app would look like a fresh install.
+ *
+ * The emptiness test is on `db/`, NOT on the directory itself: Electron creates
+ * `userData` during startup, before `whenReady` ever fires, so testing
+ * `existsSync(next)` is testing something that is always true and the adoption
+ * never runs. `db/` is created by the server, so it is the marker that actually
+ * distinguishes "this app has run here" from "Electron just made the folder".
+ *
+ * Contents are moved entry by entry rather than renaming the directory, because
+ * by now `next` exists and a directory-to-directory rename fails once Electron
+ * has put anything in it.
  *
  * Remove once no install can still be on the old name.
  */
 function adoptLegacyDataDir(): void {
   const next = app.getPath("userData");
   const legacy = path.join(path.dirname(next), "Mault");
-  if (legacy === next || fs.existsSync(next) || !fs.existsSync(legacy)) return;
+
+  if (legacy === next) return;
+  if (!fs.existsSync(path.join(legacy, "db"))) return;
+  // Already migrated, or this install has its own database — never overwrite.
+  if (fs.existsSync(path.join(next, "db"))) return;
+
   try {
-    fs.renameSync(legacy, next);
+    fs.mkdirSync(next, { recursive: true });
+    for (const entry of fs.readdirSync(legacy)) {
+      const from = path.join(legacy, entry);
+      const to = path.join(next, entry);
+      // Anything Electron already created in `next` wins; we are only filling
+      // in what is missing, so a partially-adopted state stays consistent.
+      if (fs.existsSync(to)) continue;
+      fs.renameSync(from, to);
+    }
     console.log(`[main] adopted legacy data dir: ${legacy} -> ${next}`);
   } catch (err) {
     // A failed adoption is recoverable — the app starts on an empty data dir
@@ -139,11 +160,33 @@ function startServer(): Promise<number> {
 }
 
 /**
+ * The origin the permission handlers accept.
+ *
+ * Deliberately a mutable module-level value rather than a captured argument.
+ * The server binds an ephemeral port, so the origin changes whenever the server
+ * restarts — and since the handlers below are session-level and wired exactly
+ * once, capturing the origin would pin them to the first port forever. After a
+ * server crash the window would reload on a new port and `navigator.serial`
+ * would go quiet with no error, which is the exact failure this file warns
+ * about.
+ */
+let allowedOrigin: string | null = null;
+
+/** Send to whichever window is alive now, not the one that was alive at wiring. */
+function notifyRenderer(channel: string, payload: unknown): void {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  mainWindow.webContents.send(channel, payload);
+}
+
+/**
  * Web Serial is why this app is Electron and not Tauri, and these handlers are
  * the part that fails silently: without all of them `navigator.serial` yields
  * nothing at all, with no error surfaced to the page.
+ *
+ * Wired once against the default session. Everything that varies per window or
+ * per server restart is read at call time.
  */
-function wireSerialPermissions(win: BrowserWindow, origin: string): void {
+function wireSerialPermissions(win: BrowserWindow): void {
   const { session } = win.webContents;
 
   session.on("select-serial-port", (event, portList, _wc, callback) => {
@@ -159,21 +202,22 @@ function wireSerialPermissions(win: BrowserWindow, origin: string): void {
 
   // Hot-plugging the Arduino mid-session should just work.
   session.on("serial-port-added", (_event, port) => {
-    win.webContents.send("poke-sort:serial-ports-changed", { added: port.portId });
+    notifyRenderer("poke-sort:serial-ports-changed", { added: port.portId });
   });
   session.on("serial-port-removed", (_event, port) => {
-    win.webContents.send("poke-sort:serial-ports-changed", {
-      removed: port.portId,
-    });
+    notifyRenderer("poke-sort:serial-ports-changed", { removed: port.portId });
   });
 
   session.setPermissionCheckHandler((_wc, permission, requestingOrigin) => {
     if (permission !== "serial" && permission !== "media") return false;
-    return requestingOrigin === origin;
+    return allowedOrigin !== null && requestingOrigin === allowedOrigin;
   });
 
   session.setDevicePermissionHandler(
-    (details) => details.deviceType === "serial" && details.origin === origin,
+    (details) =>
+      details.deviceType === "serial" &&
+      allowedOrigin !== null &&
+      details.origin === allowedOrigin,
   );
 
   // Only "media" here. Serial is not part of the permission-request flow at
@@ -226,11 +270,14 @@ async function createWindow(): Promise<void> {
   const appUrl = DEV_URL ?? `http://127.0.0.1:${port}`;
 
   // The origin the handlers check must be the origin the page is actually
-  // served from — a mismatch here is the silent-failure mode. Wired once:
-  // these are session-level listeners and would otherwise stack up if the
-  // window were closed and reopened.
+  // served from — a mismatch here is the silent-failure mode. Updated on every
+  // window because the server's port is ephemeral and changes across restarts.
+  allowedOrigin = new URL(appUrl).origin;
+
+  // Wired once: these are session-level listeners and would otherwise stack up
+  // each time the window was closed and reopened.
   if (!permissionsWired) {
-    wireSerialPermissions(win, new URL(appUrl).origin);
+    wireSerialPermissions(win);
     permissionsWired = true;
   }
 

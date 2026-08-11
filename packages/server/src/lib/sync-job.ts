@@ -107,9 +107,24 @@ export function startSync(
 
 // Lowered from 10: the embedding forward pass (~400 ms) dominates, not the
 // download, so extra download concurrency bought little and provoked the CDN.
-const VECTORIZE_CONCURRENCY = parseInt(
-  process.env.VECTORIZE_CONCURRENCY ?? "4",
-);
+//
+// Floored at 1. A bare parseInt let a typo'd or zero value through as NaN/0,
+// which spawned no workers at all: Promise.all([]) resolved instantly and the
+// job reported `completed` with 0 processed, so a misconfigured .env looked
+// exactly like a successful sync.
+const VECTORIZE_CONCURRENCY = (() => {
+  const raw = process.env.VECTORIZE_CONCURRENCY;
+  const parsed = Number.parseInt(raw ?? "4", 10);
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    if (raw !== undefined) {
+      console.warn(
+        `[sync] Ignoring VECTORIZE_CONCURRENCY=${raw}; falling back to 4.`,
+      );
+    }
+    return 4;
+  }
+  return parsed;
+})();
 
 /** Rows per insert statement. ~250 x 768 floats keeps a statement near 2 MB. */
 const WRITE_BATCH_SIZE = 250;
@@ -275,7 +290,9 @@ async function runSync(source: SyncSource, lang: string): Promise<void> {
         setTotal: extras.setTotal ?? null,
         cardData: extras.data ?? null,
       });
-      addLog(`[${state.total}] embedded ${card.name} (${card.setCode})`);
+      addLog(
+        `[${state.processed + pending.length}/${state.total}] embedded ${card.name} (${card.setCode})`,
+      );
 
       if (pending.length >= WRITE_BATCH_SIZE) await flush();
     } catch (err) {

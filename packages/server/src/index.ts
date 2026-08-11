@@ -58,10 +58,25 @@ app.route("/api/notifications", notificationsRouter);
 app.route("/api/org-settings", orgSettingsRouter);
 app.route("/api/admin", adminRouter);
 
+// An unmatched /api path must 404 as JSON. Without this the SPA fallback below
+// answers it with index.html and a 200, so a client calling a route that does
+// not exist gets HTML where it expected JSON and fails with a parse error
+// ("Unexpected token '<'") that says nothing about the real problem.
+//
+// Registered after the real routers, so it only sees genuinely unmatched paths.
+app.all("/api/*", (c) =>
+  c.json({ success: false, message: `No such API route: ${c.req.path}` }, 404),
+);
+
 if (STATIC_DIR) {
   const indexHtml = readFileSync(path.join(STATIC_DIR, "index.html"), "utf-8");
 
-  app.use("/*", serveStatic({ root: path.relative(process.cwd(), STATIC_DIR) }));
+  // `root` is resolved against process.cwd() by serveStatic, and the packaged
+  // app's cwd is arbitrary — so pass an absolute path and let it stay absolute.
+  // The previous path.relative() also broke outright on Windows whenever cwd
+  // and the resources sat on different volumes, where it returns an absolute
+  // path anyway.
+  app.use("/*", serveStatic({ root: STATIC_DIR }));
 
   // History fallback. React Router's createBrowserRouter needs deep links like
   // /collections to resolve to index.html — which is also why the app is
