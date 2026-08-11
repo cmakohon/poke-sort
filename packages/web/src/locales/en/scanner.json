@@ -211,5 +211,12 @@
     "cardCount_one": "{{count}} card",
     "cardCount_other": "{{count}} cards",
     "isScanningTooltip": "{{name}} is scanning"
+  },
+  "serialPicker": {
+    "title": "Which device is the sorter?",
+    "description": "More than one USB device is attached. Pick the Arduino running the sorter firmware.",
+    "remembered": "This choice is remembered, so you will not be asked again for this device.",
+    "cancel": "Cancel",
+    "confirm": "Use this device"
   }
 }

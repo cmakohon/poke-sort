@@ -10,6 +10,7 @@ import { useScannedCards } from "@/features/scanner/api/use-scanned-cards";
 import { useRegisterScannerIsland } from "@/features/scanner/api/use-scanner-island";
 import { useSerial, useSerialMessage } from "@/features/scanner/api/use-serial";
 import { ScannerMenu } from "@/features/scanner/components/scanner-menu";
+import { SerialPortPicker } from "@/features/scanner/components/serial-port-picker";
 import { ScannerOverlay } from "@/features/scanner/components/scanner-overlay";
 import { SCANNABLE_STATUSES } from "@/features/scanner/constants";
 import { useRole } from "@/hooks/use-role";
@@ -328,6 +329,7 @@ export function CardScanner({ className, compact }: CardScannerProps) {
           hasCatchAll={hasCatchAll}
           onRetryError={handleRetryError}
         />
+        <SerialPortPicker />
         <ScannerMenu
           isCameraActive={isCameraActive}
           isConnected={isConnected}

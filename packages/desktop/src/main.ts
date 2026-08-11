@@ -252,6 +252,39 @@ function notifyRenderer(channel: string, payload: unknown): void {
 }
 
 /**
+ * A pending `select-serial-port` answer.
+ *
+ * Electron lets the callback be held rather than answered inline, which is what
+ * makes a prompt possible at all: the page's requestPort() stays unresolved
+ * while the user chooses. Exactly one can be outstanding — a second request
+ * while a dialog is open answers the first with nothing rather than leaking a
+ * callback that never fires.
+ */
+let pendingSelect:
+  | { callback: (portId: string) => void; timer: NodeJS.Timeout }
+  | null = null;
+
+/** How long to wait for the renderer before falling back to the heuristic. */
+const SELECT_PROMPT_TIMEOUT_MS = 60_000;
+
+interface OfferedPort {
+  portId: string;
+  portName?: string;
+  displayName?: string;
+  vendorId?: string;
+  productId?: string;
+  serialNumber?: string;
+}
+
+function resolvePendingSelect(portId: string): void {
+  if (!pendingSelect) return;
+  const { callback, timer } = pendingSelect;
+  pendingSelect = null;
+  clearTimeout(timer);
+  callback(portId);
+}
+
+/**
  * Web Serial is why this app is Electron and not Tauri, and these handlers are
  * the part that fails silently: without all of them `navigator.serial` yields
  * nothing at all, with no error surfaced to the page.
@@ -289,24 +322,69 @@ function wireSerialPermissions(win: BrowserWindow): void {
       : portList;
     const remembered =
       preferred && matchScore(ranked[0], preferred) > 0 ? ranked[0] : null;
-    const chosen =
-      remembered ??
-      portList.find((p) => p.vendorId && p.productId) ??
-      portList[0];
-    console.log(
-      `[main] serial: ${portList.length} port(s), chose ${chosen.portName ?? chosen.portId}` +
-        (remembered ? " (remembered)" : " (first USB device)"),
-    );
-    // Remember what was actually used, so the next launch reproduces this
-    // choice even if the port order changes or another device is attached.
-    if (chosen.vendorId && chosen.productId) {
-      savePreferredPort({
-        vendorId: chosen.vendorId,
-        productId: chosen.productId,
-        serialNumber: chosen.serialNumber,
-      });
+
+    // Only physical USB devices report ids; the virtual ports macOS always
+    // exposes (Bluetooth-Incoming-Port, debug-console, wlan-debug) report none,
+    // so they are never worth offering as a choice.
+    const candidates = portList.filter((p) => p.vendorId && p.productId);
+
+    const accept = (port: (typeof portList)[number], why: string) => {
+      console.log(
+        `[main] serial: ${portList.length} port(s), chose ${port.portName ?? port.portId} (${why})`,
+      );
+      if (port.vendorId && port.productId) {
+        savePreferredPort({
+          vendorId: port.vendorId,
+          productId: port.productId,
+          serialNumber: port.serialNumber,
+        });
+      }
+      callback(port.portId);
+    };
+
+    // Never ask twice for the same machine, and never ask when there is nothing
+    // to decide. A prompt is only worth a person's attention when more than one
+    // real device is attached and none of them is the one already chosen.
+    if (remembered) return accept(remembered, "remembered");
+    if (candidates.length === 1) return accept(candidates[0], "only USB device");
+    if (candidates.length === 0) return accept(portList[0], "no USB device");
+
+    const win = mainWindow;
+    if (!win || win.isDestroyed()) {
+      return accept(candidates[0], "no window to ask");
     }
-    callback(chosen.portId);
+
+    // A second request while a dialog is open answers the first with nothing,
+    // rather than leaving a callback that never fires.
+    resolvePendingSelect("");
+
+    const offered: OfferedPort[] = candidates.map((p) => ({
+      portId: p.portId,
+      portName: p.portName,
+      displayName: p.displayName,
+      vendorId: p.vendorId,
+      productId: p.productId,
+      serialNumber: p.serialNumber,
+    }));
+
+    console.log(`[main] serial: asking which of ${offered.length} devices to use`);
+    pendingSelect = {
+      callback: (portId) => {
+        const picked = candidates.find((p) => p.portId === portId);
+        if (!picked) {
+          // Cancelled, or the device went away while the dialog was open.
+          console.log("[main] serial: no device chosen");
+          callback("");
+          return;
+        }
+        accept(picked, "chosen by the user");
+      },
+      timer: setTimeout(() => {
+        console.warn("[main] serial: prompt timed out; using the first USB device");
+        resolvePendingSelect(candidates[0].portId);
+      }, SELECT_PROMPT_TIMEOUT_MS),
+    };
+    win.webContents.send("poke-sort:serial-select-request", offered);
   });
 
   // Hot-plugging the Arduino mid-session should just work.
@@ -390,6 +468,10 @@ async function createWindow(): Promise<void> {
 
   await win.loadURL(appUrl);
 }
+
+ipcMain.on("poke-sort:serial-select-response", (_e, portId: string | null) => {
+  resolvePendingSelect(portId ?? "");
+});
 
 ipcMain.handle("poke-sort:get-preferred-serial-port", () => loadPreferredPort());
 ipcMain.handle(
