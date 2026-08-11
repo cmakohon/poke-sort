@@ -1,17 +1,15 @@
-import { config } from "dotenv";
-import { resolve } from "path";
-config({ path: resolve(__dirname, "../../.env") });
 import { defineConfig } from "drizzle-kit";
+import { DB_DIR } from "./src/config";
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL is not set in the .env file");
-}
-
+// drizzle-kit talks to the embedded database directly. `drizzle-kit studio`
+// needs a real socket instead — see `pnpm db:socket`, which exposes this same
+// directory over @electric-sql/pglite-socket.
 export default defineConfig({
   schema: "./src/db/schema.ts",
   out: "../../drizzle",
   dialect: "postgresql",
+  driver: "pglite",
   dbCredentials: {
-    url: process.env.DATABASE_URL,
+    url: DB_DIR,
   },
 });

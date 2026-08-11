@@ -10,6 +10,11 @@ import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { authQuery, db, type Transaction } from "../db";
 import { collectionCards, collections, games, orgSettings } from "../db/schema";
+import {
+  captureUrl,
+  deleteCaptures,
+  saveCapture,
+} from "../lib/captures";
 import { buildCardScannedEmbed, sendDiscordNotification } from "../lib/discord";
 import {
   acquireLock,
@@ -77,8 +82,9 @@ function toScannedCard(row: {
   guid: string | null;
   card: unknown;
   scannedAt: Date;
-  binNumber: number | null;
+  capturedImagePath?: string | null;
   capturedImageDataUrl?: string | null;
+  binNumber: number | null;
   isFoil?: boolean | null;
   isDownloaded?: boolean | null;
   alternativeMatches?: unknown;
@@ -88,7 +94,11 @@ function toScannedCard(row: {
     card: row.card as PlayingCardWithDistance,
     scannedAt: row.scannedAt.getTime(),
     binNumber: row.binNumber ?? undefined,
-    capturedImageUrl: row.capturedImageDataUrl ?? undefined,
+    // Prefer the file; fall back to any legacy inline data URL.
+    capturedImageUrl:
+      captureUrl(row.capturedImagePath) ??
+      row.capturedImageDataUrl ??
+      undefined,
     isFoil: row.isFoil ?? undefined,
     isDownloaded: row.isDownloaded ?? undefined,
     alternativeMatches:
@@ -355,6 +365,7 @@ router.put("/:guid/active", requireAuth, requireOrg, async (c) => {
 router.delete("/:guid", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
   const guid = c.req.param("guid");
+  const orphanedCaptures: (string | null)[] = [];
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
       const target = await tx.query.collections.findFirst({
@@ -362,6 +373,13 @@ router.delete("/:guid", requireAuth, requireOrg, async (c) => {
         columns: { id: true, isActive: true },
       });
       if (!target) return { success: false, message: "Collection not found." };
+
+      // Rows cascade via FK, but files do not — collect the paths first.
+      const doomed = await tx
+        .select({ capturedImagePath: collectionCards.capturedImagePath })
+        .from(collectionCards)
+        .where(eq(collectionCards.collectionId, target.id));
+      orphanedCaptures.push(...doomed.map((r) => r.capturedImagePath));
 
       // cascade deletes collectionCards via FK
       await tx.delete(collections).where(eq(collections.id, target.id));
@@ -383,6 +401,7 @@ router.delete("/:guid", requireAuth, requireOrg, async (c) => {
 
       return _loadCollections(tx, orgId);
     });
+    await deleteCaptures(orphanedCaptures);
     return c.json(result);
   } catch (err) {
     console.error(err);
@@ -409,6 +428,7 @@ router.get("/:guid/cards", requireAuth, requireOrg, async (c) => {
           card: collectionCards.card,
           scannedAt: collectionCards.scannedAt,
           binNumber: collectionCards.binNumber,
+          capturedImagePath: collectionCards.capturedImagePath,
           capturedImageDataUrl: collectionCards.capturedImageDataUrl,
           isFoil: collectionCards.isFoil,
           isDownloaded: collectionCards.isDownloaded,
@@ -458,6 +478,10 @@ router.post("/:guid/cards", requireAuth, requireOrg, async (c) => {
     | { success: true; data: ScannedCard }
     | { success: false; message: string };
 
+  // Written before the row so a failed write cannot leave a row pointing at a
+  // missing file. The reverse (orphan file, no row) is only wasted disk.
+  const capturedImagePath = await saveCapture(scanId, capturedImageUrl);
+
   try {
     const { result, collectionName, gameName } = await authQuery<{
       result: AddCardResult;
@@ -484,7 +508,7 @@ router.post("/:guid/cards", requireAuth, requireOrg, async (c) => {
           card,
           scannedAt: new Date(scannedAt),
           binNumber: binNumber ?? null,
-          capturedImageDataUrl: capturedImageUrl ?? null,
+          capturedImagePath,
           isFoil: isFoil ?? false,
           alternativeMatches: alternativeMatches?.length
             ? alternativeMatches
@@ -513,7 +537,11 @@ router.post("/:guid/cards", requireAuth, requireOrg, async (c) => {
             card,
             scannedAt,
             binNumber,
-            capturedImageUrl,
+            // The served URL, not the data URL the scanner sent: this object is
+            // also broadcast over SSE to monitor viewers, and a ~150 KB base64
+            // blob per scan would dominate that stream.
+            capturedImageUrl:
+              captureUrl(capturedImagePath) ?? capturedImageUrl,
             isFoil,
             alternativeMatches,
           } as ScannedCard,
@@ -622,6 +650,7 @@ router.put("/:guid/cards/:scanId", requireAuth, requireOrg, async (c) => {
 router.delete("/:guid/cards", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
   const guid = c.req.param("guid");
+  const orphanedCaptures: (string | null)[] = [];
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
       const collection = await tx.query.collections.findFirst({
@@ -631,12 +660,15 @@ router.delete("/:guid/cards", requireAuth, requireOrg, async (c) => {
       if (!collection)
         return { success: false, message: "Collection not found." };
 
-      await tx
+      const removed = await tx
         .delete(collectionCards)
-        .where(eq(collectionCards.collectionId, collection.id));
+        .where(eq(collectionCards.collectionId, collection.id))
+        .returning({ capturedImagePath: collectionCards.capturedImagePath });
+      orphanedCaptures.push(...removed.map((r) => r.capturedImagePath));
 
       return { success: true, data: null };
     });
+    await deleteCaptures(orphanedCaptures);
     if (result.success) emitToSession(guid, "cards_cleared", {});
     return c.json(result);
   } catch (err) {
@@ -650,20 +682,24 @@ router.post("/:guid/cards/remove-bulk", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
   const guid = c.req.param("guid");
   const { scanIds } = await c.req.json<{ scanIds: string[] }>();
+  const orphanedCaptures: (string | null)[] = [];
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
       for (const scanId of scanIds) {
-        await tx
+        const removed = await tx
           .delete(collectionCards)
           .where(
             and(
               eq(collectionCards.guid, scanId),
               eq(collectionCards.orgId, orgId),
             ),
-          );
+          )
+          .returning({ capturedImagePath: collectionCards.capturedImagePath });
+        orphanedCaptures.push(...removed.map((r) => r.capturedImagePath));
       }
       return { success: true, data: null };
     });
+    await deleteCaptures(orphanedCaptures);
     if (result.success) emitToSession(guid, "cards_removed", { scanIds });
     return c.json(result);
   } catch (err) {
@@ -711,14 +747,16 @@ router.delete("/:guid/cards/:scanId", requireAuth, requireOrg, async (c) => {
   const { guid, scanId } = c.req.param();
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
-      await tx
+      const removed = await tx
         .delete(collectionCards)
         .where(
           and(
             eq(collectionCards.guid, scanId),
             eq(collectionCards.orgId, orgId),
           ),
-        );
+        )
+        .returning({ capturedImagePath: collectionCards.capturedImagePath });
+      await deleteCaptures(removed.map((r) => r.capturedImagePath));
       return { success: true, data: null };
     });
     if (result.success) emitToSession(guid, "card_removed", { scanId });
@@ -804,7 +842,8 @@ router.get("/:guid/stream", async (c) => {
             card: collectionCards.card,
             scannedAt: collectionCards.scannedAt,
             binNumber: collectionCards.binNumber,
-            capturedImageDataUrl: collectionCards.capturedImageDataUrl,
+            capturedImagePath: collectionCards.capturedImagePath,
+          capturedImageDataUrl: collectionCards.capturedImageDataUrl,
             isFoil: collectionCards.isFoil,
             isDownloaded: collectionCards.isDownloaded,
             alternativeMatches: collectionCards.alternativeMatches,

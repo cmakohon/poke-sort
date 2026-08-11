@@ -1,5 +1,3 @@
-import { sql } from "drizzle-orm";
-import { authenticatedRole, crudPolicy } from "drizzle-orm/neon/rls";
 import {
   boolean,
   customType,
@@ -26,16 +24,6 @@ const vector = customType<{ data: number[]; driverData: string }>({
   },
 });
 
-// org_id is a text column referencing neon_auth.organization.id (managed by Neon Auth).
-// Checks the org_id claim injected into request.jwt.claims by the app (see
-// requireOrg in middleware/auth.ts) against auth_is_org_member(), a
-// SECURITY DEFINER SQL function created directly in Postgres (not modeled
-// here) that re-verifies membership via neon_auth.member - so a forged/stale
-// org_id claim alone can't grant access.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const orgRls = (orgId: any) =>
-  sql`(${orgId} = (current_setting('request.jwt.claims', true)::json ->> 'org_id')) AND auth_is_org_member(${orgId})`;
-
 // ─── Global card vectors (no org scope) ──────────────────────────────────────
 
 export const cardImageVectors = pgTable(
@@ -54,13 +42,8 @@ export const cardImageVectors = pgTable(
   },
   (table) => [
     unique("card_image_vectors_scryfall_face_idx").on(table.scryfallId),
-    crudPolicy({
-      role: authenticatedRole,
-      read: true,
-      modify: false,
-    }),
   ],
-).enableRLS();
+);
 
 export const games = pgTable(
   "games",
@@ -78,13 +61,8 @@ export const games = pgTable(
   (table) => [
     unique("games_key_idx").on(table.key),
     unique("games_guid_idx").on(table.guid),
-    crudPolicy({
-      role: authenticatedRole,
-      read: true,
-      modify: false,
-    }),
   ],
-).enableRLS();
+);
 
 // ─── Org-scoped data tables ───────────────────────────────────────────────────
 
@@ -102,13 +80,8 @@ export const binSets = pgTable(
   },
   (table) => [
     unique("bin_sets_guid_idx").on(table.guid),
-    crudPolicy({
-      role: authenticatedRole,
-      read: orgRls(table.orgId),
-      modify: orgRls(table.orgId),
-    }),
   ],
-).enableRLS();
+);
 
 export const bins = pgTable(
   "bins",
@@ -127,13 +100,8 @@ export const bins = pgTable(
   },
   (table) => [
     unique("bins_guid_idx").on(table.guid),
-    crudPolicy({
-      role: authenticatedRole,
-      read: orgRls(table.orgId),
-      modify: orgRls(table.orgId),
-    }),
   ],
-).enableRLS();
+);
 
 export const moduleConfigs = pgTable(
   "module_configs",
@@ -154,13 +122,8 @@ export const moduleConfigs = pgTable(
   },
   (table) => [
     unique("module_configs_org_module_idx").on(table.orgId, table.moduleNumber),
-    crudPolicy({
-      role: authenticatedRole,
-      read: orgRls(table.orgId),
-      modify: orgRls(table.orgId),
-    }),
   ],
-).enableRLS();
+);
 
 export const feederConfigs = pgTable(
   "feeder_configs",
@@ -178,13 +141,8 @@ export const feederConfigs = pgTable(
   },
   (table) => [
     unique("feeder_configs_org_idx").on(table.orgId),
-    crudPolicy({
-      role: authenticatedRole,
-      read: orgRls(table.orgId),
-      modify: orgRls(table.orgId),
-    }),
   ],
-).enableRLS();
+);
 
 export const collections = pgTable(
   "collections",
@@ -201,13 +159,8 @@ export const collections = pgTable(
   },
   (table) => [
     unique("collections_guid_idx").on(table.guid),
-    crudPolicy({
-      role: authenticatedRole,
-      read: orgRls(table.orgId),
-      modify: orgRls(table.orgId),
-    }),
   ],
-).enableRLS();
+);
 
 export const collectionCards = pgTable(
   "collection_cards",
@@ -221,7 +174,11 @@ export const collectionCards = pgTable(
     card: jsonb("card").notNull(),
     scannedAt: timestamp("scanned_at").notNull(),
     binNumber: integer("bin_number"),
+    // Deprecated: base64 JPEGs bloated this table badly. Captures are files on
+    // disk now (see lib/captures.ts); kept nullable for one release so any
+    // existing rows still render.
     capturedImageDataUrl: text("captured_image_data_url"),
+    capturedImagePath: text("captured_image_path"),
     isFoil: boolean("is_foil").notNull().default(false),
     isDownloaded: boolean("is_downloaded").notNull().default(false),
     alternativeMatches: jsonb("alternative_matches"),
@@ -230,13 +187,8 @@ export const collectionCards = pgTable(
   },
   (table) => [
     unique("collection_cards_guid_idx").on(table.guid),
-    crudPolicy({
-      role: authenticatedRole,
-      read: orgRls(table.orgId),
-      modify: orgRls(table.orgId),
-    }),
   ],
-).enableRLS();
+);
 
 export const notificationSettings = pgTable(
   "notification_settings",
@@ -250,13 +202,8 @@ export const notificationSettings = pgTable(
   },
   (table) => [
     unique("notification_settings_org_idx").on(table.orgId),
-    crudPolicy({
-      role: authenticatedRole,
-      read: orgRls(table.orgId),
-      modify: orgRls(table.orgId),
-    }),
   ],
-).enableRLS();
+);
 
 export const orgSettings = pgTable(
   "org_settings",
@@ -278,13 +225,8 @@ export const orgSettings = pgTable(
   },
   (table) => [
     unique("org_settings_org_idx").on(table.orgId),
-    crudPolicy({
-      role: authenticatedRole,
-      read: orgRls(table.orgId),
-      modify: orgRls(table.orgId),
-    }),
   ],
-).enableRLS();
+);
 
 // ─── Audit tables (org-scoped, no FK — audit records are permanent) ───────────
 
@@ -300,13 +242,8 @@ export const binSetAudit = pgTable(
   },
   (table) => [
     unique("bin_set_audit_guid_idx").on(table.guid),
-    crudPolicy({
-      role: authenticatedRole,
-      read: orgRls(table.orgId),
-      modify: orgRls(table.orgId),
-    }),
   ],
-).enableRLS();
+);
 
 export const moduleConfigAudit = pgTable(
   "module_config_audit",
@@ -326,13 +263,8 @@ export const moduleConfigAudit = pgTable(
   },
   (table) => [
     unique("module_config_audit_guid_idx").on(table.guid),
-    crudPolicy({
-      role: authenticatedRole,
-      read: orgRls(table.orgId),
-      modify: orgRls(table.orgId),
-    }),
   ],
-).enableRLS();
+);
 
 export const feederConfigAudit = pgTable(
   "feeder_config_audit",
@@ -349,13 +281,8 @@ export const feederConfigAudit = pgTable(
   },
   (table) => [
     unique("feeder_config_audit_guid_idx").on(table.guid),
-    crudPolicy({
-      role: authenticatedRole,
-      read: orgRls(table.orgId),
-      modify: orgRls(table.orgId),
-    }),
   ],
-).enableRLS();
+);
 
 export const binSetRelations = relations(binSets, ({ many, one }) => ({
   bins: many(bins),
