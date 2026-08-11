@@ -75,15 +75,11 @@ export const CreateSetSchema = z
   .object({
     name: z.string().trim().min(1).max(SET_NAME_MAX_LENGTH),
     initialBins: z.array(DefaultBinInitSchema).optional(),
-    gameGuid: z.string().min(1).optional(),
   })
   .strict();
 
 const ActivateSetSchema = z
-  .object({
-    name: z.string().trim().min(1).max(SET_NAME_MAX_LENGTH),
-    gameGuid: z.string().min(1).optional(),
-  })
+  .object({ name: z.string().trim().min(1).max(SET_NAME_MAX_LENGTH) })
   .strict();
 
 export const UpdateBinSchema = z
@@ -121,16 +117,6 @@ function toBinSet(row: {
     rules: unknown;
     isCatchAll: boolean;
   }[];
-  game: {
-    guid: string | null;
-    key: string;
-    name: string;
-    dataSourceUrl: string;
-    isActive: boolean;
-    fieldDefinitions: unknown;
-    createdAt: Date;
-    updatedAt: Date;
-  } | null;
 }): BinSet {
   return {
     guid: row.guid!,
@@ -142,18 +128,6 @@ function toBinSet(row: {
       rules: bin.rules as BinRuleGroup,
       isCatchAll: bin.isCatchAll,
     })),
-    game: row.game
-      ? {
-          guid: row.game.guid!,
-          key: row.game.key,
-          name: row.game.name,
-          dataSourceUrl: row.game.dataSourceUrl,
-          isActive: row.game.isActive,
-          fieldDefinitions: row.game.fieldDefinitions as FieldMeta[],
-          createdAt: row.game.createdAt,
-          updatedAt: row.game.updatedAt,
-        }
-      : null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -171,7 +145,6 @@ const binSetQuery = {
     bins: {
       columns: { guid: true, binNumber: true, rules: true, isCatchAll: true },
     },
-    game: true,
   },
 } as const;
 
@@ -205,18 +178,6 @@ async function _snapshotBinSet(
 
 // Resolves a game guid (from the client) to its internal id, or null if
 // omitted - bin sets with no game are legacy/game-agnostic sets.
-async function _resolveGameId(
-  tx: Transaction,
-  gameGuid: string | undefined,
-): Promise<number | null> {
-  if (!gameGuid) return null;
-  const game = await tx.query.games.findFirst({
-    where: (t, { eq }) => eq(t.guid, gameGuid),
-    columns: { id: true },
-  });
-  return game?.id ?? null;
-}
-
 // GET /bins
 router.get("/", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
@@ -240,28 +201,17 @@ router.put("/:guid/active", requireAuth, requireOrg, async (c) => {
       const target = await tx.query.binSets.findFirst({
         where: (binSets, { eq, and }) =>
           and(eq(binSets.guid, guid), eq(binSets.orgId, orgId)),
-        columns: { id: true, gameId: true },
+        columns: { id: true },
       });
       if (!target) return { message: "Set not found.", success: false };
 
-      // Only one active set per game (or per "no game") - activating a
-      // A set for one game shouldn't deactivate another game's active set.
+      // The machine runs one sort at a time, so activating any set deactivates
+      // every other. This used to be scoped per game, which is what made the
+      // editor look per-collection while behaving globally.
       await tx
         .update(binSets)
         .set({ isActive: false })
-        .where(
-          target.gameId === null
-            ? and(
-                eq(binSets.isActive, true),
-                isNull(binSets.gameId),
-                eq(binSets.orgId, orgId),
-              )
-            : and(
-                eq(binSets.isActive, true),
-                eq(binSets.gameId, target.gameId),
-                eq(binSets.orgId, orgId),
-              ),
-        );
+        .where(and(eq(binSets.isActive, true), eq(binSets.orgId, orgId)));
       await tx
         .update(binSets)
         .set({ isActive: true })
@@ -280,35 +230,21 @@ router.post("/", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
   const parsed = await parseBody(c, CreateSetSchema);
   if (!parsed.ok) return parsed.response;
-  const { name, initialBins, gameGuid } = parsed.data as {
+  const { name, initialBins } = parsed.data as {
     name: string;
     initialBins?: DefaultBinInit[];
-    gameGuid?: string;
   };
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
-      const gameId = await _resolveGameId(tx, gameGuid);
-
+      // A new sort becomes the one the machine runs.
       await tx
         .update(binSets)
         .set({ isActive: false })
-        .where(
-          gameId === null
-            ? and(
-                eq(binSets.isActive, true),
-                isNull(binSets.gameId),
-                eq(binSets.orgId, orgId),
-              )
-            : and(
-                eq(binSets.isActive, true),
-                eq(binSets.gameId, gameId),
-                eq(binSets.orgId, orgId),
-              ),
-        );
+        .where(and(eq(binSets.isActive, true), eq(binSets.orgId, orgId)));
 
       const [newBinSet] = await tx
         .insert(binSets)
-        .values({ name, isActive: true, gameId, orgId })
+        .values({ name, isActive: true, orgId })
         .returning({ id: binSets.id });
       const binsToInsert = Array.isArray(initialBins)
         ? initialBins
@@ -340,24 +276,12 @@ router.post("/copies", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
   const parsed = await parseBody(c, ActivateSetSchema);
   if (!parsed.ok) return parsed.response;
-  const { name, gameGuid } = parsed.data;
+  const { name } = parsed.data;
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
-      const gameId = await _resolveGameId(tx, gameGuid);
-
       const active = await tx.query.binSets.findFirst({
-        where: (binSets, { eq, and, isNull }) =>
-          gameId === null
-            ? and(
-                eq(binSets.isActive, true),
-                isNull(binSets.gameId),
-                eq(binSets.orgId, orgId),
-              )
-            : and(
-                eq(binSets.isActive, true),
-                eq(binSets.gameId, gameId),
-                eq(binSets.orgId, orgId),
-              ),
+        where: (binSets, { eq, and }) =>
+          and(eq(binSets.isActive, true), eq(binSets.orgId, orgId)),
         columns: { id: true },
         with: {
           bins: { columns: { binNumber: true, rules: true, isCatchAll: true } },
@@ -366,7 +290,7 @@ router.post("/copies", requireAuth, requireOrg, async (c) => {
       const activeBins = active?.bins ?? [];
       const [newBinSet] = await tx
         .insert(binSets)
-        .values({ name, isActive: false, gameId, orgId })
+        .values({ name, isActive: false, orgId })
         .returning({ id: binSets.id });
       if (activeBins.length > 0) {
         await tx.insert(bins).values(
@@ -388,11 +312,10 @@ router.post("/copies", requireAuth, requireOrg, async (c) => {
   }
 });
 
-// PUT /bins/bins/:binNumber?gameGuid=
+// PUT /bins/bins/:binNumber
 router.put("/bins/:binNumber", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
   const binNumber = parseInt(c.req.param("binNumber"));
-  const gameGuid = c.req.query("gameGuid");
   const parsed = await parseBody(c, UpdateBinSchema);
   if (!parsed.ok) return parsed.response;
   const { rules, isCatchAll } = parsed.data as {
@@ -401,20 +324,9 @@ router.put("/bins/:binNumber", requireAuth, requireOrg, async (c) => {
   };
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
-      const gameId = await _resolveGameId(tx, gameGuid);
       const activeBinSet = await tx.query.binSets.findFirst({
-        where: (binSets, { eq, and, isNull }) =>
-          gameId === null
-            ? and(
-                eq(binSets.isActive, true),
-                isNull(binSets.gameId),
-                eq(binSets.orgId, orgId),
-              )
-            : and(
-                eq(binSets.isActive, true),
-                eq(binSets.gameId, gameId),
-                eq(binSets.orgId, orgId),
-              ),
+        where: (binSets, { eq, and }) =>
+          and(eq(binSets.isActive, true), eq(binSets.orgId, orgId)),
         columns: { id: true, guid: true },
         with: { bins: { columns: { id: true, binNumber: true } } },
       });
@@ -483,27 +395,15 @@ router.put("/bins/:binNumber", requireAuth, requireOrg, async (c) => {
   }
 });
 
-// DELETE /bins/bins/:binNumber?gameGuid=
+// DELETE /bins/bins/:binNumber
 router.delete("/bins/:binNumber", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
   const binNumber = parseInt(c.req.param("binNumber"));
-  const gameGuid = c.req.query("gameGuid");
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
-      const gameId = await _resolveGameId(tx, gameGuid);
       const activeBinSet = await tx.query.binSets.findFirst({
-        where: (binSets, { eq, and, isNull }) =>
-          gameId === null
-            ? and(
-                eq(binSets.isActive, true),
-                isNull(binSets.gameId),
-                eq(binSets.orgId, orgId),
-              )
-            : and(
-                eq(binSets.isActive, true),
-                eq(binSets.gameId, gameId),
-                eq(binSets.orgId, orgId),
-              ),
+        where: (binSets, { eq, and }) =>
+          and(eq(binSets.isActive, true), eq(binSets.orgId, orgId)),
         columns: { id: true },
         with: { bins: { columns: { id: true, binNumber: true } } },
       });
@@ -561,11 +461,30 @@ router.delete("/:guid", requireAuth, requireOrg, async (c) => {
       const target = await tx.query.binSets.findFirst({
         where: (binSets, { eq, and }) =>
           and(eq(binSets.guid, guid), eq(binSets.orgId, orgId)),
-        columns: { id: true },
+        columns: { id: true, isActive: true },
       });
       if (!target) return { message: "Set not found.", success: false };
       await tx.delete(bins).where(eq(bins.binSet, target.id));
       await tx.delete(binSets).where(eq(binSets.id, target.id));
+
+      // Deleting the sort the machine is running would otherwise leave it with
+      // none, and a scan with no sort assigns no bin — silently, since nothing
+      // treats "no active set" as an error. Now that sorts are presets people
+      // switch between and throw away, that is a normal action rather than a
+      // corner, so the most recent survivor takes over.
+      if (target.isActive) {
+        const next = await tx.query.binSets.findFirst({
+          where: (binSets, { eq }) => eq(binSets.orgId, orgId),
+          orderBy: (binSets, { desc }) => [desc(binSets.updatedAt)],
+          columns: { id: true },
+        });
+        if (next) {
+          await tx
+            .update(binSets)
+            .set({ isActive: true })
+            .where(eq(binSets.id, next.id));
+        }
+      }
       return _loadSets(tx, orgId);
     });
     return c.json(result);

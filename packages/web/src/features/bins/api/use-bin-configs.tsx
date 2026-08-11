@@ -18,6 +18,7 @@ import {
   saveSet as saveSetAction,
 } from "@/features/bins/api/sort-bins";
 import { useCollections } from "@/features/collections/api/use-collections";
+import { gamesQueryOptions } from "@/features/games/api/games";
 import { useOrg } from "@/hooks/use-org";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -47,23 +48,17 @@ function configsFromSet(set: BinSet | undefined): BinConfig[] {
   return filled;
 }
 
-function matchesGame(set: BinSet, gameGuid: string | undefined): boolean {
-  return (set.game?.guid ?? undefined) === gameGuid;
-}
-
 const BinConfigsContext = createContext<BinConfigsContextValue | null>(null);
 
 export function BinConfigsProvider({
   children,
-  collectionGuid,
 }: {
   children: React.ReactNode;
-  collectionGuid?: string;
 }) {
   const { t } = useTranslation("bins");
   const queryClient = useQueryClient();
   const { activeOrg } = useOrg();
-  const { activeCollection, collections } = useCollections();
+  const { activeCollection } = useCollections();
   const [selectedBin, setSelectedBin] = useState(1);
 
   const { data: allSets = [] } = useQuery({
@@ -71,22 +66,25 @@ export function BinConfigsProvider({
     enabled: !!activeOrg,
   });
 
-  const targetCollection = collectionGuid
-    ? (collections.find((c) => c.guid === collectionGuid) ?? null)
-    : activeCollection;
+  // A sort belongs to the machine, not to a collection: the machine runs one
+  // configuration at a time and the rest are saved presets. It used to be
+  // derived through whichever collection was open — collection -> game -> the
+  // active set for that game — which read as per-collection while behaving
+  // globally, so two collections could never differ anyway.
+  //
+  // The game is still needed, but only to know which catalog the facet-backed
+  // pickers (rarity, set, series) read their options from. That comes from the
+  // game itself now rather than from a collection.
+  const { data: games = [] } = useQuery({
+    ...gamesQueryOptions,
+    enabled: !!activeOrg,
+  });
+  const game = games.find((g) => g.isActive) ?? games[0];
+  const gameKey = game?.key;
+  const lang = activeCollection?.lang ?? "en";
+  const fieldDefinitions = game?.fieldDefinitions ?? POKEMON_FIELD_DEFINITIONS;
 
-  const activeGameGuid = targetCollection?.game?.guid;
-  // Facet-backed pickers need the game key (and language) to know which
-  // catalog to read their options from.
-  const gameKey = targetCollection?.game?.key;
-  const lang = targetCollection?.lang ?? "en";
-  const fieldDefinitions =
-    targetCollection?.game?.fieldDefinitions ?? POKEMON_FIELD_DEFINITIONS;
-
-  const sets = useMemo(
-    () => allSets.filter((s) => matchesGame(s, activeGameGuid)),
-    [allSets, activeGameGuid],
-  );
+  const sets = allSets;
 
   const selectedSet = useMemo(
     () => sets.find((s) => s.isActive) ?? sets[0],
@@ -112,7 +110,7 @@ export function BinConfigsProvider({
       const previous = queryClient.getQueryData<BinSet[]>(["bins"]);
       queryClient.setQueryData<BinSet[]>(["bins"], (old = []) =>
         old.map((set) => {
-          if (!set.isActive || !matchesGame(set, activeGameGuid)) return set;
+          if (!set.isActive) return set;
           const idx = set.bins.findIndex((b) => b.binNumber === binNumber);
           const updated: BinConfig = {
             guid: idx >= 0 ? set.bins[idx].guid : crypto.randomUUID(),
@@ -145,7 +143,7 @@ export function BinConfigsProvider({
         const confirmed = result.data;
         queryClient.setQueryData<BinSet[]>(["bins"], (old = []) =>
           old.map((set) =>
-            set.isActive && matchesGame(set, activeGameGuid)
+            set.isActive
               ? {
                   ...set,
                   bins: set.bins.map((b) =>
@@ -161,13 +159,13 @@ export function BinConfigsProvider({
 
   const clearBinMutation = useMutation({
     mutationFn: (binNumber: number) =>
-      clearBinConfigAction(binNumber, activeGameGuid),
+      clearBinConfigAction(binNumber),
     onMutate: async (binNumber) => {
       await queryClient.cancelQueries({ queryKey: ["bins"] });
       const previous = queryClient.getQueryData<BinSet[]>(["bins"]);
       queryClient.setQueryData<BinSet[]>(["bins"], (old = []) =>
         old.map((set) =>
-          set.isActive && matchesGame(set, activeGameGuid)
+          set.isActive
             ? {
                 ...set,
                 bins: set.bins.filter((b) => b.binNumber !== binNumber),
@@ -199,7 +197,7 @@ export function BinConfigsProvider({
 
   const createSetMutation = useMutation({
     mutationFn: (name: string) =>
-      createSetAction(name, undefined, activeGameGuid),
+      createSetAction(name, undefined),
     onSuccess: (result) => {
       if (result.success && result.data) {
         setSelectedBin(1);
@@ -210,7 +208,7 @@ export function BinConfigsProvider({
   });
 
   const saveSetMutation = useMutation({
-    mutationFn: (name: string) => saveSetAction(name, activeGameGuid),
+    mutationFn: (name: string) => saveSetAction(name),
     onSuccess: (result) => {
       if (result.success && result.data) {
         queryClient.setQueryData(["bins"], result.data);
@@ -256,10 +254,9 @@ export function BinConfigsProvider({
         binNumber,
         rules,
         isCatchAll,
-        gameGuid: activeGameGuid,
       });
     },
-    [saveBinMutation, activeGameGuid],
+    [saveBinMutation],
   );
 
   const clear = useCallback(

@@ -1,5 +1,5 @@
 import AdminPage from "@/app/routes/admin";
-import BinsPage from "@/app/routes/bins";
+import SortsPage from "@/app/routes/sorts";
 import CalibratePage from "@/app/routes/calibrate";
 import CollectionsPage from "@/app/routes/collections";
 import ScannerPage from "@/app/routes/index";
@@ -36,8 +36,15 @@ export const router = createBrowserRouter([
             element: <CollectionsPage />,
           },
           {
+            path: "/sorts",
+            element: <SortsPage />,
+          },
+          {
+            // The sort editor used to live under a collection, which implied a
+            // per-collection sort the model never had. Redirected rather than
+            // removed so existing links and bookmarks still land somewhere.
             path: "/collections/:collectionGuid/bins",
-            element: <BinsPage />,
+            element: <Navigate to="/sorts" replace />,
           },
           {
             path: "/calibrate",

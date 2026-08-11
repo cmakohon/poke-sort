@@ -1,5 +1,4 @@
 import {
-  activateSet as activateSetFn,
   binsQueryOptions,
   createSet as createSetFn,
 } from "@/features/bins/api/sort-bins";
@@ -113,25 +112,19 @@ export function CollectionsProvider({
         const created = r.data.find((c) => c.isActive);
         if (created) setActiveGuid(created.guid);
 
-        const gameGuid = created?.game?.guid;
+        // A sort belongs to the machine, so a new collection does not get one
+        // of its own — it uses whatever the machine is currently configured
+        // with. The only case left is the very first collection on a fresh
+        // install, where there is no sort to use yet.
         const existingSets: BinSet[] =
           await queryClient.ensureQueryData(binsQueryOptions);
-        const sameGameSet = existingSets.find(
-          (s) => (s.game?.guid ?? undefined) === gameGuid,
-        );
-        if (!sameGameSet) {
+        if (existingSets.length === 0) {
           const binsResult = await createSetFn(
             name,
             createDefaultCatchAllOnlyBins(),
-            gameGuid,
           );
           if (binsResult.success && binsResult.data) {
             queryClient.setQueryData(["bins"], binsResult.data);
-          }
-        } else {
-          const activateResult = await activateSetFn(sameGameSet.guid);
-          if (activateResult.success && activateResult.data) {
-            queryClient.setQueryData(["bins"], activateResult.data);
           }
         }
       }

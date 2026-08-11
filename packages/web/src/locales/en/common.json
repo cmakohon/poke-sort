@@ -2,6 +2,7 @@
   "nav": {
     "scanner": "Scanner",
     "collections": "Collections",
+    "sorts": "Sorts",
     "monitor": "Monitor",
     "calibrate": "Calibrate",
     "settings": "Settings",

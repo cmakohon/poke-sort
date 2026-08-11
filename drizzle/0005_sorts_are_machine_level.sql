@@ -1,0 +1,12 @@
+-- A sort belongs to the machine, not to a game or a collection.
+--
+-- bin_sets.game_id was the only thing tying a sort to anything else, and it is
+-- what made activation game-scoped: activating a set deactivated the others for
+-- that game. With one game that scoping is invisible, and the UI it produced —
+-- a bins editor nested under /collections/:guid — promised per-collection sorts
+-- the model never delivered. Every collection of a game always shared one sort.
+--
+-- Dropping the column makes the model say what the machine does: one sort
+-- configured at a time, saved presets to switch between. No data is lost that
+-- means anything — every existing row points at the single Pokemon game.
+ALTER TABLE "bin_sets" DROP COLUMN IF EXISTS "game_id";

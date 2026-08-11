@@ -25,13 +25,12 @@ export async function activateSet(guid: string): Promise<Result<BinSet[]>> {
 export async function createSet(
   name: string,
   initialBins?: DefaultBinInit[],
-  gameGuid?: string,
 ): Promise<Result<BinSet[]>> {
-  return apiPost<Result<BinSet[]>>("/api/bins", { name, initialBins, gameGuid });
+  return apiPost<Result<BinSet[]>>("/api/bins", { name, initialBins });
 }
 
-export async function saveSet(name: string, gameGuid?: string): Promise<Result<BinSet[]>> {
-  return apiPost<Result<BinSet[]>>("/api/bins/copies", { name, gameGuid });
+export async function saveSet(name: string): Promise<Result<BinSet[]>> {
+  return apiPost<Result<BinSet[]>>("/api/bins/copies", { name });
 }
 
 export async function renameSet(
@@ -49,26 +48,19 @@ export async function saveBinConfig({
   binNumber,
   rules,
   isCatchAll,
-  gameGuid,
 }: {
   binNumber: number;
   rules: BinRuleGroup;
   isCatchAll?: boolean;
-  gameGuid?: string;
 }): Promise<Result<BinConfig>> {
-  const params = gameGuid ? `?${new URLSearchParams({ gameGuid })}` : "";
-  return apiPut<Result<BinConfig>>(`/api/bins/bins/${binNumber}${params}`, {
+  return apiPut<Result<BinConfig>>(`/api/bins/bins/${binNumber}`, {
     rules,
     isCatchAll,
   });
 }
 
-export async function clearBinConfig(
-  binNumber: number,
-  gameGuid?: string,
-): Promise<Result<null>> {
-  const params = gameGuid ? `?${new URLSearchParams({ gameGuid })}` : "";
-  return apiDelete<Result<null>>(`/api/bins/bins/${binNumber}${params}`);
+export async function clearBinConfig(binNumber: number): Promise<Result<null>> {
+  return apiDelete<Result<null>>(`/api/bins/bins/${binNumber}`);
 }
 
 export interface BinSetAuditEntry {
