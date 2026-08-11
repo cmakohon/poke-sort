@@ -104,11 +104,17 @@ async function main() {
   // capture one, so accuracy against them measures nothing real. They stay in
   // the catalog as distractors would — except identification filters them too.
   const digital = digitalOnlySetIds();
+  // Same guard as fetchCandidates: an empty list would emit `NOT IN ()`,
+  // which is a Postgres syntax error.
+  const exclusion =
+    digital.length > 0
+      ? sql`AND set_code NOT IN (${sql.join(digital.map((d) => sql`${d}`), sql`, `)})`
+      : sql``;
   const rows = await db.execute<Row>(sql`
     SELECT card_id, name, set_code, card_data
     FROM cards
     WHERE card_data IS NOT NULL
-      AND set_code NOT IN (${sql.join(digital.map((d) => sql`${d}`), sql`, `)})
+      ${exclusion}
     ORDER BY card_id
   `);
   const step = Math.max(1, Math.floor(rows.rows.length / SAMPLE));

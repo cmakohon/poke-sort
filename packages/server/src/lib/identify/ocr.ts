@@ -32,15 +32,34 @@ let nextWorker = 0;
 
 async function getPool(): Promise<Worker[]> {
   if (!poolPromise) {
-    poolPromise = Promise.all(
-      Array.from({ length: POOL_SIZE }, () =>
-        createWorker("eng", undefined, {
-          // Keep the traineddata beside the other bundled model assets so the
-          // packaged app never downloads it on first scan.
-          ...(MODEL_DIR ? { cachePath: MODEL_DIR } : {}),
-        }),
-      ),
-    );
+    poolPromise = (async () => {
+      // allSettled rather than all: if one worker loads and the other fails,
+      // Promise.all would abandon the live worker (leaking its thread and
+      // weights) and pin poolPromise to the rejection forever — every later
+      // scan silently degrading to embedding-only until restart. Terminate
+      // any stray successes and null the promise so the next scan retries.
+      const settled = await Promise.allSettled(
+        Array.from({ length: POOL_SIZE }, () =>
+          createWorker("eng", undefined, {
+            // Keep the traineddata beside the other bundled model assets so
+            // the packaged app never downloads it on first scan.
+            ...(MODEL_DIR ? { cachePath: MODEL_DIR } : {}),
+          }),
+        ),
+      );
+      const workers = settled
+        .filter((r): r is PromiseFulfilledResult<Worker> => r.status === "fulfilled")
+        .map((r) => r.value);
+      const failed = settled.find(
+        (r): r is PromiseRejectedResult => r.status === "rejected",
+      );
+      if (failed) {
+        await Promise.allSettled(workers.map((w) => w.terminate()));
+        poolPromise = null;
+        throw failed.reason;
+      }
+      return workers;
+    })();
   }
   return poolPromise;
 }

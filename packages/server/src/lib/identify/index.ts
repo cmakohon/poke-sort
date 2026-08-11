@@ -187,11 +187,22 @@ async function withProfile(
   imageBuffer: Buffer,
   ocrPromise: Promise<OcrReading>,
 ): Promise<IdentifyResult> {
+  // A pass whose nearest match is beyond the retry threshold is probably about
+  // to be discarded for the flipped orientation — so the winner-side side
+  // effects (price fetch, catalog write-back, stamp detection) are skipped:
+  // they would fire for a card the user did not scan, burn a TCGdex request
+  // the retry is about to need, and read a stamp ROI off inverted pixels. The
+  // ranking itself still runs in full, because the retry decision compares the
+  // two passes' results.
+  const discardable = rows[0].distance > RETRY_DISTANCE;
+
   // Start the price lookup for the nearest candidate now, so it overlaps with
   // OCR instead of adding to the scan. Re-ranking usually confirms this card;
   // when it does not, the winner is looked up afterwards (and that lookup is
   // cached, so a re-scan of the same card is free).
-  const pricePromise = fetchFreshCard(gameKey, rows[0].card_id);
+  const pricePromise = discardable
+    ? Promise.resolve(null)
+    : fetchFreshCard(gameKey, rows[0].card_id);
 
   const ocr = await ocrPromise;
 
@@ -210,7 +221,7 @@ async function withProfile(
   // affect which bin the card is routed to.
   const winner = candidates[0];
   let stamp: Awaited<ReturnType<typeof detectFirstEditionStamp>> | undefined;
-  if (winner) {
+  if (winner && !discardable) {
     const winnerRow = byId.get(winner.id);
 
     // 1st Edition detection, gated on the card actually having that printing —
@@ -293,7 +304,9 @@ export async function identifyCard(
   const first = await identifyOnce(imageBuffer, gameKey, lang);
   if (nearestDistance(first) <= RETRY_DISTANCE) return first;
 
-  const flipped = await sharp(imageBuffer).rotate(180).toBuffer();
+  // Lossless flip: a bare toBuffer() would re-encode the JPEG at quality 80,
+  // degrading exactly the marginal capture the retry exists to rescue.
+  const flipped = await sharp(imageBuffer).rotate(180).png().toBuffer();
   const second = await identifyOnce(flipped, gameKey, lang);
   // Strictly better or bust: on a genuinely unreadable capture both passes
   // fail, and the first result's diagnostics are the truthful ones.
