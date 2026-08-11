@@ -8,6 +8,8 @@ export interface OrgSettings {
   discordWebhookUrl: string | null;
   discordNotifyOnScan: boolean;
   scanRegion: ScanRegion;
+  /** ms between the IR sensor confirming a card and the frame capture. */
+  captureSettleDelayMs: number;
 }
 
 export async function getOrgSettings(): Promise<{
@@ -35,6 +37,7 @@ export const orgSettingsQueryOptions = (orgId: string | undefined) =>
             discordWebhookUrl: null,
             discordNotifyOnScan: false,
             scanRegion: DEFAULT_SCAN_REGION,
+            captureSettleDelayMs: 500,
           },
       ),
     staleTime: Infinity,

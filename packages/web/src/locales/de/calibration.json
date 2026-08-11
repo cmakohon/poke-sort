@@ -82,7 +82,10 @@
     "resetToDefault": "Auf Standard zurücksetzen",
     "saving": "Wird gespeichert…",
     "saveScanRegion": "Scanbereich speichern",
-    "savedSummary": "Gespeichert: {{coverage}}% Abdeckung, {{offsetX}}% / {{offsetY}}% Versatz"
+    "savedSummary": "Gespeichert: {{coverage}}% Abdeckung, {{offsetX}}% / {{offsetY}}% Versatz",
+    "settleDelayLabel": "Aufnahmeverzögerung",
+    "settleDelayHint": "Wartezeit nach der Sensor-Erkennung, bevor das Foto aufgenommen wird. Erhöhen, wenn Aufnahmen die Karte noch in Bewegung zeigen.",
+    "saveSettleDelay": "Aufnahmeverzögerung speichern"
   },
   "useCalibrationPage": {
     "toasts": {

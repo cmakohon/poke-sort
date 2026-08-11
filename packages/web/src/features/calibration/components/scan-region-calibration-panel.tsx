@@ -282,6 +282,25 @@ export function ScanRegionCalibrationPanel() {
     },
   });
 
+  // The capture settle delay: how long after the IR sensor confirms a card
+  // the frame is taken. Draft-then-save like the region above it, because a
+  // half-adjusted timing mid-feed is worse than the old timing.
+  const savedDelay = data?.captureSettleDelayMs ?? 500;
+  const [delayDraft, setDelayDraft] = useState<number | null>(null);
+  const delay = delayDraft ?? savedDelay;
+  const delayMutation = useMutation({
+    mutationFn: (next: number) =>
+      saveOrgSettings({ captureSettleDelayMs: next }),
+    onSuccess: (result) => {
+      if (result.success && result.data) {
+        queryClient.setQueryData(queryOpts.queryKey, result.data);
+        setDelayDraft(null);
+      }
+    },
+  });
+  const stepDelay = (d: number) =>
+    setDelayDraft(Math.min(5000, Math.max(0, delay + d)));
+
   return (
     <div className="flex flex-col gap-2">
       <p className="text-xs text-muted-foreground">
@@ -373,6 +392,41 @@ export function ScanRegionCalibrationPanel() {
             })}
           </p>
         )}
+
+        <div className="flex flex-col gap-1.5 pt-2 border-t">
+          <p className="text-[11px] font-medium text-muted-foreground tracking-wide font-heading">
+            {t("scanRegionCalibrationPanel.settleDelayLabel")}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {t("scanRegionCalibrationPanel.settleDelayHint")}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => stepDelay(-100)}>
+              -100
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => stepDelay(-25)}>
+              -25
+            </Button>
+            <span className="flex-1 text-center text-sm font-medium tabular-nums">
+              {delay} ms
+            </span>
+            <Button variant="outline" size="sm" onClick={() => stepDelay(25)}>
+              +25
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => stepDelay(100)}>
+              +100
+            </Button>
+          </div>
+          <Button
+            size="sm"
+            disabled={delayDraft === null || delayMutation.isPending}
+            onClick={() => delayMutation.mutate(delay)}
+          >
+            {delayMutation.isPending
+              ? t("scanRegionCalibrationPanel.saving")
+              : t("scanRegionCalibrationPanel.saveSettleDelay")}
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -38,6 +38,7 @@ export function useNotificationSettings() {
         primaryColor: old?.primaryColor ?? null,
         scannerLayout: old?.scannerLayout ?? "horizontal",
         scanRegion: old?.scanRegion ?? DEFAULT_SCAN_REGION,
+        captureSettleDelayMs: old?.captureSettleDelayMs ?? 500,
         discordWebhookUrl: old?.discordWebhookUrl ?? null,
         discordNotifyOnScan: old?.discordNotifyOnScan ?? false,
         ...patch,

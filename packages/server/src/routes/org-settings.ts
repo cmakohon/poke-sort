@@ -53,6 +53,9 @@ router.get("/", requireAuth, requireOrg, async (c) => {
           discordWebhookUrl: row?.discordWebhookUrl ?? null,
           discordNotifyOnScan: row?.discordNotifyOnScan ?? false,
           scanRegion: toScanRegion(row),
+          // Default matches the old hardcoded constant, so an install that
+          // never touched the setting behaves exactly as before.
+          captureSettleDelayMs: row?.captureSettleDelayMs ?? 500,
         },
       };
     });
@@ -97,6 +100,9 @@ export const OrgSettingsSchema = z
       .strict()
       .nullable()
       .optional(),
+    // Bounded: the feeder cycle stalls for this long on every card, so five
+    // seconds is already generous for a slow slide. Null restores the default.
+    captureSettleDelayMs: z.number().int().min(0).max(5000).nullable().optional(),
   })
   .strict();
 
@@ -127,6 +133,10 @@ router.put("/", requireAuth, requireOrg, async (c) => {
           "discordNotifyOnScan" in body
             ? (body.discordNotifyOnScan ?? false)
             : (existing?.discordNotifyOnScan ?? false),
+        captureSettleDelayMs:
+          "captureSettleDelayMs" in body
+            ? (body.captureSettleDelayMs ?? null)
+            : (existing?.captureSettleDelayMs ?? null),
         scanCoverage:
           "scanRegion" in body
             ? body.scanRegion
@@ -163,6 +173,7 @@ router.put("/", requireAuth, requireOrg, async (c) => {
           discordWebhookUrl: merged.discordWebhookUrl,
           discordNotifyOnScan: merged.discordNotifyOnScan,
           scanRegion: toScanRegion(merged),
+          captureSettleDelayMs: merged.captureSettleDelayMs ?? 500,
         },
       };
     });
