@@ -211,5 +211,12 @@
     "cardCount_one": "{{count}} Karte",
     "cardCount_other": "{{count}} Karten",
     "isScanningTooltip": "{{name}} scannt gerade"
+  },
+  "serialPicker": {
+    "title": "Welches Gerät ist der Sortierer?",
+    "description": "Es sind mehrere USB-Geräte angeschlossen. Wähle den Arduino mit der Sortierer-Firmware.",
+    "remembered": "Diese Auswahl wird gespeichert, du wirst für dieses Gerät nicht erneut gefragt.",
+    "cancel": "Abbrechen",
+    "confirm": "Dieses Gerät verwenden"
   }
 }

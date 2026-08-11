@@ -7,7 +7,12 @@ import {
   utilityProcess,
   type UtilityProcess,
 } from "electron";
-import { loadPreferredPortId, savePreferredPortId } from "./serial-prefs";
+import {
+  loadPreferredPort,
+  matchScore,
+  savePreferredPort,
+  type SerialPortIdentity,
+} from "./serial-prefs";
 
 /**
  * Must run before anything asks for `userData`, which is derived from it.
@@ -215,10 +220,68 @@ function startServer(): Promise<number> {
  */
 let allowedOrigin: string | null = null;
 
+/**
+ * Compares origins by value, not by string.
+ *
+ * Electron is not consistent about what it hands these callbacks:
+ * `setPermissionCheckHandler` receives a serialised URL *with* a trailing slash
+ * ("http://127.0.0.1:53932/"), while `setDevicePermissionHandler` receives a
+ * bare origin ("http://127.0.0.1:53932"). `new URL(appUrl).origin` produces the
+ * bare form, so a `===` against the check handler's argument was always false.
+ *
+ * Every permission this app needs — the camera and Web Serial — went through
+ * that comparison, so both were denied, silently, on every launch. Serial then
+ * failed twice over: the device handler agreed, but the check handler did not,
+ * so `select-serial-port` never fired and requestPort() rejected with "No port
+ * selected by the user" even with the Arduino plugged in and visible to macOS.
+ */
+function isAllowedOrigin(candidate: string | undefined | null): boolean {
+  if (!candidate || allowedOrigin === null) return false;
+  try {
+    return new URL(candidate).origin === allowedOrigin;
+  } catch {
+    // Opaque or unparseable origins ("null", a data: URL) are never the app.
+    return false;
+  }
+}
+
 /** Send to whichever window is alive now, not the one that was alive at wiring. */
 function notifyRenderer(channel: string, payload: unknown): void {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   mainWindow.webContents.send(channel, payload);
+}
+
+/**
+ * A pending `select-serial-port` answer.
+ *
+ * Electron lets the callback be held rather than answered inline, which is what
+ * makes a prompt possible at all: the page's requestPort() stays unresolved
+ * while the user chooses. Exactly one can be outstanding — a second request
+ * while a dialog is open answers the first with nothing rather than leaking a
+ * callback that never fires.
+ */
+let pendingSelect:
+  | { callback: (portId: string) => void; timer: NodeJS.Timeout }
+  | null = null;
+
+/** How long to wait for the renderer before falling back to the heuristic. */
+const SELECT_PROMPT_TIMEOUT_MS = 60_000;
+
+interface OfferedPort {
+  portId: string;
+  portName?: string;
+  displayName?: string;
+  vendorId?: string;
+  productId?: string;
+  serialNumber?: string;
+}
+
+function resolvePendingSelect(portId: string): void {
+  if (!pendingSelect) return;
+  const { callback, timer } = pendingSelect;
+  pendingSelect = null;
+  clearTimeout(timer);
+  callback(portId);
 }
 
 /**
@@ -238,9 +301,90 @@ function wireSerialPermissions(win: BrowserWindow): void {
       callback("");
       return;
     }
-    const preferred = loadPreferredPortId();
-    const match = portList.find((p) => p.portId === preferred);
-    callback((match ?? portList[0]).portId);
+
+    // Taking portList[0] is wrong on a real Mac. macOS exposes several virtual
+    // serial ports that always enumerate, and alphabetically the first is
+    // usually one of them — on the machine this was found on the list was
+    // Bluetooth-Incoming-Port, debug-console, usbmodem141101, wlan-debug, so
+    // the Arduino sat third behind two devices that will never answer.
+    //
+    // Only a physically attached USB device reports a vendor and product id;
+    // the virtual ports report neither. That is the distinction worth picking
+    // on, rather than a hardcoded Arduino vendor id that would break the moment
+    // the board is swapped.
+    // Ranked, best first: the exact board the user chose before, then any
+    // board of the same model, then any physically attached USB device, then
+    // whatever is left. portId is deliberately not part of this — Electron
+    // regenerates it every launch, so it identifies nothing across sessions.
+    const preferred = loadPreferredPort();
+    const ranked = preferred
+      ? [...portList].sort((a, b) => matchScore(b, preferred) - matchScore(a, preferred))
+      : portList;
+    const remembered =
+      preferred && matchScore(ranked[0], preferred) > 0 ? ranked[0] : null;
+
+    // Only physical USB devices report ids; the virtual ports macOS always
+    // exposes (Bluetooth-Incoming-Port, debug-console, wlan-debug) report none,
+    // so they are never worth offering as a choice.
+    const candidates = portList.filter((p) => p.vendorId && p.productId);
+
+    const accept = (port: (typeof portList)[number], why: string) => {
+      console.log(
+        `[main] serial: ${portList.length} port(s), chose ${port.portName ?? port.portId} (${why})`,
+      );
+      if (port.vendorId && port.productId) {
+        savePreferredPort({
+          vendorId: port.vendorId,
+          productId: port.productId,
+          serialNumber: port.serialNumber,
+        });
+      }
+      callback(port.portId);
+    };
+
+    // Never ask twice for the same machine, and never ask when there is nothing
+    // to decide. A prompt is only worth a person's attention when more than one
+    // real device is attached and none of them is the one already chosen.
+    if (remembered) return accept(remembered, "remembered");
+    if (candidates.length === 1) return accept(candidates[0], "only USB device");
+    if (candidates.length === 0) return accept(portList[0], "no USB device");
+
+    const win = mainWindow;
+    if (!win || win.isDestroyed()) {
+      return accept(candidates[0], "no window to ask");
+    }
+
+    // A second request while a dialog is open answers the first with nothing,
+    // rather than leaving a callback that never fires.
+    resolvePendingSelect("");
+
+    const offered: OfferedPort[] = candidates.map((p) => ({
+      portId: p.portId,
+      portName: p.portName,
+      displayName: p.displayName,
+      vendorId: p.vendorId,
+      productId: p.productId,
+      serialNumber: p.serialNumber,
+    }));
+
+    console.log(`[main] serial: asking which of ${offered.length} devices to use`);
+    pendingSelect = {
+      callback: (portId) => {
+        const picked = candidates.find((p) => p.portId === portId);
+        if (!picked) {
+          // Cancelled, or the device went away while the dialog was open.
+          console.log("[main] serial: no device chosen");
+          callback("");
+          return;
+        }
+        accept(picked, "chosen by the user");
+      },
+      timer: setTimeout(() => {
+        console.warn("[main] serial: prompt timed out; using the first USB device");
+        resolvePendingSelect(candidates[0].portId);
+      }, SELECT_PROMPT_TIMEOUT_MS),
+    };
+    win.webContents.send("poke-sort:serial-select-request", offered);
   });
 
   // Hot-plugging the Arduino mid-session should just work.
@@ -253,14 +397,12 @@ function wireSerialPermissions(win: BrowserWindow): void {
 
   session.setPermissionCheckHandler((_wc, permission, requestingOrigin) => {
     if (permission !== "serial" && permission !== "media") return false;
-    return allowedOrigin !== null && requestingOrigin === allowedOrigin;
+    return isAllowedOrigin(requestingOrigin);
   });
 
   session.setDevicePermissionHandler(
     (details) =>
-      details.deviceType === "serial" &&
-      allowedOrigin !== null &&
-      details.origin === allowedOrigin,
+      details.deviceType === "serial" && isAllowedOrigin(details.origin),
   );
 
   // Only "media" here. Serial is not part of the permission-request flow at
@@ -327,11 +469,18 @@ async function createWindow(): Promise<void> {
   await win.loadURL(appUrl);
 }
 
-ipcMain.handle("poke-sort:get-preferred-serial-port", () => loadPreferredPortId());
-ipcMain.handle("poke-sort:set-preferred-serial-port", (_e, portId: string | null) => {
-  savePreferredPortId(portId);
-  return portId;
+ipcMain.on("poke-sort:serial-select-response", (_e, portId: string | null) => {
+  resolvePendingSelect(portId ?? "");
 });
+
+ipcMain.handle("poke-sort:get-preferred-serial-port", () => loadPreferredPort());
+ipcMain.handle(
+  "poke-sort:set-preferred-serial-port",
+  (_e, identity: SerialPortIdentity | null) => {
+    savePreferredPort(identity);
+    return identity;
+  },
+);
 
 // Two copies of the app would open the same PGlite directory, which is not a
 // contention problem but a corruption one. Hand the second launch's focus to

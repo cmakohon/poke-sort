@@ -14,6 +14,20 @@ contextBridge.exposeInMainWorld("pokeSort", {
       ipcRenderer.invoke("poke-sort:get-preferred-serial-port"),
     setPreferredPortId: (portId: string | null): Promise<string | null> =>
       ipcRenderer.invoke("poke-sort:set-preferred-serial-port", portId),
+    /**
+     * Fires when the shell needs a person to choose between attached devices.
+     * Only ever called when more than one real USB device is present and none
+     * is the remembered one — the page's requestPort() is waiting on the reply.
+     */
+    onSelectRequest: (listener: (ports: unknown[]) => void) => {
+      const handler = (_e: unknown, ports: unknown[]) => listener(ports);
+      ipcRenderer.on("poke-sort:serial-select-request", handler);
+      return () =>
+        ipcRenderer.removeListener("poke-sort:serial-select-request", handler);
+    },
+    /** Answers the request above. `null` cancels, and requestPort() rejects. */
+    respondToSelect: (portId: string | null) =>
+      ipcRenderer.send("poke-sort:serial-select-response", portId),
     onPortsChanged: (listener: () => void) => {
       const handler = () => listener();
       ipcRenderer.on("poke-sort:serial-ports-changed", handler);
