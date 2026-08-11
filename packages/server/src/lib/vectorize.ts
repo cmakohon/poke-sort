@@ -6,8 +6,7 @@ import {
   type Processor,
 } from "@huggingface/transformers";
 import { MODEL_DIR, MODELS_OFFLINE } from "../config";
-
-const MODEL_NAME = "Xenova/siglip-base-patch16-512";
+import { MODEL_DTYPE, MODEL_NAME } from "./embedding-identity";
 
 // transformers.js defaults its cache to a directory inside its own node_modules
 // folder, which in the packaged app lives inside the asar archive and is not
@@ -29,7 +28,7 @@ async function getModel(): Promise<SiglipVisionModel> {
   if (!modelPromise) {
     console.log("[vectorize] Loading SigLIP model...");
     modelPromise = SiglipVisionModel.from_pretrained(MODEL_NAME, {
-      dtype: "q8",
+      dtype: MODEL_DTYPE,
     });
     await modelPromise;
     console.log(

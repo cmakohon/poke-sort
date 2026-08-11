@@ -1,5 +1,5 @@
 import { API_BASE, apiDelete, apiGet, apiPost } from "@/lib/api/client";
-import type { SyncState } from "@magic-vault/shared";
+import type { Result, SyncState } from "@magic-vault/shared";
 
 export interface AdminCard {
   id: number;
@@ -109,4 +109,60 @@ export async function syncCardById(
 
 export async function createSyncEventSource(): Promise<EventSource> {
   return new EventSource(`${API_BASE}/api/admin/sync/stream`);
+}
+
+export interface CatalogStatus {
+  gameKey: string;
+  lang: string;
+  count: number;
+  packUrl: string;
+}
+
+export type PackJobPhase =
+  | "idle"
+  | "downloading"
+  | "importing"
+  | "completed"
+  | "failed";
+
+export interface PackJobState {
+  phase: PackJobPhase;
+  url: string | null;
+  downloadedBytes: number;
+  totalBytes: number | null;
+  imported: number;
+  cards: number;
+  message: string | null;
+  startedAt: string | null;
+}
+
+/** How many cards are embedded for a game — zero means nothing can be scanned. */
+export async function getCatalogStatus(
+  gameKey: string,
+  lang = "en",
+): Promise<CatalogStatus | undefined> {
+  const result = await apiGet<Result<CatalogStatus>>(
+    `/api/admin/catalog/${encodeURIComponent(gameKey)}?lang=${encodeURIComponent(lang)}`,
+  );
+  return result.data;
+}
+
+/** Kicks off a pack download + import; poll getCatalogImportState for progress. */
+export async function startCatalogImport(
+  gameKey: string,
+  lang = "en",
+  url?: string,
+): Promise<Result<PackJobState>> {
+  return apiPost<Result<PackJobState>>("/api/admin/catalog/import", {
+    gameKey,
+    lang,
+    url,
+  });
+}
+
+export async function getCatalogImportState(): Promise<
+  PackJobState | undefined
+> {
+  const result = await apiGet<Result<PackJobState>>("/api/admin/catalog/import");
+  return result.data;
 }

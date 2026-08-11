@@ -49,3 +49,6 @@ packages/desktop/.server-bundle/
 
 # eval fixture images (regenerate with `pnpm eval:build`)
 packages/server/eval/fixtures/
+
+# full-catalog build (background job)
+packages/server/.mault-catalog/

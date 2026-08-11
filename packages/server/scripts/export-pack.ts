@@ -10,6 +10,7 @@ import { gzipSync } from "node:zlib";
 import { and, asc, eq } from "drizzle-orm";
 import { db } from "../src/db";
 import { cardImageVectors } from "../src/db/schema";
+import { EMBEDDING_IDENTITY } from "../src/lib/embedding-identity";
 import { encodePack } from "../src/lib/pack/format";
 
 async function main() {
@@ -47,12 +48,22 @@ async function main() {
   }
 
   const dim = rows[0].embedding.length;
+  if (dim !== EMBEDDING_IDENTITY.dim) {
+    console.error(
+      `Refusing to export: stored vectors are ${dim}-dim but this build produces ${EMBEDDING_IDENTITY.dim}.`,
+    );
+    process.exit(1);
+  }
   const packed = encodePack(
     {
       gameKey,
       lang,
       dim,
       createdAt: new Date().toISOString(),
+      model: EMBEDDING_IDENTITY.model,
+      dtype: EMBEDDING_IDENTITY.dtype,
+      preprocessing: EMBEDDING_IDENTITY.preprocessing,
+      setCodes: [...new Set(rows.map((r) => r.setCode))].sort(),
       cards: rows.map((r) => ({
         id: r.id,
         name: r.name,

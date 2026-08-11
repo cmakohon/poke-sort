@@ -37,8 +37,17 @@ interface CandidateRow extends Record<string, unknown> {
  * card_data column existed simply have no stored object; they still rank, they
  * just arrive unhydrated.
  */
-function hydrate(gameKey: string, data: unknown): PlayingCard | null {
-  if (!data || typeof data !== "object") return null;
+function hydrate(
+  gameKey: string,
+  data: unknown,
+  fallback?: CandidateRow,
+): PlayingCard | null {
+  if (!data || typeof data !== "object") {
+    // Degrade to what the indexed columns hold rather than returning null: the
+    // client drops candidates it cannot render, so a missing detail would make
+    // the right card vanish from the list entirely.
+    return fallback ? minimalCard(fallback) : null;
+  }
   try {
     if (gameKey === "pokemon") {
       return normalizePokemonCard(data as PokemonCardDetail);
@@ -48,9 +57,25 @@ function hydrate(gameKey: string, data: unknown): PlayingCard | null {
     }
   } catch {
     // A malformed stored object should not take the whole scan down.
-    return null;
+    return fallback ? minimalCard(fallback) : null;
   }
-  return null;
+  return fallback ? minimalCard(fallback) : null;
+}
+
+/** Enough of a card to display and to sort on, built from the columns alone. */
+function minimalCard(row: CandidateRow): PlayingCard {
+  return {
+    id: row.scryfall_id,
+    name: row.name,
+    image: null,
+    set: row.scryfall_id.split("-")[0] ?? "",
+    setName: "",
+    collectorNumber: row.collector_number ?? "",
+    rarity: "",
+    typeLine: "",
+    colorIdentity: [],
+    price: null,
+  };
 }
 
 function hpOf(gameKey: string, data: unknown): number | null {
@@ -94,7 +119,7 @@ function withoutProfile(
     id: row.scryfall_id,
     distance: row.distance,
     score: Math.max(0, 1 - row.distance / LEGACY_CUTOFF),
-    card: hydrate(gameKey, row.card_data),
+    card: hydrate(gameKey, row.card_data, row),
   }));
   return {
     tier: candidates.length > 0 ? "accept" : "no-match",
@@ -141,7 +166,7 @@ async function withProfile(
     ocr,
     candidates: ranked.map((c) => ({
       ...c,
-      card: hydrate(gameKey, byId.get(c.id)?.card_data),
+      card: hydrate(gameKey, byId.get(c.id)?.card_data, byId.get(c.id)),
     })),
   };
 }

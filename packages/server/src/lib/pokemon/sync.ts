@@ -18,22 +18,34 @@ interface PokemonDetailCard extends PokemonListCard {
  * detail endpoint, so this is one request per card — cheap next to downloading
  * and embedding the image, which the sync already does for every card.
  */
+const DETAIL_ATTEMPTS = 3;
+
 async function fetchDetail(
   id: string,
   baseUrl: string,
   signal?: AbortSignal,
 ): Promise<PokemonDetailCard | null> {
-  try {
-    const res = await fetch(`${baseUrl}/${id}`, {
-      headers: POKEMON_HEADERS,
-      signal,
-    });
-    if (!res.ok) return null;
-    return (await res.json()) as PokemonDetailCard;
-  } catch {
-    // Non-fatal: the card still gets an embedding, just without the extras.
-    return null;
+  // Retried, because a card with no detail has no card_data, and a card with
+  // no card_data cannot be hydrated into a result — it silently disappears
+  // from the candidate list. A first pass without retries lost ~8% this way.
+  for (let attempt = 1; attempt <= DETAIL_ATTEMPTS; attempt++) {
+    try {
+      const res = await fetch(`${baseUrl}/${id}`, {
+        headers: POKEMON_HEADERS,
+        signal,
+      });
+      if (res.ok) return (await res.json()) as PokemonDetailCard;
+      // A genuine 404 will not become a 200 on retry.
+      if (res.status === 404) return null;
+    } catch {
+      if (signal?.aborted) return null;
+    }
+    if (attempt < DETAIL_ATTEMPTS) {
+      const delay = 400 * 2 ** (attempt - 1);
+      await new Promise((r) => setTimeout(r, delay + Math.random() * delay));
+    }
   }
+  return null;
 }
 
 function extrasFrom(detail: PokemonDetailCard | null) {

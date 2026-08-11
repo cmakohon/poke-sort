@@ -3,6 +3,7 @@ import { gunzipSync } from "node:zlib";
 import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { cardImageVectors } from "../../db/schema";
+import { incompatibilityReason } from "../embedding-identity";
 import { decodePack, type PackHeader } from "./format";
 
 /** Matches the sync writer: ~250 x 768 floats keeps a statement near 2 MB. */
@@ -24,6 +25,17 @@ export async function importPack(
   onProgress?: (done: number, total: number) => void,
 ): Promise<PackImportResult> {
   const { header, embeddings } = decodePack(gunzipSync(await readFile(filePath)));
+
+  // Refuse before writing anything. A pack from a different embedding pipeline
+  // imports perfectly happily and then makes every match slightly worse, which
+  // reads as a bad model rather than a bad catalog.
+  const reason = incompatibilityReason({
+    model: header.model,
+    dtype: header.dtype,
+    dim: header.dim,
+    preprocessing: header.preprocessing,
+  });
+  if (reason) throw new Error(reason);
 
   let inserted = 0;
   for (let start = 0; start < header.count; start += BATCH_SIZE) {

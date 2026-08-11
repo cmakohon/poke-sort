@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useOrg } from "@/hooks/use-org";
+import { CatalogSetup } from "@/features/games/components/catalog-setup";
 import { GamesManager } from "@/features/games/components/games-manager";
 import {
   cancelSync,
@@ -491,6 +492,8 @@ export default function AdminPage() {
           </div>
         )}
       </div>
+
+      {syncGameKey && <CatalogSetup gameKey={syncGameKey} lang={syncLang} />}
 
       <div className="mt-4">
         <GamesManager />
