@@ -594,6 +594,9 @@ router.post("/:guid/cards", requireAuth, requireOrg, async (c) => {
           scannedAt: new Date(scannedAt),
           binNumber: binNumber ?? null,
           capturedImagePath,
+          // The identify pipeline stamps the winner's card with the detected
+          // printing; keep it as a column so bin rules and exports see it.
+          variant: (card as { variant?: string }).variant ?? null,
           isFoil: isFoil ?? false,
           alternativeMatches: alternativeMatches?.length
             ? alternativeMatches

@@ -12,6 +12,7 @@ import {
 } from "../pokemon/search";
 import { getSetInfo } from "../set-index";
 import { readCard } from "./ocr";
+import { detectFirstEditionStamp, hasFirstEditionVariant } from "./stamp";
 import {
   fetchFreshCard,
   persistRefreshedCard,
@@ -213,20 +214,53 @@ async function withProfile(
   // Only the winner gets a fresh price — it is the only one whose price can
   // affect which bin the card is routed to.
   const winner = candidates[0];
+  let stamp: Awaited<ReturnType<typeof detectFirstEditionStamp>> | undefined;
   if (winner) {
-    const fresh =
-      winner.id === rows[0].card_id
-        ? await pricePromise
-        : await fetchFreshCard(gameKey, winner.id);
-    if (fresh) {
-      winner.card = withFreshPrice(winner.card, fresh);
-      persistRefreshedCard(winner.id, fresh);
+    const winnerRow = byId.get(winner.id);
+
+    // 1st Edition detection, gated on the card actually having that printing —
+    // which confines it to the classic-frame sets the detector understands.
+    if (gameKey === "pokemon" && hasFirstEditionVariant(winnerRow?.card_data)) {
+      try {
+        stamp = await detectFirstEditionStamp(imageBuffer);
+        const variant = stamp.stamped ? "firstEdition" : "normal";
+        if (winner.card) {
+          // Rebuilt with the variant so the price follows the detected
+          // printing — a stamped Base Set card is not priced like unlimited.
+          winner.card = normalizePokemonCard(
+            winnerRow?.card_data as PokemonCardDetail,
+            stamp.stamped ? "firstEdition" : undefined,
+          );
+          winner.card.variant = variant;
+          // Onto the raw object too: bin rules resolve paths against `raw`,
+          // and the stored scan keeps it for later re-evaluation.
+          (winner.card.raw as Record<string, unknown>).variant = variant;
+        }
+      } catch (err) {
+        // Detection is an enhancement; a failure must not break the scan.
+        console.error("[identify] stamp detection failed:", err);
+      }
+    }
+
+    // A detected 1st Edition keeps its pack-time variant price: the live
+    // lookup is variant-blind and would overwrite it with unlimited pricing.
+    if (stamp?.stamped) {
+      void pricePromise;
+    } else {
+      const fresh =
+        winner.id === rows[0].card_id
+          ? await pricePromise
+          : await fetchFreshCard(gameKey, winner.id);
+      if (fresh) {
+        winner.card = withFreshPrice(winner.card, fresh);
+        persistRefreshedCard(winner.id, fresh);
+      }
     }
   } else {
     void pricePromise;
   }
 
-  return { tier, margin, ocr, candidates };
+  return { tier, margin, ocr, candidates, stamp };
 }
 
 export async function identifyCard(

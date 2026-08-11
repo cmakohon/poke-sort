@@ -151,6 +151,21 @@ export const POKEMON_FIELD_DEFINITIONS: FieldMeta[] = [
     options: asOptions(POKEMON_RARITIES),
   },
   {
+    // Which physical printing a scan is. Filled by 1st Edition stamp detection
+    // at scan time for classic-frame sets; "normal" otherwise. Lives on the
+    // scan's stored card object (raw.variant), which is why a rule can reach
+    // it — making "all 1st editions -> bin 2" expressible.
+    field: "variant",
+    label: "Variant",
+    type: "enum",
+    path: "variant",
+    operators: ENUM_OPERATORS,
+    options: [
+      { value: "normal", label: "Unlimited" },
+      { value: "firstEdition", label: "1st Edition" },
+    ],
+  },
+  {
     // Energy types: an array on the raw card.
     field: "types",
     label: "Energy Type",
