@@ -82,7 +82,10 @@
     "resetToDefault": "Reset to default",
     "saving": "Saving…",
     "saveScanRegion": "Save Scan Region",
-    "savedSummary": "Saved: {{coverage}}% coverage, {{offsetX}}% / {{offsetY}}% offset"
+    "savedSummary": "Saved: {{coverage}}% coverage, {{offsetX}}% / {{offsetY}}% offset",
+    "settleDelayLabel": "Capture delay",
+    "settleDelayHint": "How long to wait after the sensor sees a card before the photo is taken. Raise this if captures show the card still sliding.",
+    "saveSettleDelay": "Save capture delay"
   },
   "useCalibrationPage": {
     "toasts": {

@@ -154,6 +154,14 @@ export function useCardScanner({
   const scanRegionRef = useRef(scanRegion);
   scanRegionRef.current = scanRegion;
 
+  // Same ref pattern as the scan region: the settle timeout is armed inside a
+  // callback, and a ref keeps a mid-session calibration change effective on
+  // the very next card rather than after a remount.
+  const settleDelay =
+    orgSettingsData?.captureSettleDelayMs ?? CARD_SETTLE_DELAY_MS;
+  const settleDelayRef = useRef(settleDelay);
+  settleDelayRef.current = settleDelay;
+
   const activeCollectionGuidRef = useRef(activeCollection?.guid);
   activeCollectionGuidRef.current = activeCollection?.guid;
 
@@ -442,7 +450,7 @@ export function useCardScanner({
     settleTimeoutRef.current = setTimeout(() => {
       settleTimeoutRef.current = null;
       performCapture(true, contour);
-    }, CARD_SETTLE_DELAY_MS);
+    }, settleDelayRef.current);
   }, [updateStatus, performCapture]);
 
   const handleSkipDuplicate = useCallback(() => {

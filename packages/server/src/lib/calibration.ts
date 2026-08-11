@@ -84,6 +84,8 @@ export const CalibrationDocumentSchema = z
       .strict()
       .nullable()
       .optional(),
+    /** ms between the IR sensor confirming a card and the frame capture. */
+    captureSettleDelayMs: z.number().int().min(0).max(5000).nullable().optional(),
   })
   .strict();
 
@@ -177,6 +179,9 @@ async function buildDocument(
             offsetY: settings.scanOffsetY / 100,
           }
         : null,
+    ...(settings?.captureSettleDelayMs != null
+      ? { captureSettleDelayMs: settings.captureSettleDelayMs }
+      : {}),
   };
 }
 
@@ -226,6 +231,22 @@ export async function importCalibration(
           set: { ...doc.feeder, updatedAt: new Date() },
         });
       await tx.insert(feederConfigAudit).values({ ...doc.feeder, orgId });
+    }
+
+    if (doc.captureSettleDelayMs !== undefined) {
+      const existing = await tx.query.orgSettings.findFirst({
+        where: eq(orgSettings.orgId, orgId),
+      });
+      if (existing) {
+        await tx
+          .update(orgSettings)
+          .set({ captureSettleDelayMs: doc.captureSettleDelayMs, updatedAt: new Date() })
+          .where(eq(orgSettings.orgId, orgId));
+      } else {
+        await tx
+          .insert(orgSettings)
+          .values({ captureSettleDelayMs: doc.captureSettleDelayMs, orgId });
+      }
     }
 
     if (doc.scanRegion !== undefined) {

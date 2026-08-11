@@ -104,12 +104,15 @@ describe("calibration bounds", () => {
   });
 
   it("accepts the settings payload the old app produced", () => {
+    // The full payload this time: captureSettleDelayMs was in the recovered
+    // upstream response and had no home here until the delay became a setting.
     accepts(OrgSettingsSchema, {
       primaryColor: null,
       scannerLayout: "horizontal",
       discordWebhookUrl: null,
       discordNotifyOnScan: false,
       scanRegion: REAL_MACHINE.scanRegion,
+      captureSettleDelayMs: 500,
     });
   });
 

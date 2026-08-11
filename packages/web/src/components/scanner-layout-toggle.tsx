@@ -46,6 +46,7 @@ export function ScannerLayoutToggle() {
           discordWebhookUrl: old?.discordWebhookUrl ?? null,
           discordNotifyOnScan: old?.discordNotifyOnScan ?? false,
           scanRegion: old?.scanRegion ?? DEFAULT_SCAN_REGION,
+          captureSettleDelayMs: old?.captureSettleDelayMs ?? 500,
         }),
       );
       return { previous };
