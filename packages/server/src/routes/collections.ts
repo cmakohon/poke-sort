@@ -27,7 +27,7 @@ const CardSchema = z
   })
   .passthrough();
 
-const AddScanSchema = z
+export const AddScanSchema = z
   .object({
     scanId: z.string().min(1),
     card: CardSchema,
@@ -41,7 +41,7 @@ const AddScanSchema = z
   })
   .passthrough();
 
-const UpdateScanSchema = z
+export const UpdateScanSchema = z
   .object({
     card: CardSchema.optional(),
     binNumber: z.number().int().nullable().optional(),
@@ -56,7 +56,7 @@ const UpdateScanSchema = z
 
 const NameSchema = z.object({ name: z.string().trim().min(1).max(200) }).strict();
 
-const CreateCollectionSchema = z
+export const CreateCollectionSchema = z
   .object({
     name: z.string().trim().min(1).max(200),
     gameGuid: z.string().min(1).optional(),
@@ -64,9 +64,15 @@ const CreateCollectionSchema = z
   })
   .strict();
 
-/** Bulk operations take scan guids; bounded so one request cannot walk the table. */
-const ScanIdsSchema = z
-  .object({ scanIds: z.array(z.string().min(1)).min(1).max(5000) })
+/**
+ * Bulk operations take scan guids.
+ *
+ * The client does not batch: "select all" sends every id in the collection in
+ * one request, so this has to clear a whole sorting session, not a screenful.
+ * 100k guids is ~3.6 MB of body — still a bound, but one no real session hits.
+ */
+export const ScanIdsSchema = z
+  .object({ scanIds: z.array(z.string().min(1)).min(1).max(100_000) })
   .strict();
 
 import { streamSSE } from "hono/streaming";

@@ -54,7 +54,7 @@ const httpUrl = z
     message: "must be an http(s) URL",
   });
 
-const GameInputSchema = z
+export const GameInputSchema = z
   .object({
     key: z.string().trim().min(1),
     name: z.string().trim().min(1),

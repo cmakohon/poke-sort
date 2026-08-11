@@ -21,9 +21,12 @@ const router = new Hono<AppEnv>();
  * Durations are milliseconds and capped at a minute: a fat-fingered value used
  * to be accepted and then stall the feeder for as long as it said.
  */
-const durationMs = z.number().int().min(0).max(60_000);
+// Ten minutes. The calibration UI clamps these only at the bottom, so any
+// ceiling here is the API inventing a limit the screen does not have — this one
+// is set where no plausible feed timing reaches it, rather than at a guess.
+const durationMs = z.number().int().min(0).max(600_000);
 
-const FeederCalibrationSchema = z
+export const FeederCalibrationSchema = z
   .object({
     // A PCA9685 pulse count for the continuous-rotation servo, written through
     // the same firmware path as the diverter servos — not degrees, not a

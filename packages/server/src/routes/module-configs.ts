@@ -29,7 +29,7 @@ const router = new Hono<AppEnv>();
  */
 const servoPulse = z.number().int().min(SERVO_PULSE_MIN).max(SERVO_PULSE_MAX);
 
-const CalibrationSchema = z
+export const CalibrationSchema = z
   .object({
     bottomClosed: servoPulse,
     bottomOpen: servoPulse,
