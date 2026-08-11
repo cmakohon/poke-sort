@@ -9,6 +9,21 @@ const ADAPTERS_BY_GAME_KEY: Record<string, CardSearchAdapter> = {
   pokemon: withCache(pokemonAdapter),
 };
 
+/**
+ * Adapter for a game key, without needing a collection. Used by the identify
+ * pipeline, which knows the game but not which collection asked.
+ */
+export async function resolveAdapterForGame(
+  gameKey: string,
+): Promise<{ adapter: CardSearchAdapter; baseUrl: string } | null> {
+  const adapter = ADAPTERS_BY_GAME_KEY[gameKey];
+  if (!adapter) return null;
+  return {
+    adapter,
+    baseUrl: await resolveGameDataSourceUrl(gameKey, adapter.defaultUrl),
+  };
+}
+
 async function findCollectionGame(jwtClaims: string, collectionGuid: string) {
   return authQuery(jwtClaims, async (tx) => {
     const collection = await tx.query.collections.findFirst({

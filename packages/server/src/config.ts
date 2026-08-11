@@ -51,3 +51,19 @@ export const MODEL_DIR = process.env.MAULT_MODEL_DIR
 
 /** Refuse to fetch weights from the network — the packaged app ships them. */
 export const MODELS_OFFLINE = process.env.MAULT_MODELS_OFFLINE === "1";
+
+/**
+ * Refresh the identified card's price from upstream during a scan.
+ *
+ * On by default: bin rules can route on price, and the routing decision is made
+ * the instant a card is identified, so a stale price sorts the card into the
+ * wrong bin. Set to "0" for a strictly offline setup, which keeps the prices
+ * frozen at whatever the catalog shipped with.
+ */
+export const LIVE_PRICING = process.env.MAULT_LIVE_PRICING !== "0";
+
+/** How long a price lookup may delay a scan before the stored price stands. */
+export const PRICE_TIMEOUT_MS = parseInt(
+  process.env.MAULT_PRICE_TIMEOUT_MS ?? "2000",
+  10,
+);

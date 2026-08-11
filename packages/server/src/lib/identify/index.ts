@@ -13,6 +13,11 @@ import {
 import { normalizeScryfallCard } from "../scryfall/search";
 import { readCard } from "./ocr";
 import {
+  fetchFreshCard,
+  persistRefreshedCard,
+  withFreshPrice,
+} from "./pricing";
+import {
   getIdentityProfile,
   LEGACY_CUTOFF,
   LEGACY_LIMIT,
@@ -137,6 +142,12 @@ async function withProfile(
   profile: IdentityProfile,
   imageBuffer: Buffer,
 ): Promise<IdentifyResult> {
+  // Start the price lookup for the nearest candidate now, so it overlaps with
+  // OCR instead of adding to the scan. Re-ranking usually confirms this card;
+  // when it does not, the winner is looked up afterwards (and that lookup is
+  // cached, so a re-scan of the same card is free).
+  const pricePromise = fetchFreshCard(gameKey, rows[0].scryfall_id);
+
   let ocr: OcrReading = {};
   if (profile.ocr) {
     try {
@@ -160,15 +171,28 @@ async function withProfile(
   const { tier, margin } = decideTier(ranked, profile);
   const byId = new Map(rows.map((r) => [r.scryfall_id, r]));
 
-  return {
-    tier,
-    margin,
-    ocr,
-    candidates: ranked.map((c) => ({
-      ...c,
-      card: hydrate(gameKey, byId.get(c.id)?.card_data, byId.get(c.id)),
-    })),
-  };
+  const candidates: IdentifyCandidate[] = ranked.map((c) => ({
+    ...c,
+    card: hydrate(gameKey, byId.get(c.id)?.card_data, byId.get(c.id)),
+  }));
+
+  // Only the winner gets a fresh price — it is the only one whose price can
+  // affect which bin the card is routed to.
+  const winner = candidates[0];
+  if (winner) {
+    const fresh =
+      winner.id === rows[0].scryfall_id
+        ? await pricePromise
+        : await fetchFreshCard(gameKey, winner.id);
+    if (fresh) {
+      winner.card = withFreshPrice(winner.card, fresh);
+      persistRefreshedCard(winner.id, fresh);
+    }
+  } else {
+    void pricePromise;
+  }
+
+  return { tier, margin, ocr, candidates };
 }
 
 export async function identifyCard(
