@@ -62,6 +62,19 @@ export const MODELS_OFFLINE = process.env.MAULT_MODELS_OFFLINE === "1";
  */
 export const LIVE_PRICING = process.env.MAULT_LIVE_PRICING !== "0";
 
+/**
+ * How hard the ANN index searches.
+ *
+ * Measured on the real 21,714-card catalog with degraded probes: 100 returns
+ * the same top-1 as an exact scan on every probe (2.9 ms against 71 ms).
+ * Above ~200 the planner abandons the index for a sequential scan, so raising
+ * this further buys nothing and silently gives up the index.
+ */
+export const HNSW_EF_SEARCH = parseInt(
+  process.env.MAULT_HNSW_EF_SEARCH ?? "100",
+  10,
+);
+
 /** How long a price lookup may delay a scan before the stored price stands. */
 export const PRICE_TIMEOUT_MS = parseInt(
   process.env.MAULT_PRICE_TIMEOUT_MS ?? "2000",

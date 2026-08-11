@@ -7,15 +7,24 @@ import { disposeOcr } from "../src/lib/identify/ocr";
 import { vectorizeImageFromBuffer } from "../src/lib/vectorize";
 
 /**
- * Identification accuracy against a fixture set.
+ * Identification accuracy against the real catalog.
  *
- * Run `pnpm eval:build` first — it populates the catalog and writes the images.
+ *   MAULT_DATA_DIR=./.mault-catalog pnpm eval:build   # once
+ *   MAULT_DATA_DIR=./.mault-catalog pnpm test
  *
- * ⚠ These fixtures are clean catalog renders, so the numbers here are an upper
- * bound, not a realistic baseline. Real captures have glare, white balance
- * shift, borders and blur, and the domain gap between the two is exactly what
- * the preprocessing work is meant to close. Treat this as a regression guard —
- * "did a change make ranking worse" — until real captures replace them.
+ * Probes are the LOW-quality render of a card in the catalog: a different image
+ * of the same card, ~0.042 away in embedding space against ~0.165 to a
+ * different card. Two things this fixes over the previous version, which
+ * reported a meaningless 100% top-1:
+ *
+ *  - It is no longer a tautology. Probing with the exact image that was
+ *    embedded gives distance 0 by construction.
+ *  - The distractors are real. 21,714 cards, where a Pikachu's nearest
+ *    neighbour is another Pikachu — not 71 cards from ten sets.
+ *
+ * ⚠ Still not a substitute for camera captures. A downscaled render has no
+ * glare, white balance shift, border or blur, so this remains optimistic — but
+ * it is now a measurement rather than a restatement of the setup.
  *
  * The metric that matters is the FALSE ACCEPT rate: a card confidently sorted
  * into the wrong bin is worse than one set aside for a human, because nobody
@@ -32,11 +41,21 @@ interface Fixture {
   file: string;
 }
 
+interface Manifest {
+  catalogSize: number;
+  generatedFrom: string;
+  cards: Fixture[];
+}
+
+let catalogSize = 0;
+
 async function loadManifest(): Promise<Fixture[]> {
   try {
-    return JSON.parse(
+    const parsed = JSON.parse(
       await readFile(path.join(FIXTURES, "manifest.json"), "utf-8"),
-    ) as Fixture[];
+    ) as Manifest;
+    catalogSize = parsed.catalogSize;
+    return parsed.cards;
   } catch {
     return [];
   }
@@ -97,7 +116,8 @@ describe.skipIf(manifest.length === 0)("pokemon identification accuracy", () => 
     console.log(
       [
         "",
-        `fixtures:      ${n}`,
+        `catalog:       ${catalogSize} cards`,
+        `probes:        ${n} (low-quality renders)`,
         `top-1:         ${top1} (${pct(top1)})`,
         `top-5:         ${top5} (${pct(top5)})`,
         `accepted:      ${accepted} (${pct(accepted)})`,
@@ -112,10 +132,10 @@ describe.skipIf(manifest.length === 0)("pokemon identification accuracy", () => 
       ].join("\n"),
     );
 
-    // Deliberately loose: this asserts the pipeline is wired up and ranking,
-    // not that it is good. Tighten once real captures exist and a baseline has
-    // been recorded.
-    expect(top1 / n).toBeGreaterThan(0.8);
-    expect(falseAccept / n).toBeLessThan(0.1);
+    // A regression guard, not a target. These are floors the pipeline clears
+    // today against degraded probes over the full catalog; tighten them as it
+    // improves rather than loosening them when something breaks.
+    expect(top1 / n).toBeGreaterThan(0.85);
+    expect(falseAccept / n).toBeLessThan(0.05);
   }, 600_000);
 });

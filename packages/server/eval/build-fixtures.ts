@@ -1,101 +1,101 @@
-// Builds the accuracy fixture set: a catalog slice spanning Pokemon eras, plus
-// the card images to feed back through the pipeline.
+// Builds the accuracy fixture set from the catalog that is already loaded.
 //
-//   pnpm --filter @magic-vault/server eval:build
+//   MAULT_DATA_DIR=./.mault-catalog pnpm --filter @magic-vault/server eval:build
 //
-// IMPORTANT: these are clean catalog renders, not camera captures. They measure
-// whether ranking and OCR work at all, and they will flatter the pipeline —
-// there is no glare, no white balance shift, no border, no motion blur. A
-// meaningful baseline needs real captures from the scanner; see the note in
-// accuracy.test.ts.
+// Probes are the LOW-quality render of cards already in the catalog. That is a
+// genuinely different image of the same card — measured ~0.042 away, versus
+// ~0.165 to a different card — so the test asks a real question.
+//
+// The previous version built its own 72-card catalog and probed it with the
+// exact images it had just embedded, which made top-1 a tautology (distance 0
+// by construction) and gave it only 71 distractors. Both are why it reported
+// 100%. Running against the full catalog restores the thing that actually makes
+// identification hard: a Pikachu's nearest neighbour is another Pikachu.
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { sql } from "drizzle-orm";
 import { db } from "../src/db";
 import { migrateDatabase } from "../src/db/migrate";
-import { seedDatabase } from "../src/db/seed";
 import { cardImageVectors } from "../src/db/schema";
-import { POKEMON_DEFAULT_URL } from "../src/lib/pokemon/search";
-import { pokemonSyncSource } from "../src/lib/pokemon/sync";
-import { vectorizeImageFromBuffer } from "../src/lib/vectorize";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURES = path.join(here, "fixtures", "pokemon");
 
-/** One set per era, so era-specific layout assumptions get exercised. */
-const SETS = [
-  "base1", // WOTC 1999
-  "ecard1", // e-Card 2002 — collector number moves
-  "ex1", // EX 2003
-  "dp1", // Diamond & Pearl 2007
-  "bw1", // Black & White 2011
-  "xy1", // XY 2014
-  "sm1", // Sun & Moon 2017
-  "swsh1", // Sword & Shield 2020
-  "sv01", // Scarlet & Violet 2023
-];
-const PER_SET = Number(process.env.EVAL_PER_SET ?? "8");
+const SAMPLE = Number(process.env.EVAL_SAMPLE ?? "150");
 
-interface SetResponse {
-  cards: { id: string; name: string; image?: string }[];
+interface Row extends Record<string, unknown> {
+  scryfall_id: string;
+  name: string;
+  set_code: string;
+  card_data: unknown;
 }
 
 async function main() {
   await migrateDatabase();
-  await seedDatabase();
   await mkdir(FIXTURES, { recursive: true });
 
-  const rows: (typeof cardImageVectors.$inferInsert)[] = [];
-  const manifest: { id: string; name: string; setCode: string; file: string }[] =
-    [];
-
-  for (const setCode of SETS) {
-    const res = await fetch(`https://api.tcgdex.net/v2/en/sets/${setCode}`);
-    if (!res.ok) {
-      console.warn(`  skipping ${setCode}: HTTP ${res.status}`);
-      continue;
-    }
-    const set = (await res.json()) as SetResponse;
-    const picked = set.cards.filter((c) => c.image).slice(0, PER_SET);
-
-    for (const card of picked) {
-      try {
-        const buf = Buffer.from(
-          await (await fetch(`${card.image}/high.webp`)).arrayBuffer(),
-        );
-        const extras = await pokemonSyncSource.fetchExtras!(
-          { id: card.id, name: card.name, setCode, imageUrl: undefined },
-          POKEMON_DEFAULT_URL,
-        );
-        rows.push({
-          scryfallId: card.id,
-          gameKey: "pokemon",
-          lang: "en",
-          name: card.name,
-          setCode,
-          embedding: await vectorizeImageFromBuffer(buf),
-          collectorNumber: extras.collectorNumber ?? null,
-          setTotal: extras.setTotal ?? null,
-          cardData: extras.data ?? null,
-        });
-
-        const file = `${card.id}.webp`;
-        await writeFile(path.join(FIXTURES, file), buf);
-        manifest.push({ id: card.id, name: card.name, setCode, file });
-      } catch (err) {
-        console.warn(`  ${card.id} failed:`, (err as Error).message);
-      }
-    }
-    console.log(`  ${setCode}: ${picked.length} cards`);
+  const total = await db.$count(cardImageVectors);
+  if (total < 1000) {
+    console.error(
+      `Catalog has only ${total} cards. Point MAULT_DATA_DIR at the full ` +
+        `catalog — a small one makes this test meaninglessly easy.`,
+    );
+    process.exit(1);
   }
 
-  await db.insert(cardImageVectors).values(rows).onConflictDoNothing();
+  // Evenly spaced across the id-sorted catalog so the sample spans every era,
+  // rather than clustering in whichever sets happen to sort first.
+  const rows = await db.execute<Row>(sql`
+    SELECT scryfall_id, name, set_code, card_data
+    FROM cards
+    WHERE card_data IS NOT NULL
+    ORDER BY scryfall_id
+  `);
+  const step = Math.max(1, Math.floor(rows.rows.length / SAMPLE));
+  const picked = rows.rows.filter((_, i) => i % step === 0).slice(0, SAMPLE);
+
+  console.log(`catalog: ${total} cards — sampling ${picked.length} probes`);
+
+  const manifest: {
+    id: string;
+    name: string;
+    setCode: string;
+    file: string;
+  }[] = [];
+
+  for (const row of picked) {
+    const image = (row.card_data as { image?: string } | null)?.image;
+    if (!image) continue;
+    try {
+      const res = await fetch(`${image}/low.webp`);
+      if (!res.ok) continue;
+      const file = `${row.scryfall_id}.webp`;
+      await writeFile(
+        path.join(FIXTURES, file),
+        Buffer.from(await res.arrayBuffer()),
+      );
+      manifest.push({
+        id: row.scryfall_id,
+        name: row.name,
+        setCode: row.set_code,
+        file,
+      });
+    } catch {
+      /* unreachable image — skip */
+    }
+  }
+
   await writeFile(
     path.join(FIXTURES, "manifest.json"),
-    JSON.stringify(manifest, null, 2),
+    JSON.stringify(
+      { catalogSize: total, generatedFrom: "low-quality render", cards: manifest },
+      null,
+      2,
+    ),
   );
 
-  console.log(`\n${rows.length} cards embedded, ${manifest.length} fixtures written.`);
+  console.log(`${manifest.length} probes written to ${FIXTURES}`);
   process.exit(0);
 }
 

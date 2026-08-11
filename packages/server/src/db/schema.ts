@@ -59,6 +59,18 @@ export const cardImageVectors = pgTable(
     unique("card_image_vectors_scryfall_face_idx").on(table.scryfallId),
     index("cards_game_lang_idx").on(table.gameKey, table.lang),
     index("cards_collector_number_idx").on(table.collectorNumber),
+    // Approximate nearest-neighbour index over the embeddings.
+    //
+    // Measured on the real 21,714-card catalog with degraded (low-quality)
+    // probes: at hnsw.ef_search=100 it returns the same top-1 as an exact scan
+    // for 60/60 probes, 100% recall@10 and 99.1% recall@50, at 2.9 ms against
+    // the exact scan's 71 ms. Build takes ~35 s.
+    //
+    // The Phase 0 spike suggested the opposite, but it queried uniformly random
+    // vectors where every point is near-equidistant — real embeddings cluster,
+    // which is the structure HNSW exists to exploit.
+    index("cards_embedding_hnsw")
+      .using("hnsw", table.embedding.op("vector_cosine_ops")),
   ],
 );
 
