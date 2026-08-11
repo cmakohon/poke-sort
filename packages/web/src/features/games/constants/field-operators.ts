@@ -1,4 +1,4 @@
-import type { ConditionOperator, FieldType } from "@magic-vault/shared";
+import type { ConditionOperator, FieldType } from "@poke-sort/shared";
 
 // Values only — labels are rendered via t("fieldTypes.<value>") in the
 // components that display them, since this module has no i18n context.

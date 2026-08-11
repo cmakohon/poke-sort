@@ -21,7 +21,7 @@ import {
   QUERY_MIN_LENGTH,
   type PlayingCard,
   type PlayingCardWithDistance,
-} from "@magic-vault/shared";
+} from "@poke-sort/shared";
 import {
   IconCheck,
   IconChevronDown,
@@ -36,10 +36,6 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-
-function formatManaCost(manaCost: string): string {
-  return manaCost.replace(/[{}]/g, " ").trim().replace(/\s+/g, " ");
-}
 
 interface CardDetailPanelProps {
   scanId?: string;
@@ -123,7 +119,7 @@ export function CardDetailPanel({
   const isQueryReady = debouncedQuery.trim().length >= QUERY_MIN_LENGTH;
 
   const { data: results = [], isFetching: loading } = useQuery({
-    queryKey: ["scryfall", "search", debouncedQuery, activeCollection?.guid],
+    queryKey: ["card-search", debouncedQuery, activeCollection?.guid],
     queryFn: () =>
       searchCards(debouncedQuery, activeCollection?.guid).then(
         (r) => r.data ?? [],
@@ -327,22 +323,16 @@ export function CardDetailPanel({
 
                 {selectedCard && (
                   <div className="flex flex-col gap-3 min-w-0 flex-1">
-                    {selectedCard.manaCost && (
-                      <p className="text-sm text-muted-foreground">
-                        {formatManaCost(selectedCard.manaCost)}
-                      </p>
-                    )}
                     {selectedCard.text && (
                       <p className="text-sm whitespace-pre-line leading-relaxed">
                         {selectedCard.text}
                       </p>
                     )}
-                    {selectedCard.power != null &&
-                      selectedCard.toughness != null && (
-                        <p className="text-sm font-semibold">
-                          {selectedCard.power}/{selectedCard.toughness}
-                        </p>
-                      )}
+                    {selectedCard.hp != null && (
+                      <p className="text-sm font-semibold">
+                        {selectedCard.hp} HP
+                      </p>
+                    )}
                     <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                       <div
                         className="size-2 rounded-full shrink-0"

@@ -23,7 +23,7 @@
     "viewSource": "Quelle ansehen"
   },
   "cardFilterPopover": {
-    "color": "Farbe",
+    "type": "Typ",
     "rarity": "Seltenheit",
     "bin": "Fach",
     "unassigned": "Nicht zugewiesen",
@@ -63,14 +63,13 @@
   },
   "cardSelectDialog": {
     "defaultTitle": "Karte auswählen",
-    "defaultDescription": "Scryfall nach einer Karte durchsuchen.",
+    "defaultDescription": "Nach einer Karte suchen.",
     "remove": "Entfernen",
     "correctCard": "Karte korrigieren",
     "scannedAlt": "Gescannt",
     "selectCorrectVersion": "Deine gescannte Karte - wähle unten die richtige Version aus",
     "multipleMatches": "Mehrere ähnliche Treffer - wähle die richtige Version aus:",
     "scanned": "Gescannt",
-    "manaCost": "Mana: {{cost}}",
     "artBy": "Illustration von {{artist}}",
     "viewSource": "Quelle ansehen",
     "searchPlaceholder": "Nach Kartenname suchen...",

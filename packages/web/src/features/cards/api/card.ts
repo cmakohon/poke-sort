@@ -1,4 +1,4 @@
-import type { IdentifyResult, Result } from "@magic-vault/shared";
+import type { IdentifyResult, Result } from "@poke-sort/shared";
 import { apiPostForm } from "@/lib/api/client";
 
 export async function searchByImage(

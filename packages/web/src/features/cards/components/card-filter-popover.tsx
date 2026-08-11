@@ -10,7 +10,7 @@ import {
 import type { SetStats } from "@/features/scanner/types";
 import { cn } from "@/lib/utils";
 import { useMemo } from "react";
-import { BIN_COUNT } from "@magic-vault/shared";
+import { BIN_COUNT } from "@poke-sort/shared";
 import {
   IconDownload,
   IconFilter,
@@ -19,22 +19,13 @@ import {
 import { useTranslation } from "react-i18next";
 
 const EMPTY_FILTERS: CardFilters = {
-  colors: [],
+  types: [],
   rarities: [],
   bins: [],
   needsAttention: false,
   showDownloaded: false,
   sets: [],
   minMatchPercent: 0,
-};
-
-const KNOWN_COLOR_ACTIVE: Record<string, string> = {
-  W: "bg-amber-100 text-amber-900 border-amber-400",
-  U: "bg-blue-500 text-white border-blue-700",
-  B: "bg-neutral-900 text-white border-neutral-700",
-  R: "bg-red-500 text-white border-red-700",
-  G: "bg-green-600 text-white border-green-800",
-  C: "bg-gray-400 text-white border-gray-500",
 };
 
 function toggle<T>(arr: T[], item: T): T[] {
@@ -51,7 +42,7 @@ interface CardFilterPopoverProps {
   onFiltersChange: (filters: CardFilters) => void;
   activeFilterCount: number;
   availableRarities: { key: string; label: string }[];
-  availableColors: { key: string; label: string; bg: string }[];
+  availableTypes: { key: string; label: string; bg: string }[];
   /** Sets present in the loaded cards — never the whole 218-set catalog. */
   availableSets?: SetStats[];
 }
@@ -61,7 +52,7 @@ export function CardFilterPopover({
   onFiltersChange,
   activeFilterCount,
   availableRarities,
-  availableColors,
+  availableTypes,
   availableSets,
 }: CardFilterPopoverProps) {
   const { t } = useTranslation("cards");
@@ -104,44 +95,40 @@ export function CardFilterPopover({
       align="end"
     >
       <div className="flex flex-col gap-3">
-        {availableColors.length > 0 && (
+        {availableTypes.length > 0 && (
           <div>
             <p className="text-[11px] font-medium text-muted-foreground tracking-wide mb-1.5 font-heading">
-              {t("cardFilterPopover.color")}
+              {t("cardFilterPopover.type")}
             </p>
             <div className="flex flex-col gap-1">
-              {availableColors.map((color) => {
-                const active = activeFilters.colors.includes(color.key);
-                const knownActiveClass = KNOWN_COLOR_ACTIVE[color.key];
+              {availableTypes.map((type) => {
+                const active = activeFilters.types.includes(type.key);
                 return (
                   <button
-                    key={color.key}
+                    key={type.key}
                     type="button"
                     onClick={() =>
                       onFiltersChange({
                         ...activeFilters,
-                        colors: toggle(activeFilters.colors, color.key),
+                        types: toggle(activeFilters.types, type.key),
                       })
                     }
                     className={cn(
                       chipBase,
                       "flex items-center gap-1.5 px-2 h-7 font-medium",
                       active
-                        ? (knownActiveClass ??
-                            "border-transparent text-background")
+                        ? "border-transparent text-background"
                         : chipInactive,
                     )}
                     style={
-                      active && !knownActiveClass
-                        ? { backgroundColor: color.bg }
-                        : undefined
+                      active ? { backgroundColor: type.bg } : undefined
                     }
                   >
                     <span
                       className="size-2 rounded-full shrink-0 border border-border/50"
-                      style={{ backgroundColor: color.bg }}
+                      style={{ backgroundColor: type.bg }}
                     />
-                    {color.label}
+                    {type.label}
                   </button>
                 );
               })}

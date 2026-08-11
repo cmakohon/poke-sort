@@ -33,7 +33,7 @@ import {
   type CreateSetFormValues,
 } from "@/schemas/sort-bins.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { BinConfig, BinRuleGroup, BinSet } from "@magic-vault/shared";
+import type { BinConfig, BinRuleGroup, BinSet } from "@poke-sort/shared";
 import {
   IconClockHour3,
   IconEdit,

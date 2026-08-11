@@ -9,8 +9,8 @@ import { vectorizeImageFromBuffer } from "../src/lib/vectorize";
 /**
  * Identification accuracy against the real catalog.
  *
- *   MAULT_DATA_DIR=./.mault-catalog pnpm eval:build   # once
- *   MAULT_DATA_DIR=./.mault-catalog pnpm test
+ *   POKE_SORT_DATA_DIR=./.poke-sort-catalog pnpm eval:build   # once
+ *   POKE_SORT_DATA_DIR=./.poke-sort-catalog pnpm test
  *
  * Probes are the LOW-quality render of a card in the catalog: a different image
  * of the same card, ~0.042 away in embedding space against ~0.165 to a

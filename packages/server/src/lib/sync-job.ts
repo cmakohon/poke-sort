@@ -1,4 +1,4 @@
-import type { SyncState, SyncStatus } from "@magic-vault/shared";
+import type { SyncState, SyncStatus } from "@poke-sort/shared";
 import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { cardImageVectors } from "../db/schema";
@@ -7,11 +7,9 @@ import type { SyncSource, SyncSourceCard } from "./card-search/sync-types";
 import { sendDiscordNotification } from "./discord";
 import { invalidateFacets } from "./facets";
 import { pokemonSyncSource } from "./pokemon/sync";
-import { scryfallSyncSource } from "./scryfall/sync";
 import { vectorizeImageFromBuffer } from "./vectorize";
 
 export const SYNC_SOURCES: Record<string, SyncSource> = {
-  mtg: scryfallSyncSource,
   pokemon: pokemonSyncSource,
 };
 
@@ -98,7 +96,7 @@ export function startSync(
     emit("error", { message: msg });
     if (orgId) {
       void sendDiscordNotification(orgId, {
-        title: "Magic Vault — Sync Failed",
+        title: "PokeSort — Sync Failed",
         description: `The card database sync job encountered a fatal error.\n\n**Error:** ${msg}`,
         color: 0xed4245,
         timestamp: new Date().toISOString(),
@@ -199,7 +197,7 @@ async function runSync(source: SyncSource, lang: string): Promise<void> {
   addLog(`Loading existing ${source.label} cards from DB...`);
 
   const existing = await db
-    .select({ id: cardImageVectors.scryfallId })
+    .select({ id: cardImageVectors.cardId })
     .from(cardImageVectors)
     .where(eq(cardImageVectors.gameKey, source.gameKey));
   const existingSet = new Set(existing.map((r) => r.id));
@@ -267,7 +265,7 @@ async function runSync(source: SyncSource, lang: string): Promise<void> {
       // rather than embedded twice while this one sits in the buffer.
       existingSet.add(card.id);
       pending.push({
-        scryfallId: card.id,
+        cardId: card.id,
         gameKey: source.gameKey,
         lang,
         name: card.name,

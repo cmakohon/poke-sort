@@ -8,7 +8,7 @@ import {
   gamesQueryOptions,
   updateGame,
 } from "@/features/games/api/games";
-import type { Game } from "@magic-vault/shared";
+import type { Game } from "@poke-sort/shared";
 import { IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";

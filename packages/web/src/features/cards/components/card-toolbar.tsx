@@ -12,7 +12,7 @@ import {
 import { WatcherStack } from "@/components/ui/watcher-stack";
 import { CardFilterPopover } from "@/features/cards/components/card-filter-popover";
 import type { CardToolbarProps } from "@/features/cards/types";
-import type { FieldMeta } from "@magic-vault/shared";
+import type { FieldMeta } from "@poke-sort/shared";
 import { IconCheckbox, IconDownload, IconTrash } from "@tabler/icons-react";
 import type { TFunction } from "i18next";
 import { Fragment, useState } from "react";
@@ -46,7 +46,7 @@ export function CardToolbar({
   allSelected,
   onToggleSelectAll,
   availableRarities,
-  availableColors,
+  availableTypes,
   availableSets,
 }: CardToolbarProps) {
   const { t } = useTranslation("cards");
@@ -100,7 +100,7 @@ export function CardToolbar({
         onFiltersChange={onFiltersChange}
         activeFilterCount={activeFilterCount}
         availableRarities={availableRarities ?? []}
-        availableColors={availableColors ?? []}
+        availableTypes={availableTypes ?? []}
         availableSets={availableSets}
       />
       {onToggleSelectAll && (

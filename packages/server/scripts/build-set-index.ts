@@ -1,6 +1,6 @@
 // Regenerates src/data/pokemon-set-index.json from TCGdex.
 //
-//   pnpm --filter @magic-vault/server build:set-index
+//   pnpm --filter @poke-sort/server build:set-index
 //
 // A card's embedded `set` object carries id, name and artwork but NOT which
 // series it belongs to, and the series cannot be derived from the set id:

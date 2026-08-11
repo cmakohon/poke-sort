@@ -26,7 +26,7 @@ packages/desktop/release/
 /.models
 
 # local app data (embedded db + scan captures)
-.mault/
+.poke-sort/
 
 # Phase 0 spikes - not committed
 /scratch
@@ -51,4 +51,7 @@ packages/desktop/.server-bundle/
 packages/server/eval/fixtures/
 
 # full-catalog build (background job)
-packages/server/.mault-catalog/
+packages/server/.poke-sort-catalog/
+
+# tesseract language data, downloaded on first OCR run
+*.traineddata

@@ -8,7 +8,7 @@ import { useScannedCards } from "@/features/scanner/api/use-scanned-cards";
 import { useSerial } from "@/features/scanner/api/use-serial";
 import { useRole } from "@/hooks/use-role";
 import { createSyncEventSource } from "@/lib/api/admin";
-import type { SyncState } from "@magic-vault/shared";
+import type { SyncState } from "@poke-sort/shared";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";

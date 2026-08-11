@@ -6,7 +6,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { FeederCalibration } from "@magic-vault/shared";
+import type { FeederCalibration } from "@poke-sort/shared";
 import { useTranslation } from "react-i18next";
 
 interface FeederCalibrationPanelProps {

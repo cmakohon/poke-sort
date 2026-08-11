@@ -278,7 +278,7 @@ export function AppNav() {
             <IconPigFilled className="size-4" />
           </span>
           {expanded && (
-            <span className="font-bold font-heading text-sm">Magic Vault</span>
+            <span className="font-bold font-heading text-sm">PokeSort</span>
           )}
         </TooltipTrigger>
         <TooltipContent side="right">v{__APP_VERSION__}</TooltipContent>

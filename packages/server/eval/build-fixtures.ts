@@ -1,6 +1,6 @@
 // Builds the accuracy fixture set from the catalog that is already loaded.
 //
-//   MAULT_DATA_DIR=./.mault-catalog pnpm --filter @magic-vault/server eval:build
+//   POKE_SORT_DATA_DIR=./.poke-sort-catalog pnpm --filter @poke-sort/server eval:build
 //
 // Probes are the `high` render of cards already in the catalog, resized to the
 // scanner's capture resolution and degraded the way a camera degrades things.
@@ -77,7 +77,7 @@ async function degrade(buf: Buffer, seed: number): Promise<Buffer> {
 }
 
 interface Row extends Record<string, unknown> {
-  scryfall_id: string;
+  card_id: string;
   name: string;
   set_code: string;
   card_data: unknown;
@@ -90,7 +90,7 @@ async function main() {
   const total = await db.$count(cardImageVectors);
   if (total < 1000) {
     console.error(
-      `Catalog has only ${total} cards. Point MAULT_DATA_DIR at the full ` +
+      `Catalog has only ${total} cards. Point POKE_SORT_DATA_DIR at the full ` +
         `catalog — a small one makes this test meaninglessly easy.`,
     );
     process.exit(1);
@@ -99,10 +99,10 @@ async function main() {
   // Evenly spaced across the id-sorted catalog so the sample spans every era,
   // rather than clustering in whichever sets happen to sort first.
   const rows = await db.execute<Row>(sql`
-    SELECT scryfall_id, name, set_code, card_data
+    SELECT card_id, name, set_code, card_data
     FROM cards
     WHERE card_data IS NOT NULL
-    ORDER BY scryfall_id
+    ORDER BY card_id
   `);
   const step = Math.max(1, Math.floor(rows.rows.length / SAMPLE));
   const picked = rows.rows.filter((_, i) => i % step === 0).slice(0, SAMPLE);
@@ -122,13 +122,13 @@ async function main() {
     try {
       const res = await fetch(`${image}/high.webp`);
       if (!res.ok) continue;
-      const file = `${row.scryfall_id}.jpg`;
+      const file = `${row.card_id}.jpg`;
       await writeFile(
         path.join(FIXTURES, file),
         await degrade(Buffer.from(await res.arrayBuffer()), manifest.length + 1),
       );
       manifest.push({
-        id: row.scryfall_id,
+        id: row.card_id,
         name: row.name,
         setCode: row.set_code,
         file,

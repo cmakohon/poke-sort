@@ -45,7 +45,7 @@ jobs:
         run: node packages/desktop/scripts/fetch-model.mjs
 
       - name: Package
-        run: pnpm --filter @magic-vault/desktop dist
+        run: pnpm --filter @poke-sort/desktop dist
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

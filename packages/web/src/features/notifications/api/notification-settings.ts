@@ -4,7 +4,7 @@ import type {
   Response,
   Result,
   SerialEventReport,
-} from "@magic-vault/shared";
+} from "@poke-sort/shared";
 import { queryOptions } from "@tanstack/react-query";
 
 export async function getNotificationSettings(): Promise<

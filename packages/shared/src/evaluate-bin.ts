@@ -1,4 +1,4 @@
-import { FIELD_DEFINITIONS } from "./constants/sort-bins.constant";
+import { POKEMON_FIELD_DEFINITIONS } from "./constants/pokemon-fields.constant";
 import type {
   BinCondition,
   BinConfig,
@@ -8,7 +8,7 @@ import type {
 import { isRuleGroup } from "./interfaces/sort-bins.interface";
 
 // `object` (not `Record<string, unknown>`) so concrete card interfaces like
-// ScryfallCard - which have no index signature - are assignable without a
+// PlayingCard - which has no index signature - is assignable without a
 // cast at every call site. getByPath narrows internally as it walks the path.
 export type SourceCard = object;
 
@@ -158,7 +158,7 @@ export function getCatchAllBin(configs: BinConfig[]): BinConfig | undefined {
 export function evaluateCardBin(
   card: SourceCard,
   configs: BinConfig[],
-  fieldDefinitions: FieldMeta[] = FIELD_DEFINITIONS,
+  fieldDefinitions: FieldMeta[] = POKEMON_FIELD_DEFINITIONS,
 ): BinConfig | undefined {
   let catchAll: BinConfig | undefined;
 

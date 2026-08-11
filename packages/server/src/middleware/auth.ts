@@ -2,7 +2,7 @@ import {
   LOCAL_ORG_ID,
   LOCAL_USER_ID,
   LOCAL_USER_NAME,
-} from "@magic-vault/shared";
+} from "@poke-sort/shared";
 import { createMiddleware } from "hono/factory";
 
 /**

@@ -4,7 +4,7 @@ import {
 } from "@/features/settings/api/org-settings";
 import { useOrg } from "@/hooks/use-org";
 import { cn } from "@/lib/utils";
-import { DEFAULT_SCAN_REGION } from "@magic-vault/shared";
+import { DEFAULT_SCAN_REGION } from "@poke-sort/shared";
 import { IconLayoutColumns, IconLayoutRows } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";

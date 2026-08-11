@@ -1,12 +1,12 @@
-import type { PlayingCard, Result } from "@magic-vault/shared";
-import { QUERY_MIN_LENGTH } from "@magic-vault/shared";
+import type { PlayingCard, Result } from "@poke-sort/shared";
+import { QUERY_MIN_LENGTH } from "@poke-sort/shared";
 import type { CardSearchAdapter } from "../card-search/types";
 import { getSetInfo, releaseYear } from "../set-index";
 
 export const POKEMON_DEFAULT_URL = "https://api.tcgdex.net/v2/en/cards";
 
 export const POKEMON_HEADERS: Record<string, string> = {
-  "User-Agent": "MagicVault/1.0",
+  "User-Agent": "PokeSort/1.0",
   Accept: "application/json",
 };
 
@@ -173,13 +173,12 @@ export function normalizePokemonCard(
     rarity: (raw.rarity ?? "").toLowerCase(),
     typeLine,
     text,
-    power: undefined,
-    toughness: raw.hp != null ? String(raw.hp) : undefined,
-    colorIdentity: raw.types ?? [],
+    hp: raw.hp != null ? String(raw.hp) : undefined,
+    types: raw.types ?? [],
     artist: raw.illustrator ?? undefined,
     price: resolvePrice(raw.pricing, variant),
     sourceUrl: `https://tcgdex.dev/cards/${raw.id}`,
-    cmc: raw.retreat,
+    retreatCost: raw.retreat,
     raw: enrichedRaw,
   };
 }

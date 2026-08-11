@@ -10,7 +10,7 @@ import {
   type ThemeColor,
 } from "@/lib/primary-color";
 import { cn } from "@/lib/utils";
-import { DEFAULT_SCAN_REGION } from "@magic-vault/shared";
+import { DEFAULT_SCAN_REGION } from "@poke-sort/shared";
 import { IconCheck, IconRotate } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";

@@ -1,6 +1,6 @@
 import { MODULES } from "@/features/calibration/constants";
 import type { SliderKey } from "@/features/calibration/types";
-import type { ServoCalibration } from "@magic-vault/shared";
+import type { ServoCalibration } from "@poke-sort/shared";
 
 export function getCalibrationKey(
   servo: "bottom" | "paddle" | "pusher",

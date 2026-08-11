@@ -1,5 +1,5 @@
 import { apiGet, apiPut } from "@/lib/api/client";
-import { DEFAULT_SCAN_REGION, type ScanRegion } from "@magic-vault/shared";
+import { DEFAULT_SCAN_REGION, type ScanRegion } from "@poke-sort/shared";
 import { queryOptions } from "@tanstack/react-query";
 
 export interface OrgSettings {

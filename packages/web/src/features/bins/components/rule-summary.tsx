@@ -4,7 +4,7 @@ import {
   BinRuleGroup,
   FieldMeta,
   isRuleGroup,
-} from "@magic-vault/shared";
+} from "@poke-sort/shared";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 

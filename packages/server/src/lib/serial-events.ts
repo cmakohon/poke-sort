@@ -1,4 +1,4 @@
-import type { SerialCommand, SerialEventReport } from "@magic-vault/shared";
+import type { SerialCommand, SerialEventReport } from "@poke-sort/shared";
 
 const COMMAND_LABELS: Record<SerialCommand, string> = {
   connect: "Connection",

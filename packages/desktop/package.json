@@ -1,14 +1,14 @@
 {
-  "name": "@magic-vault/desktop",
+  "name": "@poke-sort/desktop",
   "version": "1.0.1",
   "private": true,
-  "description": "Mault — TCG card scanner and physical sorter",
+  "description": "PokeSort — Pokémon card scanner and physical sorter",
   "author": "dishwasher-detergent",
   "main": "dist/main.cjs",
   "scripts": {
     "build": "tsup",
     "dev": "pnpm -w run build && electron dist/main.cjs",
-    "bundle:server": "rm -rf .server-bundle && pnpm --filter @magic-vault/server deploy --prod .server-bundle && node scripts/prune-bundle.mjs",
+    "bundle:server": "rm -rf .server-bundle && pnpm --filter @poke-sort/server deploy --prod .server-bundle && node scripts/prune-bundle.mjs",
     "dist": "pnpm -w run build && pnpm bundle:server && electron-builder",
     "dist:dir": "pnpm -w run build && pnpm bundle:server && electron-builder --dir"
   },

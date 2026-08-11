@@ -4,7 +4,7 @@ import path from "node:path";
  * Everything the app writes lives under one directory so the Electron shell can
  * point it at `app.getPath("userData")` with a single env var (Phase 3).
  */
-export const DATA_DIR = path.resolve(process.env.MAULT_DATA_DIR ?? "./.mault");
+export const DATA_DIR = path.resolve(process.env.POKE_SORT_DATA_DIR ?? "./.poke-sort");
 
 /** Embedded Postgres. */
 export const DB_DIR = path.join(DATA_DIR, "db");
@@ -22,15 +22,15 @@ export const CAPTURES_DIR = path.join(DATA_DIR, "captures");
  * folder via extraResources, outside the asar.
  */
 export const MIGRATIONS_DIR =
-  process.env.MAULT_MIGRATIONS_DIR ?? path.resolve(__dirname, "../../../drizzle");
+  process.env.POKE_SORT_MIGRATIONS_DIR ?? path.resolve(__dirname, "../../../drizzle");
 
 /**
  * When set, the built SPA is served from this directory and the API becomes
  * same-origin. The desktop shell sets it; `pnpm dev` leaves it unset so Vite
  * keeps serving the app with HMR.
  */
-export const STATIC_DIR = process.env.MAULT_STATIC_DIR
-  ? path.resolve(process.env.MAULT_STATIC_DIR)
+export const STATIC_DIR = process.env.POKE_SORT_STATIC_DIR
+  ? path.resolve(process.env.POKE_SORT_STATIC_DIR)
   : null;
 
 /**
@@ -42,15 +42,15 @@ export const PORT = parseInt(process.env.PORT ?? "3001", 10);
 
 /** Loopback-only in the packaged app; the dev server stays reachable on the LAN
  * so a phone can open the monitor view. */
-export const HOST = process.env.MAULT_HOST ?? "0.0.0.0";
+export const HOST = process.env.POKE_SORT_HOST ?? "0.0.0.0";
 
 /** Where the bundled SigLIP weights live (transformers.js `env.cacheDir`). */
-export const MODEL_DIR = process.env.MAULT_MODEL_DIR
-  ? path.resolve(process.env.MAULT_MODEL_DIR)
+export const MODEL_DIR = process.env.POKE_SORT_MODEL_DIR
+  ? path.resolve(process.env.POKE_SORT_MODEL_DIR)
   : null;
 
 /** Refuse to fetch weights from the network — the packaged app ships them. */
-export const MODELS_OFFLINE = process.env.MAULT_MODELS_OFFLINE === "1";
+export const MODELS_OFFLINE = process.env.POKE_SORT_MODELS_OFFLINE === "1";
 
 /**
  * Refresh the identified card's price from upstream during a scan.
@@ -60,7 +60,7 @@ export const MODELS_OFFLINE = process.env.MAULT_MODELS_OFFLINE === "1";
  * wrong bin. Set to "0" for a strictly offline setup, which keeps the prices
  * frozen at whatever the catalog shipped with.
  */
-export const LIVE_PRICING = process.env.MAULT_LIVE_PRICING !== "0";
+export const LIVE_PRICING = process.env.POKE_SORT_LIVE_PRICING !== "0";
 
 /**
  * How hard the ANN index searches.
@@ -71,12 +71,12 @@ export const LIVE_PRICING = process.env.MAULT_LIVE_PRICING !== "0";
  * this further buys nothing and silently gives up the index.
  */
 export const HNSW_EF_SEARCH = parseInt(
-  process.env.MAULT_HNSW_EF_SEARCH ?? "100",
+  process.env.POKE_SORT_HNSW_EF_SEARCH ?? "100",
   10,
 );
 
 /** How long a price lookup may delay a scan before the stored price stands. */
 export const PRICE_TIMEOUT_MS = parseInt(
-  process.env.MAULT_PRICE_TIMEOUT_MS ?? "2000",
+  process.env.POKE_SORT_PRICE_TIMEOUT_MS ?? "2000",
   10,
 );

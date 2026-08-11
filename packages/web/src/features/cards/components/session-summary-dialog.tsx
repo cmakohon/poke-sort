@@ -14,20 +14,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
 import { useBinConfigs } from "@/features/bins/api/use-bin-configs";
-import {
-  exportToCardKingdom,
-  exportToCsv,
-  exportToManabox,
-  exportToMoxfield,
-  exportToTcgplayer,
-} from "@/features/cards/lib/export-formats";
-import { useCollections } from "@/features/collections/api/use-collections";
+import { exportToCsv } from "@/features/cards/lib/export-formats";
 import {
   formatElapsed,
   formatUsd,
 } from "@/features/scanner/components/scan-stats";
 import { computeStats } from "@/features/scanner/lib/compute-stats";
-import type { ScannedCard } from "@magic-vault/shared";
+import type { ScannedCard } from "@poke-sort/shared";
 import { IconChevronDown, IconDownload } from "@tabler/icons-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -78,28 +71,15 @@ export function SessionSummaryDialog({
   );
   const stats = useMemo(() => computeStats(cards), [cards]);
   const slug = collectionName.replace(/\s+/g, "-").toLowerCase();
-  const { activeCollection } = useCollections();
   const { fieldDefinitions } = useBinConfigs();
 
-  const isMtg = activeCollection?.game?.key === "mtg";
-  const exportOptions: ExportOption[] = isMtg
-    ? [
-        { key: "manabox", label: "Manabox", fn: exportToManabox },
-        { key: "moxfield", label: "Moxfield", fn: exportToMoxfield },
-        { key: "tcgplayer", label: "TCGPlayer", fn: exportToTcgplayer },
-        {
-          key: "cardkingdom",
-          label: "Card Kingdom Buylist",
-          fn: exportToCardKingdom,
-        },
-      ]
-    : [
-        {
-          key: "csv",
-          label: "CSV",
-          fn: (c, collection) => exportToCsv(c, collection, fieldDefinitions),
-        },
-      ];
+  const exportOptions: ExportOption[] = [
+    {
+      key: "csv",
+      label: "CSV",
+      fn: (c, collection) => exportToCsv(c, collection, fieldDefinitions),
+    },
+  ];
 
   const cardsPerHour =
     elapsedMs > 0 ? Math.round((cards.length / elapsedMs) * 3_600_000) : null;

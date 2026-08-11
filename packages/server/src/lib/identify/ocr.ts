@@ -1,6 +1,6 @@
 import sharp, { type Sharp } from "sharp";
 import { createWorker, type Worker } from "tesseract.js";
-import type { OcrReading } from "@magic-vault/shared";
+import type { OcrReading } from "@poke-sort/shared";
 import { MODEL_DIR } from "../../config";
 import type { OcrProfile, OcrRegion } from "./profiles";
 

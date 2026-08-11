@@ -70,7 +70,7 @@ router.post("/", requireAuth, async (c) => {
     const orgId = c.req.header("X-Org-Id");
     if (orgId) {
       void sendDiscordNotification(orgId, {
-        title: "Magic Vault — Card Search Error",
+        title: "PokeSort — Card Search Error",
         description: "A database error occurred while searching for a card.",
         color: 0xed4245,
         timestamp: new Date().toISOString(),
@@ -82,7 +82,7 @@ router.post("/", requireAuth, async (c) => {
 
 // /search must be registered before /search/:id to avoid path conflicts.
 // Dispatches to whichever game's card API backs the given collection -
-// see lib/card-search/resolve.ts. Every game (including MTG/Scryfall) is
+// see lib/card-search/resolve.ts. Every game is
 // registered explicitly there; there is no implicit default game.
 router.get("/search", requireAuth, async (c) => {
   const query = c.req.query("q") ?? "";
@@ -118,10 +118,7 @@ router.get("/search/:id", requireAuth, async (c) => {
   return c.json(result);
 });
 
-const ALLOWED_IMAGE_HOSTS = new Set([
-  "cards.scryfall.io",
-  "assets.tcgdex.net",
-]);
+const ALLOWED_IMAGE_HOSTS = new Set(["assets.tcgdex.net"]);
 
 router.get("/image-proxy", async (c) => {
   const url = c.req.query("url");
@@ -141,7 +138,7 @@ router.get("/image-proxy", async (c) => {
   }
 
   const upstream = await fetch(parsed.toString(), {
-    headers: { "User-Agent": "MagicVault/1.0", Accept: "image/*" },
+    headers: { "User-Agent": "PokeSort/1.0", Accept: "image/*" },
   });
   const contentType = upstream.headers.get("content-type") ?? "";
   if (!upstream.ok || !contentType.startsWith("image/")) {

@@ -2,28 +2,13 @@ import type {
   FieldMeta,
   PlayingCardWithDistance,
   ScannedCard,
-} from "@magic-vault/shared";
-import { getCardValue } from "@magic-vault/shared";
+} from "@poke-sort/shared";
+import { getCardValue } from "@poke-sort/shared";
 
 function csvEscape(val: string): string {
   return val.includes(",") || val.includes('"')
     ? `"${val.replace(/"/g, '""')}"`
     : val;
-}
-
-function groupByCardId(
-  cards: ScannedCard[],
-): Map<string, { card: PlayingCardWithDistance; quantity: number }> {
-  const grouped = new Map<
-    string,
-    { card: PlayingCardWithDistance; quantity: number }
-  >();
-  for (const entry of cards) {
-    const existing = grouped.get(entry.card.id);
-    if (existing) existing.quantity++;
-    else grouped.set(entry.card.id, { card: entry.card, quantity: 1 });
-  }
-  return grouped;
 }
 
 function groupByCardIdAndFoil(
@@ -58,93 +43,13 @@ function downloadCsv(csv: string, filename: string) {
 
 const dateSuffix = () => new Date().toISOString().slice(0, 10);
 
-export function exportToManabox(cards: ScannedCard[], collection: string) {
-  if (cards.length === 0) return;
-  const grouped = groupByCardId(cards);
-  const headers = [
-    "Name",
-    "Set code",
-    "Set name",
-    "Collector number",
-    "Foil",
-    "Quantity",
-    "Scryfall ID",
-    "Condition",
-    "Language",
-    "Purchase price",
-  ];
-  const rows = Array.from(grouped.values()).map(({ card, quantity }) => [
-    csvEscape(card.name),
-    card.set.toUpperCase(),
-    csvEscape(card.setName),
-    card.collectorNumber,
-    "",
-    String(quantity),
-    card.id,
-    "Near Mint",
-    "en",
-    card.price != null ? card.price.toFixed(2) : "",
-  ]);
-  const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-  downloadCsv(csv, `magic-vault-manabox-${dateSuffix()}-${collection}.csv`);
-}
-
-export function exportToMoxfield(cards: ScannedCard[], collection: string) {
-  if (cards.length === 0) return;
-  const grouped = groupByCardId(cards);
-  const headers = [
-    "Count",
-    "Name",
-    "Edition",
-    "Condition",
-    "Language",
-    "Foil",
-    "Collector Number",
-    "Alter",
-    "Proxy",
-    "Purchase Price",
-  ];
-  const rows = Array.from(grouped.values()).map(({ card, quantity }) => [
-    String(quantity),
-    csvEscape(card.name),
-    card.set.toUpperCase(),
-    "Near Mint",
-    "EN",
-    "",
-    card.collectorNumber,
-    "False",
-    "False",
-    card.price != null ? card.price.toFixed(2) : "",
-  ]);
-  const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-  downloadCsv(csv, `magic-vault-moxfield-${dateSuffix()}-${collection}.csv`);
-}
-
-export function exportToTcgplayer(cards: ScannedCard[], collection: string) {
-  if (cards.length === 0) return;
-  const grouped = groupByCardId(cards);
-  const headers = [
-    "Quantity",
-    "Name",
-    "Set Name",
-    "Number",
-    "Condition",
-    "Printing",
-    "Language",
-  ];
-  const rows = Array.from(grouped.values()).map(({ card, quantity }) => [
-    String(quantity),
-    csvEscape(card.name),
-    csvEscape(card.setName),
-    card.collectorNumber,
-    "Near Mint",
-    "Normal",
-    "English",
-  ]);
-  const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-  downloadCsv(csv, `magic-vault-tcgplayer-${dateSuffix()}-${collection}.csv`);
-}
-
+/**
+ * The only export format.
+ *
+ * Columns come from the game's own field definitions rather than a fixed
+ * header, so the file follows whatever those definitions say instead of some
+ * marketplace importer's hardcoded vocabulary.
+ */
 export function exportToCsv(
   cards: ScannedCard[],
   collection: string,
@@ -165,21 +70,5 @@ export function exportToCsv(
     ],
   );
   const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-  downloadCsv(csv, `magic-vault-export-${dateSuffix()}-${collection}.csv`);
-}
-
-export function exportToCardKingdom(cards: ScannedCard[], collection: string) {
-  if (cards.length === 0) return;
-  const grouped = groupByCardIdAndFoil(cards);
-  const headers = ["Title", "Edition", "Foil", "Quantity"];
-  const rows = Array.from(grouped.values()).map(
-    ({ card, quantity, isFoil }) => [
-      csvEscape(card.name),
-      csvEscape(card.setName),
-      isFoil ? "True" : "False",
-      String(quantity),
-    ],
-  );
-  const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-  downloadCsv(csv, `magic-vault-cardkingdom-${dateSuffix()}-${collection}.csv`);
+  downloadCsv(csv, `poke-sort-export-${dateSuffix()}-${collection}.csv`);
 }

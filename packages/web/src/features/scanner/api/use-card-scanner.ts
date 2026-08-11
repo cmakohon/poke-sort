@@ -22,7 +22,7 @@ import {
   type PlayingCardWithDistance,
   type ScanRegion,
   type ScannerStatus,
-} from "@magic-vault/shared";
+} from "@poke-sort/shared";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";

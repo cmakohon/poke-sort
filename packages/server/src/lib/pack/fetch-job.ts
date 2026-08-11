@@ -57,8 +57,8 @@ export function getPackJobState(): PackJobState {
  * before it is released, and so forks do not have to patch source.
  */
 const DEFAULT_TEMPLATE =
-  process.env.MAULT_PACK_URL_TEMPLATE ??
-  "https://github.com/cmakohon/mault-local/releases/latest/download/{game}-{lang}.pack.gz";
+  process.env.POKE_SORT_PACK_URL_TEMPLATE ??
+  "https://github.com/cmakohon/poke-sort/releases/latest/download/{game}-{lang}.pack.gz";
 
 export function packUrlFor(gameKey: string, lang: string): string {
   return DEFAULT_TEMPLATE.replace("{game}", gameKey).replace("{lang}", lang);

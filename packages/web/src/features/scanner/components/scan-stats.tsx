@@ -25,7 +25,7 @@ export function ScanStats() {
   const { t } = useTranslation("scanner");
   const [expandedSets, setExpandedSets] = useState(false);
   const { cards, elapsedMs, isTimerActive } = useScannedCards();
-  const { filters, toggleRarity, toggleColor, toggleSet } = useCardFilters();
+  const { filters, toggleRarity, toggleType, toggleSet } = useCardFilters();
 
   const stats = useMemo(() => computeStats(cards), [cards]);
 
@@ -133,19 +133,19 @@ export function ScanStats() {
             </div>
           </div>
         )}
-        {stats.colors.length > 0 && (
+        {stats.types.length > 0 && (
           <div className="rounded-lg bg-input/20 dark:bg-input/30 border border-input p-2">
             <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
-              {t("scanStats.byColor")}
+              {t("scanStats.byType")}
             </p>
             <div className="flex flex-col gap-1">
-              {stats.colors.map((c) => {
-                const active = filters.colors.includes(c.key);
+              {stats.types.map((c) => {
+                const active = filters.types.includes(c.key);
                 return (
                   <button
                     key={c.key}
                     type="button"
-                    onClick={() => toggleColor(c.key)}
+                    onClick={() => toggleType(c.key)}
                     className={cn(
                       "flex items-center justify-between text-xs rounded px-1 -mx-1 py-0.5 cursor-pointer transition-colors",
                       active ? "bg-primary/15" : "hover:bg-muted",

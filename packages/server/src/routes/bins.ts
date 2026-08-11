@@ -5,7 +5,7 @@ import {
   type BinSet,
   type DefaultBinInit,
   type FieldMeta,
-} from "@magic-vault/shared";
+} from "@poke-sort/shared";
 import { and, eq, isNull } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Transaction } from "../db";
@@ -159,7 +159,7 @@ router.put("/:guid/active", requireAuth, requireOrg, async (c) => {
       if (!target) return { message: "Set not found.", success: false };
 
       // Only one active set per game (or per "no game") - activating a
-      // Pokemon set shouldn't deactivate an already-active Magic set.
+      // A set for one game shouldn't deactivate another game's active set.
       await tx
         .update(binSets)
         .set({ isActive: false })

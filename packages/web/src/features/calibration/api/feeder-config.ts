@@ -1,6 +1,6 @@
 import { apiGet, apiPost, apiPut } from "@/lib/api/client";
-import type { FeederCalibration, Result } from "@magic-vault/shared";
-import { DEFAULT_FEEDER_CALIBRATION } from "@magic-vault/shared";
+import type { FeederCalibration, Result } from "@poke-sort/shared";
+import { DEFAULT_FEEDER_CALIBRATION } from "@poke-sort/shared";
 import { queryOptions } from "@tanstack/react-query";
 
 export const feederQueryOptions = queryOptions({

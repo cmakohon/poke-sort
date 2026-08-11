@@ -1,9 +1,9 @@
 import { API_BASE, apiDelete, apiGet, apiPost } from "@/lib/api/client";
-import type { Result, SyncState } from "@magic-vault/shared";
+import type { Result, SyncState } from "@poke-sort/shared";
 
 export interface AdminCard {
   id: number;
-  scryfallId: string;
+  cardId: string;
   gameKey: string;
   lang: string;
   name: string;
@@ -88,21 +88,21 @@ export async function listCards(
 }
 
 export async function revectorizeCard(
-  scryfallId: string,
+  cardId: string,
 ): Promise<{ success: boolean; message: string }> {
   return apiPost<{ success: boolean; message: string }>(
-    `/api/admin/cards/${encodeURIComponent(scryfallId)}/revectorize`,
+    `/api/admin/cards/${encodeURIComponent(cardId)}/revectorize`,
   );
 }
 
 export async function syncCardById(
   gameKey: string,
-  scryfallId: string,
+  cardId: string,
   lang: string = "en",
 ): Promise<{ success: boolean; message: string }> {
   return apiPost<{ success: boolean; message: string }>("/api/admin/cards/sync", {
     gameKey,
-    scryfallId,
+    cardId,
     lang,
   });
 }

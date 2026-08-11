@@ -13,8 +13,8 @@
 //
 // Run with the catalog data dir and the server stopped — PGlite is one process:
 //
-//   MAULT_DATA_DIR=./.mault-catalog MAULT_MODEL_DIR=../../.models \
-//     pnpm --filter @magic-vault/server eval:hnsw
+//   POKE_SORT_DATA_DIR=./.poke-sort-catalog POKE_SORT_MODEL_DIR=../../.models \
+//     pnpm --filter @poke-sort/server eval:hnsw
 import { sql } from "drizzle-orm";
 import { client, db } from "../src/db";
 import { cardImageVectors } from "../src/db/schema";
@@ -32,13 +32,13 @@ interface Probe {
 const vecLiteral = (v: number[]) => `[${v.join(",")}]`;
 
 async function topK(vector: string, k = K): Promise<string[]> {
-  const res = await db.execute<{ scryfall_id: string }>(sql`
-    SELECT scryfall_id
+  const res = await db.execute<{ card_id: string }>(sql`
+    SELECT card_id
     FROM cards
     ORDER BY embedding <=> ${vector}::vector(768)
     LIMIT ${k}
   `);
-  return res.rows.map((r) => r.scryfall_id);
+  return res.rows.map((r) => r.card_id);
 }
 
 async function timedTopK(vector: string): Promise<{ ids: string[]; ms: number }> {
@@ -55,11 +55,11 @@ async function main() {
   console.log(`catalog: ${total} cards\n`);
 
   // ── build the probe set ────────────────────────────────────────────────
-  const sample = await db.execute<{ scryfall_id: string; card_data: unknown }>(sql`
-    SELECT scryfall_id, card_data
+  const sample = await db.execute<{ card_id: string; card_data: unknown }>(sql`
+    SELECT card_id, card_data
     FROM cards
     WHERE card_data IS NOT NULL
-    ORDER BY scryfall_id
+    ORDER BY card_id
   `);
   // Evenly spaced across the id-sorted catalog, so probes span every era
   // rather than clustering in whichever sets happen to sort first.
@@ -76,7 +76,7 @@ async function main() {
       if (!res.ok) continue;
       const buf = Buffer.from(await res.arrayBuffer());
       probes.push({
-        id: row.scryfall_id,
+        id: row.card_id,
         vector: vecLiteral(await vectorizeImageFromBuffer(buf)),
       });
     } catch {
@@ -112,7 +112,7 @@ async function main() {
   console.log(`  built in ${((performance.now() - t0) / 1000).toFixed(0)}s`);
 
   const plan = await db.execute<{ "QUERY PLAN": string }>(sql`
-    EXPLAIN SELECT scryfall_id FROM cards
+    EXPLAIN SELECT card_id FROM cards
     ORDER BY embedding <=> ${probes[0].vector}::vector(768) LIMIT ${K}
   `);
   const usesIndex = plan.rows.some((r) => /hnsw/i.test(r["QUERY PLAN"]));

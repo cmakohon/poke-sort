@@ -9,7 +9,7 @@ import {
   DEFAULT_CALIBRATION,
   ModuleConfig,
   ServoCalibration,
-} from "@magic-vault/shared";
+} from "@poke-sort/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createContext, useCallback, useContext, useEffect } from "react";
 import { useTranslation } from "react-i18next";

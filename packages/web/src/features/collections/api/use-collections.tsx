@@ -14,10 +14,9 @@ import {
 import { useOrg } from "@/hooks/use-org";
 import {
   createDefaultCatchAllOnlyBins,
-  createDefaultColorBins,
   type BinSet,
   type Collection,
-} from "@magic-vault/shared";
+} from "@poke-sort/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createContext,
@@ -121,10 +120,9 @@ export function CollectionsProvider({
           (s) => (s.game?.guid ?? undefined) === gameGuid,
         );
         if (!sameGameSet) {
-          const isMtg = created?.game?.key === "mtg";
           const binsResult = await createSetFn(
             name,
-            isMtg ? createDefaultColorBins() : createDefaultCatchAllOnlyBins(),
+            createDefaultCatchAllOnlyBins(),
             gameGuid,
           );
           if (binsResult.success && binsResult.data) {

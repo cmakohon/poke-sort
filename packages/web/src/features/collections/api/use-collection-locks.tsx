@@ -1,4 +1,4 @@
-import { LOCAL_USER_ID } from "@magic-vault/shared";
+import { LOCAL_USER_ID } from "@poke-sort/shared";
 import { createLockEventsSource } from "@/lib/api/session";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 

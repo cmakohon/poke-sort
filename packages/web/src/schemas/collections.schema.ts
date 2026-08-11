@@ -1,4 +1,4 @@
-import { SET_NAME_MAX_LENGTH } from "@magic-vault/shared";
+import { SET_NAME_MAX_LENGTH } from "@poke-sort/shared";
 import { z } from "zod";
 
 const nameSchema = z

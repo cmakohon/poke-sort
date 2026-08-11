@@ -126,7 +126,7 @@
     "cardsPerHour": "Karten/Std",
     "mostValuable": "Wertvollste",
     "byRarity": "Nach Seltenheit",
-    "byColor": "Nach Farbe",
+    "byType": "Nach Typ",
     "bySet": "Nach Set",
     "showLess": "Weniger anzeigen",
     "showAllSets": "Alle {{count}} Sets anzeigen"

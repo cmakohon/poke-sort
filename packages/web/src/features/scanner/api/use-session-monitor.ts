@@ -1,4 +1,4 @@
-import type { Collection, ScannedCard } from "@magic-vault/shared";
+import type { Collection, ScannedCard } from "@poke-sort/shared";
 import { createSessionEventSource } from "@/lib/api/session";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";

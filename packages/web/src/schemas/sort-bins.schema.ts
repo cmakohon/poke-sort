@@ -2,7 +2,7 @@ import {
   CONDITION_NUMERIC_MAX,
   CONDITION_STRING_MAX_LENGTH,
   SET_NAME_MAX_LENGTH,
-} from "@magic-vault/shared";
+} from "@poke-sort/shared";
 import { z } from "zod";
 
 export const createSetSchema = z.object({

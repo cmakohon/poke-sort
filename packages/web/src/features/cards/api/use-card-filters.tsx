@@ -2,7 +2,7 @@ import type { CardFilters } from "@/features/cards/types";
 import { createContext, useCallback, useContext, useState } from "react";
 
 export const EMPTY_CARD_FILTERS: CardFilters = {
-  colors: [],
+  types: [],
   rarities: [],
   bins: [],
   needsAttention: false,
@@ -19,7 +19,7 @@ interface CardFiltersContextValue {
   filters: CardFilters;
   setFilters: (filters: CardFilters) => void;
   toggleRarity: (rarity: string) => void;
-  toggleColor: (color: string) => void;
+  toggleType: (type: string) => void;
   toggleSet: (setCode: string) => void;
 }
 
@@ -32,8 +32,8 @@ export function CardFiltersProvider({ children }: { children: React.ReactNode })
     setFilters((prev) => ({ ...prev, rarities: toggleItem(prev.rarities, rarity) }));
   }, []);
 
-  const toggleColor = useCallback((color: string) => {
-    setFilters((prev) => ({ ...prev, colors: toggleItem(prev.colors, color) }));
+  const toggleType = useCallback((type: string) => {
+    setFilters((prev) => ({ ...prev, types: toggleItem(prev.types, type) }));
   }, []);
 
   const toggleSet = useCallback((setCode: string) => {
@@ -42,7 +42,7 @@ export function CardFiltersProvider({ children }: { children: React.ReactNode })
 
   return (
     <CardFiltersContext
-      value={{ filters, setFilters, toggleRarity, toggleColor, toggleSet }}
+      value={{ filters, setFilters, toggleRarity, toggleType, toggleSet }}
     >
       {children}
     </CardFiltersContext>

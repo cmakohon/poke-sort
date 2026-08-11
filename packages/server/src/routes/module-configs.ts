@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { authQuery } from "../db";
 import { moduleConfigAudit, moduleConfigs } from "../db/schema";
-import { DEFAULT_CALIBRATION, type ModuleConfig, type ServoCalibration } from "@magic-vault/shared";
+import { DEFAULT_CALIBRATION, type ModuleConfig, type ServoCalibration } from "@poke-sort/shared";
 import { requireAuth, requireOrg, type AppEnv } from "../middleware/auth";
 
 const router = new Hono<AppEnv>();

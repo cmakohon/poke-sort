@@ -7,7 +7,7 @@ import { useSerial } from "@/features/scanner/api/use-serial";
 import {
   DEFAULT_FEEDER_CALIBRATION,
   type FeederCalibration,
-} from "@magic-vault/shared";
+} from "@poke-sort/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createContext,

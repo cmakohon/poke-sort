@@ -1,4 +1,4 @@
-import type { PlayingCard, Result } from "@magic-vault/shared";
+import type { PlayingCard, Result } from "@poke-sort/shared";
 
 export interface CardSearchAdapter {
   defaultUrl: string;

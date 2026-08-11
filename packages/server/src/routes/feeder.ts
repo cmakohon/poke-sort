@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { authQuery } from "../db";
 import { feederConfigAudit, feederConfigs } from "../db/schema";
-import { DEFAULT_FEEDER_CALIBRATION, type FeederCalibration } from "@magic-vault/shared";
+import { DEFAULT_FEEDER_CALIBRATION, type FeederCalibration } from "@poke-sort/shared";
 import { requireAuth, requireOrg, type AppEnv } from "../middleware/auth";
 
 const router = new Hono<AppEnv>();

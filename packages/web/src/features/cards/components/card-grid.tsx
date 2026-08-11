@@ -323,7 +323,7 @@ export function CardGrid() {
           allSelected={allSelected}
           onToggleSelectAll={toggleSelectAll}
           availableRarities={stats?.rarities}
-          availableColors={stats?.colors}
+          availableTypes={stats?.types}
           availableSets={stats?.sets}
         />
       </div>
