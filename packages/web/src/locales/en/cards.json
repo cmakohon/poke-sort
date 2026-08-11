@@ -117,5 +117,17 @@
     "includePreviouslyDownloaded": "Include previously downloaded",
     "close": "Close",
     "download": "Download ({{count}})"
+  },
+  "metadata": {
+    "title": "Sorting data",
+    "empty": "(none)",
+    "variant": "Variant",
+    "matchDistance": "Match distance",
+    "rulesAssign": "Rules would assign:",
+    "binN": "Bin {{bin}}",
+    "catchAll": "catch-all",
+    "noBin": "no bin",
+    "sentToBin": "sent to bin {{bin}} at scan time",
+    "rawData": "Raw card data"
   }
 }

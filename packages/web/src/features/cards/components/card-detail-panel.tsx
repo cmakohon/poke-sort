@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { BinLocationDiagram } from "@/features/bins/components/bin-location-diagram";
+import { CardMetadataPanel } from "@/features/cards/components/card-metadata-panel";
 import { searchCards } from "@/features/cards/api/card-search";
 import { useCollections } from "@/features/collections/api/use-collections";
 import { useScannedCards } from "@/features/scanner/api/use-scanned-cards";
@@ -380,6 +381,10 @@ export function CardDetailPanel({
                         <IconExternalLink className="h-3.5 w-3.5" />
                       </a>
                     )}
+                    <CardMetadataPanel
+                      card={selectedCard}
+                      assignedBin={binNumber}
+                    />
                   </div>
                 )}
               </div>

@@ -117,5 +117,17 @@
     "includePreviouslyDownloaded": "Bereits heruntergeladene einschließen",
     "close": "Schließen",
     "download": "Herunterladen ({{count}})"
+  },
+  "metadata": {
+    "title": "Sortierdaten",
+    "empty": "(keine)",
+    "variant": "Variante",
+    "matchDistance": "Match-Distanz",
+    "rulesAssign": "Regeln würden zuweisen:",
+    "binN": "Fach {{bin}}",
+    "catchAll": "Auffangfach",
+    "noBin": "kein Fach",
+    "sentToBin": "beim Scan in Fach {{bin}}",
+    "rawData": "Rohdaten der Karte"
   }
 }
