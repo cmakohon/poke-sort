@@ -15,6 +15,7 @@ import { useRole } from "@/hooks/use-role";
 import { cn } from "@/lib/utils";
 import {
   IconAdjustments,
+  IconLayoutGrid,
   IconAlbum,
   IconCameraSpark,
   IconDatabaseCog,
@@ -194,7 +195,6 @@ export function AppNav() {
     )
   );
 
-  const topCollections = collections.slice(0, 5);
 
   const topMonitor = [...collections]
     .sort((a, b) => {
@@ -217,6 +217,12 @@ export function AppNav() {
       to: "/collections",
       icon: <IconAlbum size={20} />,
       label: t("nav.collections"),
+      desktopOnly: true,
+    },
+    {
+      to: "/sorts",
+      icon: <IconLayoutGrid size={20} />,
+      label: t("nav.sorts"),
       desktopOnly: true,
     },
     {
@@ -295,23 +301,11 @@ export function AppNav() {
             return <CollapsedNavItem key={item.to} {...item} />;
           }
 
-          const isCollections = item.to === "/collections";
           const isMonitor = item.to === "/monitor";
 
           return (
             <div key={item.to} className="mx-1">
               <ExpandedNavItem {...item} />
-              {isCollections && topCollections.length > 0 && (
-                <div className="mt-0.5 flex flex-col gap-0.5">
-                  {topCollections.map((c) => (
-                    <SubItem
-                      key={c.guid}
-                      to={`/collections/${c.guid}/bins`}
-                      label={c.name}
-                    />
-                  ))}
-                </div>
-              )}
               {isMonitor && topMonitor.length > 0 && (
                 <div className="mt-0.5 flex flex-col gap-0.5">
                   {topMonitor.map((c) => (

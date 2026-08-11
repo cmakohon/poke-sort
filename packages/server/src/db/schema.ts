@@ -102,7 +102,8 @@ export const binSets = pgTable(
     guid: uuid("guid").defaultRandom(),
     name: text("name").notNull(),
     isActive: boolean("is_active").notNull().default(false),
-    gameId: integer("game_id").references(() => games.id),
+    // No game_id: a sort describes how the machine is configured, not what it
+    // is sorting. Exactly one is active at a time (see routes/bins.ts).
     orgId: text("org_id").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -326,12 +327,8 @@ export const feederConfigAudit = pgTable(
   ],
 );
 
-export const binSetRelations = relations(binSets, ({ many, one }) => ({
+export const binSetRelations = relations(binSets, ({ many }) => ({
   bins: many(bins),
-  game: one(games, {
-    fields: [binSets.gameId],
-    references: [games.id],
-  }),
 }));
 
 export const binRelations = relations(bins, ({ one }) => ({
