@@ -7,6 +7,68 @@ import type {
 import { LOCAL_ORG_ID, LOCAL_USER_ID } from "@poke-sort/shared";
 import { and, count, desc, eq } from "drizzle-orm";
 import { Hono } from "hono";
+import { z } from "zod";
+import { parseBody } from "../lib/validate";
+
+/**
+ * The identified card, as stored.
+ *
+ * `.passthrough()` on purpose: this object is the upstream TCGdex card and goes
+ * into a jsonb column whole, where the bin rule engine resolves paths against
+ * it. Enumerating TCGdex's shape here would mean re-declaring someone else's
+ * API and breaking every time they add a field. What is pinned is the handful
+ * of properties this codebase actually reads.
+ */
+const CardSchema = z
+  .object({
+    id: z.string().min(1),
+    name: z.string(),
+    distance: z.number().optional(),
+  })
+  .passthrough();
+
+const AddScanSchema = z
+  .object({
+    scanId: z.string().min(1),
+    card: CardSchema,
+    scannedAt: z.union([z.string(), z.number()]),
+    binNumber: z.number().int().nullable().optional(),
+    // A data URL that gets decoded and written to disk; capped so a scan cannot
+    // be used to write an arbitrarily large file.
+    capturedImageUrl: z.string().max(20_000_000).nullable().optional(),
+    isFoil: z.boolean().optional(),
+    alternativeMatches: z.array(CardSchema).nullable().optional(),
+  })
+  .passthrough();
+
+const UpdateScanSchema = z
+  .object({
+    card: CardSchema.optional(),
+    binNumber: z.number().int().nullable().optional(),
+    isFoil: z.boolean().optional(),
+    variant: z.string().optional(),
+    originalCardId: z.string().optional(),
+    originalDistance: z.number().optional(),
+    originalScore: z.number().optional(),
+    wasCorrected: z.boolean().optional(),
+  })
+  .strict();
+
+const NameSchema = z.object({ name: z.string().trim().min(1).max(200) }).strict();
+
+const CreateCollectionSchema = z
+  .object({
+    name: z.string().trim().min(1).max(200),
+    gameGuid: z.string().min(1).optional(),
+    lang: z.string().min(1).max(16).optional(),
+  })
+  .strict();
+
+/** Bulk operations take scan guids; bounded so one request cannot walk the table. */
+const ScanIdsSchema = z
+  .object({ scanIds: z.array(z.string().min(1)).min(1).max(5000) })
+  .strict();
+
 import { streamSSE } from "hono/streaming";
 import { authQuery, db, type Transaction } from "../db";
 import { collectionCards, collections, games, orgSettings } from "../db/schema";
@@ -278,11 +340,9 @@ router.get("/:guid/viewers", requireAuth, requireOrg, async (c) => {
 // POST /collections — create and activate
 router.post("/", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
-  const { name, gameGuid, lang } = await c.req.json<{
-    name: string;
-    gameGuid?: string;
-    lang?: string;
-  }>();
+  const parsed = await parseBody(c, CreateCollectionSchema);
+  if (!parsed.ok) return parsed.response;
+  const { name, gameGuid, lang } = parsed.data;
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
       let gameId: number | null = null;
@@ -318,7 +378,9 @@ router.post("/", requireAuth, requireOrg, async (c) => {
 router.put("/:guid", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
   const guid = c.req.param("guid");
-  const { name } = await c.req.json<{ name: string }>();
+  const parsed = await parseBody(c, NameSchema);
+  if (!parsed.ok) return parsed.response;
+  const { name } = parsed.data;
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
       const target = await tx.query.collections.findFirst({
@@ -467,6 +529,8 @@ router.post("/:guid/cards", requireAuth, requireOrg, async (c) => {
   const guid = c.req.param("guid");
   const userId = c.get("userId");
   const orgId = c.get("orgId");
+  const parsed = await parseBody(c, AddScanSchema);
+  if (!parsed.ok) return parsed.response;
   const {
     scanId,
     card,
@@ -475,7 +539,7 @@ router.post("/:guid/cards", requireAuth, requireOrg, async (c) => {
     capturedImageUrl,
     isFoil,
     alternativeMatches,
-  } = await c.req.json<ScannedCard>();
+  } = parsed.data as unknown as ScannedCard;
 
   const displayName = await getUserDisplayName(userId);
   if (!acquireLock(guid, userId, orgId, displayName)) {
@@ -605,6 +669,8 @@ router.post("/:guid/cards", requireAuth, requireOrg, async (c) => {
 router.put("/:guid/cards/:scanId", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
   const { guid, scanId } = c.req.param();
+  const parsedUpdate = await parseBody(c, UpdateScanSchema);
+  if (!parsedUpdate.ok) return parsedUpdate.response;
   const {
     card,
     binNumber,
@@ -614,7 +680,7 @@ router.put("/:guid/cards/:scanId", requireAuth, requireOrg, async (c) => {
     originalDistance,
     originalScore,
     wasCorrected,
-  } = await c.req.json<{
+  } = parsedUpdate.data as {
     card?: PlayingCardWithDistance;
     binNumber?: number;
     isFoil?: boolean;
@@ -623,7 +689,7 @@ router.put("/:guid/cards/:scanId", requireAuth, requireOrg, async (c) => {
     originalDistance?: number;
     originalScore?: number;
     wasCorrected?: boolean;
-  }>();
+  };
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
       const existing = await tx.query.collectionCards.findFirst({
@@ -722,7 +788,9 @@ router.delete("/:guid/cards", requireAuth, requireOrg, async (c) => {
 router.post("/:guid/cards/remove-bulk", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
   const guid = c.req.param("guid");
-  const { scanIds } = await c.req.json<{ scanIds: string[] }>();
+  const parsed = await parseBody(c, ScanIdsSchema);
+  if (!parsed.ok) return parsed.response;
+  const { scanIds } = parsed.data;
   const orphanedCaptures: (string | null)[] = [];
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
@@ -757,7 +825,9 @@ router.post(
   async (c) => {
     const orgId = c.get("orgId");
     const guid = c.req.param("guid");
-    const { scanIds } = await c.req.json<{ scanIds: string[] }>();
+    const parsed = await parseBody(c, ScanIdsSchema);
+    if (!parsed.ok) return parsed.response;
+    const { scanIds } = parsed.data;
     try {
       const result = await authQuery(c.get("jwtClaims"), async (tx) => {
         for (const scanId of scanIds) {

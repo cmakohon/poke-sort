@@ -1,5 +1,7 @@
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
+import { z } from "zod";
+import { parseBody } from "../lib/validate";
 import { db } from "../db";
 import { cardImageVectors, games } from "../db/schema";
 import { getGameFacets } from "../lib/facets";
@@ -21,13 +23,48 @@ function toGame(row: typeof games.$inferSelect): Game {
   };
 }
 
-interface GameInput {
-  key: string;
-  name: string;
-  dataSourceUrl: string;
-  fieldDefinitions: FieldMeta[];
-  isActive?: boolean;
-}
+/**
+ * `fieldDefinitions` drives the bin rule engine, so a malformed one does not
+ * fail loudly — it produces rules that silently never match and cards that
+ * quietly land in the catch-all bin. Each entry is checked for the parts
+ * evaluate-bin actually reads.
+ *
+ * `dataSourceUrl` is fetched by the server, so it is restricted to http(s)
+ * rather than accepting any string that happens to parse as a URL.
+ */
+const FieldMetaSchema = z
+  .object({
+    field: z.string().min(1),
+    label: z.string().min(1),
+    type: z.string().min(1),
+    path: z.string().min(1),
+    operators: z.array(z.object({ value: z.string(), label: z.string() })),
+    options: z
+      .array(z.object({ value: z.string(), label: z.string() }))
+      .optional(),
+    facetKey: z.string().optional(),
+    optionsSource: z.string().optional(),
+  })
+  .passthrough();
+
+const httpUrl = z
+  .string()
+  .url()
+  .refine((u) => /^https?:$/.test(new URL(u).protocol), {
+    message: "must be an http(s) URL",
+  });
+
+const GameInputSchema = z
+  .object({
+    key: z.string().trim().min(1),
+    name: z.string().trim().min(1),
+    dataSourceUrl: httpUrl,
+    fieldDefinitions: z.array(FieldMetaSchema),
+    isActive: z.boolean().optional(),
+  })
+  .strict();
+
+type GameInput = z.infer<typeof GameInputSchema>;
 
 // GET /games — any authenticated user (needed to pick a game per collection)
 router.get("/", requireAuth, async (c) => {
@@ -79,15 +116,9 @@ router.get("/:guid/languages", requireAuth, async (c) => {
 
 // POST /games
 router.post("/", requireAuth, requireRole("admin"), async (c) => {
-  const { key, name, dataSourceUrl, fieldDefinitions, isActive } =
-    await c.req.json<GameInput>();
-
-  if (!key?.trim() || !name?.trim() || !dataSourceUrl?.trim()) {
-    return c.json(
-      { success: false, message: "key, name, and dataSourceUrl are required." },
-      400,
-    );
-  }
+  const parsed = await parseBody(c, GameInputSchema);
+  if (!parsed.ok) return parsed.response;
+  const { key, name, dataSourceUrl, fieldDefinitions, isActive } = parsed.data;
 
   try {
     const [row] = await db
@@ -116,8 +147,9 @@ router.post("/", requireAuth, requireRole("admin"), async (c) => {
 // PUT /games/:guid
 router.put("/:guid", requireAuth, requireRole("admin"), async (c) => {
   const guid = c.req.param("guid");
-  const { key, name, dataSourceUrl, fieldDefinitions, isActive } =
-    await c.req.json<Partial<GameInput>>();
+  const parsed = await parseBody(c, GameInputSchema.partial());
+  if (!parsed.ok) return parsed.response;
+  const { key, name, dataSourceUrl, fieldDefinitions, isActive } = parsed.data;
 
   try {
     const target = await db.query.games.findFirst({

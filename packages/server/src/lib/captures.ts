@@ -47,15 +47,28 @@ export async function saveCapture(
   return fileName;
 }
 
+/**
+ * Only the types saveCapture is willing to write. Interpolating the extension
+ * straight into the header let the file name choose the Content-Type, which is
+ * both wrong for anything unexpected and a header-injection shape if a name
+ * ever contained a control character.
+ */
+const CONTENT_TYPES: Record<string, string> = {
+  jpeg: "image/jpeg",
+  jpg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+};
+
 export async function readCapture(
   fileName: string,
 ): Promise<{ body: Buffer; contentType: string } | null> {
   const target = resolveSafe(fileName);
   if (!target) return null;
+  const contentType = CONTENT_TYPES[path.extname(target).slice(1).toLowerCase()];
+  if (!contentType) return null;
   try {
-    const body = await readFile(target);
-    const ext = path.extname(target).slice(1).toLowerCase();
-    return { body, contentType: `image/${ext === "jpg" ? "jpeg" : ext}` };
+    return { body: await readFile(target), contentType };
   } catch {
     return null;
   }
