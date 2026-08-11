@@ -128,6 +128,8 @@
     "catchAll": "catch-all",
     "noBin": "no bin",
     "sentToBin": "sent to bin {{bin}} at scan time",
-    "rawData": "Raw card data"
+    "rawData": "Raw card data",
+    "heldForReview": "Held for review: the scanner was not confident enough to sort this automatically, so it went to the catch-all bin.",
+    "heldForReviewWithNumbers": "Held for review (score {{score}}, margin {{margin}}): not confident enough to sort automatically, so it went to the catch-all bin."
   }
 }
