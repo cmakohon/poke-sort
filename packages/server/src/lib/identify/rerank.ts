@@ -216,7 +216,7 @@ function informativeSignals(all: IdentifySignals[]): SignalKey[] {
  * cannot tell them apart, however confident either looks alone.
  */
 export function decideTier(
-  ranked: { score: number }[],
+  ranked: { id: string; score: number; distance: number }[],
   profile: IdentityProfile,
 ): { tier: IdentifyTier; margin: number | null } {
   if (ranked.length === 0) return { tier: "no-match", margin: null };
@@ -229,6 +229,26 @@ export function decideTier(
   const clearOfRunnerUp = margin == null || margin >= profile.accept.minMargin;
   if (top >= profile.accept.minScore && clearOfRunnerUp) {
     return { tier: "accept", margin };
+  }
+
+  // Image-unambiguous release: the fused margin compresses large embedding
+  // gaps (a candidate 0.04 away and one 0.15 away can fuse within 0.05 of each
+  // other once OCR noise is renormalised in), so a card whose nearest image
+  // match is BOTH very close and far ahead of the next distinct card can sit
+  // in review with the right answer ranked first. When the fused top IS that
+  // nearest match, the picture alone has decided; accept it.
+  const dg = profile.accept.distanceGap;
+  if (dg) {
+    const byDistance = [...ranked].sort((a, b) => a.distance - b.distance);
+    const nearest = byDistance[0];
+    const next = byDistance[1];
+    if (
+      nearest.id === ranked[0].id &&
+      nearest.distance <= dg.d1Max &&
+      (next ? next.distance - nearest.distance : Infinity) >= dg.gapMin
+    ) {
+      return { tier: "accept", margin };
+    }
   }
   return { tier: "review", margin };
 }

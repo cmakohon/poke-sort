@@ -11,6 +11,8 @@
     "calibration": "tsx --env-file-if-exists ../../.env scripts/calibration.ts",
     "export:pack": "tsx --env-file-if-exists ../../.env scripts/export-pack.ts",
     "eval:build": "tsx eval/build-fixtures.ts",
+    "eval:capture": "tsx eval/capture-signals.ts",
+    "eval:tune": "tsx eval/tune.ts",
     "test": "vitest run",
     "eval:hnsw": "tsx eval/hnsw-recall.ts"
   },

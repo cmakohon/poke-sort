@@ -5,7 +5,6 @@ import {
 } from "../lib/card-search/resolve";
 import { sendDiscordNotification } from "../lib/discord";
 import { identifyCard } from "../lib/identify";
-import { vectorizeImageFromBuffer } from "../lib/vectorize";
 import { requireAuth, type AppEnv } from "../middleware/auth";
 
 const router = new Hono<AppEnv>();
@@ -31,17 +30,6 @@ router.post("/", requireAuth, async (c) => {
 
   const imageBuffer = Buffer.from(await file.arrayBuffer());
 
-  let embedding: number[];
-  try {
-    embedding = await vectorizeImageFromBuffer(imageBuffer);
-  } catch (err) {
-    console.error(err);
-    return c.json(
-      { success: false, message: "Failed to vectorize image." },
-      500,
-    );
-  }
-
   const resolved = await resolveGameKeyAndLang(
     c.get("jwtClaims"),
     collectionGuid,
@@ -55,7 +43,6 @@ router.post("/", requireAuth, async (c) => {
 
   try {
     const result = await identifyCard(
-      embedding,
       imageBuffer,
       resolved.gameKey,
       resolved.lang,

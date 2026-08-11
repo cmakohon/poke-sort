@@ -60,6 +60,8 @@ export interface IdentifyResult {
   margin: number | null;
   candidates: IdentifyCandidate[];
   ocr?: OcrReading;
+  /** 1st Edition stamp reading for the winner, when its card has that variant. */
+  stamp?: { stamped: boolean; depth: number; darkFrac: number; spread: number };
 }
 
 export interface CardListResponse {

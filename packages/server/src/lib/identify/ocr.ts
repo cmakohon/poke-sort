@@ -16,25 +16,76 @@ import type { OcrProfile, OcrRegion } from "./profiles";
  * the run when it does.
  */
 
-let workerPromise: Promise<Worker> | null = null;
+/**
+ * A small worker pool rather than one worker.
+ *
+ * A scan reads seven regions (plus up to four escalation retries), and on one
+ * worker they serialise into the single largest cost of identification — OCR
+ * p95 was 1.7s of a 2s budget. Two workers run the bands pairwise; the pool is
+ * two rather than more because the embedding forward pass is competing for the
+ * same cores at the same time.
+ */
+const POOL_SIZE = 2;
 
-async function getWorker(): Promise<Worker> {
-  if (!workerPromise) {
-    workerPromise = createWorker("eng", undefined, {
-      // Keep the traineddata beside the other bundled model assets so the
-      // packaged app never downloads it on first scan.
-      ...(MODEL_DIR ? { cachePath: MODEL_DIR } : {}),
-    });
+let poolPromise: Promise<Worker[]> | null = null;
+let nextWorker = 0;
+
+async function getPool(): Promise<Worker[]> {
+  if (!poolPromise) {
+    poolPromise = (async () => {
+      // allSettled rather than all: if one worker loads and the other fails,
+      // Promise.all would abandon the live worker (leaking its thread and
+      // weights) and pin poolPromise to the rejection forever — every later
+      // scan silently degrading to embedding-only until restart. Terminate
+      // any stray successes and null the promise so the next scan retries.
+      const settled = await Promise.allSettled(
+        Array.from({ length: POOL_SIZE }, () =>
+          createWorker("eng", undefined, {
+            // Keep the traineddata beside the other bundled model assets so
+            // the packaged app never downloads it on first scan.
+            ...(MODEL_DIR ? { cachePath: MODEL_DIR } : {}),
+          }),
+        ),
+      );
+      const workers = settled
+        .filter((r): r is PromiseFulfilledResult<Worker> => r.status === "fulfilled")
+        .map((r) => r.value);
+      const failed = settled.find(
+        (r): r is PromiseRejectedResult => r.status === "rejected",
+      );
+      if (failed) {
+        await Promise.allSettled(workers.map((w) => w.terminate()));
+        poolPromise = null;
+        throw failed.reason;
+      }
+      return workers;
+    })();
   }
-  return workerPromise;
+  return poolPromise;
 }
 
-/** Release the worker; used by tests and on shutdown. */
+/** Release the workers; used by tests and on shutdown. */
 export async function disposeOcr(): Promise<void> {
-  if (!workerPromise) return;
-  const worker = await workerPromise;
-  workerPromise = null;
-  await worker.terminate();
+  if (!poolPromise) return;
+  const workers = await poolPromise;
+  poolPromise = null;
+  await Promise.all(workers.map((w) => w.terminate()));
+}
+
+/**
+ * A rescue pass for text Tesseract's own binarisation cannot separate.
+ *
+ * Several eras print the collector number in silver-on-holofoil (ex, neo,
+ * hgss) or on a gradient footer (dp) — crops a person reads instantly but that
+ * OCR returns garbage for, because adaptive binarisation smears the foil
+ * texture into the glyphs. A hard threshold flattens the foil; which level
+ * works depends on the card, so a short ladder is tried, both polarities.
+ * Measured on the weakest-era fixtures: 2/33 plain, 20/33 with the ladder.
+ */
+interface ReadOptions {
+  scale?: number;
+  threshold?: number;
+  negate?: boolean;
 }
 
 async function readRegion(
@@ -42,6 +93,7 @@ async function readRegion(
   width: number,
   height: number,
   region: OcrRegion,
+  opts: ReadOptions = {},
 ): Promise<string> {
   const left = Math.max(0, Math.round(region.x0 * width));
   const top = Math.max(0, Math.round(region.y0 * height));
@@ -49,27 +101,43 @@ async function readRegion(
   const cropHeight = Math.min(height - top, Math.round((region.y1 - region.y0) * height));
   if (cropWidth <= 0 || cropHeight <= 0) return "";
 
-  const buffer = await image
+  // Upscale, greyscale and normalise: card text is small in the frame and
+  // Tesseract is markedly better on a larger, high-contrast crop.
+  let pipeline = image
     .clone()
     .extract({ left, top, width: cropWidth, height: cropHeight })
-    // Upscale, greyscale and normalise: card text is small in the frame and
-    // Tesseract is markedly better on a larger, high-contrast crop.
-    .resize({ width: cropWidth * 3 })
+    .resize({ width: cropWidth * (opts.scale ?? 3) })
     .greyscale()
-    .normalise()
+    .normalise();
+  if (opts.threshold != null) pipeline = pipeline.threshold(opts.threshold);
+  if (opts.negate) pipeline = pipeline.negate();
+
+  const buffer = await pipeline
     // Tesseract warns and guesses when the DPI is implausible; the upscale
     // above makes 300 the honest figure.
     .withMetadata({ density: 300 })
     .png()
     .toBuffer();
 
-  const worker = await getWorker();
-  await worker.setParameters({
-    tessedit_char_whitelist: region.charset ?? "",
-  });
+  // Round-robin across the pool. Workers hold no per-region parameters, so
+  // every worker is interchangeable and reads genuinely run side by side.
+  const pool = await getPool();
+  const worker = pool[nextWorker++ % pool.length];
   const { data } = await worker.recognize(buffer);
   return data.text.trim();
 }
+
+/**
+ * The escalation ladder, cheapest first. Only run when the plain pass parsed
+ * no fraction at all — the card was headed to review anyway, so a couple of
+ * extra reads to rescue it is the cheap side of the trade.
+ */
+const ESCALATION: ReadOptions[] = [
+  { scale: 4, threshold: 100 },
+  { scale: 4, threshold: 125 },
+  { scale: 4, threshold: 145 },
+  { scale: 4, threshold: 100, negate: true },
+];
 
 /** "58/102" -> {58, 102}; also accepts "058/102" and spaced variants. */
 export function parseCollectorNumber(
@@ -127,8 +195,19 @@ export async function readCard(
 
   const reading: OcrReading = {};
 
-  for (const region of profile.name) {
-    const name = cleanName(await readRegion(image, width, height, region));
+  // Every plain region is queued at once and drained by the pool: which crop
+  // holds which fact is not knowable in advance, so nothing is gained by
+  // reading them in a clever order and everything by reading them in parallel.
+  const [nameTexts, numberTexts, hpTexts] = await Promise.all([
+    Promise.all(profile.name.map((r) => readRegion(image, width, height, r))),
+    Promise.all(
+      profile.collectorNumber.map((r) => readRegion(image, width, height, r)),
+    ),
+    Promise.all(profile.hp.map((r) => readRegion(image, width, height, r))),
+  ]);
+
+  for (const text of nameTexts) {
+    const name = cleanName(text);
     if (name) {
       reading.name = name;
       break;
@@ -139,14 +218,9 @@ export async function readCard(
   // raw text is kept regardless: candidates are matched against it directly,
   // which tolerates the stray marks OCR adds around the number.
   const rawReadings: string[] = [];
-  for (const region of profile.collectorNumber) {
-    const text = await readRegion(image, width, height, region);
+  for (const text of numberTexts) {
     if (!text) continue;
     rawReadings.push(text);
-
-    // Every band is read even once a good parse is found: the number and the
-    // set abbreviation are not always in the same crop, and the abbreviation is
-    // matched against the raw text rather than parsed out of it.
     const parsed = parseCollectorNumber(text);
     if (!parsed) continue;
     if (parsed.setTotal != null && reading.setTotal == null) {
@@ -156,10 +230,38 @@ export async function readCard(
       reading.collectorNumber ??= parsed.collectorNumber;
     }
   }
+  // Escalate only when nothing parsed as a full fraction: the dark-footer
+  // eras (ex, neo, hgss, dp) defeat plain binarisation, and the deep-right
+  // band is where all of them print the number.
+  if (reading.setTotal == null) {
+    const deepRight = profile.collectorNumber[0];
+    // Pairwise, matching the pool width: latency of ceil(4/2) reads, and the
+    // second pair is skipped entirely when the first finds a parse.
+    for (let i = 0; i < ESCALATION.length; i += 2) {
+      const texts = await Promise.all(
+        ESCALATION.slice(i, i + 2).map((opts) =>
+          readRegion(image, width, height, deepRight, opts),
+        ),
+      );
+      let found = false;
+      for (const text of texts) {
+        if (!text) continue;
+        const parsed = parseCollectorNumber(text);
+        if (parsed?.setTotal != null) {
+          rawReadings.push(text);
+          reading.collectorNumber = parsed.collectorNumber;
+          reading.setTotal = parsed.setTotal;
+          found = true;
+          break;
+        }
+      }
+      if (found) break;
+    }
+  }
   if (rawReadings.length > 0) reading.collectorNumberRaw = rawReadings.join(" ");
 
-  for (const region of profile.hp) {
-    const hp = parseHp(await readRegion(image, width, height, region));
+  for (const text of hpTexts) {
+    const hp = parseHp(text);
     if (hp != null) {
       reading.hp = hp;
       break;

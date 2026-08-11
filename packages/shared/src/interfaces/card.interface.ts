@@ -19,6 +19,12 @@ export interface PlayingCard {
   types: string[];
   artist?: string;
   price: number | null;
+  /**
+   * Which printing this physical copy is, when detection could tell:
+   * "firstEdition" | "normal". Absent when the card has no variant printings
+   * or nothing examined the capture.
+   */
+  variant?: string;
   sourceUrl?: string;
   /** Retreat cost, in energy. */
   retreatCost?: number;
