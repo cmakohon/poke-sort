@@ -215,6 +215,31 @@ function startServer(): Promise<number> {
  */
 let allowedOrigin: string | null = null;
 
+/**
+ * Compares origins by value, not by string.
+ *
+ * Electron is not consistent about what it hands these callbacks:
+ * `setPermissionCheckHandler` receives a serialised URL *with* a trailing slash
+ * ("http://127.0.0.1:53932/"), while `setDevicePermissionHandler` receives a
+ * bare origin ("http://127.0.0.1:53932"). `new URL(appUrl).origin` produces the
+ * bare form, so a `===` against the check handler's argument was always false.
+ *
+ * Every permission this app needs — the camera and Web Serial — went through
+ * that comparison, so both were denied, silently, on every launch. Serial then
+ * failed twice over: the device handler agreed, but the check handler did not,
+ * so `select-serial-port` never fired and requestPort() rejected with "No port
+ * selected by the user" even with the Arduino plugged in and visible to macOS.
+ */
+function isAllowedOrigin(candidate: string | undefined | null): boolean {
+  if (!candidate || allowedOrigin === null) return false;
+  try {
+    return new URL(candidate).origin === allowedOrigin;
+  } catch {
+    // Opaque or unparseable origins ("null", a data: URL) are never the app.
+    return false;
+  }
+}
+
 /** Send to whichever window is alive now, not the one that was alive at wiring. */
 function notifyRenderer(channel: string, payload: unknown): void {
   if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -238,9 +263,26 @@ function wireSerialPermissions(win: BrowserWindow): void {
       callback("");
       return;
     }
+
+    // Taking portList[0] is wrong on a real Mac. macOS exposes several virtual
+    // serial ports that always enumerate, and alphabetically the first is
+    // usually one of them — on the machine this was found on the list was
+    // Bluetooth-Incoming-Port, debug-console, usbmodem141101, wlan-debug, so
+    // the Arduino sat third behind two devices that will never answer.
+    //
+    // Only a physically attached USB device reports a vendor and product id;
+    // the virtual ports report neither. That is the distinction worth picking
+    // on, rather than a hardcoded Arduino vendor id that would break the moment
+    // the board is swapped.
     const preferred = loadPreferredPortId();
-    const match = portList.find((p) => p.portId === preferred);
-    callback((match ?? portList[0]).portId);
+    const chosen =
+      portList.find((p) => p.portId === preferred) ??
+      portList.find((p) => p.vendorId && p.productId) ??
+      portList[0];
+    console.log(
+      `[main] serial: ${portList.length} port(s), chose ${chosen.portName ?? chosen.portId}`,
+    );
+    callback(chosen.portId);
   });
 
   // Hot-plugging the Arduino mid-session should just work.
@@ -253,14 +295,12 @@ function wireSerialPermissions(win: BrowserWindow): void {
 
   session.setPermissionCheckHandler((_wc, permission, requestingOrigin) => {
     if (permission !== "serial" && permission !== "media") return false;
-    return allowedOrigin !== null && requestingOrigin === allowedOrigin;
+    return isAllowedOrigin(requestingOrigin);
   });
 
   session.setDevicePermissionHandler(
     (details) =>
-      details.deviceType === "serial" &&
-      allowedOrigin !== null &&
-      details.origin === allowedOrigin,
+      details.deviceType === "serial" && isAllowedOrigin(details.origin),
   );
 
   // Only "media" here. Serial is not part of the permission-request flow at
