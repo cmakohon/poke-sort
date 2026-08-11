@@ -3,7 +3,12 @@ import { z } from "zod";
 import { parseBody } from "../lib/validate";
 import { authQuery } from "../db";
 import { feederConfigAudit, feederConfigs } from "../db/schema";
-import { DEFAULT_FEEDER_CALIBRATION, type FeederCalibration } from "@poke-sort/shared";
+import {
+  DEFAULT_FEEDER_CALIBRATION,
+  SERVO_PULSE_MAX,
+  SERVO_PULSE_MIN,
+  type FeederCalibration,
+} from "@poke-sort/shared";
 import { requireAuth, requireOrg, type AppEnv } from "../middleware/auth";
 
 const router = new Hono<AppEnv>();
@@ -20,7 +25,10 @@ const durationMs = z.number().int().min(0).max(60_000);
 
 const FeederCalibrationSchema = z
   .object({
-    speed: z.number().int().min(0).max(180),
+    // A PCA9685 pulse count for the continuous-rotation servo, written through
+    // the same firmware path as the diverter servos — not degrees, not a
+    // percentage. The default is 250, which the old 0-180 bound rejected.
+    speed: z.number().int().min(SERVO_PULSE_MIN).max(SERVO_PULSE_MAX),
     duration: durationMs,
     pulseDuration: durationMs,
     pauseDuration: durationMs,

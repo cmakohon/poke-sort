@@ -13,6 +13,18 @@ export interface ModuleConfig {
   calibration: ServoCalibration;
 }
 
+/**
+ * Servo positions are PCA9685 pulse counts, NOT degrees.
+ *
+ * The firmware clamps every write with `constrain(pulse, 120, 490)`
+ * (arduino/main/main.ino, setServoPosition), and the calibration UI clamps its
+ * nudge buttons to the same pair. Anything outside this range is not a position
+ * the hardware can be asked for. The feeder's `speed` goes through the same
+ * function, so it shares the range.
+ */
+export const SERVO_PULSE_MIN = 120;
+export const SERVO_PULSE_MAX = 490;
+
 export const DEFAULT_CALIBRATION: ServoCalibration = {
   bottomClosed: 400,
   bottomOpen: 150,
