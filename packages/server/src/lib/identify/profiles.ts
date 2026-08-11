@@ -17,8 +17,6 @@ export interface OcrRegion {
   y0: number;
   x1: number;
   y1: number;
-  /** Restrict Tesseract's alphabet; hugely reduces misreads on numerics. */
-  charset?: string;
 }
 
 export interface OcrProfile {
@@ -109,7 +107,10 @@ const POKEMON_OCR: OcrProfile = {
     // the rotation border the capture adds cannot dominate normalisation.
     { x0: 0.03, y0: 0.93, x1: 0.97, y1: 0.995 },
   ],
-  hp: [{ x0: 0.6, y0: 0.03, x1: 0.98, y1: 0.12, charset: "0123456789HP" }],
+  // No charset restriction here either: per-region Tesseract parameters would
+  // pin a region to a specific worker and defeat the pool. parseHp's regex
+  // does the filtering instead.
+  hp: [{ x0: 0.6, y0: 0.03, x1: 0.98, y1: 0.12 }],
 };
 
 export const POKEMON_PROFILE: IdentityProfile = {

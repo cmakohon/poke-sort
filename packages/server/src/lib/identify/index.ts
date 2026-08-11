@@ -5,12 +5,14 @@ import type {
   PlayingCard,
 } from "@poke-sort/shared";
 import { sql } from "drizzle-orm";
+import sharp from "sharp";
 import { db } from "../../db";
 import {
   normalizePokemonCard,
   type PokemonCardDetail,
 } from "../pokemon/search";
 import { getSetInfo } from "../set-index";
+import { vectorizeImageFromBuffer } from "../vectorize";
 import { readCard } from "./ocr";
 import { detectFirstEditionStamp, hasFirstEditionVariant } from "./stamp";
 import {
@@ -183,6 +185,7 @@ async function withProfile(
   gameKey: string,
   profile: IdentityProfile,
   imageBuffer: Buffer,
+  ocrPromise: Promise<OcrReading>,
 ): Promise<IdentifyResult> {
   // Start the price lookup for the nearest candidate now, so it overlaps with
   // OCR instead of adding to the scan. Re-ranking usually confirms this card;
@@ -190,15 +193,7 @@ async function withProfile(
   // cached, so a re-scan of the same card is free).
   const pricePromise = fetchFreshCard(gameKey, rows[0].card_id);
 
-  let ocr: OcrReading = {};
-  if (profile.ocr) {
-    try {
-      ocr = await readCard(imageBuffer, profile.ocr);
-    } catch (err) {
-      // OCR is an enhancement; losing it degrades ranking, not correctness.
-      console.error("[identify] OCR failed:", err);
-    }
-  }
+  const ocr = await ocrPromise;
 
   const inputs = buildRerankInputs(rows, gameKey);
 
@@ -263,13 +258,73 @@ async function withProfile(
   return { tier, margin, ocr, candidates, stamp };
 }
 
+/**
+ * When a pass is weak enough that trying the other orientation is worth a
+ * second embedding. Good matches on the fixture set never exceed 0.132
+ * nearest distance (cutoff 0.3), so 0.2 is far from anything real. ⚠ This is
+ * a render-domain number: if real camera captures legitimately land above 0.2,
+ * every hard-but-right card pays for a useless retry — revisit with real
+ * fixtures.
+ */
+const RETRY_DISTANCE = 0.2;
+
+function nearestDistance(result: IdentifyResult): number {
+  return result.candidates.length > 0
+    ? Math.min(...result.candidates.map((c) => c.distance))
+    : Infinity;
+}
+
+/**
+ * The full pipeline with orientation recovery.
+ *
+ * A card fed upside down embeds to garbage — SigLIP is not rotation
+ * invariant, and the OCR bands read the wrong corners — so it used to sail
+ * straight to no-match and the catch-all bin. When the first pass comes back
+ * with nothing (or nothing closer than any real match ever measures), the
+ * capture is flipped 180° and identified again, and the better pass wins.
+ * The cost is a second full pass, but only on captures that had already
+ * failed; a well-fed card never pays it.
+ */
 export async function identifyCard(
-  embedding: number[],
+  imageBuffer: Buffer,
+  gameKey: string,
+  lang: string,
+): Promise<IdentifyResult> {
+  const first = await identifyOnce(imageBuffer, gameKey, lang);
+  if (nearestDistance(first) <= RETRY_DISTANCE) return first;
+
+  const flipped = await sharp(imageBuffer).rotate(180).toBuffer();
+  const second = await identifyOnce(flipped, gameKey, lang);
+  // Strictly better or bust: on a genuinely unreadable capture both passes
+  // fail, and the first result's diagnostics are the truthful ones.
+  return nearestDistance(second) < nearestDistance(first) ? second : first;
+}
+
+/**
+ * One oriented pass, owning its own concurrency.
+ *
+ * OCR does not depend on the embedding, so it starts the moment the image
+ * arrives and runs beside the SigLIP forward pass and the candidate query —
+ * the two big fixed costs overlap instead of stacking. Sequentially this was
+ * p95 2.2s against a 2s budget; the overlap alone removes the embedding+query
+ * ~500ms from every card's critical path.
+ */
+async function identifyOnce(
   imageBuffer: Buffer,
   gameKey: string,
   lang: string,
 ): Promise<IdentifyResult> {
   const profile = getIdentityProfile(gameKey);
+
+  const ocrPromise: Promise<OcrReading> = profile?.ocr
+    ? readCard(imageBuffer, profile.ocr).catch((err) => {
+        // OCR is an enhancement; losing it degrades ranking, not correctness.
+        console.error("[identify] OCR failed:", err);
+        return {};
+      })
+    : Promise.resolve({});
+
+  const embedding = await vectorizeImageFromBuffer(imageBuffer);
   const rows = await fetchCandidates(
     embedding,
     gameKey,
@@ -280,10 +335,12 @@ export async function identifyCard(
   );
 
   if (rows.length === 0) {
+    // The pool would otherwise sit on an unread result.
+    void ocrPromise;
     return { tier: "no-match", margin: null, candidates: [] };
   }
 
   return profile
-    ? withProfile(rows, gameKey, profile, imageBuffer)
+    ? withProfile(rows, gameKey, profile, imageBuffer, ocrPromise)
     : withoutProfile(rows, gameKey);
 }

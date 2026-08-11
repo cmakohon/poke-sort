@@ -16,25 +16,41 @@ import type { OcrProfile, OcrRegion } from "./profiles";
  * the run when it does.
  */
 
-let workerPromise: Promise<Worker> | null = null;
+/**
+ * A small worker pool rather than one worker.
+ *
+ * A scan reads seven regions (plus up to four escalation retries), and on one
+ * worker they serialise into the single largest cost of identification — OCR
+ * p95 was 1.7s of a 2s budget. Two workers run the bands pairwise; the pool is
+ * two rather than more because the embedding forward pass is competing for the
+ * same cores at the same time.
+ */
+const POOL_SIZE = 2;
 
-async function getWorker(): Promise<Worker> {
-  if (!workerPromise) {
-    workerPromise = createWorker("eng", undefined, {
-      // Keep the traineddata beside the other bundled model assets so the
-      // packaged app never downloads it on first scan.
-      ...(MODEL_DIR ? { cachePath: MODEL_DIR } : {}),
-    });
+let poolPromise: Promise<Worker[]> | null = null;
+let nextWorker = 0;
+
+async function getPool(): Promise<Worker[]> {
+  if (!poolPromise) {
+    poolPromise = Promise.all(
+      Array.from({ length: POOL_SIZE }, () =>
+        createWorker("eng", undefined, {
+          // Keep the traineddata beside the other bundled model assets so the
+          // packaged app never downloads it on first scan.
+          ...(MODEL_DIR ? { cachePath: MODEL_DIR } : {}),
+        }),
+      ),
+    );
   }
-  return workerPromise;
+  return poolPromise;
 }
 
-/** Release the worker; used by tests and on shutdown. */
+/** Release the workers; used by tests and on shutdown. */
 export async function disposeOcr(): Promise<void> {
-  if (!workerPromise) return;
-  const worker = await workerPromise;
-  workerPromise = null;
-  await worker.terminate();
+  if (!poolPromise) return;
+  const workers = await poolPromise;
+  poolPromise = null;
+  await Promise.all(workers.map((w) => w.terminate()));
 }
 
 /**
@@ -84,10 +100,10 @@ async function readRegion(
     .png()
     .toBuffer();
 
-  const worker = await getWorker();
-  await worker.setParameters({
-    tessedit_char_whitelist: region.charset ?? "",
-  });
+  // Round-robin across the pool. Workers hold no per-region parameters, so
+  // every worker is interchangeable and reads genuinely run side by side.
+  const pool = await getPool();
+  const worker = pool[nextWorker++ % pool.length];
   const { data } = await worker.recognize(buffer);
   return data.text.trim();
 }
@@ -102,7 +118,6 @@ const ESCALATION: ReadOptions[] = [
   { scale: 4, threshold: 125 },
   { scale: 4, threshold: 145 },
   { scale: 4, threshold: 100, negate: true },
-  { scale: 4, threshold: 125, negate: true },
 ];
 
 /** "58/102" -> {58, 102}; also accepts "058/102" and spaced variants. */
@@ -161,8 +176,19 @@ export async function readCard(
 
   const reading: OcrReading = {};
 
-  for (const region of profile.name) {
-    const name = cleanName(await readRegion(image, width, height, region));
+  // Every plain region is queued at once and drained by the pool: which crop
+  // holds which fact is not knowable in advance, so nothing is gained by
+  // reading them in a clever order and everything by reading them in parallel.
+  const [nameTexts, numberTexts, hpTexts] = await Promise.all([
+    Promise.all(profile.name.map((r) => readRegion(image, width, height, r))),
+    Promise.all(
+      profile.collectorNumber.map((r) => readRegion(image, width, height, r)),
+    ),
+    Promise.all(profile.hp.map((r) => readRegion(image, width, height, r))),
+  ]);
+
+  for (const text of nameTexts) {
+    const name = cleanName(text);
     if (name) {
       reading.name = name;
       break;
@@ -173,14 +199,9 @@ export async function readCard(
   // raw text is kept regardless: candidates are matched against it directly,
   // which tolerates the stray marks OCR adds around the number.
   const rawReadings: string[] = [];
-  for (const region of profile.collectorNumber) {
-    const text = await readRegion(image, width, height, region);
+  for (const text of numberTexts) {
     if (!text) continue;
     rawReadings.push(text);
-
-    // Every band is read even once a good parse is found: the number and the
-    // set abbreviation are not always in the same crop, and the abbreviation is
-    // matched against the raw text rather than parsed out of it.
     const parsed = parseCollectorNumber(text);
     if (!parsed) continue;
     if (parsed.setTotal != null && reading.setTotal == null) {
@@ -195,22 +216,33 @@ export async function readCard(
   // band is where all of them print the number.
   if (reading.setTotal == null) {
     const deepRight = profile.collectorNumber[0];
-    for (const opts of ESCALATION) {
-      const text = await readRegion(image, width, height, deepRight, opts);
-      if (!text) continue;
-      const parsed = parseCollectorNumber(text);
-      if (parsed?.setTotal != null) {
-        rawReadings.push(text);
-        reading.collectorNumber = parsed.collectorNumber;
-        reading.setTotal = parsed.setTotal;
-        break;
+    // Pairwise, matching the pool width: latency of ceil(4/2) reads, and the
+    // second pair is skipped entirely when the first finds a parse.
+    for (let i = 0; i < ESCALATION.length; i += 2) {
+      const texts = await Promise.all(
+        ESCALATION.slice(i, i + 2).map((opts) =>
+          readRegion(image, width, height, deepRight, opts),
+        ),
+      );
+      let found = false;
+      for (const text of texts) {
+        if (!text) continue;
+        const parsed = parseCollectorNumber(text);
+        if (parsed?.setTotal != null) {
+          rawReadings.push(text);
+          reading.collectorNumber = parsed.collectorNumber;
+          reading.setTotal = parsed.setTotal;
+          found = true;
+          break;
+        }
       }
+      if (found) break;
     }
   }
   if (rawReadings.length > 0) reading.collectorNumberRaw = rawReadings.join(" ");
 
-  for (const region of profile.hp) {
-    const hp = parseHp(await readRegion(image, width, height, region));
+  for (const text of hpTexts) {
+    const hp = parseHp(text);
     if (hp != null) {
       reading.hp = hp;
       break;

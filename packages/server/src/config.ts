@@ -92,8 +92,13 @@ export const LIVE_PRICING = process.env.POKE_SORT_LIVE_PRICING !== "0";
  */
 export const HNSW_EF_SEARCH = intFromEnv("POKE_SORT_HNSW_EF_SEARCH", 100);
 
-/** How long a price lookup may delay a scan before the stored price stands. */
-export const PRICE_TIMEOUT_MS = intFromEnv("POKE_SORT_PRICE_TIMEOUT_MS", 2000);
+/**
+ * How long a price lookup may delay a scan before the stored price stands.
+ * Identification has a 2-second budget; at the old 2s default a slow CDN
+ * response alone could consume all of it. On timeout the pack-time price is
+ * used and the late response still lands in the 15-minute adapter cache.
+ */
+export const PRICE_TIMEOUT_MS = intFromEnv("POKE_SORT_PRICE_TIMEOUT_MS", 1000);
 
 /**
  * How long a graceful shutdown may take before the process exits regardless.

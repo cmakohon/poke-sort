@@ -4,7 +4,6 @@ import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
 import { identifyCard } from "../src/lib/identify";
 import { disposeOcr } from "../src/lib/identify/ocr";
-import { vectorizeImageFromBuffer } from "../src/lib/vectorize";
 
 /**
  * Identification accuracy against the real catalog.
@@ -84,8 +83,7 @@ describe.skipIf(manifest.length === 0)("pokemon identification accuracy", () => 
 
     for (const fixture of manifest) {
       const buf = await readFile(path.join(FIXTURES, fixture.file));
-      const embedding = await vectorizeImageFromBuffer(buf);
-      const result = await identifyCard(embedding, buf, "pokemon", "en");
+      const result = await identifyCard(buf, "pokemon", "en");
 
       const ids = result.candidates.map((c) => c.id);
       const isTop1 = ids[0] === fixture.id;
