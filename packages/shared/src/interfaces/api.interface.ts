@@ -62,7 +62,7 @@ export interface IdentifyResult {
   ocr?: OcrReading;
 }
 
-export interface ScryfallListResponse {
+export interface CardListResponse {
   data: PlayingCard[];
   has_more: boolean;
   next_page?: string;

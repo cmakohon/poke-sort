@@ -1,5 +1,5 @@
-appId: com.dishwasherdetergent.mault
-productName: Mault
+appId: com.cmakohon.pokesort
+productName: PokeSort
 directories:
   output: release
   buildResources: build
@@ -47,7 +47,7 @@ mac:
     - dmg
   extendInfo:
     # Required for getUserMedia — the scanner is a webcam app.
-    NSCameraUsageDescription: Mault uses your camera to scan trading cards.
+    NSCameraUsageDescription: PokeSort uses your camera to scan trading cards.
 
 win:
   target:

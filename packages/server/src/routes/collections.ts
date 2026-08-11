@@ -3,8 +3,8 @@ import type {
   FieldMeta,
   PlayingCardWithDistance,
   ScannedCard,
-} from "@magic-vault/shared";
-import { LOCAL_ORG_ID, LOCAL_USER_ID } from "@magic-vault/shared";
+} from "@poke-sort/shared";
+import { LOCAL_ORG_ID, LOCAL_USER_ID } from "@poke-sort/shared";
 import { and, count, desc, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
@@ -519,7 +519,7 @@ router.post("/:guid/cards", requireAuth, requireOrg, async (c) => {
         .values({
           guid: scanId,
           collectionId: collection.id,
-          scryfallId: (card as PlayingCardWithDistance).id,
+          cardId: (card as PlayingCardWithDistance).id,
           card,
           scannedAt: new Date(scannedAt),
           binNumber: binNumber ?? null,
@@ -642,7 +642,7 @@ router.put("/:guid/cards/:scanId", requireAuth, requireOrg, async (c) => {
       const updates: Partial<typeof collectionCards.$inferInsert> = {};
       if (card !== undefined) {
         updates.card = card;
-        updates.scryfallId = card.id;
+        updates.cardId = card.id;
         updates.binNumber = binNumber ?? null;
       }
       if (isFoil !== undefined) updates.isFoil = isFoil;

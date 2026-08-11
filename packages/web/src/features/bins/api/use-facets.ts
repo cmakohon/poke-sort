@@ -1,5 +1,5 @@
 import { apiGet } from "@/lib/api/client";
-import type { Result } from "@magic-vault/shared";
+import type { Result } from "@poke-sort/shared";
 import { useQuery } from "@tanstack/react-query";
 
 /**

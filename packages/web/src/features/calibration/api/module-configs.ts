@@ -3,8 +3,8 @@ import type {
   ModuleConfig,
   Result,
   ServoCalibration,
-} from "@magic-vault/shared";
-import { DEFAULT_CALIBRATION } from "@magic-vault/shared";
+} from "@poke-sort/shared";
+import { DEFAULT_CALIBRATION } from "@poke-sort/shared";
 import { queryOptions } from "@tanstack/react-query";
 
 function defaultModuleConfigs(): ModuleConfig[] {

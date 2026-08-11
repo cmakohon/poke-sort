@@ -1,5 +1,5 @@
 import type { SetStats } from "@/features/scanner/types";
-import type { FieldMeta, PlayingCardWithDistance } from "@magic-vault/shared";
+import type { FieldMeta, PlayingCardWithDistance } from "@poke-sort/shared";
 import type { ReactElement } from "react";
 
 export interface CardSelectDialogProps {
@@ -20,7 +20,7 @@ export interface CardSelectDialogProps {
 }
 
 export interface CardFilters {
-  colors: string[];
+  types: string[];
   rarities: string[];
   bins: Array<number | null>;
   needsAttention: boolean;
@@ -47,7 +47,7 @@ export interface CardToolbarProps {
   onToggleSelectAll?: () => void;
   availableRarities?: { key: string; label: string }[];
   availableSets?: SetStats[];
-  availableColors?: { key: string; label: string; bg: string }[];
+  availableTypes?: { key: string; label: string; bg: string }[];
 }
 
 export interface ScannedCardItemProps {

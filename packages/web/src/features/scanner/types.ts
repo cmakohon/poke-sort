@@ -4,7 +4,7 @@ import type {
   ScanOutcome,
   ScannedCard,
   ScannerStatus,
-} from "@magic-vault/shared";
+} from "@poke-sort/shared";
 
 export type CameraStatus = "idle" | "requesting" | "ready" | "error";
 

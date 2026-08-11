@@ -9,7 +9,7 @@ import {
 } from "@/features/calibration/lib/calibration-utils";
 import type { ActivePositions, ServoConfig, SliderKey } from "@/features/calibration/types";
 import { useSerial } from "@/features/scanner/api/use-serial";
-import { DEFAULT_CALIBRATION, type ServoCalibration } from "@magic-vault/shared";
+import { DEFAULT_CALIBRATION, type ServoCalibration } from "@poke-sort/shared";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";

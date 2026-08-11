@@ -7,7 +7,7 @@ import { DB_DIR } from "../config";
 import * as schema from "./schema";
 
 // PGlite creates its own data directory but not the parents, so a first run
-// with a nested MAULT_DATA_DIR would fail on ENOENT.
+// with a nested POKE_SORT_DATA_DIR would fail on ENOENT.
 mkdirSync(DB_DIR, { recursive: true });
 
 // Constructor rather than the `PGlite.create()` factory: the tsup build targets

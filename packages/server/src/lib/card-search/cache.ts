@@ -1,4 +1,4 @@
-import type { PlayingCard, Result } from "@magic-vault/shared";
+import type { PlayingCard, Result } from "@poke-sort/shared";
 import type { CardSearchAdapter } from "./types";
 
 const CACHE_TTL_MS = 15 * 60 * 1000;

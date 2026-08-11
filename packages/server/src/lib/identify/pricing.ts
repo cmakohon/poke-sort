@@ -1,4 +1,4 @@
-import type { PlayingCard } from "@magic-vault/shared";
+import type { PlayingCard } from "@poke-sort/shared";
 import { eq } from "drizzle-orm";
 import { LIVE_PRICING, PRICE_TIMEOUT_MS } from "../../config";
 import { db } from "../../db";
@@ -69,7 +69,7 @@ export function persistRefreshedCard(cardId: string, fresh: PlayingCard): void {
   void db
     .update(cardImageVectors)
     .set({ cardData: fresh.raw, updatedAt: new Date() })
-    .where(eq(cardImageVectors.scryfallId, cardId))
+    .where(eq(cardImageVectors.cardId, cardId))
     .catch((err) => {
       console.error("[pricing] Could not persist refreshed card data:", err);
     });

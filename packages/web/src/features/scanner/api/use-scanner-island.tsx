@@ -1,4 +1,4 @@
-import type { ScannerStatus } from "@magic-vault/shared";
+import type { ScannerStatus } from "@poke-sort/shared";
 import {
   createContext,
   useContext,

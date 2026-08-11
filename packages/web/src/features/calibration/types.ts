@@ -1,4 +1,4 @@
-import type { ModuleConfig, ServoCalibration } from "@magic-vault/shared";
+import type { ModuleConfig, ServoCalibration } from "@poke-sort/shared";
 
 export interface ModuleConfigsContextValue {
   configs: ModuleConfig[];

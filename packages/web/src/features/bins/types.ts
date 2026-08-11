@@ -4,7 +4,7 @@ import type {
   BinRuleGroup,
   BinSet,
   FieldMeta,
-} from "@magic-vault/shared";
+} from "@poke-sort/shared";
 
 export interface BinConfigsContextValue {
   configs: BinConfig[];

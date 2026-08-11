@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import {
   app,
@@ -12,7 +13,7 @@ import { loadPreferredPortId, savePreferredPortId } from "./serial-prefs";
  * Dev mode points the window at the Vite dev server (HMR) while the API still
  * comes from the utilityProcess. Everything else runs fully self-contained.
  */
-const DEV_URL = process.env.MAULT_DEV_URL;
+const DEV_URL = process.env.POKE_SORT_DEV_URL;
 
 const SERVER_ENTRY = app.isPackaged
   ? path.join(process.resourcesPath, "server", "index.js")
@@ -41,12 +42,12 @@ let permissionsWired = false;
  */
 const SPLASH = `data:text/html,${encodeURIComponent(`
 <body style="margin:0;height:100vh;display:grid;place-items:center;background:#000;color:#888;
-             font:14px system-ui,-apple-system,sans-serif">Starting Mault…</body>`)}`;
+             font:14px system-ui,-apple-system,sans-serif">Starting PokeSort…</body>`)}`;
 
 const errorPage = (message: string) => `data:text/html,${encodeURIComponent(`
 <body style="margin:0;height:100vh;display:grid;place-items:center;background:#000;color:#f87171;
              font:14px system-ui,-apple-system,sans-serif;text-align:center;padding:2rem">
-  <div><p><strong>Mault could not start.</strong></p><pre style="color:#888;white-space:pre-wrap">${message}</pre></div>
+  <div><p><strong>PokeSort could not start.</strong></p><pre style="color:#888;white-space:pre-wrap">${message}</pre></div>
 </body>`)}`;
 
 /**
@@ -61,6 +62,31 @@ function ensureServer(): Promise<number> {
 }
 
 /**
+ * Adopts the data directory left behind by the app's previous name.
+ *
+ * `userData` is derived from `productName`, so renaming Mault to PokeSort moves
+ * it — the old directory (database, scan captures, imported catalog) would just
+ * be orphaned, and the app would look like a fresh install. Renaming it across
+ * is instant and safe: it only fires when the new location does not exist yet,
+ * so it can never clobber real data, and it no-ops on every subsequent boot.
+ *
+ * Remove once no install can still be on the old name.
+ */
+function adoptLegacyDataDir(): void {
+  const next = app.getPath("userData");
+  const legacy = path.join(path.dirname(next), "Mault");
+  if (legacy === next || fs.existsSync(next) || !fs.existsSync(legacy)) return;
+  try {
+    fs.renameSync(legacy, next);
+    console.log(`[main] adopted legacy data dir: ${legacy} -> ${next}`);
+  } catch (err) {
+    // A failed adoption is recoverable — the app starts on an empty data dir
+    // and the user can re-import. Losing the window over it is not.
+    console.error("[main] could not adopt legacy data dir:", err);
+  }
+}
+
+/**
  * The Hono server runs in a utilityProcess rather than the main process so a
  * model load or a long catalog sync cannot freeze the UI, and so a crash is
  * recoverable instead of taking the whole app down.
@@ -72,18 +98,18 @@ function startServer(): Promise<number> {
       env: {
         ...process.env,
         // Everything the app writes goes under Electron's userData dir.
-        MAULT_DATA_DIR: app.getPath("userData"),
-        MAULT_MIGRATIONS_DIR: MIGRATIONS_DIR,
-        MAULT_STATIC_DIR: STATIC_DIR,
-        MAULT_HOST: "127.0.0.1",
+        POKE_SORT_DATA_DIR: app.getPath("userData"),
+        POKE_SORT_MIGRATIONS_DIR: MIGRATIONS_DIR,
+        POKE_SORT_STATIC_DIR: STATIC_DIR,
+        POKE_SORT_HOST: "127.0.0.1",
         PORT: "0", // ask the OS for a free port
         // Bundled SigLIP weights; never reach for the network on first run.
         // (HF_HOME/TRANSFORMERS_OFFLINE are Python-only — transformers.js reads
         // neither, so the server translates these into `env.cacheDir` itself.)
-        MAULT_MODEL_DIR: MODEL_DIR,
+        POKE_SORT_MODEL_DIR: MODEL_DIR,
         // Only enforced in the packaged app; an unpackaged dev run is allowed
         // to pull the weights down on demand.
-        MAULT_MODELS_OFFLINE: app.isPackaged ? "1" : "0",
+        POKE_SORT_MODELS_OFFLINE: app.isPackaged ? "1" : "0",
       },
     });
     serverProcess = child;
@@ -133,10 +159,10 @@ function wireSerialPermissions(win: BrowserWindow, origin: string): void {
 
   // Hot-plugging the Arduino mid-session should just work.
   session.on("serial-port-added", (_event, port) => {
-    win.webContents.send("mault:serial-ports-changed", { added: port.portId });
+    win.webContents.send("poke-sort:serial-ports-changed", { added: port.portId });
   });
   session.on("serial-port-removed", (_event, port) => {
-    win.webContents.send("mault:serial-ports-changed", {
+    win.webContents.send("poke-sort:serial-ports-changed", {
       removed: port.portId,
     });
   });
@@ -211,8 +237,8 @@ async function createWindow(): Promise<void> {
   await win.loadURL(appUrl);
 }
 
-ipcMain.handle("mault:get-preferred-serial-port", () => loadPreferredPortId());
-ipcMain.handle("mault:set-preferred-serial-port", (_e, portId: string | null) => {
+ipcMain.handle("poke-sort:get-preferred-serial-port", () => loadPreferredPortId());
+ipcMain.handle("poke-sort:set-preferred-serial-port", (_e, portId: string | null) => {
   savePreferredPortId(portId);
   return portId;
 });
@@ -230,6 +256,7 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.whenReady().then(() => {
+    adoptLegacyDataDir();
     void createWindow();
 
     app.on("activate", () => {

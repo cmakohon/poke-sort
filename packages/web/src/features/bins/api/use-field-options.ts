@@ -4,7 +4,7 @@ import type {
   PickerGroup,
   PickerOption,
 } from "@/features/bins/components/option-picker";
-import type { FieldMeta } from "@magic-vault/shared";
+import type { FieldMeta } from "@poke-sort/shared";
 
 /**
  * Resolves the choices for a field, preferring what the catalog actually

@@ -15,7 +15,7 @@
  * the vectors are a raw float32 block because they are neither.
  */
 
-export const PACK_MAGIC = "mault-pack";
+export const PACK_SIGNATURE = "poke-sort-pack";
 // v2 added collectorNumber / setTotal / data per card.
 // v3 records which embedding pipeline produced the vectors.
 export const PACK_VERSION = 3;
@@ -32,7 +32,7 @@ export interface PackCard {
 }
 
 export interface PackHeader {
-  magic: typeof PACK_MAGIC;
+  signature: typeof PACK_SIGNATURE;
   version: number;
   gameKey: string;
   lang: string;
@@ -54,11 +54,11 @@ export interface PackHeader {
 }
 
 export function encodePack(
-  header: Omit<PackHeader, "magic" | "version" | "count">,
+  header: Omit<PackHeader, "signature" | "version" | "count">,
   embeddings: number[][],
 ): Buffer {
   const full: PackHeader = {
-    magic: PACK_MAGIC,
+    signature: PACK_SIGNATURE,
     version: PACK_VERSION,
     count: embeddings.length,
     ...header,
@@ -96,7 +96,7 @@ export function decodePack(buf: Buffer): {
     buf.subarray(4, 4 + headerLength).toString("utf-8"),
   ) as PackHeader;
 
-  if (header.magic !== PACK_MAGIC) throw new Error("Not a mault pack.");
+  if (header.signature !== PACK_SIGNATURE) throw new Error("Not a PokeSort pack.");
   if (header.version !== PACK_VERSION) {
     throw new Error(
       `Pack version ${header.version} is not supported (expected ${PACK_VERSION}).`,

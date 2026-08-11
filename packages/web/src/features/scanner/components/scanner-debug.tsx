@@ -12,7 +12,7 @@ import { useCollections } from "@/features/collections/api/use-collections";
 import { useScannedCards } from "@/features/scanner/api/use-scanned-cards";
 import { useRole } from "@/hooks/use-role";
 import { apiPost } from "@/lib/api/client";
-import type { PlayingCardWithDistance } from "@magic-vault/shared";
+import type { PlayingCardWithDistance } from "@poke-sort/shared";
 import {
   IconAlertTriangle,
   IconBug,
@@ -20,59 +20,6 @@ import {
   IconStack2,
 } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
-
-// All three use real M11 image URLs so they actually render.
-// set/collector differ to simulate a realistic multi-printing scenario.
-const LIGHTNING_BOLT_M11: PlayingCardWithDistance = {
-  id: "e3285e6b-3e79-4d7c-bf96-d920f973b122",
-  name: "Lightning Bolt",
-  image: {
-    small:
-      "https://cards.scryfall.io/small/front/e/3/e3285e6b-3e79-4d7c-bf96-d920f973b122.jpg",
-    normal:
-      "https://cards.scryfall.io/normal/front/e/3/e3285e6b-3e79-4d7c-bf96-d920f973b122.jpg",
-  },
-  manaCost: "{R}",
-  cmc: 1,
-  typeLine: "Instant",
-  text: "Lightning Bolt deals 3 damage to any target.",
-  colorIdentity: ["R"],
-  set: "m11",
-  setName: "Magic 2011",
-  collectorNumber: "149",
-  rarity: "common",
-  artist: "Christopher Moeller",
-  price: 1.2,
-  sourceUrl: "https://scryfall.com/card/m11/149/lightning-bolt",
-  distance: 0.03,
-};
-
-const LIGHTNING_BOLT_A25: PlayingCardWithDistance = {
-  ...LIGHTNING_BOLT_M11,
-  id: "debug-bolt-a25",
-  sourceUrl: "https://scryfall.com/card/a25/140/lightning-bolt",
-  set: "a25",
-  setName: "Masters 25",
-  collectorNumber: "140",
-  price: 0.75,
-  distance: 0.05,
-};
-
-const LIGHTNING_BOLT_2X2: PlayingCardWithDistance = {
-  ...LIGHTNING_BOLT_M11,
-  id: "debug-bolt-2x2",
-  sourceUrl: "https://scryfall.com/card/2x2/117/lightning-bolt",
-  set: "2x2",
-  setName: "Double Masters 2022",
-  collectorNumber: "117",
-  price: 0.9,
-  distance: 0.06,
-};
-
-const MOCK_CARDS: PlayingCardWithDistance[] = [LIGHTNING_BOLT_M11];
-
-const FAKE_SCAN_URL =
-  "https://cards.scryfall.io/art_crop/front/e/3/e3285e6b-3e79-4d7c-bf96-d920f973b122.jpg";
 
 function proxiedImageUrl(url: string): string {
   return `/api/cards/image-proxy?url=${encodeURIComponent(url)}`;
@@ -86,12 +33,11 @@ const PIKACHU_BASE1: PlayingCardWithDistance = {
   id: "base1-58",
   name: "Pikachu",
   image: { small: PIKACHU_IMG, normal: PIKACHU_IMG },
-  cmc: 1,
+  retreatCost: 1,
   typeLine: "Pokemon - Basic",
   text: "When several of these Pokémon gather, their electricity can cause lightning storms.\n\nGnaw (10)\nThunder Jolt (30) Flip a coin. If tails, Pikachu does 10 damage to itself.",
-  power: undefined,
-  toughness: "40",
-  colorIdentity: ["Lightning"],
+  hp: "40",
+  types: ["Lightning"],
   set: "base1",
   setName: "Base Set",
   collectorNumber: "58",
@@ -126,26 +72,16 @@ export function ScannerDebug() {
 
   if (!isAdmin) return null;
 
-  const isPokemon = activeCollection?.game?.key === "pokemon";
-
   const handleSimulateScan = () => {
-    const cards = isPokemon ? POKEMON_MOCK_CARDS : MOCK_CARDS;
-    const card = cards[mockCardIndex % cards.length];
+    const card = POKEMON_MOCK_CARDS[mockCardIndex % POKEMON_MOCK_CARDS.length];
     mockCardIndex++;
     addCard(card);
   };
 
   const handleSimulateMultiMatch = () => {
-    if (isPokemon) {
-      addCard(PIKACHU_BASE1, PIKACHU_IMG, [
-        PIKACHU_BASE1_SHADOWLESS,
-        PIKACHU_BASE1_1ST_EDITION,
-      ]);
-      return;
-    }
-    addCard(LIGHTNING_BOLT_M11, FAKE_SCAN_URL, [
-      LIGHTNING_BOLT_A25,
-      LIGHTNING_BOLT_2X2,
+    addCard(PIKACHU_BASE1, PIKACHU_IMG, [
+      PIKACHU_BASE1_SHADOWLESS,
+      PIKACHU_BASE1_1ST_EDITION,
     ]);
   };
 

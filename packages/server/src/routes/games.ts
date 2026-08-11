@@ -4,7 +4,7 @@ import { db } from "../db";
 import { cardImageVectors, games } from "../db/schema";
 import { getGameFacets } from "../lib/facets";
 import { requireAuth, requireRole, type AppEnv } from "../middleware/auth";
-import type { FieldMeta, Game } from "@magic-vault/shared";
+import type { FieldMeta, Game } from "@poke-sort/shared";
 
 const router = new Hono<AppEnv>();
 

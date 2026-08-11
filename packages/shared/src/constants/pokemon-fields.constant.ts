@@ -15,7 +15,7 @@ import type {
  * tries `card.raw` FIRST and only falls back to the normalized `PlayingCard`.
  * For Pokemon `card.raw` is the TCGdex card detail, so paths and enum values
  * must match TCGdex's shape and casing — not the normalized card's. This is
- * why `rarity` options are title-case here while the MTG ones are lowercase.
+ * why `rarity` options are title-case here rather than lowercased.
  *
  * The enum vocabularies (rarity, types, category, stage) are the complete
  * lists served by TCGdex's /rarities, /types, /categories and /stages
@@ -151,7 +151,7 @@ export const POKEMON_FIELD_DEFINITIONS: FieldMeta[] = [
     options: asOptions(POKEMON_RARITIES),
   },
   {
-    // The Pokemon analogue of MTG's color_identity: an array on the raw card.
+    // Energy types: an array on the raw card.
     field: "types",
     label: "Energy Type",
     type: "set",
@@ -199,8 +199,8 @@ export const POKEMON_FIELD_DEFINITIONS: FieldMeta[] = [
   {
     // path is `set.id`, NOT `set`. On TCGdex `raw.set` is an object
     // ({id, name, cardCount, ...}); pointing at it would stringify to
-    // "[object Object]" and never match. MTG can use a bare `set` because
-    // Scryfall's raw `set` is already the set code.
+    // "[object Object]" and never match. A bare `set` would only work for a
+    // source whose raw `set` is already a plain code.
     field: "set",
     label: "Set",
     type: "enum",
@@ -235,7 +235,7 @@ export const POKEMON_FIELD_DEFINITIONS: FieldMeta[] = [
   },
   {
     // No `price` key on the raw card, so this deliberately falls through to the
-    // normalized card's resolvePrice() result — same as MTG.
+    // normalized card's resolvePrice() result.
     field: "price_usd",
     label: "Price (USD)",
     type: "numeric",

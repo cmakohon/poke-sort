@@ -14,7 +14,7 @@ import { SessionErrorsPanel } from "@/features/scanner/components/session-errors
 import { SessionStatsPanel } from "@/features/scanner/components/session-stats-panel";
 import { computeStats } from "@/features/scanner/lib/compute-stats";
 import { useIsMobile } from "@/hooks/use-is-mobile";
-import { FIELD_DEFINITIONS } from "@magic-vault/shared";
+import { POKEMON_FIELD_DEFINITIONS } from "@poke-sort/shared";
 import { IconCards, IconLoader2, IconWifiOff } from "@tabler/icons-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -89,7 +89,7 @@ export default function MonitorPage() {
   );
   const stats = useMemo(() => computeStats(cards), [cards]);
   const fieldDefinitions =
-    collection?.game?.fieldDefinitions ?? FIELD_DEFINITIONS;
+    collection?.game?.fieldDefinitions ?? POKEMON_FIELD_DEFINITIONS;
   const {
     filteredAndSorted,
     searchQuery,
@@ -160,7 +160,7 @@ export default function MonitorPage() {
                   onFiltersChange={setFilters}
                   activeFilterCount={activeFilterCount}
                   availableRarities={stats?.rarities}
-                  availableColors={stats?.colors}
+                  availableTypes={stats?.types}
                   availableSets={stats?.sets}
                 />
               </div>
@@ -203,7 +203,7 @@ export default function MonitorPage() {
             onFiltersChange={setFilters}
             activeFilterCount={activeFilterCount}
             availableRarities={stats?.rarities}
-            availableColors={stats?.colors}
+            availableTypes={stats?.types}
                   availableSets={stats?.sets}
           />
         </div>

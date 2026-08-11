@@ -1,5 +1,5 @@
 import { API_BASE, apiDelete, apiGet, apiPost, apiPut } from "@/lib/api/client";
-import type { Collection, Result, ScannedCard } from "@magic-vault/shared";
+import type { Collection, Result, ScannedCard } from "@poke-sort/shared";
 import { queryOptions } from "@tanstack/react-query";
 
 export async function loadCollections(): Promise<Result<Collection[]>> {

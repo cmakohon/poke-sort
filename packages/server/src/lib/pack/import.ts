@@ -45,7 +45,7 @@ export async function importPack(
     for (let i = start; i < end; i++) {
       const card = header.cards[i];
       rows.push({
-        scryfallId: card.id,
+        cardId: card.id,
         gameKey: header.gameKey,
         lang: header.lang,
         name: card.name,

@@ -1,5 +1,5 @@
 import { apiGet } from "@/lib/api/client";
-import type { PlayingCard, Result } from "@magic-vault/shared";
+import type { PlayingCard, Result } from "@poke-sort/shared";
 
 export async function searchCards(
   query: string,

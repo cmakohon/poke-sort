@@ -4,8 +4,8 @@ import {
   BinConfig,
   BinRuleGroup,
   BinSet,
-  FIELD_DEFINITIONS,
-} from "@magic-vault/shared";
+  POKEMON_FIELD_DEFINITIONS,
+} from "@poke-sort/shared";
 
 import {
   activateSet as activateSetAction,
@@ -81,7 +81,7 @@ export function BinConfigsProvider({
   const gameKey = targetCollection?.game?.key;
   const lang = targetCollection?.lang ?? "en";
   const fieldDefinitions =
-    targetCollection?.game?.fieldDefinitions ?? FIELD_DEFINITIONS;
+    targetCollection?.game?.fieldDefinitions ?? POKEMON_FIELD_DEFINITIONS;
 
   const sets = useMemo(
     () => allSets.filter((s) => matchesGame(s, activeGameGuid)),

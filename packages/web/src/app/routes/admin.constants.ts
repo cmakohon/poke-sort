@@ -1,4 +1,4 @@
-import type { SyncState } from "@magic-vault/shared";
+import type { SyncState } from "@poke-sort/shared";
 
 export const DEFAULT_SYNC_STATE: SyncState = {
   status: "idle",

@@ -15,7 +15,7 @@ import { SCANNABLE_STATUSES } from "@/features/scanner/constants";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { useRole } from "@/hooks/use-role";
 import { cn } from "@/lib/utils";
-import type { CardScannerProps } from "@magic-vault/shared";
+import type { CardScannerProps } from "@poke-sort/shared";
 import { IconEye } from "@tabler/icons-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";

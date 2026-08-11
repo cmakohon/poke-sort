@@ -2,10 +2,9 @@
  * Maps a card's rarity to a CSS colour variable.
  *
  * Call sites used to interpolate the rarity straight into `var(--${rarity})`,
- * which works for Magic's single-word rarities and silently produces nothing
- * for Pokemon's: TCGdex returns "Double rare", "Holo Rare V", "Ultra Rare", and
- * `var(--double rare)` is not a valid custom property, so the dot rendered
- * transparent.
+ * which silently produces nothing for Pokemon rarities: TCGdex returns "Double
+ * rare", "Holo Rare V", "Ultra Rare", and `var(--double rare)` is not a valid
+ * custom property, so the dot rendered transparent.
  *
  * Rather than enumerate forty TCGdex rarities, tiers are derived from keywords
  * and anything unrecognised falls back to a neutral colour.

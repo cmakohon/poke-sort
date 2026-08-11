@@ -6,7 +6,7 @@ import { computeStats } from "@/features/scanner/lib/compute-stats";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-const BASE_TITLE = "MAULT";
+const BASE_TITLE = "PokeSort";
 const CYCLE_MS = 4000;
 
 export function DocumentTitleUpdater() {

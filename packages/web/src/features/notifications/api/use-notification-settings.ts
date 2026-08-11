@@ -4,7 +4,7 @@ import {
   type OrgSettings,
 } from "@/features/settings/api/org-settings";
 import { useOrg } from "@/hooks/use-org";
-import { DEFAULT_SCAN_REGION } from "@magic-vault/shared";
+import { DEFAULT_SCAN_REGION } from "@poke-sort/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";

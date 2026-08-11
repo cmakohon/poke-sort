@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { FieldMeta, Game } from "@magic-vault/shared";
+import type { FieldMeta, Game } from "@poke-sort/shared";
 import { TFunction } from "i18next";
 import { useEffect } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";

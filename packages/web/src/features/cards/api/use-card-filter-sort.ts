@@ -1,9 +1,9 @@
-import { getCardValue, type FieldMeta, type ScannedCard } from "@magic-vault/shared";
+import { getCardValue, type FieldMeta, type ScannedCard } from "@poke-sort/shared";
 import { useEffect, useMemo, useState } from "react";
 import type { CardFilters } from "@/features/cards/types";
 
 const EMPTY_FILTERS: CardFilters = {
-  colors: [],
+  types: [],
   rarities: [],
   bins: [],
   needsAttention: false,
@@ -78,11 +78,10 @@ export function useCardFilterSort(
   const filteredAndSorted = useMemo(() => {
     let result = cards;
 
-    if (filters.colors.length > 0) {
+    if (filters.types.length > 0) {
       result = result.filter((entry) => {
-        const identity = entry.card.colorIdentity ?? [];
-        if (filters.colors.includes("C") && identity.length === 0) return true;
-        return filters.colors.some((c) => c !== "C" && identity.includes(c));
+        const types = entry.card.types ?? [];
+        return filters.types.some((t) => types.includes(t));
       });
     }
 
@@ -146,7 +145,7 @@ export function useCardFilterSort(
   }, [cards, searchQuery, sortKey, filters, fieldDefinitions]);
 
   const activeFilterCount =
-    filters.colors.length +
+    filters.types.length +
     filters.rarities.length +
     filters.bins.length +
     filters.sets.length +

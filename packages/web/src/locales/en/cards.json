@@ -23,7 +23,7 @@
     "viewSource": "View source"
   },
   "cardFilterPopover": {
-    "color": "Color",
+    "type": "Type",
     "rarity": "Rarity",
     "bin": "Bin",
     "unassigned": "Unassigned",
@@ -63,14 +63,13 @@
   },
   "cardSelectDialog": {
     "defaultTitle": "Select Card",
-    "defaultDescription": "Search Scryfall for a card.",
+    "defaultDescription": "Search for a card.",
     "remove": "Remove",
     "correctCard": "Correct Card",
     "scannedAlt": "Scanned",
     "selectCorrectVersion": "Your scanned card - select the correct version below",
     "multipleMatches": "Multiple close matches - select the correct version:",
     "scanned": "Scanned",
-    "manaCost": "Mana: {{cost}}",
     "artBy": "Art by {{artist}}",
     "viewSource": "View source",
     "searchPlaceholder": "Search by card name...",

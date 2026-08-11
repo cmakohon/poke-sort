@@ -5,7 +5,7 @@ import {
   type ScannedCard,
   evaluateCardBin,
   getCatchAllBin,
-} from "@magic-vault/shared";
+} from "@poke-sort/shared";
 
 import { useBinConfigs } from "@/features/bins/api/use-bin-configs";
 import {

@@ -1,15 +1,27 @@
-import { RARITY_LABELS, RARITY_ORDER } from "@/features/scanner/constants";
+import { rarityTier } from "@/features/cards/lib/rarity-color";
 import type { SetStats } from "@/features/scanner/types";
-import type { ScannedCard } from "@magic-vault/shared";
+import type { ScannedCard } from "@poke-sort/shared";
 
-const KNOWN_COLOR_SWATCHES: Record<string, { label: string; bg: string }> = {
-  W: { label: "White", bg: "#F9FAF4" },
-  U: { label: "Blue", bg: "#0E68AB" },
-  B: { label: "Black", bg: "#150B00" },
-  R: { label: "Red", bg: "#D3202A" },
-  G: { label: "Green", bg: "#00733E" },
-  C: { label: "Colorless", bg: "#94979A" },
+/**
+ * Swatches for TCGdex's energy type vocabulary. Anything not listed still
+ * renders — it just falls back to a neutral chip rather than a themed one.
+ */
+const ENERGY_TYPE_SWATCHES: Record<string, string> = {
+  Grass: "#7DB343",
+  Fire: "#E8483F",
+  Water: "#4BA5D9",
+  Lightning: "#F5C518",
+  Psychic: "#A45DC4",
+  Fighting: "#C06A3B",
+  Darkness: "#2F4858",
+  Metal: "#9AA5B1",
+  Dragon: "#B8912F",
+  Fairy: "#E88BB8",
+  Colorless: "#D8D8D8",
 };
+
+/** Premium first, then plain rarities, then anything unrecognised. */
+const TIER_ORDER = ["mythic", "rare", "uncommon", "common"];
 
 /**
  * Series and set symbol come off the card's upstream object, which the server
@@ -33,12 +45,16 @@ function capitalize(value: string): string {
 function sortRarities<T extends { key: string; count: number }>(
   entries: T[],
 ): T[] {
+  // Pokemon prints ~40 distinct rarity strings, so they are ordered by the tier
+  // they map to rather than by an enumerated list, and ties break on count.
   return [...entries].sort((a, b) => {
-    const orderA = RARITY_ORDER.indexOf(a.key);
-    const orderB = RARITY_ORDER.indexOf(b.key);
-    if (orderA !== -1 && orderB !== -1) return orderA - orderB;
-    if (orderA !== -1) return -1;
-    if (orderB !== -1) return 1;
+    const orderA = TIER_ORDER.indexOf(rarityTier(a.key) ?? "");
+    const orderB = TIER_ORDER.indexOf(rarityTier(b.key) ?? "");
+    if (orderA !== -1 && orderB !== -1 && orderA !== orderB) {
+      return orderA - orderB;
+    }
+    if (orderA !== -1 && orderB === -1) return -1;
+    if (orderB !== -1 && orderA === -1) return 1;
     return b.count - a.count;
   });
 }
@@ -52,7 +68,7 @@ export interface ScanStats {
   mostValuable: { name: string; price: number } | null;
   sets: SetStats[];
   rarities: { key: string; label: string; count: number }[];
-  colors: { key: string; label: string; bg: string; count: number }[];
+  types: { key: string; label: string; bg: string; count: number }[];
 }
 
 export function computeStats(cards: ScannedCard[]): ScanStats | null {
@@ -62,7 +78,7 @@ export function computeStats(cards: ScannedCard[]): ScanStats | null {
   let priceableCount = 0;
   const setMap = new Map<string, SetStats>();
   const rarityMap = new Map<string, number>();
-  const colorMap = new Map<string, number>();
+  const typeMap = new Map<string, number>();
   let mostValuable: { name: string; price: number } | null = null;
   const uniqueCards = new Set<string>();
 
@@ -103,8 +119,8 @@ export function computeStats(cards: ScannedCard[]): ScanStats | null {
       rarityMap.set(c.rarity, (rarityMap.get(c.rarity) ?? 0) + 1);
     }
 
-    for (const color of c.colorIdentity) {
-      colorMap.set(color, (colorMap.get(color) ?? 0) + 1);
+    for (const type of c.types) {
+      typeMap.set(type, (typeMap.get(type) ?? 0) + 1);
     }
   }
 
@@ -121,16 +137,16 @@ export function computeStats(cards: ScannedCard[]): ScanStats | null {
     rarities: sortRarities(
       Array.from(rarityMap.entries()).map(([key, count]) => ({
         key,
-        label: RARITY_LABELS[key] ?? capitalize(key),
+        label: capitalize(key),
         count,
       })),
     ),
-    colors: Array.from(colorMap.entries())
+    types: Array.from(typeMap.entries())
       .sort((a, b) => b[1] - a[1])
       .map(([key, count]) => ({
         key,
-        label: KNOWN_COLOR_SWATCHES[key]?.label ?? key,
-        bg: KNOWN_COLOR_SWATCHES[key]?.bg ?? key.toLowerCase(),
+        label: key,
+        bg: ENERGY_TYPE_SWATCHES[key] ?? "#94979A",
         count,
       })),
   };

@@ -1,11 +1,6 @@
-import {
-  FIELD_DEFINITIONS,
-  LOCAL_ORG_ID,
-  POKEMON_FIELD_DEFINITIONS,
-} from "@magic-vault/shared";
+import { LOCAL_ORG_ID, POKEMON_FIELD_DEFINITIONS } from "@poke-sort/shared";
 import { db } from ".";
 import { POKEMON_DEFAULT_URL } from "../lib/pokemon/search";
-import { SCRYFALL_DEFAULT_URL } from "../lib/scryfall/search";
 import { feederConfigs, games, moduleConfigs, orgSettings } from "./schema";
 
 /**
@@ -23,12 +18,6 @@ import { feederConfigs, games, moduleConfigs, orgSettings } from "./schema";
  */
 
 const GAME_SEEDS = [
-  {
-    key: "mtg",
-    name: "Magic: The Gathering",
-    dataSourceUrl: SCRYFALL_DEFAULT_URL,
-    fieldDefinitions: FIELD_DEFINITIONS,
-  },
   {
     key: "pokemon",
     name: "Pokémon",

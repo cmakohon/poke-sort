@@ -4,7 +4,7 @@ import {
   type CardContour,
   type DetectionResult,
   type ScanRegion,
-} from "@magic-vault/shared";
+} from "@poke-sort/shared";
 
 /**
  * Returns a fixed card-sized region within the frame, used in place of

@@ -3,7 +3,7 @@ import type {
   IdentifySignals,
   IdentifyTier,
   OcrReading,
-} from "@magic-vault/shared";
+} from "@poke-sort/shared";
 import type { IdentityProfile } from "./profiles";
 
 /**

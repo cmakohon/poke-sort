@@ -33,8 +33,8 @@ export const cardImageVectors = pgTable(
   {
     id: serial().primaryKey(),
     guid: uuid("guid").defaultRandom(),
-    scryfallId: text("scryfall_id").notNull(),
-    gameKey: text("game_key").notNull().default("mtg"),
+    cardId: text("card_id").notNull(),
+    gameKey: text("game_key").notNull().default("pokemon"),
     lang: text("lang").notNull().default("en"),
     name: text("name").notNull(),
     setCode: text("set_code").notNull(),
@@ -45,7 +45,7 @@ export const cardImageVectors = pgTable(
     // a name and look nearly identical to an image embedding.
     collectorNumber: text("collector_number"),
     setTotal: integer("set_total"),
-    // The full upstream card object (TCGdex detail / Scryfall card).
+    // The full upstream card object (the TCGdex card detail).
     //
     // Denormalised deliberately: re-ranking needs these fields for all ~50
     // candidates, and the bin rule engine resolves its `path`s against this
@@ -56,7 +56,7 @@ export const cardImageVectors = pgTable(
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => [
-    unique("card_image_vectors_scryfall_face_idx").on(table.scryfallId),
+    unique("cards_card_id_idx").on(table.cardId),
     index("cards_game_lang_idx").on(table.gameKey, table.lang),
     index("cards_collector_number_idx").on(table.collectorNumber),
     // Approximate nearest-neighbour index over the embeddings.
@@ -199,7 +199,7 @@ export const collectionCards = pgTable(
     collectionId: integer("collection_id")
       .notNull()
       .references(() => collections.id, { onDelete: "cascade" }),
-    scryfallId: text("scryfall_id").notNull(),
+    cardId: text("card_id").notNull(),
     card: jsonb("card").notNull(),
     scannedAt: timestamp("scanned_at").notNull(),
     binNumber: integer("bin_number"),

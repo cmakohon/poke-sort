@@ -44,7 +44,7 @@ importers:
       '@huggingface/transformers':
         specifier: ^3.8.1
         version: 3.8.1
-      '@magic-vault/shared':
+      '@poke-sort/shared':
         specifier: workspace:*
         version: link:../shared
       drizzle-orm:
@@ -104,7 +104,7 @@ importers:
       '@hookform/resolvers':
         specifier: ^5.2.2
         version: 5.2.2(react-hook-form@7.71.1(react@19.2.3))
-      '@magic-vault/shared':
+      '@poke-sort/shared':
         specifier: workspace:*
         version: link:../shared
       '@tabler/icons-react':

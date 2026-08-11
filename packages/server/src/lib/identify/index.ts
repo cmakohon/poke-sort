@@ -3,14 +3,13 @@ import type {
   IdentifyResult,
   OcrReading,
   PlayingCard,
-} from "@magic-vault/shared";
+} from "@poke-sort/shared";
 import { sql } from "drizzle-orm";
 import { db } from "../../db";
 import {
   normalizePokemonCard,
   type PokemonCardDetail,
 } from "../pokemon/search";
-import { normalizeScryfallCard } from "../scryfall/search";
 import { getSetInfo } from "../set-index";
 import { readCard } from "./ocr";
 import {
@@ -27,7 +26,7 @@ import {
 import { decideTier, rerank, type RerankInput } from "./rerank";
 
 interface CandidateRow extends Record<string, unknown> {
-  scryfall_id: string;
+  card_id: string;
   distance: number;
   name: string;
   collector_number: string | null;
@@ -59,9 +58,6 @@ function hydrate(
     if (gameKey === "pokemon") {
       return normalizePokemonCard(data as PokemonCardDetail);
     }
-    if (gameKey === "mtg") {
-      return normalizeScryfallCard(data as Parameters<typeof normalizeScryfallCard>[0]);
-    }
   } catch {
     // A malformed stored object should not take the whole scan down.
     return fallback ? minimalCard(fallback) : null;
@@ -72,15 +68,15 @@ function hydrate(
 /** Enough of a card to display and to sort on, built from the columns alone. */
 function minimalCard(row: CandidateRow): PlayingCard {
   return {
-    id: row.scryfall_id,
+    id: row.card_id,
     name: row.name,
     image: null,
-    set: row.scryfall_id.split("-")[0] ?? "",
+    set: row.card_id.split("-")[0] ?? "",
     setName: "",
     collectorNumber: row.collector_number ?? "",
     rarity: "",
     typeLine: "",
-    colorIdentity: [],
+    types: [],
     price: null,
   };
 }
@@ -110,7 +106,7 @@ async function fetchCandidates(
   const vector = `[${embedding.join(",")}]`;
   const result = await db.execute<CandidateRow>(sql`
     SELECT
-      scryfall_id,
+      card_id,
       name,
       collector_number,
       set_total,
@@ -133,7 +129,7 @@ function withoutProfile(
   gameKey: string,
 ): IdentifyResult {
   const candidates: IdentifyCandidate[] = rows.map((row) => ({
-    id: row.scryfall_id,
+    id: row.card_id,
     distance: row.distance,
     score: Math.max(0, 1 - row.distance / LEGACY_CUTOFF),
     card: hydrate(gameKey, row.card_data, row),
@@ -158,7 +154,7 @@ async function withProfile(
   // OCR instead of adding to the scan. Re-ranking usually confirms this card;
   // when it does not, the winner is looked up afterwards (and that lookup is
   // cached, so a re-scan of the same card is free).
-  const pricePromise = fetchFreshCard(gameKey, rows[0].scryfall_id);
+  const pricePromise = fetchFreshCard(gameKey, rows[0].card_id);
 
   let ocr: OcrReading = {};
   if (profile.ocr) {
@@ -171,7 +167,7 @@ async function withProfile(
   }
 
   const inputs: RerankInput[] = rows.map((row) => ({
-    id: row.scryfall_id,
+    id: row.card_id,
     distance: row.distance,
     name: row.name,
     collectorNumber: row.collector_number,
@@ -182,7 +178,7 @@ async function withProfile(
 
   const ranked = rerank(inputs, ocr, profile);
   const { tier, margin } = decideTier(ranked, profile);
-  const byId = new Map(rows.map((r) => [r.scryfall_id, r]));
+  const byId = new Map(rows.map((r) => [r.card_id, r]));
 
   const candidates: IdentifyCandidate[] = ranked.map((c) => ({
     ...c,
@@ -194,7 +190,7 @@ async function withProfile(
   const winner = candidates[0];
   if (winner) {
     const fresh =
-      winner.id === rows[0].scryfall_id
+      winner.id === rows[0].card_id
         ? await pricePromise
         : await fetchFreshCard(gameKey, winner.id);
     if (fresh) {

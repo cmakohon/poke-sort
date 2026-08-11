@@ -5,7 +5,7 @@ import {
   ConditionField,
   ConditionOperator,
   FieldMeta,
-} from "@magic-vault/shared";
+} from "@poke-sort/shared";
 
 import { Button } from "@/components/ui/button";
 import { useBinConfigs } from "@/features/bins/api/use-bin-configs";

@@ -13,14 +13,15 @@ export interface PlayingCard {
   rarity: string;
   typeLine: string;
   text?: string;
-  manaCost?: string;
-  power?: string;
-  toughness?: string;
-  colorIdentity: string[];
+  /** Printed HP, as a string so an absent value stays distinguishable from 0. */
+  hp?: string;
+  /** Pokemon energy types, e.g. ["Lightning"]. */
+  types: string[];
   artist?: string;
   price: number | null;
   sourceUrl?: string;
-  cmc?: number;
+  /** Retreat cost, in energy. */
+  retreatCost?: number;
   raw?: unknown;
 }
 

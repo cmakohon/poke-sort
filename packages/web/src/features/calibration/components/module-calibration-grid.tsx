@@ -12,7 +12,7 @@ import type {
   ServoConfig,
   SliderKey,
 } from "@/features/calibration/types";
-import type { ModuleConfig, ServoCalibration } from "@magic-vault/shared";
+import type { ModuleConfig, ServoCalibration } from "@poke-sort/shared";
 import { IconRotateClockwise } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
 

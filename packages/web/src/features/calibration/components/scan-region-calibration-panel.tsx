@@ -11,7 +11,7 @@ import {
   DEFAULT_SCAN_REGION,
   type CardContour,
   type ScanRegion,
-} from "@magic-vault/shared";
+} from "@poke-sort/shared";
 import { IconCameraSpark, IconRotate } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {

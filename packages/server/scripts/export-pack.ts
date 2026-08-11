@@ -4,7 +4,7 @@
 //
 // Run under Node while the server is stopped — PGlite is single-process.
 //
-//   pnpm --filter @magic-vault/server export:pack -- pokemon en ./pokemon-en.pack.gz
+//   pnpm --filter @poke-sort/server export:pack -- pokemon en ./pokemon-en.pack.gz
 import { writeFile } from "node:fs/promises";
 import { gzipSync } from "node:zlib";
 import { and, asc, eq } from "drizzle-orm";
@@ -24,7 +24,7 @@ async function main() {
 
   const rows = await db
     .select({
-      id: cardImageVectors.scryfallId,
+      id: cardImageVectors.cardId,
       name: cardImageVectors.name,
       setCode: cardImageVectors.setCode,
       collectorNumber: cardImageVectors.collectorNumber,
@@ -40,7 +40,7 @@ async function main() {
       ),
     )
     // Stable order so two exports of the same data produce the same bytes.
-    .orderBy(asc(cardImageVectors.scryfallId));
+    .orderBy(asc(cardImageVectors.cardId));
 
   if (rows.length === 0) {
     console.error(`No cards found for game=${gameKey} lang=${lang}.`);

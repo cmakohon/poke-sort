@@ -1,5 +1,5 @@
 import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/api/client";
-import type { FieldMeta, Game, Result } from "@magic-vault/shared";
+import type { FieldMeta, Game, Result } from "@poke-sort/shared";
 import { queryOptions } from "@tanstack/react-query";
 
 export interface GameInput {

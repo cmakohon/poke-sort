@@ -28,10 +28,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Typecheck server
-        run: pnpm --filter @magic-vault/server exec tsc --noEmit -p tsconfig.json
+        run: pnpm --filter @poke-sort/server exec tsc --noEmit -p tsconfig.json
 
       - name: Typecheck desktop
-        run: pnpm --filter @magic-vault/desktop exec tsc --noEmit -p tsconfig.json
+        run: pnpm --filter @poke-sort/desktop exec tsc --noEmit -p tsconfig.json
 
       - name: Lint
         run: pnpm lint

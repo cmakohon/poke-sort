@@ -143,7 +143,7 @@ router.get("/cards", requireAuth, requireRole("admin"), async (c) => {
     db
       .select({
         id: cardImageVectors.id,
-        scryfallId: cardImageVectors.scryfallId,
+        cardId: cardImageVectors.cardId,
         gameKey: cardImageVectors.gameKey,
         lang: cardImageVectors.lang,
         name: cardImageVectors.name,
@@ -166,7 +166,7 @@ router.get("/cards", requireAuth, requireRole("admin"), async (c) => {
 // to re-vectorize an existing one.
 async function syncOneCard(
   gameKey: string,
-  scryfallId: string,
+  cardId: string,
   lang: string,
 ): Promise<
   | { success: true; message: string }
@@ -182,7 +182,7 @@ async function syncOneCard(
   }
   const baseUrl = await resolveGameDataSourceUrl(gameKey, source.defaultUrl);
 
-  const card = await source.fetchOne(scryfallId, baseUrl);
+  const card = await source.fetchOne(cardId, baseUrl);
   if (!card) {
     return {
       success: false,
@@ -212,7 +212,7 @@ async function syncOneCard(
   await db
     .insert(cardImageVectors)
     .values({
-      scryfallId,
+      cardId,
       gameKey,
       lang,
       name: card.name,
@@ -223,7 +223,7 @@ async function syncOneCard(
       cardData: card.data ?? null,
     })
     .onConflictDoUpdate({
-      target: cardImageVectors.scryfallId,
+      target: cardImageVectors.cardId,
       set: {
         gameKey,
         lang,
@@ -244,58 +244,58 @@ async function syncOneCard(
 // to the database if it isn't already there
 router.post("/cards/sync", requireAuth, requireRole("admin"), async (c) => {
   let gameKey: string | undefined;
-  let scryfallId: string | undefined;
+  let cardId: string | undefined;
   let lang = "en";
   try {
     const body = await c.req.json<{
       gameKey?: string;
-      scryfallId?: string;
+      cardId?: string;
       lang?: string;
     }>();
     gameKey = body.gameKey;
-    scryfallId = body.scryfallId?.trim();
+    cardId = body.cardId?.trim();
     if (body.lang) lang = body.lang;
   } catch {
     // no/invalid body
   }
 
-  if (!gameKey || !scryfallId) {
+  if (!gameKey || !cardId) {
     return c.json(
-      { success: false, message: "gameKey and scryfallId are required." },
+      { success: false, message: "gameKey and cardId are required." },
       400,
     );
   }
 
-  const result = await syncOneCard(gameKey, scryfallId, lang);
+  const result = await syncOneCard(gameKey, cardId, lang);
   if (!result.success) {
     return c.json({ success: false, message: result.message }, result.status);
   }
   return c.json({ success: true, message: result.message });
 });
 
-// POST /admin/cards/:scryfallId/revectorize — re-fetch image and regenerate embedding
+// POST /admin/cards/:cardId/revectorize — re-fetch image and regenerate embedding
 router.post(
-  "/cards/:scryfallId/revectorize",
+  "/cards/:cardId/revectorize",
   requireAuth,
   requireRole("admin"),
   async (c) => {
-    const scryfallId = c.req.param("scryfallId");
+    const cardId = c.req.param("cardId");
 
     const existing = await db.query.cardImageVectors.findFirst({
-      where: (t, { eq }) => eq(t.scryfallId, scryfallId),
+      where: (t, { eq }) => eq(t.cardId, cardId),
       columns: { gameKey: true, lang: true },
     });
     if (!existing) {
       return c.json(
         {
           success: false,
-          message: `Card ${scryfallId} not found in database.`,
+          message: `Card ${cardId} not found in database.`,
         },
         404,
       );
     }
 
-    const result = await syncOneCard(existing.gameKey, scryfallId, existing.lang);
+    const result = await syncOneCard(existing.gameKey, cardId, existing.lang);
     if (!result.success) {
       return c.json({ success: false, message: result.message }, result.status);
     }

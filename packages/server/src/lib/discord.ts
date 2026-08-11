@@ -1,4 +1,4 @@
-import type { PlayingCard } from "@magic-vault/shared";
+import type { PlayingCard } from "@poke-sort/shared";
 import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { orgSettings } from "../db/schema";

@@ -9,7 +9,7 @@ import {
   type BinConfigFormValues,
 } from "@/schemas/sort-bins.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { BinRuleGroup } from "@magic-vault/shared";
+import { BinRuleGroup } from "@poke-sort/shared";
 import { IconLoader2 } from "@tabler/icons-react";
 import { useCallback, useEffect } from "react";
 import { Controller, useForm, type Resolver } from "react-hook-form";

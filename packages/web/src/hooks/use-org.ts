@@ -1,4 +1,4 @@
-import { LOCAL_ORG_ID, LOCAL_USER_NAME } from "@magic-vault/shared";
+import { LOCAL_ORG_ID, LOCAL_USER_NAME } from "@poke-sort/shared";
 
 const LOCAL_ORG = { id: LOCAL_ORG_ID, name: LOCAL_USER_NAME } as const;
 

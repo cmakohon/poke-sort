@@ -39,8 +39,8 @@ export interface SyncSource {
   fetchOne(id: string, baseUrl: string): Promise<SyncSourceCardDetail | null>;
   /**
    * Optional per-card enrichment, called from the sync workers so it overlaps
-   * with the image download rather than serialising ahead of the run. Sources
-   * whose bulk feed already carries the full card (Scryfall) omit this.
+   * with the image download rather than serialising ahead of the run. A source
+   * whose bulk feed already carries the full card omits this.
    */
   fetchExtras?(
     card: SyncSourceCard,
