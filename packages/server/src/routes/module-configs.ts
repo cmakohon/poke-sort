@@ -3,7 +3,13 @@ import { z } from "zod";
 import { parseBody } from "../lib/validate";
 import { authQuery } from "../db";
 import { moduleConfigAudit, moduleConfigs } from "../db/schema";
-import { DEFAULT_CALIBRATION, type ModuleConfig, type ServoCalibration } from "@poke-sort/shared";
+import {
+  DEFAULT_CALIBRATION,
+  SERVO_PULSE_MAX,
+  SERVO_PULSE_MIN,
+  type ModuleConfig,
+  type ServoCalibration,
+} from "@poke-sort/shared";
 import { requireAuth, requireOrg, type AppEnv } from "../middleware/auth";
 
 const router = new Hono<AppEnv>();
@@ -17,19 +23,21 @@ const router = new Hono<AppEnv>();
  * the write at a different servo module than the URL named. Rejecting unknown
  * keys keeps the URL parameter authoritative.
  *
- * Servo angles, so bounded to degrees rather than merely "a number".
+ * Bounded to the pulse range the firmware accepts. These are PCA9685 pulse
+ * counts, not degrees — capping them at 180 rejected every real calibration,
+ * since the shipped defaults alone run from 150 to 460.
  */
-const servoAngle = z.number().int().min(0).max(180);
+const servoPulse = z.number().int().min(SERVO_PULSE_MIN).max(SERVO_PULSE_MAX);
 
 const CalibrationSchema = z
   .object({
-    bottomClosed: servoAngle,
-    bottomOpen: servoAngle,
-    paddleClosed: servoAngle,
-    paddleOpen: servoAngle,
-    pusherLeft: servoAngle,
-    pusherNeutral: servoAngle,
-    pusherRight: servoAngle,
+    bottomClosed: servoPulse,
+    bottomOpen: servoPulse,
+    paddleClosed: servoPulse,
+    paddleOpen: servoPulse,
+    pusherLeft: servoPulse,
+    pusherNeutral: servoPulse,
+    pusherRight: servoPulse,
   })
   .strict() satisfies z.ZodType<ServoCalibration>;
 

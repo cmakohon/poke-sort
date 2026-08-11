@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "note": "Imported from the original mault install, 2026-08-11.",
+  "modules": [
+    {
+      "moduleNumber": 1,
+      "bottomClosed": 420,
+      "bottomOpen": 150,
+      "paddleClosed": 490,
+      "paddleOpen": 150,
+      "pusherLeft": 195,
+      "pusherNeutral": 305,
+      "pusherRight": 380
+    },
+    {
+      "moduleNumber": 2,
+      "bottomClosed": 400,
+      "bottomOpen": 150,
+      "paddleClosed": 420,
+      "paddleOpen": 150,
+      "pusherLeft": 230,
+      "pusherNeutral": 310,
+      "pusherRight": 420
+    },
+    {
+      "moduleNumber": 3,
+      "bottomClosed": 400,
+      "bottomOpen": 150,
+      "paddleClosed": 470,
+      "paddleOpen": 130,
+      "pusherLeft": 230,
+      "pusherNeutral": 310,
+      "pusherRight": 400
+    }
+  ],
+  "feeder": {
+    "speed": 250,
+    "duration": 3000,
+    "pulseDuration": 80,
+    "pauseDuration": 0,
+    "settleDuration": 500
+  },
+  "scanRegion": { "coverage": 0.82, "offsetX": -0.05, "offsetY": -0.06 }
+}

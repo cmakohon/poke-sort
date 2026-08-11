@@ -13,6 +13,30 @@ export interface ModuleConfig {
   calibration: ServoCalibration;
 }
 
+/**
+ * Servo positions are PCA9685 pulse counts, NOT degrees.
+ *
+ * The firmware clamps every write with `constrain(pulse, 120, 490)`
+ * (arduino/main/main.ino, setServoPosition), and the calibration UI clamps its
+ * nudge buttons to the same pair. Anything outside this range is not a position
+ * the hardware can be asked for. The feeder's `speed` goes through the same
+ * function, so it shares the range.
+ */
+export const SERVO_PULSE_MIN = 120;
+export const SERVO_PULSE_MAX = 490;
+
+/**
+ * Scan region bounds, mirroring clampRegion in scan-region-calibration-panel.
+ *
+ * The offsets are signed: they move the capture window from the centre of the
+ * frame, so a camera mounted slightly high and left needs negatives. A real
+ * calibration in the wild reads offsetX -0.05, offsetY -0.06 — an earlier
+ * version of the API validation bounded these 0..1 and rejected exactly that.
+ */
+export const SCAN_COVERAGE_MIN = 0.1;
+export const SCAN_COVERAGE_MAX = 1;
+export const SCAN_OFFSET_LIMIT = 0.45;
+
 export const DEFAULT_CALIBRATION: ServoCalibration = {
   bottomClosed: 400,
   bottomOpen: 150,

@@ -206,6 +206,35 @@ pnpm --filter @poke-sort/server export:pack -- pokemon en ./pokemon-en.pack.gz
 Import it via `POST /api/admin/catalog/import-pack`. Falling back to a live
 catalog sync works but is slow and depends on the image CDN staying friendly.
 
+## Calibration
+
+Servo positions, feeder timings and the camera's scan region describe one
+physical machine, and are the only thing here that cannot be recomputed — the
+catalog comes from upstream and collections can be rescanned. They live in
+`module_configs`, `feeder_configs` and `org_settings`, and can be moved as a
+single JSON document:
+
+```bash
+cd packages/server
+pnpm calibration export   ./calibration.json   # this machine -> file
+pnpm calibration template ./calibration.json   # same, annotated, for filling in by hand
+pnpm calibration import   ./calibration.json   # file -> this machine
+```
+
+Close the app first: PGlite allows one process per data directory. Target a
+specific install with `POKE_SORT_DATA_DIR`, e.g.
+`"$HOME/Library/Application Support/PokeSort"`.
+
+The same document is available over HTTP as `GET`/`POST /api/calibration` while
+the app is running.
+
+Servo values are PCA9685 pulse counts, not degrees: the firmware clamps every
+write with `constrain(pulse, 120, 490)`, and export clamps to the same range so
+a file always describes what the hardware will actually do. An import runs in
+one transaction and records every change in the calibration history, so it can
+be reverted like a manual edit. Sections omitted from a file are left untouched
+rather than reset.
+
 ## Hardware
 
 The full bill of materials, wiring diagrams, and assembly instructions are in the

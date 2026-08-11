@@ -11,6 +11,7 @@ import { seedDatabase } from "./db/seed";
 import type { AppEnv } from "./middleware/auth";
 import { adminRouter } from "./routes/admin";
 import { sortBinsRouter } from "./routes/bins";
+import { calibrationRouter } from "./routes/calibration";
 import { cardRouter } from "./routes/card";
 import { capturesRouter } from "./routes/captures";
 import { collectionsRouter } from "./routes/collections";
@@ -48,6 +49,7 @@ if (!STATIC_DIR) {
 // Mounted under /api so the dev server and the packaged app expose the exact
 // same paths. Vite used to strip the prefix, which meant the two environments
 // disagreed about every URL.
+app.route("/api/calibration", calibrationRouter);
 app.route("/api/cards", cardRouter);
 app.route("/api/captures", capturesRouter);
 app.route("/api/bins", sortBinsRouter);

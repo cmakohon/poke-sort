@@ -1,5 +1,10 @@
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
+import {
+  SCAN_COVERAGE_MAX,
+  SCAN_COVERAGE_MIN,
+  SCAN_OFFSET_LIMIT,
+} from "@poke-sort/shared";
 import { z } from "zod";
 import { parseBody } from "../lib/validate";
 import { authQuery } from "../db";
@@ -64,11 +69,15 @@ router.get("/", requireAuth, requireOrg, async (c) => {
  * nullable rather than defaulted. zod strips nothing that was sent and adds
  * nothing that was not, which is what keeps the `in` checks below meaningful.
  *
- * The scan region is a fraction of the frame, so it is bounded to 0..1 — the
- * handler multiplies by 100 and stores an integer, and an out-of-range value
- * would calibrate the scanner to a region that does not exist.
+ * The scan region is expressed as fractions of the frame. Coverage is 0.1..1,
+ * but the offsets are SIGNED — they shift the capture window from the centre,
+ * so a camera mounted high and left needs negatives. Bounds mirror the UI's
+ * clampRegion so the API cannot reject a region the calibration screen can
+ * produce.
  */
-const fraction = z.number().min(0).max(1);
+const coverage = z.number().min(SCAN_COVERAGE_MIN).max(SCAN_COVERAGE_MAX);
+/** Signed: the capture window moves either way from the centre of the frame. */
+const offset = z.number().min(-SCAN_OFFSET_LIMIT).max(SCAN_OFFSET_LIMIT);
 
 const OrgSettingsSchema = z
   .object({
@@ -81,9 +90,9 @@ const OrgSettingsSchema = z
     discordNotifyOnScan: z.boolean().optional(),
     scanRegion: z
       .object({
-        coverage: fraction,
-        offsetX: fraction,
-        offsetY: fraction,
+        coverage,
+        offsetX: offset,
+        offsetY: offset,
       })
       .strict()
       .nullable()
