@@ -12,7 +12,6 @@ import { useSerial, useSerialMessage } from "@/features/scanner/api/use-serial";
 import { ScannerMenu } from "@/features/scanner/components/scanner-menu";
 import { ScannerOverlay } from "@/features/scanner/components/scanner-overlay";
 import { SCANNABLE_STATUSES } from "@/features/scanner/constants";
-import { useIsMobile } from "@/hooks/use-is-mobile";
 import { useRole } from "@/hooks/use-role";
 import { cn } from "@/lib/utils";
 import type { CardScannerProps } from "@poke-sort/shared";
@@ -26,7 +25,6 @@ export function CardScanner({ className, compact }: CardScannerProps) {
   const { t } = useTranslation("scanner");
   const navigate = useNavigate();
   const { isAdmin } = useRole();
-  const isMobile = useIsMobile();
   const {
     addCard,
     sendCatchAllBin,
@@ -84,7 +82,10 @@ export function CardScanner({ className, compact }: CardScannerProps) {
       }
     },
     onNoMatch: sendCatchAllBin,
-    rotated: !isMobile,
+    // The camera is mounted sideways over the feeder, so the capture is always
+    // rotated. This was `!isMobile`, but the scanner only ever renders behind
+    // DesktopOnlyGuard, so the mobile side of that was unreachable.
+    rotated: true,
   });
 
   useSerialMessage((msg) => {
@@ -295,14 +296,11 @@ export function CardScanner({ className, compact }: CardScannerProps) {
         <video ref={videoRef} className="hidden" playsInline muted />
         <canvas
           ref={displayCanvasRef}
-          className={cn("absolute", !isMobile && "rotate-90")}
+          className="absolute rotate-90"
         />
         <canvas
           ref={overlayCanvasRef}
-          className={cn(
-            "absolute z-20 pointer-events-none",
-            !isMobile && "rotate-90",
-          )}
+          className="absolute z-20 pointer-events-none rotate-90"
         />
         {isAdmin && debugImageUrl && (
           <Tooltip>
