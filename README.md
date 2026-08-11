@@ -157,7 +157,24 @@ platforms, the unused browser ONNX backend, source maps and type packages
 target; set `PRUNE_PLATFORM` / `PRUNE_ARCH` to cross-build.
 
 Inside the app the Hono server runs in an Electron `utilityProcess` on a random
-loopback port and serves the SPA itself, so the API is same-origin.
+loopback port and serves the SPA itself, so the API is same-origin. There is no
+separate server to start — `dev` and `dist` both bundle it.
+
+The app keeps its database in Electron's `userData` directory
+(`~/Library/Application Support/PokeSort` on macOS). Unpackaged runs set the app
+name explicitly so they land there too, rather than in the `Electron` directory
+that every unpackaged Electron app on the machine shares.
+
+An unpackaged run can point somewhere else — useful for developing against a
+full catalog instead of whichever database the default location happens to hold:
+
+```bash
+POKE_SORT_DATA_DIR=$PWD/packages/server/.poke-sort-catalog \
+  pnpm --filter @poke-sort/desktop dev
+```
+
+A packaged app ignores that variable: it owns `userData`, and an environment
+variable should not be able to move a user's library out from under them.
 
 On first launch the app adopts a data directory left behind by the upstream
 name (`Mault`) if one exists and it has not been launched under the new name

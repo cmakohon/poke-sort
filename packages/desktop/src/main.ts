@@ -10,10 +10,40 @@ import {
 import { loadPreferredPortId, savePreferredPortId } from "./serial-prefs";
 
 /**
+ * Must run before anything asks for `userData`, which is derived from it.
+ *
+ * `productName` in electron-builder.yml only applies to a packaged build, so an
+ * unpackaged `electron dist/main.cjs` fell back to Electron's default name and
+ * wrote to `<appData>/Electron` — a directory *every* unpackaged Electron app on
+ * the machine shares. That is a database this app does not exclusively own, and
+ * it meant the dev app and the real app silently kept separate data.
+ */
+app.setName("PokeSort");
+
+/**
  * Dev mode points the window at the Vite dev server (HMR) while the API still
  * comes from the utilityProcess. Everything else runs fully self-contained.
  */
 const DEV_URL = process.env.POKE_SORT_DEV_URL;
+
+/**
+ * Where the server keeps the database and captures.
+ *
+ * A packaged app always uses `userData` — it owns that directory and an
+ * environment variable should not be able to move a user's library out from
+ * under them. Unpackaged, an explicit `POKE_SORT_DATA_DIR` wins, which is what
+ * makes it possible to point a dev run at a full catalog instead of whatever
+ * happens to be in the default location. The value used to be overwritten
+ * unconditionally, so setting it did nothing and the override looked broken.
+ */
+function resolveDataDir(): string {
+  const override = process.env.POKE_SORT_DATA_DIR;
+  if (!app.isPackaged && override) {
+    console.log(`[main] Using POKE_SORT_DATA_DIR override: ${override}`);
+    return override;
+  }
+  return app.getPath("userData");
+}
 
 const SERVER_ENTRY = app.isPackaged
   ? path.join(process.resourcesPath, "server", "index.js")
@@ -118,8 +148,9 @@ function startServer(): Promise<number> {
       stdio: "inherit",
       env: {
         ...process.env,
-        // Everything the app writes goes under Electron's userData dir.
-        POKE_SORT_DATA_DIR: app.getPath("userData"),
+        // Everything the app writes goes under one directory (see
+        // resolveDataDir: userData, unless a dev run overrides it).
+        POKE_SORT_DATA_DIR: resolveDataDir(),
         POKE_SORT_MIGRATIONS_DIR: MIGRATIONS_DIR,
         POKE_SORT_STATIC_DIR: STATIC_DIR,
         POKE_SORT_HOST: "127.0.0.1",
