@@ -26,7 +26,12 @@
   },
   "conditionRow": {
     "selectPlaceholder": "Select...",
-    "valuePlaceholder": "Value..."
+    "valuePlaceholder": "Value...",
+    "searchPlaceholder": "Search…",
+    "selectGroup": "select all",
+    "clearGroup": "clear",
+    "moreResults": "{{count}} more — refine your search",
+    "noOptions": "No values in the catalog yet"
   },
   "ruleGroupEditor": {
     "and": "AND",

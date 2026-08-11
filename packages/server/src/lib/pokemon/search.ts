@@ -1,6 +1,7 @@
 import type { PlayingCard, Result } from "@magic-vault/shared";
 import { QUERY_MIN_LENGTH } from "@magic-vault/shared";
 import type { CardSearchAdapter } from "../card-search/types";
+import { getSetInfo, releaseYear } from "../set-index";
 
 export const POKEMON_DEFAULT_URL = "https://api.tcgdex.net/v2/en/cards";
 
@@ -56,6 +57,7 @@ export interface PokemonCardDetail extends PokemonCardBrief {
   energyType?: string;
   effect?: string;
   attacks?: PokemonAttack[];
+  weaknesses?: { type?: string; value?: string }[];
   abilities?: PokemonAbility[];
   retreat?: number;
   pricing?: PokemonPricing;
@@ -137,12 +139,36 @@ export function normalizePokemonCard(
       .join(" - ") ||
     (raw.category ?? "");
 
+  // Enrich the stored/raw set object with its series and release year. The bin
+  // rule engine resolves paths against `raw` first, and TCGdex does not put
+  // either on the card — so without this, `set.serie.name` and `set.releaseYear`
+  // are unreachable from a rule.
+  const setInfo = getSetInfo(raw.set?.id);
+  const enrichedRaw = {
+    ...raw,
+    // Weaknesses are [{type, value}]; a rule path cannot reach into an array of
+    // objects, so the types are flattened to a plain string array.
+    weaknessTypes: (raw.weaknesses ?? [])
+      .map((w) => w.type)
+      .filter((t): t is string => !!t),
+    ...(setInfo
+      ? {
+          set: {
+            ...raw.set,
+            serie: { id: setInfo.serieId, name: setInfo.serieName },
+            releaseDate: setInfo.releaseDate,
+            releaseYear: releaseYear(setInfo),
+          },
+        }
+      : {}),
+  };
+
   return {
     id: raw.id,
     name: raw.name ?? "",
     image: large ? { small: small || large, normal: large } : null,
     set: raw.set?.id ?? "",
-    setName: raw.set?.name || (raw.set?.id ?? ""),
+    setName: setInfo?.name ?? raw.set?.name ?? raw.set?.id ?? "",
     collectorNumber: raw.localId ?? "",
     rarity: (raw.rarity ?? "").toLowerCase(),
     typeLine,
@@ -154,7 +180,7 @@ export function normalizePokemonCard(
     price: resolvePrice(raw.pricing, variant),
     sourceUrl: `https://tcgdex.dev/cards/${raw.id}`,
     cmc: raw.retreat,
-    raw,
+    raw: enrichedRaw,
   };
 }
 

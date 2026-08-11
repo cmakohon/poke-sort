@@ -5,6 +5,7 @@ import { cardImageVectors } from "../db/schema";
 import { resolveGameDataSourceUrl } from "./card-search/resolve";
 import type { SyncSource, SyncSourceCard } from "./card-search/sync-types";
 import { sendDiscordNotification } from "./discord";
+import { invalidateFacets } from "./facets";
 import { pokemonSyncSource } from "./pokemon/sync";
 import { scryfallSyncSource } from "./scryfall/sync";
 import { vectorizeImageFromBuffer } from "./vectorize";
@@ -318,6 +319,9 @@ async function runSync(source: SyncSource, lang: string): Promise<void> {
   // so work already paid for in embedding time is not thrown away.
   await flush();
   await writeChain;
+
+  // The catalog changed, so any cached facet lists are stale.
+  invalidateFacets();
 
   if (cancelled) {
     state = { ...state, status: "cancelled" };

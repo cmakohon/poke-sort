@@ -144,6 +144,10 @@ export const POKEMON_FIELD_DEFINITIONS: FieldMeta[] = [
     type: "enum",
     path: "rarity",
     operators: ENUM_OPERATORS,
+    // Facet-driven so the list matches what is actually in the catalog; the
+    // full vocabulary stays as the fallback.
+    optionsSource: "facet",
+    facetKey: "rarity",
     options: asOptions(POKEMON_RARITIES),
   },
   {
@@ -181,15 +185,37 @@ export const POKEMON_FIELD_DEFINITIONS: FieldMeta[] = [
     operators: NUMERIC_OPERATORS,
   },
   {
-    // REVIEW: path is `set.id`, NOT `set`. On TCGdex `raw.set` is an object
+    // Series first: 21 values against 218 sets, and "all of Scarlet & Violet"
+    // is the rule people actually want to write. TCGdex does not put the series
+    // on a card, so normalizePokemonCard injects it from the set index.
+    field: "series",
+    label: "Series",
+    type: "enum",
+    path: "set.serie.name",
+    operators: ENUM_OPERATORS,
+    optionsSource: "facet",
+    facetKey: "series",
+  },
+  {
+    // path is `set.id`, NOT `set`. On TCGdex `raw.set` is an object
     // ({id, name, cardCount, ...}); pointing at it would stringify to
     // "[object Object]" and never match. MTG can use a bare `set` because
     // Scryfall's raw `set` is already the set code.
     field: "set",
-    label: "Set Code",
-    type: "string",
+    label: "Set",
+    type: "enum",
     path: "set.id",
-    operators: STRING_OPERATORS,
+    operators: ENUM_OPERATORS,
+    optionsSource: "facet",
+    facetKey: "sets",
+  },
+  {
+    // Injected by the normalizer from the set index; not on the TCGdex card.
+    field: "release_year",
+    label: "Release Year",
+    type: "numeric",
+    path: "set.releaseYear",
+    operators: NUMERIC_OPERATORS,
   },
   {
     field: "set_name",
@@ -224,13 +250,6 @@ export const POKEMON_FIELD_DEFINITIONS: FieldMeta[] = [
     operators: NUMERIC_OPERATORS,
   },
   {
-    field: "illustrator",
-    label: "Illustrator",
-    type: "string",
-    path: "illustrator",
-    operators: STRING_OPERATORS,
-  },
-  {
     // REVIEW: only present on Sword & Shield era cards and newer; older cards
     // have no regulation mark at all. Kept as a free-text field rather than an
     // enum because the letter series keeps growing (currently A-I).
@@ -248,6 +267,58 @@ export const POKEMON_FIELD_DEFINITIONS: FieldMeta[] = [
     type: "string",
     path: "text",
     operators: STRING_OPERATORS,
+  },
+  {
+    // Generation sorting: 1-151 is Gen 1, and so on. `dexId` is an array on the
+    // handful of cards depicting several Pokemon; a numeric comparison uses the
+    // first entry, which is the one the card is named for.
+    field: "dex_id",
+    label: "Pokedex Number",
+    type: "numeric",
+    path: "dexId",
+    operators: NUMERIC_OPERATORS,
+  },
+  {
+    // Only present on the ~11% of cards that are Trainers.
+    field: "trainer_type",
+    label: "Trainer Type",
+    type: "enum",
+    path: "trainerType",
+    operators: ENUM_OPERATORS,
+    optionsSource: "facet",
+    facetKey: "trainerType",
+  },
+  {
+    // Flattened from weaknesses[{type,value}] by the normalizer, because a rule
+    // path cannot index into an array of objects.
+    field: "weakness",
+    label: "Weakness",
+    type: "set",
+    path: "weaknessTypes",
+    operators: SET_OPERATORS,
+    optionsSource: "facet",
+    facetKey: "weakness",
+  },
+  {
+    field: "illustrator",
+    label: "Illustrator",
+    type: "enum",
+    path: "illustrator",
+    operators: ENUM_OPERATORS,
+    // Over a thousand distinct values — needs a searchable picker, not a list.
+    optionsSource: "facet",
+    facetKey: "illustrator",
+  },
+  {
+    field: "legal_expanded",
+    label: "Expanded Legal",
+    type: "enum",
+    path: "legal.expanded",
+    operators: ENUM_OPERATORS,
+    options: [
+      { value: "true", label: "Yes" },
+      { value: "false", label: "No" },
+    ],
   },
   {
     // REVIEW: drop this if it is not worth a bin. FieldType has no boolean, so

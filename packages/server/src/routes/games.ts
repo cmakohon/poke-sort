@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { db } from "../db";
 import { cardImageVectors, games } from "../db/schema";
+import { getGameFacets } from "../lib/facets";
 import { requireAuth, requireRole, type AppEnv } from "../middleware/auth";
 import type { FieldMeta, Game } from "@magic-vault/shared";
 
@@ -33,6 +34,19 @@ router.get("/", requireAuth, async (c) => {
   try {
     const rows = await db.select().from(games).orderBy(games.name);
     return c.json({ success: true, data: rows.map(toGame) });
+  } catch (err) {
+    console.error(err);
+    return c.json({ success: false, message: "Database error." }, 500);
+  }
+});
+
+// GET /games/:key/facets — which values actually exist in the local catalog.
+// Registered before /:guid routes so "facets" is never read as a guid.
+router.get("/:key/facets", requireAuth, async (c) => {
+  const key = c.req.param("key");
+  const lang = c.req.query("lang") ?? "en";
+  try {
+    return c.json({ success: true, data: await getGameFacets(key, lang) });
   } catch (err) {
     console.error(err);
     return c.json({ success: false, message: "Database error." }, 500);

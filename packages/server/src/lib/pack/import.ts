@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { cardImageVectors } from "../../db/schema";
 import { incompatibilityReason } from "../embedding-identity";
+import { invalidateFacets } from "../facets";
 import { decodePack, type PackHeader } from "./format";
 
 /** Matches the sync writer: ~250 x 768 floats keeps a statement near 2 MB. */
@@ -66,6 +67,7 @@ export async function importPack(
     onProgress?.(end, header.count);
   }
 
+  invalidateFacets();
   return { header, inserted };
 }
 

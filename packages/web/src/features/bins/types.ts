@@ -10,6 +10,9 @@ export interface BinConfigsContextValue {
   configs: BinConfig[];
   sets: BinSet[];
   fieldDefinitions: FieldMeta[];
+  /** Which catalog facet-backed pickers should read their options from. */
+  gameKey?: string;
+  lang: string;
   isPending: boolean;
   isActivating: boolean;
   isPresetMutating: boolean;
