@@ -5,12 +5,14 @@ import { Toaster as Sonner, type ToasterProps } from "sonner"
 import { IconCircleCheck, IconInfoCircle, IconAlertTriangle, IconAlertOctagon, IconLoader } from "@tabler/icons-react"
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  // resolvedTheme, not theme: `theme` is "system" until something resolves it,
-  // and handing "system" to sonner makes it consult its own media query. That
-  // is a second, independent source of truth — with no ThemeProvider mounted it
-  // styled toasts from the OS setting while the app itself stayed light, so
-  // dark toast chrome carried light-theme text. Following the resolved value
-  // keeps the toast and the page reading from the same answer.
+  // resolvedTheme rather than theme, so this never hands sonner the literal
+  // "system" and leaves it to consult its own media query.
+  //
+  // Hardening, not the fix for the unreadable toasts — that was the missing
+  // ThemeProvider, which left sonner theming from the OS while the page stayed
+  // light. With a provider mounted the two agree either way (verified). This
+  // removes the second source of truth regardless, so the toast follows the
+  // page rather than happening to match it.
   const { resolvedTheme } = useTheme()
 
   return (
