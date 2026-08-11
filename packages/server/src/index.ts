@@ -64,7 +64,7 @@ if (STATIC_DIR) {
   app.use("/*", serveStatic({ root: path.relative(process.cwd(), STATIC_DIR) }));
 
   // History fallback. React Router's createBrowserRouter needs deep links like
-  // /app/collections to resolve to index.html — which is also why the app is
+  // /collections to resolve to index.html — which is also why the app is
   // served over http rather than file://, where no such fallback is possible.
   app.get("*", (c) => c.html(indexHtml));
 }

@@ -11,17 +11,7 @@
     "expandSidebar": "Expand sidebar ([)"
   },
   "breadcrumb": {
-    "account": "Account",
     "sortingLogic": "Sorting Logic"
-  },
-  "emailVerification": {
-    "banner": "Please verify your email address ({{email}}) to secure your account.",
-    "sendCode": "Send code",
-    "haveCode": "I have a code",
-    "codeSentTitle": "Verification code sent",
-    "codeSentDescription": "Check {{email}} for a code.",
-    "codeFailedTitle": "Couldn't send verification code",
-    "codeFailedDescription": "Please try again in a moment."
   },
   "statusFooter": {
     "camera": "Camera",

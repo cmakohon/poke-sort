@@ -116,7 +116,7 @@ function SyncStatusItem() {
   const done = processed + skipped;
 
   const visible =
-    status !== "idle" && status !== "cancelled" && pathname !== "/app/admin";
+    status !== "idle" && status !== "cancelled" && pathname !== "/admin";
   if (!visible) return null;
 
   const dot =
@@ -150,7 +150,7 @@ function SyncStatusItem() {
   return (
     <Tooltip>
       <TooltipTrigger
-        onClick={() => navigate("/app/admin")}
+        onClick={() => navigate("/admin")}
         className="flex items-center gap-1.5 cursor-pointer hover:text-foreground transition-colors min-w-0"
       >
         <StatusDot variant={dot} />

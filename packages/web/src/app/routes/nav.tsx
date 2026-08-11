@@ -207,32 +207,32 @@ export function AppNav() {
 
   const navItems: NavItemDef[] = [
     {
-      to: "/app",
+      to: "/",
       icon: <IconCameraSpark size={20} />,
       label: t("nav.scanner"),
       end: true,
       desktopOnly: true,
     },
     {
-      to: "/app/collections",
+      to: "/collections",
       icon: <IconAlbum size={20} />,
       label: t("nav.collections"),
       desktopOnly: true,
     },
     {
-      to: "/app/monitor",
+      to: "/monitor",
       icon: <IconHeartRateMonitor size={20} />,
       label: t("nav.monitor"),
       badge: hasLiveSessions,
     },
     {
-      to: "/app/calibrate",
+      to: "/calibrate",
       icon: <IconAdjustments size={20} />,
       label: t("nav.calibrate"),
       desktopOnly: true,
     },
     {
-      to: "/app/settings",
+      to: "/settings",
       icon: <IconSettings size={20} />,
       label: t("nav.settings"),
       desktopOnly: true,
@@ -240,7 +240,7 @@ export function AppNav() {
     ...(isAdmin
       ? [
           {
-            to: "/app/admin",
+            to: "/admin",
             icon: <IconDatabaseCog size={20} />,
             label: t("nav.admin"),
             desktopOnly: true,
@@ -295,8 +295,8 @@ export function AppNav() {
             return <CollapsedNavItem key={item.to} {...item} />;
           }
 
-          const isCollections = item.to === "/app/collections";
-          const isMonitor = item.to === "/app/monitor";
+          const isCollections = item.to === "/collections";
+          const isMonitor = item.to === "/monitor";
 
           return (
             <div key={item.to} className="mx-1">
@@ -306,7 +306,7 @@ export function AppNav() {
                   {topCollections.map((c) => (
                     <SubItem
                       key={c.guid}
-                      to={`/app/collections/${c.guid}/bins`}
+                      to={`/collections/${c.guid}/bins`}
                       label={c.name}
                     />
                   ))}
@@ -317,7 +317,7 @@ export function AppNav() {
                   {topMonitor.map((c) => (
                     <SubItem
                       key={c.guid}
-                      to={`/app/monitor/${c.guid}`}
+                      to={`/monitor/${c.guid}`}
                       label={c.name}
                       badge={!!locks[c.guid]}
                     />

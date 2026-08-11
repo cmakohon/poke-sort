@@ -178,7 +178,7 @@ export default function MonitorSessionsPage() {
             >
               <button
                 type="button"
-                onClick={() => navigate(`/app/monitor/${collection.guid}`)}
+                onClick={() => navigate(`/monitor/${collection.guid}`)}
                 className="flex items-center gap-3 flex-1 min-w-0 text-left hover:opacity-80 transition-opacity"
               >
                 <StatusIcon

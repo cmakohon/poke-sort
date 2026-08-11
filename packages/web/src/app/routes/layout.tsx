@@ -1,5 +1,5 @@
 import { AppProviders } from "@/app/providers";
-import { AppNav } from "@/app/routes/app/nav";
+import { AppNav } from "@/app/routes/nav";
 import { AppBreadcrumb } from "@/components/app-breadcrumb";
 import { EnvBanner } from "@/components/env-banner";
 import { RequireCollectionDialog } from "@/components/require-collection-dialog";
