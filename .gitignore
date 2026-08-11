@@ -55,3 +55,6 @@ packages/server/.poke-sort-catalog/
 
 # tesseract language data, downloaded on first OCR run
 *.traineddata
+
+# captured eval signals (regenerate with `pnpm eval:capture`)
+packages/server/eval/signals.json

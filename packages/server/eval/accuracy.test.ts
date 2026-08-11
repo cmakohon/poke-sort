@@ -136,8 +136,10 @@ describe.skipIf(manifest.length === 0)("pokemon identification accuracy", () => 
 
     // A regression guard, not a target. These are floors the pipeline clears
     // today against degraded probes over the full catalog; tighten them as it
-    // improves rather than loosening them when something breaks.
-    expect(top1 / n).toBeGreaterThan(0.85);
-    expect(falseAccept / n).toBeLessThan(0.05);
+    // improves rather than loosening them when something breaks. Current run:
+    // top-1 97.3%, accept 87.3%, false accepts 0, review 12.7%.
+    expect(top1 / n).toBeGreaterThan(0.93);
+    expect(falseAccept / n).toBeLessThan(0.02);
+    expect(accepted / n).toBeGreaterThan(0.8);
   }, 600_000);
 });

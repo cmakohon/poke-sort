@@ -37,11 +37,28 @@ export async function disposeOcr(): Promise<void> {
   await worker.terminate();
 }
 
+/**
+ * A rescue pass for text Tesseract's own binarisation cannot separate.
+ *
+ * Several eras print the collector number in silver-on-holofoil (ex, neo,
+ * hgss) or on a gradient footer (dp) — crops a person reads instantly but that
+ * OCR returns garbage for, because adaptive binarisation smears the foil
+ * texture into the glyphs. A hard threshold flattens the foil; which level
+ * works depends on the card, so a short ladder is tried, both polarities.
+ * Measured on the weakest-era fixtures: 2/33 plain, 20/33 with the ladder.
+ */
+interface ReadOptions {
+  scale?: number;
+  threshold?: number;
+  negate?: boolean;
+}
+
 async function readRegion(
   image: Sharp,
   width: number,
   height: number,
   region: OcrRegion,
+  opts: ReadOptions = {},
 ): Promise<string> {
   const left = Math.max(0, Math.round(region.x0 * width));
   const top = Math.max(0, Math.round(region.y0 * height));
@@ -49,14 +66,18 @@ async function readRegion(
   const cropHeight = Math.min(height - top, Math.round((region.y1 - region.y0) * height));
   if (cropWidth <= 0 || cropHeight <= 0) return "";
 
-  const buffer = await image
+  // Upscale, greyscale and normalise: card text is small in the frame and
+  // Tesseract is markedly better on a larger, high-contrast crop.
+  let pipeline = image
     .clone()
     .extract({ left, top, width: cropWidth, height: cropHeight })
-    // Upscale, greyscale and normalise: card text is small in the frame and
-    // Tesseract is markedly better on a larger, high-contrast crop.
-    .resize({ width: cropWidth * 3 })
+    .resize({ width: cropWidth * (opts.scale ?? 3) })
     .greyscale()
-    .normalise()
+    .normalise();
+  if (opts.threshold != null) pipeline = pipeline.threshold(opts.threshold);
+  if (opts.negate) pipeline = pipeline.negate();
+
+  const buffer = await pipeline
     // Tesseract warns and guesses when the DPI is implausible; the upscale
     // above makes 300 the honest figure.
     .withMetadata({ density: 300 })
@@ -70,6 +91,19 @@ async function readRegion(
   const { data } = await worker.recognize(buffer);
   return data.text.trim();
 }
+
+/**
+ * The escalation ladder, cheapest first. Only run when the plain pass parsed
+ * no fraction at all — the card was headed to review anyway, so a couple of
+ * extra reads to rescue it is the cheap side of the trade.
+ */
+const ESCALATION: ReadOptions[] = [
+  { scale: 4, threshold: 100 },
+  { scale: 4, threshold: 125 },
+  { scale: 4, threshold: 145 },
+  { scale: 4, threshold: 100, negate: true },
+  { scale: 4, threshold: 125, negate: true },
+];
 
 /** "58/102" -> {58, 102}; also accepts "058/102" and spaced variants. */
 export function parseCollectorNumber(
@@ -154,6 +188,23 @@ export async function readCard(
       reading.setTotal = parsed.setTotal;
     } else {
       reading.collectorNumber ??= parsed.collectorNumber;
+    }
+  }
+  // Escalate only when nothing parsed as a full fraction: the dark-footer
+  // eras (ex, neo, hgss, dp) defeat plain binarisation, and the deep-right
+  // band is where all of them print the number.
+  if (reading.setTotal == null) {
+    const deepRight = profile.collectorNumber[0];
+    for (const opts of ESCALATION) {
+      const text = await readRegion(image, width, height, deepRight, opts);
+      if (!text) continue;
+      const parsed = parseCollectorNumber(text);
+      if (parsed?.setTotal != null) {
+        rawReadings.push(text);
+        reading.collectorNumber = parsed.collectorNumber;
+        reading.setTotal = parsed.setTotal;
+        break;
+      }
     }
   }
   if (rawReadings.length > 0) reading.collectorNumberRaw = rawReadings.join(" ");

@@ -59,6 +59,21 @@ export function allSets(): SetInfo[] {
   return Object.values(data.sets);
 }
 
+/**
+ * Sets that exist only as digital renders — Pokemon TCG Pocket.
+ *
+ * A physical sorter can never scan one, but the catalog carries them (1,649
+ * cards) and most share their art with a physical printing. To the embedding
+ * they are near-perfect twins: 89 of 134 physical eval probes had a Pocket
+ * card among their ten nearest neighbours, and two had one as THE nearest.
+ * Identification excludes them; search and the catalog keep them.
+ */
+export function digitalOnlySetIds(): string[] {
+  return Object.values(data.sets)
+    .filter((s) => s.serieId === "tcgp")
+    .map((s) => s.id);
+}
+
 /** Year a set released, for "everything before 2010" style rules. */
 export function releaseYear(info: SetInfo | null): number | null {
   if (!info?.releaseDate) return null;

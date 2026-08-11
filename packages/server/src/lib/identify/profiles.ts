@@ -1,3 +1,5 @@
+import { digitalOnlySetIds } from "../set-index";
+
 /**
  * Per-game identification profiles.
  *
@@ -32,6 +34,12 @@ export interface OcrProfile {
 
 export interface IdentityProfile {
   gameKey: string;
+  /**
+   * Sets a physical scan can never be: digital-only printings. They stay in
+   * the catalog for search and pricing, but as identification candidates they
+   * are pure noise — near-perfect embedding twins of their physical reprints.
+   */
+  excludedSetIds: string[];
   /** How many nearest neighbours to re-rank. */
   candidateLimit: number;
   /** Candidates further than this are not considered at all. */
@@ -44,7 +52,17 @@ export interface IdentityProfile {
     hp: number;
   };
   /** Sort as-is only when both hold; otherwise the card goes to review. */
-  accept: { minScore: number; minMargin: number };
+  accept: {
+    minScore: number;
+    minMargin: number;
+    /**
+     * A release valve for the same-name-reprint pile: when the nearest
+     * embedding match is very close AND clearly separated from the next
+     * candidate, the image alone is unambiguous and a thin FUSED margin (which
+     * compresses large distance gaps) should not hold the card hostage.
+     */
+    distanceGap?: { d1Max: number; gapMin: number };
+  };
   /** Below this, treat as no match rather than asking a human. */
   reviewFloor: number;
   ocr?: OcrProfile;
@@ -79,34 +97,50 @@ const POKEMON_OCR: OcrProfile = {
    * number, which is a second, independent signal for which set a card is from.
    */
   collectorNumber: [
-    { x0: 0.50, y0: 0.90, x1: 0.99, y1: 0.97 },
-    { x0: 0.02, y0: 0.90, x1: 0.50, y1: 0.97 },
-    { x0: 0.02, y0: 0.92, x1: 0.99, y1: 1.0 },
+    // Deep right: dp, base, later-ex, neo print the number at y=.955-.985 —
+    // BELOW the band this list used to stop at (y=.97), which cut the digits
+    // in half. Verified by cropping fixtures and looking.
+    { x0: 0.5, y0: 0.945, x1: 0.99, y1: 0.995 },
+    // Mid right: early-ex, xy, bw, sm.
+    { x0: 0.5, y0: 0.895, x1: 0.99, y1: 0.95 },
+    // Left: swsh moved the number bottom-left.
+    { x0: 0.02, y0: 0.9, x1: 0.5, y1: 0.97 },
+    // Wide: sv reads most reliably from a full-width strip. Edges trimmed so
+    // the rotation border the capture adds cannot dominate normalisation.
+    { x0: 0.03, y0: 0.93, x1: 0.97, y1: 0.995 },
   ],
   hp: [{ x0: 0.6, y0: 0.03, x1: 0.98, y1: 0.12, charset: "0123456789HP" }],
 };
 
 export const POKEMON_PROFILE: IdentityProfile = {
   gameKey: "pokemon",
+  excludedSetIds: digitalOnlySetIds(),
   // Was 5. For a name printed across dozens of sets the right answer routinely
   // sits below rank 5 on embedding distance alone, so re-ranking never saw it.
   candidateLimit: 50,
   distanceCutoff: 0.3,
-  // Starting weights, to be tuned against the eval harness rather than treated
-  // as final. The collector number is the strongest signal when OCR reads it,
-  // but OCR fails often enough that the embedding still has to carry the run.
+  // Tuned against eval/signals.json via eval/tune.ts (150 degraded-render
+  // probes, full catalog): 87.3% accept at zero false accepts, held-out
+  // 0/3000 across 40 fixed-config splits. Deliberately NOT the sweep argmax —
+  // that sat one margin notch from a config with 2 false accepts, and a
+  // procedure-level cross-validation showed argmax-picking leaks ~1.4% false
+  // accepts on held-out halves. These sit two notches back and cost 2 points
+  // of accept rate for it.
+  //
+  // The embedding carries half the mass because on these probes it is by far
+  // the most reliable signal. Revisit against real camera captures when they
+  // exist — glare and focus will cost the embedding more than they cost OCR.
   weights: {
-    embedding: 0.4,
-    name: 0.2,
-    collectorNumber: 0.25,
-    // Weighted just under the number: it is decisive when present, but only
-    // Sword & Shield era cards onward print one, so it is often absent. The
+    embedding: 0.5,
+    name: 0.1,
+    collectorNumber: 0.2,
+    // Decisive when present, but only Sword & Shield onward prints one. The
     // fusion renormalises over the signals actually available, so a card with
     // no printed code is not penalised for it.
-    setAbbreviation: 0.1,
+    setAbbreviation: 0.05,
     hp: 0.05,
   },
-  accept: { minScore: 0.6, minMargin: 0.08 },
+  accept: { minScore: 0.5, minMargin: 0.05 },
   reviewFloor: 0.3,
   ocr: POKEMON_OCR,
 };

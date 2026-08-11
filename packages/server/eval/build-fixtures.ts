@@ -20,6 +20,7 @@ import sharp from "sharp";
 import { db } from "../src/db";
 import { migrateDatabase } from "../src/db/migrate";
 import { cardImageVectors } from "../src/db/schema";
+import { digitalOnlySetIds } from "../src/lib/set-index";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURES = path.join(here, "fixtures", "pokemon");
@@ -98,10 +99,16 @@ async function main() {
 
   // Evenly spaced across the id-sorted catalog so the sample spans every era,
   // rather than clustering in whichever sets happen to sort first.
+  // Digital-only sets are excluded from PROBES for the same reason the
+  // identify path excludes them as candidates: a physical scanner will never
+  // capture one, so accuracy against them measures nothing real. They stay in
+  // the catalog as distractors would — except identification filters them too.
+  const digital = digitalOnlySetIds();
   const rows = await db.execute<Row>(sql`
     SELECT card_id, name, set_code, card_data
     FROM cards
     WHERE card_data IS NOT NULL
+      AND set_code NOT IN (${sql.join(digital.map((d) => sql`${d}`), sql`, `)})
     ORDER BY card_id
   `);
   const step = Math.max(1, Math.floor(rows.rows.length / SAMPLE));

@@ -96,14 +96,26 @@ function hpOf(gameKey: string, data: unknown): number | null {
   return typeof hp === "number" ? hp : null;
 }
 
-async function fetchCandidates(
+/** Exported for the eval harness, which captures the intermediate stages. */
+export async function fetchCandidates(
   embedding: number[],
   gameKey: string,
   lang: string,
   limit: number,
   cutoff: number,
+  excludedSetIds: string[] = [],
 ): Promise<CandidateRow[]> {
   const vector = `[${embedding.join(",")}]`;
+  // Digital-only sets are excluded here, at candidate time, rather than from
+  // the catalog: search and pricing still want them, but a physical capture
+  // can never be one, and their art-identical twins eat ranking margin.
+  const exclusion =
+    excludedSetIds.length > 0
+      ? sql`AND set_code NOT IN (${sql.join(
+          excludedSetIds.map((id) => sql`${id}`),
+          sql`, `,
+        )})`
+      : sql``;
   const result = await db.execute<CandidateRow>(sql`
     SELECT
       card_id,
@@ -117,10 +129,31 @@ async function fetchCandidates(
     WHERE game_key = ${gameKey}
       AND lang = ${lang}
       AND (embedding <=> ${vector}::vector(768)) < ${cutoff}
+      ${exclusion}
     ORDER BY embedding <=> ${vector}::vector(768)
     LIMIT ${limit}
   `);
   return result.rows.map((r) => ({ ...r, distance: Number(r.distance) }));
+}
+
+/**
+ * The rerank view of a candidate row. Shared between the live pipeline and the
+ * eval capture script, so the two can never drift apart on what a candidate
+ * looks like to the fusion.
+ */
+export function buildRerankInputs(
+  rows: CandidateRow[],
+  gameKey: string,
+): RerankInput[] {
+  return rows.map((row) => ({
+    id: row.card_id,
+    distance: row.distance,
+    name: row.name,
+    collectorNumber: row.collector_number,
+    setTotal: row.set_total,
+    hp: hpOf(gameKey, row.card_data),
+    setAbbreviation: abbreviationOf(gameKey, row),
+  }));
 }
 
 /** Embedding-only path for games with no identity profile: unchanged behaviour. */
@@ -166,15 +199,7 @@ async function withProfile(
     }
   }
 
-  const inputs: RerankInput[] = rows.map((row) => ({
-    id: row.card_id,
-    distance: row.distance,
-    name: row.name,
-    collectorNumber: row.collector_number,
-    setTotal: row.set_total,
-    hp: hpOf(gameKey, row.card_data),
-    setAbbreviation: abbreviationOf(gameKey, row),
-  }));
+  const inputs = buildRerankInputs(rows, gameKey);
 
   const ranked = rerank(inputs, ocr, profile);
   const { tier, margin } = decideTier(ranked, profile);
@@ -217,6 +242,7 @@ export async function identifyCard(
     lang,
     profile?.candidateLimit ?? LEGACY_LIMIT,
     profile?.distanceCutoff ?? LEGACY_CUTOFF,
+    profile?.excludedSetIds ?? [],
   );
 
   if (rows.length === 0) {
