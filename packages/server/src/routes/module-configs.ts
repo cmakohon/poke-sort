@@ -6,6 +6,42 @@ import { requireAuth, requireOrg, type AppEnv } from "../middleware/auth";
 
 const router = new Hono<AppEnv>();
 
+/**
+ * Copies only the seven servo fields out of a request body.
+ *
+ * The body used to be spread straight into the insert, which let it decide
+ * columns it has no business setting — including `moduleNumber`, which is
+ * spread over by `...calibration` and so could point the write at a different
+ * servo module than the URL named. Enumerating the fields is what makes the
+ * URL parameter authoritative again.
+ */
+function pickCalibration(body: unknown): ServoCalibration | null {
+  if (!body || typeof body !== "object") return null;
+  const b = body as Record<string, unknown>;
+  const keys = [
+    "bottomClosed",
+    "bottomOpen",
+    "paddleClosed",
+    "paddleOpen",
+    "pusherLeft",
+    "pusherNeutral",
+    "pusherRight",
+  ] as const;
+  const out = {} as Record<(typeof keys)[number], number>;
+  for (const key of keys) {
+    const value = b[key];
+    if (typeof value !== "number" || !Number.isFinite(value)) return null;
+    out[key] = value;
+  }
+  return out;
+}
+
+/** Three physical diverter modules; anything else is not addressable. */
+function parseModuleNumber(raw: string | undefined): 1 | 2 | 3 | null {
+  const n = Number.parseInt(raw ?? "", 10);
+  return n === 1 || n === 2 || n === 3 ? n : null;
+}
+
 function toModuleConfig(row: {
   moduleNumber: number;
   bottomClosed: number;
@@ -58,8 +94,17 @@ router.get("/", requireAuth, requireOrg, async (c) => {
 // PUT /modules/:moduleNumber
 router.put("/:moduleNumber", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
-  const moduleNumber = parseInt(c.req.param("moduleNumber")) as 1 | 2 | 3;
-  const calibration = await c.req.json<ServoCalibration>();
+  const moduleNumber = parseModuleNumber(c.req.param("moduleNumber"));
+  if (moduleNumber === null) {
+    return c.json({ success: false, message: "Module number must be 1, 2 or 3." }, 400);
+  }
+  const calibration = pickCalibration(await c.req.json().catch(() => null));
+  if (!calibration) {
+    return c.json(
+      { success: false, message: "All seven servo positions are required, as numbers." },
+      400,
+    );
+  }
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
       await tx

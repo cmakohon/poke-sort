@@ -6,6 +6,30 @@ import { requireAuth, requireOrg, type AppEnv } from "../middleware/auth";
 
 const router = new Hono<AppEnv>();
 
+/**
+ * Copies only the five feeder fields out of a request body, so the body cannot
+ * choose columns of its own (`orgId`, `id`, timestamps) by being spread whole
+ * into the insert.
+ */
+function pickFeederCalibration(body: unknown): FeederCalibration | null {
+  if (!body || typeof body !== "object") return null;
+  const b = body as Record<string, unknown>;
+  const keys = [
+    "speed",
+    "duration",
+    "pulseDuration",
+    "pauseDuration",
+    "settleDuration",
+  ] as const;
+  const out = {} as Record<(typeof keys)[number], number>;
+  for (const key of keys) {
+    const value = b[key];
+    if (typeof value !== "number" || !Number.isFinite(value)) return null;
+    out[key] = value;
+  }
+  return out;
+}
+
 // GET /feeder
 router.get("/", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
@@ -35,7 +59,13 @@ router.get("/", requireAuth, requireOrg, async (c) => {
 // PUT /feeder
 router.put("/", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
-  const calibration = await c.req.json<FeederCalibration>();
+  const calibration = pickFeederCalibration(await c.req.json().catch(() => null));
+  if (!calibration) {
+    return c.json(
+      { success: false, message: "All five feeder settings are required, as numbers." },
+      400,
+    );
+  }
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
       await tx
