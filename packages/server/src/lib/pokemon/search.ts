@@ -183,12 +183,24 @@ export function normalizePokemonCard(
   };
 }
 
+/**
+ * Every outbound request gets a deadline.
+ *
+ * These run inside a scan: the price refresh is awaited before the bin decision
+ * is made, and Node's fetch has no default timeout, so a hung connection would
+ * otherwise hold a socket open indefinitely with nothing to end it. The caller
+ * stops waiting after PRICE_TIMEOUT_MS regardless — this is what stops the
+ * abandoned request from outliving it.
+ */
+const REQUEST_TIMEOUT_MS = 10_000;
+
 async function fetchDetail(
   id: string,
   baseUrl: string,
 ): Promise<PokemonCardDetail | null> {
   const response = await fetch(`${baseUrl}/${id}`, {
     headers: POKEMON_HEADERS,
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
   if (!response.ok) return null;
   return (await response.json()) as PokemonCardDetail;
@@ -212,7 +224,10 @@ export async function Search(
   }
 
   const url = `${baseUrl}?name=${encodeURIComponent(query)}&pagination:itemsPerPage=${MAX_ENRICHED_RESULTS}`;
-  const response = await fetch(url, { headers: POKEMON_HEADERS });
+  const response = await fetch(url, {
+    headers: POKEMON_HEADERS,
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
 
   if (!response.ok) {
     return {

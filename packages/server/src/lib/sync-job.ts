@@ -1,5 +1,6 @@
 import type { SyncState, SyncStatus } from "@poke-sort/shared";
 import { eq } from "drizzle-orm";
+import { intFromEnv } from "../config";
 import { db } from "../db";
 import { cardImageVectors } from "../db/schema";
 import { resolveGameDataSourceUrl } from "./card-search/resolve";
@@ -112,19 +113,7 @@ export function startSync(
 // which spawned no workers at all: Promise.all([]) resolved instantly and the
 // job reported `completed` with 0 processed, so a misconfigured .env looked
 // exactly like a successful sync.
-const VECTORIZE_CONCURRENCY = (() => {
-  const raw = process.env.VECTORIZE_CONCURRENCY;
-  const parsed = Number.parseInt(raw ?? "4", 10);
-  if (!Number.isFinite(parsed) || parsed < 1) {
-    if (raw !== undefined) {
-      console.warn(
-        `[sync] Ignoring VECTORIZE_CONCURRENCY=${raw}; falling back to 4.`,
-      );
-    }
-    return 4;
-  }
-  return parsed;
-})();
+const VECTORIZE_CONCURRENCY = intFromEnv("VECTORIZE_CONCURRENCY", 4);
 
 /** Rows per insert statement. ~250 x 768 floats keeps a statement near 2 MB. */
 const WRITE_BATCH_SIZE = 250;
@@ -296,6 +285,10 @@ async function runSync(source: SyncSource, lang: string): Promise<void> {
 
       if (pending.length >= WRITE_BATCH_SIZE) await flush();
     } catch (err) {
+      // A cancelled run aborts every in-flight fetch. Those are not failures —
+      // counting them made "cancelled" reports look like the catalog was
+      // broken, with an error tally equal to the concurrency level.
+      if (cancelFlag || abortController?.signal.aborted) return;
       state = { ...state, errors: state.errors + 1 };
       const msg = err instanceof Error ? err.message : String(err);
       addLog(`Error: ${card.name}: ${msg}`);

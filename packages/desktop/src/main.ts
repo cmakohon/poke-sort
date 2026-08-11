@@ -316,7 +316,48 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
-app.on("before-quit", () => {
-  serverProcess?.kill();
-  serverProcess = null;
+/**
+ * How long to wait for the server to close its database before quitting anyway.
+ * Closing PGlite is normally instant; this only bounds a pathological case.
+ */
+const SERVER_EXIT_GRACE_MS = 6000;
+
+let quitting = false;
+
+/**
+ * Waits for the server to shut down before the app exits.
+ *
+ * `kill()` on its own returned immediately and Electron tore the process down
+ * behind it, so PGlite — a real Postgres writing real files — was killed
+ * mid-write on every quit and had to crash-recover on the next boot. The server
+ * closes its database on SIGTERM; this is the half that gives it time to.
+ *
+ * `app.exit` rather than `app.quit`, because exit skips `before-quit` and so
+ * cannot re-enter this handler.
+ */
+app.on("before-quit", (event) => {
+  if (quitting) return;
+  const child = serverProcess;
+  if (!child) return;
+
+  event.preventDefault();
+  quitting = true;
+
+  const finish = (reason: string) => {
+    console.log(`[main] Server shutdown: ${reason}`);
+    serverProcess = null;
+    app.exit(0);
+  };
+
+  const timer = setTimeout(() => {
+    console.warn("[main] Server did not exit in time; quitting anyway.");
+    finish("timed out");
+  }, SERVER_EXIT_GRACE_MS);
+
+  child.once("exit", () => {
+    clearTimeout(timer);
+    finish("clean");
+  });
+
+  child.kill();
 });

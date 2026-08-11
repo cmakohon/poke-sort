@@ -1,5 +1,6 @@
 import {
   BIN_COUNT,
+  SET_NAME_MAX_LENGTH,
   type BinConfig,
   type BinRuleGroup,
   type BinSet,
@@ -8,6 +9,91 @@ import {
 } from "@poke-sort/shared";
 import { and, eq, isNull } from "drizzle-orm";
 import { Hono } from "hono";
+import { z } from "zod";
+import { parseBody } from "../lib/validate";
+
+/**
+ * Bin rules are a recursive tree, and they are the one piece of user input the
+ * sorter acts on physically: a malformed group does not throw, it evaluates to
+ * "no match" and quietly routes cards to the catch-all. So the shape is checked
+ * before it is stored rather than discovered at scan time.
+ *
+ * Depth is capped. The tree is stored as jsonb and walked recursively by
+ * evaluate-bin, so an arbitrarily nested payload is a stack-overflow shaped
+ * hole; nothing the editor produces comes close to this limit.
+ */
+const MAX_RULE_DEPTH = 20;
+
+const ConditionSchema = z
+  .object({
+    id: z.string().min(1),
+    field: z.string().min(1),
+    operator: z.enum([
+      "equals",
+      "not_equals",
+      "contains",
+      "not_contains",
+      "gt",
+      "gte",
+      "lt",
+      "lte",
+      "in",
+      "not_in",
+      "contains_any",
+      "contains_all",
+      "contains_none",
+    ]),
+    value: z.union([z.string(), z.number(), z.array(z.string())]),
+  })
+  .strict();
+
+function ruleGroupSchema(depth: number): z.ZodType {
+  const conditions: z.ZodType =
+    depth >= MAX_RULE_DEPTH
+      ? ConditionSchema
+      : z.union([ConditionSchema, z.lazy(() => ruleGroupSchema(depth + 1))]);
+  return z
+    .object({
+      id: z.string().min(1),
+      combinator: z.enum(["and", "or"]),
+      conditions: z.array(conditions),
+    })
+    .strict();
+}
+
+const RuleGroupSchema = ruleGroupSchema(0);
+
+const DefaultBinInitSchema = z
+  .object({
+    binNumber: z.number().int().min(1).max(BIN_COUNT),
+    isCatchAll: z.boolean(),
+    rules: RuleGroupSchema,
+  })
+  .strict();
+
+const CreateSetSchema = z
+  .object({
+    name: z.string().trim().min(1).max(SET_NAME_MAX_LENGTH),
+    initialBins: z.array(DefaultBinInitSchema).optional(),
+    gameGuid: z.string().min(1).optional(),
+  })
+  .strict();
+
+const ActivateSetSchema = z
+  .object({
+    name: z.string().trim().min(1).max(SET_NAME_MAX_LENGTH),
+    gameGuid: z.string().min(1).optional(),
+  })
+  .strict();
+
+const UpdateBinSchema = z
+  .object({ rules: RuleGroupSchema, isCatchAll: z.boolean().optional() })
+  .strict();
+
+const RenameSetSchema = z
+  .object({ name: z.string().trim().min(1).max(SET_NAME_MAX_LENGTH) })
+  .strict();
+
 import type { Transaction } from "../db";
 import { authQuery } from "../db";
 import { bins, binSetAudit, binSets } from "../db/schema";
@@ -192,11 +278,13 @@ router.put("/:guid/active", requireAuth, requireOrg, async (c) => {
 // POST /bins
 router.post("/", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
-  const { name, initialBins, gameGuid } = await c.req.json<{
+  const parsed = await parseBody(c, CreateSetSchema);
+  if (!parsed.ok) return parsed.response;
+  const { name, initialBins, gameGuid } = parsed.data as {
     name: string;
     initialBins?: DefaultBinInit[];
     gameGuid?: string;
-  }>();
+  };
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
       const gameId = await _resolveGameId(tx, gameGuid);
@@ -250,10 +338,9 @@ router.post("/", requireAuth, requireOrg, async (c) => {
 // POST /bins/copies
 router.post("/copies", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
-  const { name, gameGuid } = await c.req.json<{
-    name: string;
-    gameGuid?: string;
-  }>();
+  const parsed = await parseBody(c, ActivateSetSchema);
+  if (!parsed.ok) return parsed.response;
+  const { name, gameGuid } = parsed.data;
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
       const gameId = await _resolveGameId(tx, gameGuid);
@@ -306,10 +393,12 @@ router.put("/bins/:binNumber", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
   const binNumber = parseInt(c.req.param("binNumber"));
   const gameGuid = c.req.query("gameGuid");
-  const { rules, isCatchAll } = await c.req.json<{
+  const parsed = await parseBody(c, UpdateBinSchema);
+  if (!parsed.ok) return parsed.response;
+  const { rules, isCatchAll } = parsed.data as {
     rules: BinRuleGroup;
     isCatchAll?: boolean;
-  }>();
+  };
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
       const gameId = await _resolveGameId(tx, gameGuid);
@@ -439,7 +528,9 @@ router.delete("/bins/:binNumber", requireAuth, requireOrg, async (c) => {
 router.put("/:guid", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
   const guid = c.req.param("guid");
-  const { name } = await c.req.json<{ name: string }>();
+  const parsed = await parseBody(c, RenameSetSchema);
+  if (!parsed.ok) return parsed.response;
+  const { name } = parsed.data;
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
       const target = await tx.query.binSets.findFirst({
