@@ -5,11 +5,17 @@ import { Toaster as Sonner, type ToasterProps } from "sonner"
 import { IconCircleCheck, IconInfoCircle, IconAlertTriangle, IconAlertOctagon, IconLoader } from "@tabler/icons-react"
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme()
+  // resolvedTheme, not theme: `theme` is "system" until something resolves it,
+  // and handing "system" to sonner makes it consult its own media query. That
+  // is a second, independent source of truth — with no ThemeProvider mounted it
+  // styled toasts from the OS setting while the app itself stayed light, so
+  // dark toast chrome carried light-theme text. Following the resolved value
+  // keeps the toast and the page reading from the same answer.
+  const { resolvedTheme } = useTheme()
 
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme={(resolvedTheme ?? "system") as ToasterProps["theme"]}
       className="toaster group"
       icons={{
         success: (
