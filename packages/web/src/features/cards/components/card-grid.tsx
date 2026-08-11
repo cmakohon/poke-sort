@@ -324,6 +324,7 @@ export function CardGrid() {
           onToggleSelectAll={toggleSelectAll}
           availableRarities={stats?.rarities}
           availableColors={stats?.colors}
+          availableSets={stats?.sets}
         />
       </div>
       {filteredAndSorted.length === 0 && (

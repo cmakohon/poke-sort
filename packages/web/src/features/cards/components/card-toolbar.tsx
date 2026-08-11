@@ -47,6 +47,7 @@ export function CardToolbar({
   onToggleSelectAll,
   availableRarities,
   availableColors,
+  availableSets,
 }: CardToolbarProps) {
   const { t } = useTranslation("cards");
   const [isClearing, setIsClearing] = useState(false);
@@ -100,6 +101,7 @@ export function CardToolbar({
         activeFilterCount={activeFilterCount}
         availableRarities={availableRarities ?? []}
         availableColors={availableColors ?? []}
+        availableSets={availableSets}
       />
       {onToggleSelectAll && (
         <Button

@@ -3,13 +3,18 @@ import { Button } from "@/components/ui/button";
 import { DynamicPopover } from "@/components/ui/responsive-popover";
 import { Slider } from "@/components/ui/slider";
 import type { CardFilters } from "@/features/cards/types";
+import {
+  OptionPicker,
+  type PickerGroup,
+} from "@/features/bins/components/option-picker";
+import type { SetStats } from "@/features/scanner/types";
 import { cn } from "@/lib/utils";
+import { useMemo } from "react";
 import { BIN_COUNT } from "@magic-vault/shared";
 import {
   IconDownload,
   IconFilter,
   IconHelpCircle,
-  IconX,
 } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
 
@@ -47,6 +52,8 @@ interface CardFilterPopoverProps {
   activeFilterCount: number;
   availableRarities: { key: string; label: string }[];
   availableColors: { key: string; label: string; bg: string }[];
+  /** Sets present in the loaded cards — never the whole 218-set catalog. */
+  availableSets?: SetStats[];
 }
 
 export function CardFilterPopover({
@@ -55,9 +62,32 @@ export function CardFilterPopover({
   activeFilterCount,
   availableRarities,
   availableColors,
+  availableSets,
 }: CardFilterPopoverProps) {
   const { t } = useTranslation("cards");
   const bins = Array.from({ length: BIN_COUNT }, (_, i) => i + 1);
+
+  // Group by series when the cards carry one; otherwise a single flat list.
+  const setGroups = useMemo(() => {
+    const bySeries = new Map<string, PickerGroup>();
+    for (const set of availableSets ?? []) {
+      const key = set.serieName ?? "";
+      let group = bySeries.get(key);
+      if (!group) {
+        group = { key: key || "other", label: key || t("cardFilterPopover.otherSets"), options: [] };
+        bySeries.set(key, group);
+      }
+      group.options.push({
+        value: set.code,
+        label: set.name || set.code,
+        count: set.count,
+        icon: set.symbol,
+      });
+    }
+    return [...bySeries.values()];
+  }, [availableSets, t]);
+
+  const totalSetCount = availableSets?.length ?? 0;
 
   return (
     <DynamicPopover
@@ -284,32 +314,22 @@ export function CardFilterPopover({
           </button>
         </div>
 
-        {activeFilters.sets.length > 0 && (
+        {setGroups.length > 0 && (
           <div>
             <p className="text-[11px] font-medium text-muted-foreground tracking-wide mb-1.5 font-heading">
               {t("cardFilterPopover.sets")}
             </p>
-            <div className="flex gap-1 flex-wrap">
-              {activeFilters.sets.map((setCode) => (
-                <button
-                  key={setCode}
-                  type="button"
-                  onClick={() =>
-                    onFiltersChange({
-                      ...activeFilters,
-                      sets: toggle(activeFilters.sets, setCode),
-                    })
-                  }
-                  className={cn(
-                    chipBase,
-                    "flex items-center gap-1 px-2 h-7 uppercase bg-primary text-primary-foreground border-primary",
-                  )}
-                >
-                  {setCode}
-                  <IconX className="size-3" />
-                </button>
-              ))}
-            </div>
+            {/* Scoped to the sets actually present in these cards, so the list
+                stays short — unlike the bin rule builder, which offers the
+                whole catalog. */}
+            <OptionPicker
+              options={setGroups.length === 1 ? setGroups[0].options : undefined}
+              groups={setGroups.length > 1 ? setGroups : undefined}
+              searchable={totalSetCount > 12}
+              value={activeFilters.sets}
+              onChange={(sets) => onFiltersChange({ ...activeFilters, sets })}
+              placeholder={t("cardFilterPopover.allSets")}
+            />
           </div>
         )}
 

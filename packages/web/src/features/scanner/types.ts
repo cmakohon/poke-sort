@@ -92,4 +92,8 @@ export interface SetStats {
   name: string;
   count: number;
   value: number;
+  /** Series this set belongs to, injected into the card by the server. */
+  serieName?: string;
+  /** Proxied set symbol, when the source provides one. */
+  symbol?: string | null;
 }

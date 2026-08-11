@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "../db";
 import { cardImageVectors } from "../db/schema";
 import {
@@ -196,17 +196,4 @@ export async function getGameFacets(
 
   cache.set(keyOf(gameKey, lang), facets);
   return facets;
-}
-
-/** Distinct set codes present in one collection, for filtering the card grid. */
-export async function getCollectionSetCodes(
-  collectionId: number,
-): Promise<string[]> {
-  const rows = await db.execute<{ set_code: string }>(sql`
-    SELECT DISTINCT card->>'set' AS set_code
-    FROM collection_cards
-    WHERE collection_id = ${collectionId} AND card->>'set' IS NOT NULL
-    ORDER BY 1
-  `);
-  return rows.rows.map((r) => r.set_code);
 }

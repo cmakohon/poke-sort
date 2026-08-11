@@ -11,6 +11,19 @@ const KNOWN_COLOR_SWATCHES: Record<string, { label: string; bg: string }> = {
   C: { label: "Colorless", bg: "#94979A" },
 };
 
+/**
+ * Series and set symbol come off the card's upstream object, which the server
+ * enriches at normalize time. Cards scanned before that enrichment simply have
+ * neither and fall back to an "Other" group.
+ */
+function readSet(
+  raw: unknown,
+): { serie?: { name?: string }; symbol?: string } | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const set = (raw as { set?: unknown }).set;
+  return set && typeof set === "object" ? (set as never) : undefined;
+}
+
 function capitalize(value: string): string {
   return value.length > 0
     ? value.charAt(0).toUpperCase() + value.slice(1)
@@ -73,11 +86,16 @@ export function computeStats(cards: ScannedCard[]): ScanStats | null {
       existing.count++;
       existing.value += price;
     } else {
+      const setRaw = readSet(c.raw);
       setMap.set(c.set, {
         code: c.set,
         name: c.setName,
         count: 1,
         value: price,
+        serieName: setRaw?.serie?.name,
+        symbol: setRaw?.symbol
+          ? `/api/cards/image-proxy?url=${encodeURIComponent(`${setRaw.symbol}.webp`)}`
+          : null,
       });
     }
 
