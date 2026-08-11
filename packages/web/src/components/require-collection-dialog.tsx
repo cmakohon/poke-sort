@@ -65,11 +65,21 @@ export function RequireCollectionDialog() {
     [rawGameLanguages],
   );
 
+  // Keyed on the current value, not just on `gameLanguages`.
+  //
+  // Depending on the array alone made this fire once and never again: the
+  // languages query is `staleTime: Infinity`, so its identity is stable for the
+  // life of the app, while the form is reset to `lang: ""` every time the
+  // dialog opens. From the second open on, the field stayed empty — and because
+  // the select disables itself when there is only one language, it could not be
+  // filled by hand either, leaving "Language is required" with no way to
+  // satisfy it. Watching the value re-runs this whenever it goes blank.
+  const currentLang = form.watch("lang");
   useEffect(() => {
-    if (gameLanguages.length === 1) {
+    if (!currentLang && gameLanguages.length === 1) {
       form.setValue("lang", gameLanguages[0], { shouldValidate: true });
     }
-  }, [gameLanguages, form]);
+  }, [currentLang, gameLanguages, form]);
 
   const handleCreate = useCallback(
     async (values: CreateCollectionFormValues) => {
