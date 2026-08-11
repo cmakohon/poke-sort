@@ -161,6 +161,7 @@ export default function MonitorPage() {
                   activeFilterCount={activeFilterCount}
                   availableRarities={stats?.rarities}
                   availableColors={stats?.colors}
+                  availableSets={stats?.sets}
                 />
               </div>
               <div className="overflow-y-auto flex-1 @container">
@@ -203,6 +204,7 @@ export default function MonitorPage() {
             activeFilterCount={activeFilterCount}
             availableRarities={stats?.rarities}
             availableColors={stats?.colors}
+                  availableSets={stats?.sets}
           />
         </div>
         <CardGrid

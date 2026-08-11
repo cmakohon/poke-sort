@@ -1,6 +1,7 @@
 import type { PlayingCard, Result } from "@magic-vault/shared";
 import { QUERY_MIN_LENGTH } from "@magic-vault/shared";
 import type { CardSearchAdapter } from "../card-search/types";
+import { getSetInfo, releaseYear } from "../set-index";
 
 export const POKEMON_DEFAULT_URL = "https://api.tcgdex.net/v2/en/cards";
 
@@ -29,15 +30,21 @@ interface PokemonAbility {
   effect?: string;
 }
 
+type PokemonVariant =
+  | "normal"
+  | "reverse"
+  | "holo"
+  | "firstEdition"
+  | "wPromo";
+
 interface PokemonPricing {
   cardmarket?: { avg?: number };
-  tcgplayer?: {
-    normal?: { marketPrice?: number };
-    reverse?: { marketPrice?: number };
-  };
+  tcgplayer?: Partial<
+    Record<PokemonVariant | "holofoil" | "reverseHolofoil", { marketPrice?: number }>
+  >;
 }
 
-interface PokemonCardDetail extends PokemonCardBrief {
+export interface PokemonCardDetail extends PokemonCardBrief {
   category?: string;
   illustrator?: string;
   rarity?: string;
@@ -50,6 +57,7 @@ interface PokemonCardDetail extends PokemonCardBrief {
   energyType?: string;
   effect?: string;
   attacks?: PokemonAttack[];
+  weaknesses?: { type?: string; value?: string }[];
   abilities?: PokemonAbility[];
   retreat?: number;
   pricing?: PokemonPricing;
@@ -68,16 +76,47 @@ function assetUrl(image: string, quality: "low" | "high"): string {
   return `/api/cards/image-proxy?url=${encodeURIComponent(`${image}/${quality}.webp`)}`;
 }
 
-function resolvePrice(pricing: PokemonPricing | undefined): number | null {
+/**
+ * TCGplayer keys prices by printing. Preferring `normal` unconditionally meant
+ * a reverse holo — often worth several times a normal — was priced as a normal
+ * whenever both existed. Prefer the variant actually in hand; only fall back to
+ * whatever is available when it is unknown.
+ */
+const PRICE_KEYS: Record<PokemonVariant, string[]> = {
+  normal: ["normal"],
+  reverse: ["reverseHolofoil", "reverse"],
+  holo: ["holofoil", "holo"],
+  firstEdition: ["firstEdition", "holofoil", "normal"],
+  wPromo: ["normal"],
+};
+
+const FALLBACK_ORDER = [
+  "normal",
+  "holofoil",
+  "holo",
+  "reverseHolofoil",
+  "reverse",
+];
+
+function resolvePrice(
+  pricing: PokemonPricing | undefined,
+  variant?: PokemonVariant,
+): number | null {
   if (!pricing) return null;
-  const usd =
-    pricing.tcgplayer?.normal?.marketPrice ??
-    pricing.tcgplayer?.reverse?.marketPrice;
-  if (usd != null) return usd;
+  const tcg = pricing.tcgplayer ?? {};
+  const order = variant ? [...PRICE_KEYS[variant], ...FALLBACK_ORDER] : FALLBACK_ORDER;
+
+  for (const key of order) {
+    const price = tcg[key as keyof typeof tcg]?.marketPrice;
+    if (price != null) return price;
+  }
   return pricing.cardmarket?.avg ?? null;
 }
 
-function normalizePokemonCard(raw: PokemonCardDetail): PlayingCard {
+export function normalizePokemonCard(
+  raw: PokemonCardDetail,
+  variant?: PokemonVariant,
+): PlayingCard {
   const small = raw.image ? assetUrl(raw.image, "low") : "";
   const large = raw.image ? assetUrl(raw.image, "high") : "";
   const attackText = (raw.attacks ?? [])
@@ -100,12 +139,36 @@ function normalizePokemonCard(raw: PokemonCardDetail): PlayingCard {
       .join(" - ") ||
     (raw.category ?? "");
 
+  // Enrich the stored/raw set object with its series and release year. The bin
+  // rule engine resolves paths against `raw` first, and TCGdex does not put
+  // either on the card — so without this, `set.serie.name` and `set.releaseYear`
+  // are unreachable from a rule.
+  const setInfo = getSetInfo(raw.set?.id);
+  const enrichedRaw = {
+    ...raw,
+    // Weaknesses are [{type, value}]; a rule path cannot reach into an array of
+    // objects, so the types are flattened to a plain string array.
+    weaknessTypes: (raw.weaknesses ?? [])
+      .map((w) => w.type)
+      .filter((t): t is string => !!t),
+    ...(setInfo
+      ? {
+          set: {
+            ...raw.set,
+            serie: { id: setInfo.serieId, name: setInfo.serieName },
+            releaseDate: setInfo.releaseDate,
+            releaseYear: releaseYear(setInfo),
+          },
+        }
+      : {}),
+  };
+
   return {
     id: raw.id,
     name: raw.name ?? "",
     image: large ? { small: small || large, normal: large } : null,
     set: raw.set?.id ?? "",
-    setName: raw.set?.name || (raw.set?.id ?? ""),
+    setName: setInfo?.name ?? raw.set?.name ?? raw.set?.id ?? "",
     collectorNumber: raw.localId ?? "",
     rarity: (raw.rarity ?? "").toLowerCase(),
     typeLine,
@@ -114,10 +177,10 @@ function normalizePokemonCard(raw: PokemonCardDetail): PlayingCard {
     toughness: raw.hp != null ? String(raw.hp) : undefined,
     colorIdentity: raw.types ?? [],
     artist: raw.illustrator ?? undefined,
-    price: resolvePrice(raw.pricing),
+    price: resolvePrice(raw.pricing, variant),
     sourceUrl: `https://tcgdex.dev/cards/${raw.id}`,
     cmc: raw.retreat,
-    raw,
+    raw: enrichedRaw,
   };
 }
 
@@ -175,7 +238,7 @@ export async function Search(
     message: "Cards successfully retrieved.",
     data: details
       .filter((d): d is PokemonCardDetail => d !== null)
-      .map(normalizePokemonCard),
+      .map((card) => normalizePokemonCard(card)),
     success: true,
   };
 }

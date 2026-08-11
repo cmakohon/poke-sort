@@ -1,3 +1,4 @@
+import { rarityColor } from "@/features/cards/lib/rarity-color";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useCardFilters } from "@/features/cards/api/use-card-filters";
 import { useScannedCards } from "@/features/scanner/api/use-scanned-cards";
@@ -119,7 +120,7 @@ export function ScanStats() {
                     <div className="flex items-center gap-1.5">
                       <div
                         className="size-2.5 rounded-full"
-                        style={{ backgroundColor: `var(--${r.key})` }}
+                        style={{ backgroundColor: rarityColor(r.key) }}
                       />
                       <span className={active ? "font-medium" : undefined}>
                         {r.label}

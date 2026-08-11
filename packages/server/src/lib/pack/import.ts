@@ -3,6 +3,8 @@ import { gunzipSync } from "node:zlib";
 import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { cardImageVectors } from "../../db/schema";
+import { incompatibilityReason } from "../embedding-identity";
+import { invalidateFacets } from "../facets";
 import { decodePack, type PackHeader } from "./format";
 
 /** Matches the sync writer: ~250 x 768 floats keeps a statement near 2 MB. */
@@ -25,6 +27,17 @@ export async function importPack(
 ): Promise<PackImportResult> {
   const { header, embeddings } = decodePack(gunzipSync(await readFile(filePath)));
 
+  // Refuse before writing anything. A pack from a different embedding pipeline
+  // imports perfectly happily and then makes every match slightly worse, which
+  // reads as a bad model rather than a bad catalog.
+  const reason = incompatibilityReason({
+    model: header.model,
+    dtype: header.dtype,
+    dim: header.dim,
+    preprocessing: header.preprocessing,
+  });
+  if (reason) throw new Error(reason);
+
   let inserted = 0;
   for (let start = 0; start < header.count; start += BATCH_SIZE) {
     const end = Math.min(start + BATCH_SIZE, header.count);
@@ -37,6 +50,9 @@ export async function importPack(
         lang: header.lang,
         name: card.name,
         setCode: card.setCode,
+        collectorNumber: card.collectorNumber ?? null,
+        setTotal: card.setTotal ?? null,
+        cardData: card.data ?? null,
         embedding: Array.from(embeddings[i]),
       });
     }
@@ -51,6 +67,7 @@ export async function importPack(
     onProgress?.(end, header.count);
   }
 
+  invalidateFacets();
   return { header, inserted };
 }
 

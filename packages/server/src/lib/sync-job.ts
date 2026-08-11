@@ -5,6 +5,7 @@ import { cardImageVectors } from "../db/schema";
 import { resolveGameDataSourceUrl } from "./card-search/resolve";
 import type { SyncSource, SyncSourceCard } from "./card-search/sync-types";
 import { sendDiscordNotification } from "./discord";
+import { invalidateFacets } from "./facets";
 import { pokemonSyncSource } from "./pokemon/sync";
 import { scryfallSyncSource } from "./scryfall/sync";
 import { vectorizeImageFromBuffer } from "./vectorize";
@@ -254,10 +255,11 @@ async function runSync(source: SyncSource, lang: string): Promise<void> {
     }
 
     try {
-      const imageRes = await fetchImageWithRetry(
-        card.imageUrl,
-        source.fetchHeaders,
-      );
+      // Detail fetch runs alongside the image download rather than after it.
+      const [imageRes, extras] = await Promise.all([
+        fetchImageWithRetry(card.imageUrl, source.fetchHeaders),
+        source.fetchExtras?.(card, baseUrl, abortController?.signal) ?? card,
+      ]);
       const buffer = Buffer.from(await imageRes.arrayBuffer());
       const embedding = await vectorizeImageFromBuffer(buffer);
 
@@ -271,6 +273,9 @@ async function runSync(source: SyncSource, lang: string): Promise<void> {
         name: card.name,
         setCode: card.setCode,
         embedding,
+        collectorNumber: extras.collectorNumber ?? null,
+        setTotal: extras.setTotal ?? null,
+        cardData: extras.data ?? null,
       });
       addLog(`[${state.total}] embedded ${card.name} (${card.setCode})`);
 
@@ -314,6 +319,9 @@ async function runSync(source: SyncSource, lang: string): Promise<void> {
   // so work already paid for in embedding time is not thrown away.
   await flush();
   await writeChain;
+
+  // The catalog changed, so any cached facet lists are stale.
+  invalidateFacets();
 
   if (cancelled) {
     state = { ...state, status: "cancelled" };

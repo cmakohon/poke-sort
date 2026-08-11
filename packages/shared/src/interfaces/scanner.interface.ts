@@ -1,3 +1,4 @@
+import type { IdentifyTier } from "./api.interface";
 import type { PlayingCardWithDistance } from "./card.interface";
 
 export interface Point {
@@ -41,10 +42,17 @@ export type ScannerStatus =
   | "searching"
   | "error";
 
+/** How confident the pipeline was, carried alongside the matches. */
+export interface ScanOutcome {
+  tier: IdentifyTier;
+  score?: number;
+}
+
 export interface CardScannerProps {
   onSearchResults?: (
     matches: PlayingCardWithDistance[],
     capturedImageUrl?: string,
+    outcome?: ScanOutcome,
   ) => void;
   onNoMatch?: () => void;
   onManualAdd?: () => void;
@@ -68,4 +76,18 @@ export interface ScannedCard {
   alternativeMatches?: PlayingCardWithDistance[];
   isFoil?: boolean;
   isDownloaded?: boolean;
+  /** Which printing — normal / reverse / holo / firstEdition. */
+  variant?: string;
+  /** Fused identification score, when a per-game profile scored this scan. */
+  score?: number;
+  /** The pipeline was not confident enough to sort this automatically. */
+  needsReview?: boolean;
+  /**
+   * What the pipeline originally decided, preserved across a human correction.
+   * Every correction is a labelled example; overwriting the row threw that away.
+   */
+  originalCardId?: string;
+  originalDistance?: number;
+  originalScore?: number;
+  wasCorrected?: boolean;
 }

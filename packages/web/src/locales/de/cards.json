@@ -33,7 +33,9 @@
     "downloaded": "Heruntergeladen",
     "showDownloadedCards": "Heruntergeladene Karten anzeigen",
     "sets": "Editionen",
-    "resetFilters": "Filter zurücksetzen"
+    "resetFilters": "Filter zurücksetzen",
+    "allSets": "Alle Sets",
+    "otherSets": "Andere"
   },
   "cardGrid": {
     "noCollectionSelected": "Keine Sammlung ausgewählt",

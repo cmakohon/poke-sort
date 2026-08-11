@@ -33,7 +33,9 @@
     "downloaded": "Downloaded",
     "showDownloadedCards": "Show downloaded cards",
     "sets": "Sets",
-    "resetFilters": "Reset filters"
+    "resetFilters": "Reset filters",
+    "allSets": "All sets",
+    "otherSets": "Other"
   },
   "cardGrid": {
     "noCollectionSelected": "No collection selected",

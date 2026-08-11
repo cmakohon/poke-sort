@@ -76,6 +76,10 @@ export function BinConfigsProvider({
     : activeCollection;
 
   const activeGameGuid = targetCollection?.game?.guid;
+  // Facet-backed pickers need the game key (and language) to know which
+  // catalog to read their options from.
+  const gameKey = targetCollection?.game?.key;
+  const lang = targetCollection?.lang ?? "en";
   const fieldDefinitions =
     targetCollection?.game?.fieldDefinitions ?? FIELD_DEFINITIONS;
 
@@ -306,6 +310,8 @@ export function BinConfigsProvider({
         configs,
         sets,
         fieldDefinitions,
+        gameKey,
+        lang,
         isPending,
         isActivating,
         isPresetMutating,

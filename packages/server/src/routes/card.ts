@@ -1,12 +1,10 @@
-import type { SearchCardMatch } from "@magic-vault/shared";
-import { sql } from "drizzle-orm";
 import { Hono } from "hono";
-import { authQuery } from "../db";
 import {
   resolveCardSearch,
   resolveGameKeyAndLang,
 } from "../lib/card-search/resolve";
 import { sendDiscordNotification } from "../lib/discord";
+import { identifyCard } from "../lib/identify";
 import { vectorizeImageFromBuffer } from "../lib/vectorize";
 import { requireAuth, type AppEnv } from "../middleware/auth";
 
@@ -31,11 +29,11 @@ router.post("/", requireAuth, async (c) => {
     );
   }
 
+  const imageBuffer = Buffer.from(await file.arrayBuffer());
+
   let embedding: number[];
   try {
-    embedding = await vectorizeImageFromBuffer(
-      Buffer.from(await file.arrayBuffer()),
-    );
+    embedding = await vectorizeImageFromBuffer(imageBuffer);
   } catch (err) {
     console.error(err);
     return c.json(
@@ -44,7 +42,6 @@ router.post("/", requireAuth, async (c) => {
     );
   }
 
-  const embeddingStr = `[${embedding.join(",")}]`;
   const resolved = await resolveGameKeyAndLang(
     c.get("jwtClaims"),
     collectionGuid,
@@ -55,34 +52,19 @@ router.post("/", requireAuth, async (c) => {
       400,
     );
   }
-  const { gameKey, lang } = resolved;
 
   try {
-    const result = await authQuery(c.get("jwtClaims"), async (tx) => {
-      const matches = await tx.execute(sql`
-        SELECT
-          scryfall_id,
-          embedding <=> ${embeddingStr}::vector(768) AS distance
-        FROM cards
-        WHERE game_key = ${gameKey} AND lang = ${lang} AND (embedding <=> ${embeddingStr}::vector(768)) < 0.3
-        ORDER BY embedding <=> ${embeddingStr}::vector(768)
-        LIMIT 5
-      `);
-
-      const matchList: SearchCardMatch[] = matches.rows.map((row) => ({
-        id: row.scryfall_id as string,
-        scryfallId: row.scryfall_id as string,
-        distance: row.distance as number,
-      }));
-
-      return {
-        message: "Successfully searched for card.",
-        success: true,
-        data: matchList.length > 0 ? matchList : null,
-      };
+    const result = await identifyCard(
+      embedding,
+      imageBuffer,
+      resolved.gameKey,
+      resolved.lang,
+    );
+    return c.json({
+      success: true,
+      message: "Successfully searched for card.",
+      data: result,
     });
-
-    return c.json(result);
   } catch (err) {
     console.error(err);
     const orgId = c.req.header("X-Org-Id");

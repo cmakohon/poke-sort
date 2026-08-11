@@ -1,4 +1,4 @@
-import { MTG_ASPECT_RATIO } from "@/features/scanner/constants";
+import { CARD_ASPECT_RATIO } from "@/features/scanner/constants";
 import {
   DEFAULT_SCAN_REGION,
   type CardContour,
@@ -28,7 +28,7 @@ export function getDefaultCardContour(
   height: number,
   region: ScanRegion = DEFAULT_SCAN_REGION,
 ): CardContour {
-  const cardAspect = 1 / MTG_ASPECT_RATIO;
+  const cardAspect = 1 / CARD_ASPECT_RATIO;
   let boxH = height * region.coverage;
   let boxW = boxH * cardAspect;
   if (boxW > width * region.coverage) {
@@ -59,7 +59,7 @@ export function extractCardImage(
   contour: CardContour,
   outputWidth = 745,
 ): HTMLCanvasElement {
-  const outputHeight = Math.round(outputWidth / MTG_ASPECT_RATIO);
+  const outputHeight = Math.round(outputWidth / CARD_ASPECT_RATIO);
 
   const left = contour.topLeft.x;
   const top = contour.topLeft.y;

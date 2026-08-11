@@ -1,3 +1,4 @@
+import type { SetStats } from "@/features/scanner/types";
 import type { FieldMeta, PlayingCardWithDistance } from "@magic-vault/shared";
 import type { ReactElement } from "react";
 
@@ -45,6 +46,7 @@ export interface CardToolbarProps {
   allSelected?: boolean;
   onToggleSelectAll?: () => void;
   availableRarities?: { key: string; label: string }[];
+  availableSets?: SetStats[];
   availableColors?: { key: string; label: string; bg: string }[];
 }
 

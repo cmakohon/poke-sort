@@ -8,6 +8,20 @@
       "when": 1786396645059,
       "tag": "0000_groovy_demogoblin",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786404273643,
+      "tag": "0001_quick_black_bird",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786416410933,
+      "tag": "0002_stormy_blue_blade",
+      "breakpoints": true
     }
   ]
 }

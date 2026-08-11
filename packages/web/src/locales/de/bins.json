@@ -26,7 +26,12 @@
   },
   "conditionRow": {
     "selectPlaceholder": "Auswählen...",
-    "valuePlaceholder": "Wert..."
+    "valuePlaceholder": "Wert...",
+    "searchPlaceholder": "Suchen…",
+    "selectGroup": "alle auswählen",
+    "clearGroup": "leeren",
+    "moreResults": "{{count}} weitere — Suche verfeinern",
+    "noOptions": "Noch keine Werte im Katalog"
   },
   "ruleGroupEditor": {
     "and": "UND",

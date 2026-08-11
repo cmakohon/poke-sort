@@ -1,3 +1,4 @@
+import { rarityColor } from "@/features/cards/lib/rarity-color";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DynamicDialog } from "@/components/ui/responsive-dialog";
@@ -340,7 +341,7 @@ export function CardSelectDialog({
                     <div
                       className="size-2 rounded-full shrink-0"
                       style={{
-                        backgroundColor: `var(--${selectedCard.rarity})`,
+                        backgroundColor: rarityColor(selectedCard.rarity),
                       }}
                     />
                     <span className="capitalize">{selectedCard.rarity}</span>

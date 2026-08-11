@@ -7,14 +7,10 @@ import {
   FieldMeta,
 } from "@magic-vault/shared";
 
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { useBinConfigs } from "@/features/bins/api/use-bin-configs";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { useFieldOptions } from "@/features/bins/api/use-field-options";
+import { OptionPicker } from "@/features/bins/components/option-picker";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -23,8 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
-import { IconChevronDown, IconX } from "@tabler/icons-react";
+import { IconX } from "@tabler/icons-react";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -35,57 +30,6 @@ function getFieldMeta(
   return fieldDefinitions.find((f) => f.field === field);
 }
 
-function MultiSelect({
-  options,
-  value,
-  onChange,
-}: {
-  options: { value: string; label: string }[];
-  value: string[];
-  onChange: (value: string[]) => void;
-}) {
-  const { t } = useTranslation("bins");
-  const selectedLabels = options
-    .filter((opt) => value.includes(opt.value))
-    .map((opt) => opt.label);
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        className={cn(
-          buttonVariants({ variant: "outline" }),
-          "min-w-24 flex-1",
-        )}
-      >
-        <span className="truncate flex-1 text-left">
-          {selectedLabels.length > 0
-            ? selectedLabels.join(", ")
-            : t("conditionRow.selectPlaceholder")}
-        </span>
-        <IconChevronDown className="size-4 opacity-50 shrink-0" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent>
-        {options.map((opt) => (
-          <DropdownMenuCheckboxItem
-            key={opt.value}
-            checked={value.includes(opt.value)}
-            onSelect={(e) => e.preventDefault()}
-            onClick={() => {
-              if (value.includes(opt.value)) {
-                onChange(value.filter((v) => v !== opt.value));
-              } else {
-                onChange([...value, opt.value]);
-              }
-            }}
-          >
-            {opt.label}
-          </DropdownMenuCheckboxItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
 export function ConditionRow({
   condition,
   onChange,
@@ -94,6 +38,7 @@ export function ConditionRow({
   const { t } = useTranslation("bins");
   const { fieldDefinitions } = useBinConfigs();
   const fieldMeta = getFieldMeta(condition.field, fieldDefinitions);
+  const fieldOptions = useFieldOptions(fieldMeta);
 
   const handleFieldChange = useCallback(
     (field: ConditionField) => {
@@ -128,10 +73,11 @@ export function ConditionRow({
   const renderValueInput = () => {
     if (!fieldMeta) return null;
 
-    if (
-      (fieldMeta.type === "enum" || fieldMeta.type === "set") &&
-      fieldMeta.options
-    ) {
+    // Options come from the catalog when the field asks for it, so pickers
+    // reflect the cards actually present rather than a list frozen at seed time.
+    const hasChoices = !!fieldOptions.options || !!fieldOptions.groups;
+
+    if ((fieldMeta.type === "enum" || fieldMeta.type === "set") && hasChoices) {
       const isMulti = [
         "in",
         "not_in",
@@ -140,39 +86,26 @@ export function ConditionRow({
         "contains_none",
       ].includes(condition.operator);
 
-      if (isMulti) {
-        const arrValue = Array.isArray(condition.value) ? condition.value : [];
-        return (
-          <MultiSelect
-            options={fieldMeta.options}
-            value={arrValue}
-            onChange={handleValueChange}
-          />
-        );
-      }
+      const arrValue = Array.isArray(condition.value)
+        ? condition.value
+        : condition.value
+          ? [String(condition.value)]
+          : [];
 
+      // Single-value operators reuse the same picker and keep only the last
+      // choice, so grouping, search and set symbols work everywhere.
       return (
-        <Select
-          value={String(condition.value)}
-          onValueChange={(val) => handleValueChange(val as string)}
-        >
-          <SelectTrigger className="min-w-24 flex-1">
-            <SelectValue placeholder={t("conditionRow.selectPlaceholder")}>
-              {
-                fieldMeta.options.find(
-                  (opt) => opt.value === String(condition.value),
-                )?.label
-              }
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {fieldMeta.options.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <OptionPicker
+          options={fieldOptions.options}
+          groups={fieldOptions.groups}
+          searchable={fieldOptions.searchable}
+          value={arrValue}
+          onChange={(next) =>
+            handleValueChange(
+              isMulti ? next : (next[next.length - 1] ?? ""),
+            )
+          }
+        />
       );
     }
 

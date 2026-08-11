@@ -51,7 +51,7 @@ interface ScryfallApiCard {
   prices: { usd: string | null };
 }
 
-function normalizeScryfallCard(raw: ScryfallApiCard): PlayingCard {
+export function normalizeScryfallCard(raw: ScryfallApiCard): PlayingCard {
   const face = raw.card_faces?.[0];
   const imageUris = raw.image_uris ?? face?.image_uris;
 

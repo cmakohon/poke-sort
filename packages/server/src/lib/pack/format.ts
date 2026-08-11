@@ -16,12 +16,19 @@
  */
 
 export const PACK_MAGIC = "mault-pack";
-export const PACK_VERSION = 1;
+// v2 added collectorNumber / setTotal / data per card.
+// v3 records which embedding pipeline produced the vectors.
+export const PACK_VERSION = 3;
 
 export interface PackCard {
   id: string;
   name: string;
   setCode: string;
+  /** Printed collector number; with setTotal reconstructs e.g. "58/102". */
+  collectorNumber?: string | null;
+  setTotal?: number | null;
+  /** Full upstream card object — what bin rules and re-ranking read. */
+  data?: unknown;
 }
 
 export interface PackHeader {
@@ -33,6 +40,16 @@ export interface PackHeader {
   dim: number;
   count: number;
   createdAt: string;
+  /**
+   * Which embedding pipeline produced these vectors. Checked on import — a
+   * mismatch degrades every match without failing, so it has to be caught
+   * before the rows land rather than diagnosed later.
+   */
+  model?: string;
+  dtype?: string;
+  preprocessing?: number;
+  /** Sets represented, so the app can say how stale a catalog is. */
+  setCodes?: string[];
   cards: PackCard[];
 }
 
