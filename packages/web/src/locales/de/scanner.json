@@ -13,6 +13,10 @@
       "title": "Verbindung fehlgeschlagen",
       "description": "Port konnte nicht geöffnet werden. Stelle sicher, dass keine andere Anwendung ihn verwendet."
     },
+    "noDeviceFound": {
+      "title": "Kein Gerät gefunden",
+      "description": "Schließe den Arduino per USB an und versuche es erneut. Falls er verbunden ist, prüfe, ob das Kabel Daten überträgt."
+    },
     "testingDevice": "Gerät wird getestet…",
     "deviceReady": "Gerät bereit",
     "deviceTestFailed": {

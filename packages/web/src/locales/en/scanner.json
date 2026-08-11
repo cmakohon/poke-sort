@@ -13,6 +13,10 @@
       "title": "Connection failed",
       "description": "Failed to open port. Make sure no other application is using it."
     },
+    "noDeviceFound": {
+      "title": "No device found",
+      "description": "Plug the Arduino in over USB and try again. If it is connected, check the cable supports data."
+    },
     "testingDevice": "Testing device…",
     "deviceReady": "Device ready",
     "deviceTestFailed": {

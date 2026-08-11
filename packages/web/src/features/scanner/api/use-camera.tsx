@@ -17,12 +17,17 @@ import { useTranslation } from "react-i18next";
 const CameraContext = createContext<CameraContextValue | null>(null);
 
 async function acquireStream(deviceId?: string): Promise<MediaStream> {
+  // `zoom` is deliberately NOT requested here. As a bare value it is a *basic*
+  // constraint, meaning required — so any camera that does not expose zoom
+  // fails the whole getUserMedia call with OverconstrainedError. Most external
+  // USB webcams do not expose it over UVC, which made them look unusable while
+  // the built-in camera worked. Zoom is applied below as an `advanced`
+  // constraint instead, which is best-effort by definition.
   const stream = await navigator.mediaDevices.getUserMedia({
     video: {
       ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
       width: { ideal: 1920 },
       height: { ideal: 1080 },
-      zoom: true,
     } as MediaTrackConstraints,
   });
 
@@ -142,6 +147,31 @@ export function CameraProvider({ children }: { children: React.ReactNode }) {
       }
     };
   }, [startCamera, isMobile]);
+
+  // Keep the camera list live.
+  //
+  // It was only ever built inside startCamera, which runs once on mount — so a
+  // webcam plugged in after the app was already open never appeared in the
+  // picker, and the only way to find it was to restart. Re-enumerating on
+  // `devicechange` is the whole fix; the active stream is left alone, because
+  // the user may be mid-scan on the camera they already chose.
+  useEffect(() => {
+    if (isMobile) return;
+
+    const refresh = () => {
+      navigator.mediaDevices
+        .enumerateDevices()
+        .then((devices) => setCameras(devices.filter((d) => d.kind === "videoinput")))
+        // Enumeration failing is not worth surfacing: the picker just keeps
+        // showing the list it already had.
+        .catch(() => {});
+    };
+
+    navigator.mediaDevices.addEventListener("devicechange", refresh);
+    return () => {
+      navigator.mediaDevices.removeEventListener("devicechange", refresh);
+    };
+  }, [isMobile]);
 
   return (
     <CameraContext value={{ stream, status, errorMessage, zoom, zoomRange, cameras, selectedCameraId, setZoom, selectCamera, retryCamera, stopCamera }}>
