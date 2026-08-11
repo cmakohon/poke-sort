@@ -10,10 +10,52 @@ import {
 import { loadPreferredPortId, savePreferredPortId } from "./serial-prefs";
 
 /**
+ * Must run before anything asks for `userData`, which is derived from it.
+ *
+ * `productName` in electron-builder.yml only applies to a packaged build, so an
+ * unpackaged `electron dist/main.cjs` fell back to Electron's default name and
+ * wrote to `<appData>/Electron` — a directory *every* unpackaged Electron app on
+ * the machine shares. That is a database this app does not exclusively own, and
+ * it meant the dev app and the real app silently kept separate data.
+ */
+app.setName("PokeSort");
+
+/**
  * Dev mode points the window at the Vite dev server (HMR) while the API still
  * comes from the utilityProcess. Everything else runs fully self-contained.
  */
 const DEV_URL = process.env.POKE_SORT_DEV_URL;
+
+/**
+ * Where the server keeps the database and captures.
+ *
+ * A packaged app always uses `userData` — it owns that directory and an
+ * environment variable should not be able to move a user's library out from
+ * under them. Unpackaged, an explicit `POKE_SORT_DATA_DIR` wins, which is what
+ * makes it possible to point a dev run at a full catalog instead of whatever
+ * happens to be in the default location. The value used to be overwritten
+ * unconditionally, so setting it did nothing and the override looked broken.
+ */
+function resolveDataDir(): string {
+  const override = process.env.POKE_SORT_DATA_DIR;
+  if (app.isPackaged || !override) return app.getPath("userData");
+
+  // The server resolves a relative value against its own cwd, so resolve it the
+  // same way here and log the absolute path. A relative override that lands
+  // somewhere unintended otherwise looks identical to one that worked.
+  const resolved = path.resolve(override);
+  console.log(`[main] POKE_SORT_DATA_DIR override -> ${resolved}`);
+
+  // An empty or wrong path is not an error — the server will happily create the
+  // directory, migrate, seed, and come up with a catalog of zero cards, which
+  // looks like the app lost its data rather than like a bad path. Say so.
+  if (!fs.existsSync(path.join(resolved, "db"))) {
+    console.warn(
+      `[main] No database at ${resolved}; a new empty one will be created there.`,
+    );
+  }
+  return resolved;
+}
 
 const SERVER_ENTRY = app.isPackaged
   ? path.join(process.resourcesPath, "server", "index.js")
@@ -118,8 +160,9 @@ function startServer(): Promise<number> {
       stdio: "inherit",
       env: {
         ...process.env,
-        // Everything the app writes goes under Electron's userData dir.
-        POKE_SORT_DATA_DIR: app.getPath("userData"),
+        // Everything the app writes goes under one directory (see
+        // resolveDataDir: userData, unless a dev run overrides it).
+        POKE_SORT_DATA_DIR: resolveDataDir(),
         POKE_SORT_MIGRATIONS_DIR: MIGRATIONS_DIR,
         POKE_SORT_STATIC_DIR: STATIC_DIR,
         POKE_SORT_HOST: "127.0.0.1",
@@ -316,7 +359,48 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
-app.on("before-quit", () => {
-  serverProcess?.kill();
-  serverProcess = null;
+/**
+ * How long to wait for the server to close its database before quitting anyway.
+ * Closing PGlite is normally instant; this only bounds a pathological case.
+ */
+const SERVER_EXIT_GRACE_MS = 6000;
+
+let quitting = false;
+
+/**
+ * Waits for the server to shut down before the app exits.
+ *
+ * `kill()` on its own returned immediately and Electron tore the process down
+ * behind it, so PGlite — a real Postgres writing real files — was killed
+ * mid-write on every quit and had to crash-recover on the next boot. The server
+ * closes its database on SIGTERM; this is the half that gives it time to.
+ *
+ * `app.exit` rather than `app.quit`, because exit skips `before-quit` and so
+ * cannot re-enter this handler.
+ */
+app.on("before-quit", (event) => {
+  if (quitting) return;
+  const child = serverProcess;
+  if (!child) return;
+
+  event.preventDefault();
+  quitting = true;
+
+  const finish = (reason: string) => {
+    console.log(`[main] Server shutdown: ${reason}`);
+    serverProcess = null;
+    app.exit(0);
+  };
+
+  const timer = setTimeout(() => {
+    console.warn("[main] Server did not exit in time; quitting anyway.");
+    finish("timed out");
+  }, SERVER_EXIT_GRACE_MS);
+
+  child.once("exit", () => {
+    clearTimeout(timer);
+    finish("clean");
+  });
+
+  child.kill();
 });

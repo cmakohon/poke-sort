@@ -1,5 +1,7 @@
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
+import { z } from "zod";
+import { parseBody } from "../lib/validate";
 import { authQuery } from "../db";
 import { orgSettings } from "../db/schema";
 import { requireAuth, requireOrg, type AppEnv } from "../middleware/auth";
@@ -56,15 +58,44 @@ router.get("/", requireAuth, requireOrg, async (c) => {
   }
 });
 
+/**
+ * A partial update: the handler distinguishes "key absent" (keep the stored
+ * value) from "key present and null" (clear it), so every field is optional and
+ * nullable rather than defaulted. zod strips nothing that was sent and adds
+ * nothing that was not, which is what keeps the `in` checks below meaningful.
+ *
+ * The scan region is a fraction of the frame, so it is bounded to 0..1 — the
+ * handler multiplies by 100 and stores an integer, and an out-of-range value
+ * would calibrate the scanner to a region that does not exist.
+ */
+const fraction = z.number().min(0).max(1);
+
+const OrgSettingsSchema = z
+  .object({
+    primaryColor: z.string().max(64).nullable().optional(),
+    scannerLayout: z.string().max(64).nullable().optional(),
+    discordWebhookUrl: z
+      .union([z.string().url(), z.literal("")])
+      .nullable()
+      .optional(),
+    discordNotifyOnScan: z.boolean().optional(),
+    scanRegion: z
+      .object({
+        coverage: fraction,
+        offsetX: fraction,
+        offsetY: fraction,
+      })
+      .strict()
+      .nullable()
+      .optional(),
+  })
+  .strict();
+
 router.put("/", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
-  const body = await c.req.json<{
-    primaryColor?: string | null;
-    scannerLayout?: string | null;
-    discordWebhookUrl?: string | null;
-    discordNotifyOnScan?: boolean;
-    scanRegion?: { coverage: number; offsetX: number; offsetY: number } | null;
-  }>();
+  const parsed = await parseBody(c, OrgSettingsSchema);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
       const existing = await tx.query.orgSettings.findFirst({

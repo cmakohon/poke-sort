@@ -3,6 +3,8 @@ import type {
   SerialEventReport,
 } from "@poke-sort/shared";
 import { Hono } from "hono";
+import { z } from "zod";
+import { parseBody } from "../lib/validate";
 import { authQuery } from "../db";
 import { notificationSettings } from "../db/schema";
 import { sendDiscordNotification } from "../lib/discord";
@@ -35,10 +37,36 @@ router.get("/", requireAuth, requireOrg, async (c) => {
   }
 });
 
+/** Mirrors SerialEventReport; `response` is opaque device output, so unknown. */
+const SerialEventSchema = z
+  .object({
+    command: z.enum(["connect", "test", "feeder", "auto-feed", "bin", "jam"]),
+    sent: z.boolean(),
+    response: z.unknown(),
+    cardName: z.string().optional(),
+    binNumber: z.number().int().optional(),
+  })
+  .strict();
+
+/**
+ * The webhook is fetched by the server, so it is checked before it is stored
+ * rather than at send time — an unparseable value would otherwise sit in the
+ * database and fail silently on every notification.
+ */
+const NotificationSettingsSchema = z
+  .object({
+    discordWebhookUrl: z.union([z.string().url(), z.literal(""), z.null()]),
+  })
+  .strict();
+
 // PUT /notifications
 router.put("/", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
-  const body = await c.req.json<NotificationSettings>();
+  const parsed = await parseBody(c, NotificationSettingsSchema);
+  if (!parsed.ok) return parsed.response;
+  const body: NotificationSettings = {
+    discordWebhookUrl: parsed.data.discordWebhookUrl || null,
+  };
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
       await tx
@@ -99,7 +127,9 @@ const TEST_EMBEDS: Record<string, { title: string; description: string }> = {
 
 // POST /notifications/test
 router.post("/test", requireAuth, requireOrg, async (c) => {
-  const { type } = await c.req.json<{ type: string }>();
+  const parsedTest = await parseBody(c, z.object({ type: z.string() }).strict());
+  if (!parsedTest.ok) return parsedTest.response;
+  const { type } = parsedTest.data;
   const embed = TEST_EMBEDS[type];
   if (!embed) {
     return c.json(
@@ -118,7 +148,9 @@ router.post("/test", requireAuth, requireOrg, async (c) => {
 
 // POST /notifications/serial-event — raw serial command/response pair reported
 router.post("/serial-event", requireAuth, requireOrg, async (c) => {
-  const event = await c.req.json<SerialEventReport>();
+  const parsedEvent = await parseBody(c, SerialEventSchema);
+  if (!parsedEvent.ok) return parsedEvent.response;
+  const event = parsedEvent.data as SerialEventReport;
   const classified = classifySerialEvent(event);
   if (classified) {
     const orgId = c.get("orgId");

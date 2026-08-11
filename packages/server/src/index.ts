@@ -4,7 +4,8 @@ import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { HOST, PORT, STATIC_DIR } from "./config";
+import { HOST, PORT, SHUTDOWN_TIMEOUT_MS, STATIC_DIR } from "./config";
+import { client } from "./db";
 import { migrateDatabase } from "./db/migrate";
 import { seedDatabase } from "./db/seed";
 import type { AppEnv } from "./middleware/auth";
@@ -84,6 +85,18 @@ if (STATIC_DIR) {
   app.get("*", (c) => c.html(indexHtml));
 }
 
+/**
+ * Anything a route throws without catching lands here.
+ *
+ * Without it Hono answers an uncaught throw with a bare 500 and no body, so the
+ * client sees an empty response and the cause exists only in a log nobody is
+ * watching. Routes still catch their own expected failures; this is the floor.
+ */
+app.onError((err, c) => {
+  console.error(`[server] Unhandled error on ${c.req.method} ${c.req.path}:`, err);
+  return c.json({ success: false, message: "Internal server error." }, 500);
+});
+
 // Migrate then seed, both hard prerequisites rather than best-effort: with no
 // schema, or no `games` rows to give the bin rule engine its field definitions,
 // nothing can be sorted — so a failure here should stop the boot rather than
@@ -91,13 +104,62 @@ if (STATIC_DIR) {
 migrateDatabase()
   .then(seedDatabase)
   .then(() => {
-    serve({ fetch: app.fetch, port: PORT, hostname: HOST }, (info) => {
+    const server = serve({ fetch: app.fetch, port: PORT, hostname: HOST }, (info) => {
       console.log(`[server] Running on http://${HOST}:${info.port}`);
       // The desktop shell asks for port 0 and learns the real one here.
       parentPort?.postMessage({ type: "listening", port: info.port });
     });
+    installShutdownHandlers(server);
   })
   .catch((err) => {
     console.error("[server] Failed to prepare database:", err);
     process.exit(1);
   });
+
+/**
+ * Closes the HTTP server and the database before exiting.
+ *
+ * PGlite is a real Postgres writing real files. Killed mid-write it depends on
+ * crash recovery to come back, which is what produced the `mutex lock failed`
+ * noise on shutdown — and recovery is not something to lean on every quit when
+ * a clean close is a few lines. The desktop shell sends SIGTERM and waits for
+ * this to finish.
+ *
+ * Bounded, because a hung close must not be worse than the abrupt kill it
+ * replaced: if the graceful path overruns, exit anyway.
+ */
+function installShutdownHandlers(server: { close(cb?: (err?: Error) => void): void }): void {
+  let shuttingDown = false;
+
+  async function shutdown(signal: string): Promise<void> {
+    // A second Ctrl-C should be an escape hatch, not a queued second teardown.
+    if (shuttingDown) {
+      console.warn(`[server] ${signal} during shutdown; exiting now.`);
+      process.exit(1);
+    }
+    shuttingDown = true;
+    console.log(`[server] ${signal} received, shutting down...`);
+
+    const forceExit = setTimeout(() => {
+      console.warn("[server] Shutdown timed out; exiting anyway.");
+      process.exit(1);
+    }, SHUTDOWN_TIMEOUT_MS);
+    // Do not let the timer alone hold the process open.
+    forceExit.unref();
+
+    try {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+      await client.close();
+      console.log("[server] Database closed cleanly.");
+      clearTimeout(forceExit);
+      process.exit(0);
+    } catch (err) {
+      console.error("[server] Error during shutdown:", err);
+      clearTimeout(forceExit);
+      process.exit(1);
+    }
+  }
+
+  process.on("SIGTERM", () => void shutdown("SIGTERM"));
+  process.on("SIGINT", () => void shutdown("SIGINT"));
+}

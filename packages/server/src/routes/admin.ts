@@ -1,5 +1,10 @@
 import { count, eq, ilike } from "drizzle-orm";
 import { Hono } from "hono";
+import { z } from "zod";
+import { parseBody } from "../lib/validate";
+
+/** Optional filter for the destructive catalog clear; absent means every game. */
+const ClearSchema = z.object({ gameKey: z.string().trim().min(1).optional() }).strict();
 import { streamSSE } from "hono/streaming";
 import { db } from "../db";
 import { cardImageVectors } from "../db/schema";
@@ -23,14 +28,26 @@ const router = new Hono<AppEnv>();
 // normal install is expected to take. `url` is optional and may be a local
 // path, so a maintainer can verify a pack before publishing it.
 router.post("/catalog/import", requireAuth, requireRole("admin"), async (c) => {
-  const { gameKey, lang, url } = await c.req.json<{
-    gameKey?: string;
-    lang?: string;
-    url?: string;
-  }>();
-  if (!gameKey?.trim()) {
-    return c.json({ success: false, message: "A gameKey is required." }, 400);
-  }
+  const parsed = await parseBody(
+    c,
+    z
+      .object({
+        gameKey: z.string().trim().min(1),
+        lang: z.string().trim().min(1).optional(),
+        // Where the pack is downloaded from, so it is constrained to http(s)
+        // rather than accepting file:// or anything else fetch would honour.
+        url: z
+          .string()
+          .url()
+          .refine((u) => /^https?:$/.test(new URL(u).protocol), {
+            message: "must be an http(s) URL",
+          })
+          .optional(),
+      })
+      .strict(),
+  );
+  if (!parsed.ok) return parsed.response;
+  const { gameKey, lang, url } = parsed.data;
 
   const { started, message } = startPackImport(gameKey, lang ?? "en", url);
   return c.json({ success: started, message, data: getPackJobState() }, started ? 200 : 409);
@@ -89,19 +106,18 @@ router.get("/sync/sources", requireAuth, requireRole("admin"), (c) => {
 
 // POST /admin/sync
 router.post("/sync", requireAuth, requireRole("admin"), async (c) => {
-  let gameKey: string | undefined;
-  let lang = "en";
-  try {
-    const body = await c.req.json<{ gameKey?: string; lang?: string }>();
-    gameKey = body.gameKey;
-    if (body.lang) lang = body.lang;
-  } catch {
-    // no/invalid body
-  }
-
-  if (!gameKey) {
-    return c.json({ success: false, message: "gameKey is required." }, 400);
-  }
+  const parsed = await parseBody(
+    c,
+    z
+      .object({
+        gameKey: z.string().trim().min(1),
+        lang: z.string().trim().min(1).optional(),
+      })
+      .strict(),
+  );
+  if (!parsed.ok) return parsed.response;
+  const { gameKey } = parsed.data;
+  const lang = parsed.data.lang ?? "en";
   const source = SYNC_SOURCES[gameKey];
   if (!source) {
     return c.json(
@@ -243,28 +259,19 @@ async function syncOneCard(
 // POST /admin/cards/sync — fetch + vectorize a single card by id, adding it
 // to the database if it isn't already there
 router.post("/cards/sync", requireAuth, requireRole("admin"), async (c) => {
-  let gameKey: string | undefined;
-  let cardId: string | undefined;
-  let lang = "en";
-  try {
-    const body = await c.req.json<{
-      gameKey?: string;
-      cardId?: string;
-      lang?: string;
-    }>();
-    gameKey = body.gameKey;
-    cardId = body.cardId?.trim();
-    if (body.lang) lang = body.lang;
-  } catch {
-    // no/invalid body
-  }
-
-  if (!gameKey || !cardId) {
-    return c.json(
-      { success: false, message: "gameKey and cardId are required." },
-      400,
-    );
-  }
+  const parsed = await parseBody(
+    c,
+    z
+      .object({
+        gameKey: z.string().trim().min(1),
+        cardId: z.string().trim().min(1),
+        lang: z.string().trim().min(1).optional(),
+      })
+      .strict(),
+  );
+  if (!parsed.ok) return parsed.response;
+  const { gameKey, cardId } = parsed.data;
+  const lang = parsed.data.lang ?? "en";
 
   const result = await syncOneCard(gameKey, cardId, lang);
   if (!result.success) {
@@ -328,10 +335,11 @@ router.post("/cards/dump", requireAuth, requireRole("admin"), async (c) => {
 
   let gameKey: string | undefined;
   try {
-    const body = await c.req.json<{ gameKey?: string }>();
+    const body = ClearSchema.parse(await c.req.json());
     if (body.gameKey) gameKey = body.gameKey;
   } catch {
-    // no/invalid body - dump everything
+    // An absent or unparseable body means "clear everything", which is this
+    // route's documented default — so it stays tolerant rather than 400ing.
   }
 
   if (gameKey) {

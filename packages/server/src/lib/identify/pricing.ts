@@ -23,7 +23,19 @@ import { resolveAdapterForGame } from "../card-search/resolve";
  *   (the one thing the plan always accepted would need the network)
  */
 
-/** Races a promise against a timeout without leaving the loser unhandled. */
+/**
+ * Races a promise against a timeout without leaving the loser unhandled.
+ *
+ * Deliberately does not cancel the loser. The adapter behind it dedupes
+ * concurrent lookups of the same card onto one shared promise, so aborting here
+ * would reject that promise for every other caller waiting on it — turning one
+ * scan's timeout into everyone's. The abandoned request is instead left to
+ * finish and populate the 15-minute cache, where the next scan of the same card
+ * gets it for free.
+ *
+ * What that leaves unbounded is the socket itself, so the request carries its
+ * own deadline at the fetch (see POKEMON_HEADERS / fetchDetail).
+ */
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
   return new Promise((resolve) => {
     const timer = setTimeout(() => resolve(null), ms);

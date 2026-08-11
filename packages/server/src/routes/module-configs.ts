@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+import { z } from "zod";
+import { parseBody } from "../lib/validate";
 import { authQuery } from "../db";
 import { moduleConfigAudit, moduleConfigs } from "../db/schema";
 import { DEFAULT_CALIBRATION, type ModuleConfig, type ServoCalibration } from "@poke-sort/shared";
@@ -7,34 +9,29 @@ import { requireAuth, requireOrg, type AppEnv } from "../middleware/auth";
 const router = new Hono<AppEnv>();
 
 /**
- * Copies only the seven servo fields out of a request body.
+ * The seven servo positions, and nothing else.
  *
- * The body used to be spread straight into the insert, which let it decide
- * columns it has no business setting — including `moduleNumber`, which is
- * spread over by `...calibration` and so could point the write at a different
- * servo module than the URL named. Enumerating the fields is what makes the
- * URL parameter authoritative again.
+ * `.strict()` is the point: the body used to be spread straight into the
+ * insert, so it could set columns it has no business setting — including
+ * `moduleNumber`, which `...calibration` spread over, letting a request point
+ * the write at a different servo module than the URL named. Rejecting unknown
+ * keys keeps the URL parameter authoritative.
+ *
+ * Servo angles, so bounded to degrees rather than merely "a number".
  */
-function pickCalibration(body: unknown): ServoCalibration | null {
-  if (!body || typeof body !== "object") return null;
-  const b = body as Record<string, unknown>;
-  const keys = [
-    "bottomClosed",
-    "bottomOpen",
-    "paddleClosed",
-    "paddleOpen",
-    "pusherLeft",
-    "pusherNeutral",
-    "pusherRight",
-  ] as const;
-  const out = {} as Record<(typeof keys)[number], number>;
-  for (const key of keys) {
-    const value = b[key];
-    if (typeof value !== "number" || !Number.isFinite(value)) return null;
-    out[key] = value;
-  }
-  return out;
-}
+const servoAngle = z.number().int().min(0).max(180);
+
+const CalibrationSchema = z
+  .object({
+    bottomClosed: servoAngle,
+    bottomOpen: servoAngle,
+    paddleClosed: servoAngle,
+    paddleOpen: servoAngle,
+    pusherLeft: servoAngle,
+    pusherNeutral: servoAngle,
+    pusherRight: servoAngle,
+  })
+  .strict() satisfies z.ZodType<ServoCalibration>;
 
 /** Three physical diverter modules; anything else is not addressable. */
 function parseModuleNumber(raw: string | undefined): 1 | 2 | 3 | null {
@@ -98,13 +95,9 @@ router.put("/:moduleNumber", requireAuth, requireOrg, async (c) => {
   if (moduleNumber === null) {
     return c.json({ success: false, message: "Module number must be 1, 2 or 3." }, 400);
   }
-  const calibration = pickCalibration(await c.req.json().catch(() => null));
-  if (!calibration) {
-    return c.json(
-      { success: false, message: "All seven servo positions are required, as numbers." },
-      400,
-    );
-  }
+  const body = await parseBody(c, CalibrationSchema);
+  if (!body.ok) return body.response;
+  const calibration = body.data;
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
       await tx

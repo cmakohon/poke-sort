@@ -1,6 +1,25 @@
 import path from "node:path";
 
 /**
+ * Reads a positive integer from the environment.
+ *
+ * A bare `parseInt` turns a typo into NaN and carries it into whatever uses the
+ * value: `SET hnsw.ef_search = NaN` is a SQL error at scan time, and a NaN
+ * timeout fires instantly. Neither points back at the misconfigured variable,
+ * so an unusable value is refused loudly here and the default stands.
+ */
+export function intFromEnv(name: string, fallback: number, min = 1): number {
+  const raw = process.env[name];
+  if (raw === undefined || raw === "") return fallback;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed < min) {
+    console.warn(`[config] Ignoring ${name}=${raw}; using ${fallback}.`);
+    return fallback;
+  }
+  return parsed;
+}
+
+/**
  * Everything the app writes lives under one directory so the Electron shell can
  * point it at `app.getPath("userData")` with a single env var (Phase 3).
  */
@@ -38,7 +57,8 @@ export const STATIC_DIR = process.env.POKE_SORT_STATIC_DIR
  * fixed port could collide with anything else on the machine. The real port is
  * reported back over the utilityProcess message channel.
  */
-export const PORT = parseInt(process.env.PORT ?? "3001", 10);
+// Minimum 0, because port 0 is meaningful here: it asks the OS to pick.
+export const PORT = intFromEnv("PORT", 3001, 0);
 
 /** Loopback-only in the packaged app; the dev server stays reachable on the LAN
  * so a phone can open the monitor view. */
@@ -70,13 +90,14 @@ export const LIVE_PRICING = process.env.POKE_SORT_LIVE_PRICING !== "0";
  * Above ~200 the planner abandons the index for a sequential scan, so raising
  * this further buys nothing and silently gives up the index.
  */
-export const HNSW_EF_SEARCH = parseInt(
-  process.env.POKE_SORT_HNSW_EF_SEARCH ?? "100",
-  10,
-);
+export const HNSW_EF_SEARCH = intFromEnv("POKE_SORT_HNSW_EF_SEARCH", 100);
 
 /** How long a price lookup may delay a scan before the stored price stands. */
-export const PRICE_TIMEOUT_MS = parseInt(
-  process.env.POKE_SORT_PRICE_TIMEOUT_MS ?? "2000",
-  10,
-);
+export const PRICE_TIMEOUT_MS = intFromEnv("POKE_SORT_PRICE_TIMEOUT_MS", 2000);
+
+/**
+ * How long a graceful shutdown may take before the process exits regardless.
+ * Closing PGlite is normally instant; this only bounds the pathological case,
+ * so that the clean path is never worse than the abrupt kill it replaced.
+ */
+export const SHUTDOWN_TIMEOUT_MS = intFromEnv("POKE_SORT_SHUTDOWN_TIMEOUT_MS", 5000);

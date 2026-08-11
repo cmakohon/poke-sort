@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+import { z } from "zod";
+import { parseBody } from "../lib/validate";
 import { authQuery } from "../db";
 import { feederConfigAudit, feederConfigs } from "../db/schema";
 import { DEFAULT_FEEDER_CALIBRATION, type FeederCalibration } from "@poke-sort/shared";
@@ -7,28 +9,24 @@ import { requireAuth, requireOrg, type AppEnv } from "../middleware/auth";
 const router = new Hono<AppEnv>();
 
 /**
- * Copies only the five feeder fields out of a request body, so the body cannot
- * choose columns of its own (`orgId`, `id`, timestamps) by being spread whole
+ * The five feeder settings, and nothing else. `.strict()` stops the body from
+ * choosing columns of its own (`orgId`, `id`, timestamps) by being spread whole
  * into the insert.
+ *
+ * Durations are milliseconds and capped at a minute: a fat-fingered value used
+ * to be accepted and then stall the feeder for as long as it said.
  */
-function pickFeederCalibration(body: unknown): FeederCalibration | null {
-  if (!body || typeof body !== "object") return null;
-  const b = body as Record<string, unknown>;
-  const keys = [
-    "speed",
-    "duration",
-    "pulseDuration",
-    "pauseDuration",
-    "settleDuration",
-  ] as const;
-  const out = {} as Record<(typeof keys)[number], number>;
-  for (const key of keys) {
-    const value = b[key];
-    if (typeof value !== "number" || !Number.isFinite(value)) return null;
-    out[key] = value;
-  }
-  return out;
-}
+const durationMs = z.number().int().min(0).max(60_000);
+
+const FeederCalibrationSchema = z
+  .object({
+    speed: z.number().int().min(0).max(180),
+    duration: durationMs,
+    pulseDuration: durationMs,
+    pauseDuration: durationMs,
+    settleDuration: durationMs,
+  })
+  .strict() satisfies z.ZodType<FeederCalibration>;
 
 // GET /feeder
 router.get("/", requireAuth, requireOrg, async (c) => {
@@ -59,13 +57,9 @@ router.get("/", requireAuth, requireOrg, async (c) => {
 // PUT /feeder
 router.put("/", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
-  const calibration = pickFeederCalibration(await c.req.json().catch(() => null));
-  if (!calibration) {
-    return c.json(
-      { success: false, message: "All five feeder settings are required, as numbers." },
-      400,
-    );
-  }
+  const body = await parseBody(c, FeederCalibrationSchema);
+  if (!body.ok) return body.response;
+  const calibration = body.data;
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
       await tx
