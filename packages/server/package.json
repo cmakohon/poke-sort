@@ -8,6 +8,7 @@
     "db:generate": "drizzle-kit generate",
     "db:socket": "pglite-server --db ./.poke-sort/db --port 5432",
     "db:studio": "drizzle-kit studio",
+    "calibration": "tsx --env-file-if-exists ../../.env scripts/calibration.ts",
     "export:pack": "tsx --env-file-if-exists ../../.env scripts/export-pack.ts",
     "eval:build": "tsx eval/build-fixtures.ts",
     "test": "vitest run",
