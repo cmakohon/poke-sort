@@ -7,7 +7,12 @@ import {
   utilityProcess,
   type UtilityProcess,
 } from "electron";
-import { loadPreferredPortId, savePreferredPortId } from "./serial-prefs";
+import {
+  loadPreferredPort,
+  matchScore,
+  savePreferredPort,
+  type SerialPortIdentity,
+} from "./serial-prefs";
 
 /**
  * Must run before anything asks for `userData`, which is derived from it.
@@ -274,14 +279,33 @@ function wireSerialPermissions(win: BrowserWindow): void {
     // the virtual ports report neither. That is the distinction worth picking
     // on, rather than a hardcoded Arduino vendor id that would break the moment
     // the board is swapped.
-    const preferred = loadPreferredPortId();
+    // Ranked, best first: the exact board the user chose before, then any
+    // board of the same model, then any physically attached USB device, then
+    // whatever is left. portId is deliberately not part of this — Electron
+    // regenerates it every launch, so it identifies nothing across sessions.
+    const preferred = loadPreferredPort();
+    const ranked = preferred
+      ? [...portList].sort((a, b) => matchScore(b, preferred) - matchScore(a, preferred))
+      : portList;
+    const remembered =
+      preferred && matchScore(ranked[0], preferred) > 0 ? ranked[0] : null;
     const chosen =
-      portList.find((p) => p.portId === preferred) ??
+      remembered ??
       portList.find((p) => p.vendorId && p.productId) ??
       portList[0];
     console.log(
-      `[main] serial: ${portList.length} port(s), chose ${chosen.portName ?? chosen.portId}`,
+      `[main] serial: ${portList.length} port(s), chose ${chosen.portName ?? chosen.portId}` +
+        (remembered ? " (remembered)" : " (first USB device)"),
     );
+    // Remember what was actually used, so the next launch reproduces this
+    // choice even if the port order changes or another device is attached.
+    if (chosen.vendorId && chosen.productId) {
+      savePreferredPort({
+        vendorId: chosen.vendorId,
+        productId: chosen.productId,
+        serialNumber: chosen.serialNumber,
+      });
+    }
     callback(chosen.portId);
   });
 
@@ -367,11 +391,14 @@ async function createWindow(): Promise<void> {
   await win.loadURL(appUrl);
 }
 
-ipcMain.handle("poke-sort:get-preferred-serial-port", () => loadPreferredPortId());
-ipcMain.handle("poke-sort:set-preferred-serial-port", (_e, portId: string | null) => {
-  savePreferredPortId(portId);
-  return portId;
-});
+ipcMain.handle("poke-sort:get-preferred-serial-port", () => loadPreferredPort());
+ipcMain.handle(
+  "poke-sort:set-preferred-serial-port",
+  (_e, identity: SerialPortIdentity | null) => {
+    savePreferredPort(identity);
+    return identity;
+  },
+);
 
 // Two copies of the app would open the same PGlite directory, which is not a
 // contention problem but a corruption one. Hand the second launch's focus to
