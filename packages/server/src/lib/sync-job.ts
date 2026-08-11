@@ -106,12 +106,62 @@ export function startSync(
   });
 }
 
+// Lowered from 10: the embedding forward pass (~400 ms) dominates, not the
+// download, so extra download concurrency bought little and provoked the CDN.
 const VECTORIZE_CONCURRENCY = parseInt(
-  process.env.VECTORIZE_CONCURRENCY ?? "10",
+  process.env.VECTORIZE_CONCURRENCY ?? "4",
 );
 
 /** Rows per insert statement. ~250 x 768 floats keeps a statement near 2 MB. */
 const WRITE_BATCH_SIZE = 250;
+
+/**
+ * A full Pokémon sync at concurrency 10 lost ~18% of cards to bare
+ * `fetch failed` errors — connection resets from the image CDN, not 404s.
+ * Those cards were counted as errors and silently never embedded, leaving an
+ * incomplete catalog. Retrying with backoff, and asking for less at once,
+ * is what makes the fallback path trustworthy when no pack is available.
+ */
+const FETCH_ATTEMPTS = 4;
+const FETCH_BACKOFF_MS = 500;
+
+const sleep = (ms: number) =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
+async function fetchImageWithRetry(
+  url: string,
+  headers: Record<string, string> | undefined,
+): Promise<Response> {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= FETCH_ATTEMPTS; attempt++) {
+    if (cancelFlag) throw new Error("cancelled");
+    try {
+      const res = await fetch(url, {
+        headers,
+        signal: abortController?.signal,
+      });
+      // 4xx other than 429 is a real "this image does not exist" — retrying
+      // just wastes the rate limit we are already up against.
+      if (res.ok) return res;
+      if (res.status < 500 && res.status !== 429) {
+        throw new Error(`Image fetch failed: ${res.status}`);
+      }
+      lastError = new Error(`Image fetch failed: ${res.status}`);
+    } catch (err) {
+      if (abortController?.signal.aborted) throw err;
+      lastError = err;
+    }
+
+    if (attempt < FETCH_ATTEMPTS) {
+      // Exponential with jitter, so the workers do not retry in lockstep.
+      const delay = FETCH_BACKOFF_MS * 2 ** (attempt - 1);
+      await sleep(delay + Math.floor(Math.random() * delay));
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
+}
 
 async function runSync(source: SyncSource, lang: string): Promise<void> {
   const baseUrl = await resolveGameDataSourceUrl(
@@ -204,12 +254,10 @@ async function runSync(source: SyncSource, lang: string): Promise<void> {
     }
 
     try {
-      const imageRes = await fetch(card.imageUrl, {
-        headers: source.fetchHeaders,
-        signal: abortController?.signal,
-      });
-      if (!imageRes.ok)
-        throw new Error(`Image fetch failed: ${imageRes.status}`);
+      const imageRes = await fetchImageWithRetry(
+        card.imageUrl,
+        source.fetchHeaders,
+      );
       const buffer = Buffer.from(await imageRes.arrayBuffer());
       const embedding = await vectorizeImageFromBuffer(buffer);
 

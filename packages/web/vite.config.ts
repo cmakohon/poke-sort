@@ -22,10 +22,11 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
+      // No rewrite: the server mounts its routes under /api itself, so dev and
+      // the packaged app agree on every URL.
       "/api": {
         target: "http://localhost:3001",
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ""),
       },
     },
   },

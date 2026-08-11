@@ -1,0 +1,59 @@
+appId: com.dishwasherdetergent.mault
+productName: Mault
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - dist/**/*
+  - package.json
+
+# The asar only ever contains the tiny main/preload bundle — the server and its
+# native modules ship as extraResources, which are already outside the archive.
+# Kept anyway as a guard: if a native dep ever ends up in the asar it will fail
+# at load time with a confusing error, because WASM blobs and .node binaries
+# cannot be read from inside an asar.
+asarUnpack:
+  - "**/node_modules/onnxruntime-node/**"
+  - "**/node_modules/@electric-sql/**"
+  - "**/node_modules/sharp/**"
+  - "**/node_modules/@img/**"
+
+extraResources:
+  # Built by `pnpm run bundle:server`, which runs `pnpm deploy`.
+  #
+  # A plain copy of packages/server/node_modules does NOT work: pnpm's tree is
+  # symlinks into the workspace-root store, and electron-builder copies them as
+  # symlinks — so the packaged app points at paths that do not exist on a user's
+  # machine. `pnpm deploy` rewrites them to resolve within the bundle.
+  - from: .server-bundle/dist
+    to: server
+  - from: .server-bundle/node_modules
+    to: server/node_modules
+  # The built SPA, served by that server over http://127.0.0.1.
+  - from: ../web/dist
+    to: web
+  # Read from disk at runtime by the drizzle migrator.
+  - from: ../../drizzle
+    to: drizzle
+  # SigLIP weights — see scripts/fetch-model.mjs. ~100 MB, deliberately shipped
+  # rather than downloaded: offline operation is the whole point of the app.
+  - from: ../../.models
+    to: models
+
+mac:
+  category: public.app-category.utilities
+  target:
+    - dmg
+  extendInfo:
+    # Required for getUserMedia — the scanner is a webcam app.
+    NSCameraUsageDescription: Mault uses your camera to scan trading cards.
+
+win:
+  target:
+    - nsis
+
+linux:
+  category: Utility
+  target:
+    - AppImage

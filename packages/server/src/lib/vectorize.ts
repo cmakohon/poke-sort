@@ -1,11 +1,26 @@
 import {
   AutoProcessor,
+  env,
   RawImage,
   SiglipVisionModel,
   type Processor,
 } from "@huggingface/transformers";
+import { MODEL_DIR, MODELS_OFFLINE } from "../config";
 
 const MODEL_NAME = "Xenova/siglip-base-patch16-512";
+
+// transformers.js defaults its cache to a directory inside its own node_modules
+// folder, which in the packaged app lives inside the asar archive and is not
+// writable or populated. Note HF_HOME / TRANSFORMERS_OFFLINE are Python-only
+// and have no effect here — `env` is the only knob that works.
+if (MODEL_DIR) {
+  env.cacheDir = MODEL_DIR;
+}
+if (MODELS_OFFLINE) {
+  // The weights ship with the app. A first-run download would make the one
+  // thing that must work offline depend on the network.
+  env.allowRemoteModels = false;
+}
 
 let modelPromise: Promise<SiglipVisionModel> | null = null;
 let processorPromise: Promise<Processor> | null = null;
