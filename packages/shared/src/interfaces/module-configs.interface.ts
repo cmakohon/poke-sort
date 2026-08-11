@@ -25,6 +25,18 @@ export interface ModuleConfig {
 export const SERVO_PULSE_MIN = 120;
 export const SERVO_PULSE_MAX = 490;
 
+/**
+ * Scan region bounds, mirroring clampRegion in scan-region-calibration-panel.
+ *
+ * The offsets are signed: they move the capture window from the centre of the
+ * frame, so a camera mounted slightly high and left needs negatives. A real
+ * calibration in the wild reads offsetX -0.05, offsetY -0.06 — an earlier
+ * version of the API validation bounded these 0..1 and rejected exactly that.
+ */
+export const SCAN_COVERAGE_MIN = 0.1;
+export const SCAN_COVERAGE_MAX = 1;
+export const SCAN_OFFSET_LIMIT = 0.45;
+
 export const DEFAULT_CALIBRATION: ServoCalibration = {
   bottomClosed: 400,
   bottomOpen: 150,

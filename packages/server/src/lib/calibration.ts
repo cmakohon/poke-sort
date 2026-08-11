@@ -1,5 +1,8 @@
 import {
   LOCAL_ORG_ID,
+  SCAN_COVERAGE_MAX,
+  SCAN_COVERAGE_MIN,
+  SCAN_OFFSET_LIMIT,
   SERVO_PULSE_MAX,
   SERVO_PULSE_MIN,
 } from "@poke-sort/shared";
@@ -35,7 +38,9 @@ import {
 const servoPulse = z.number().int().min(SERVO_PULSE_MIN).max(SERVO_PULSE_MAX);
 const durationMs = z.number().int().min(0).max(60_000);
 /** A fraction of the frame, as the calibration UI expresses it. */
-const fraction = z.number().min(0).max(1);
+const coverage = z.number().min(SCAN_COVERAGE_MIN).max(SCAN_COVERAGE_MAX);
+/** Signed: the capture window moves either way from the centre of the frame. */
+const offset = z.number().min(-SCAN_OFFSET_LIMIT).max(SCAN_OFFSET_LIMIT);
 
 export const CALIBRATION_FORMAT_VERSION = 1;
 
@@ -72,7 +77,7 @@ export const CalibrationDocumentSchema = z
       .strict()
       .optional(),
     scanRegion: z
-      .object({ coverage: fraction, offsetX: fraction, offsetY: fraction })
+      .object({ coverage, offsetX: offset, offsetY: offset })
       .strict()
       .nullable()
       .optional(),
