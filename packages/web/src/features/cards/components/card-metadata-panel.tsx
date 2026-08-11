@@ -33,6 +33,10 @@ interface CardMetadataPanelProps {
   card: PlayingCardWithDistance | (Omit<PlayingCardWithDistance, "distance"> & { distance?: number });
   /** The bin the card was physically routed to at scan time. */
   assignedBin?: number;
+  /** The pipeline held this scan for a human instead of trusting its ranking. */
+  needsReview?: boolean;
+  scanScore?: number;
+  scanMargin?: number;
 }
 
 function formatValue(value: string | number | string[]): string {
@@ -40,7 +44,13 @@ function formatValue(value: string | number | string[]): string {
   return String(value ?? "");
 }
 
-export function CardMetadataPanel({ card, assignedBin }: CardMetadataPanelProps) {
+export function CardMetadataPanel({
+  card,
+  assignedBin,
+  needsReview,
+  scanScore,
+  scanMargin,
+}: CardMetadataPanelProps) {
   const { t } = useTranslation("cards");
   const { configs, fieldDefinitions } = useBinConfigs();
   const [showRaw, setShowRaw] = useState(false);
@@ -118,6 +128,17 @@ export function CardMetadataPanel({ card, assignedBin }: CardMetadataPanelProps)
           </span>
         )}
       </div>
+
+      {needsReview && (
+        <p className="text-xs text-amber-600 dark:text-amber-400">
+          {scanScore != null
+            ? t("metadata.heldForReviewWithNumbers", {
+                score: scanScore.toFixed(2),
+                margin: scanMargin != null ? scanMargin.toFixed(2) : "—",
+              })
+            : t("metadata.heldForReview")}
+        </p>
+      )}
 
       <button
         type="button"

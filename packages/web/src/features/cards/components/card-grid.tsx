@@ -284,6 +284,9 @@ export function CardGrid() {
         capturedImageUrl={openEntry.capturedImageUrl}
         isFoil={openEntry.isFoil}
         binNumber={openEntry.binNumber}
+        needsReview={openEntry.needsReview}
+        scanScore={openEntry.score}
+        scanMargin={openEntry.margin}
         onClose={() => setOpenScanId(null)}
         onRemove={() => {
           removeCard(openEntry.scanId);

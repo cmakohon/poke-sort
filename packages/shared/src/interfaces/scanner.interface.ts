@@ -46,6 +46,7 @@ export type ScannerStatus =
 export interface ScanOutcome {
   tier: IdentifyTier;
   score?: number;
+  margin?: number;
 }
 
 export interface CardScannerProps {
@@ -80,6 +81,8 @@ export interface ScannedCard {
   variant?: string;
   /** Fused identification score, when a per-game profile scored this scan. */
   score?: number;
+  /** Fused score gap between the top two candidates at scan time. */
+  margin?: number;
   /** The pipeline was not confident enough to sort this automatically. */
   needsReview?: boolean;
   /**
