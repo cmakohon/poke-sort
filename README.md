@@ -165,16 +165,30 @@ The app keeps its database in Electron's `userData` directory
 name explicitly so they land there too, rather than in the `Electron` directory
 that every unpackaged Electron app on the machine shares.
 
-An unpackaged run can point somewhere else — useful for developing against a
-full catalog instead of whichever database the default location happens to hold:
+An unpackaged run can point somewhere else, which is how to develop against a
+full catalog rather than whichever database the default location happens to
+hold:
 
 ```bash
-POKE_SORT_DATA_DIR=$PWD/packages/server/.poke-sort-catalog \
-  pnpm --filter @poke-sort/desktop dev
+pnpm --filter @poke-sort/desktop dev:catalog   # uses packages/server/.poke-sort-catalog
 ```
 
-A packaged app ignores that variable: it owns `userData`, and an environment
-variable should not be able to move a user's library out from under them.
+That is a thin wrapper over `POKE_SORT_DATA_DIR`, which takes any path:
+
+```bash
+POKE_SORT_DATA_DIR=/some/other/dir pnpm --filter @poke-sort/desktop dev
+```
+
+The resolved absolute path is logged on boot, and a path with no database in it
+warns rather than quietly coming up with a catalog of zero cards.
+
+A packaged app ignores the variable entirely: it owns `userData`, and an
+environment variable should not be able to move a user's library out from under
+them.
+
+Note that the data directory is per-database, not shared — a run against the
+catalog and a run against the default location see different collections, bins
+and scan history.
 
 On first launch the app adopts a data directory left behind by the upstream
 name (`Mault`) if one exists and it has not been launched under the new name

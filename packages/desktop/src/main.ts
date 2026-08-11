@@ -38,11 +38,23 @@ const DEV_URL = process.env.POKE_SORT_DEV_URL;
  */
 function resolveDataDir(): string {
   const override = process.env.POKE_SORT_DATA_DIR;
-  if (!app.isPackaged && override) {
-    console.log(`[main] Using POKE_SORT_DATA_DIR override: ${override}`);
-    return override;
+  if (app.isPackaged || !override) return app.getPath("userData");
+
+  // The server resolves a relative value against its own cwd, so resolve it the
+  // same way here and log the absolute path. A relative override that lands
+  // somewhere unintended otherwise looks identical to one that worked.
+  const resolved = path.resolve(override);
+  console.log(`[main] POKE_SORT_DATA_DIR override -> ${resolved}`);
+
+  // An empty or wrong path is not an error — the server will happily create the
+  // directory, migrate, seed, and come up with a catalog of zero cards, which
+  // looks like the app lost its data rather than like a bad path. Say so.
+  if (!fs.existsSync(path.join(resolved, "db"))) {
+    console.warn(
+      `[main] No database at ${resolved}; a new empty one will be created there.`,
+    );
   }
-  return app.getPath("userData");
+  return resolved;
 }
 
 const SERVER_ENTRY = app.isPackaged
