@@ -257,13 +257,27 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
     let port: SerialPort;
     try {
       port = await navigator.serial.requestPort();
-    } catch {
-      // User cancelled the port picker
+    } catch (err) {
+      // There is no picker to cancel. The Electron shell answers
+      // `select-serial-port` itself and auto-selects the first port, so the
+      // only way this rejects is that the shell found no ports at all — which
+      // this used to swallow, leaving the Connect button doing nothing at all
+      // with no explanation.
+      if (err instanceof DOMException && err.name === "NotFoundError") {
+        toast.error(t("serial.noDeviceFound.title"), {
+          description: t("serial.noDeviceFound.description"),
+        });
+        return;
+      }
+      console.error("[Serial] requestPort failed:", err);
+      toast.error(t("serial.connectionFailed.title"), {
+        description: t("serial.connectionFailed.description"),
+      });
       return;
     }
 
     await openPort(port);
-  }, [openPort]);
+  }, [openPort, t]);
 
   // Detect physical USB unplug
   useEffect(() => {
