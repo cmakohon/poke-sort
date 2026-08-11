@@ -141,15 +141,20 @@ export async function readCard(
   const rawReadings: string[] = [];
   for (const region of profile.collectorNumber) {
     const text = await readRegion(image, width, height, region);
-    if (text) rawReadings.push(text);
+    if (!text) continue;
+    rawReadings.push(text);
+
+    // Every band is read even once a good parse is found: the number and the
+    // set abbreviation are not always in the same crop, and the abbreviation is
+    // matched against the raw text rather than parsed out of it.
     const parsed = parseCollectorNumber(text);
     if (!parsed) continue;
-    if (parsed.setTotal != null) {
+    if (parsed.setTotal != null && reading.setTotal == null) {
       reading.collectorNumber = parsed.collectorNumber;
       reading.setTotal = parsed.setTotal;
-      break;
+    } else {
+      reading.collectorNumber ??= parsed.collectorNumber;
     }
-    reading.collectorNumber ??= parsed.collectorNumber;
   }
   if (rawReadings.length > 0) reading.collectorNumberRaw = rawReadings.join(" ");
 

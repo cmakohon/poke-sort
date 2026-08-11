@@ -27,6 +27,8 @@ interface SetBrief {
   symbol?: string;
   releaseDate?: string;
   cardCount?: { official?: number; total?: number };
+  /** Printed beside the collector number on Sword & Shield era cards onward. */
+  abbreviation?: { official?: string; localized?: string };
 }
 
 async function getJson<T>(url: string): Promise<T> {
@@ -66,6 +68,7 @@ async function main() {
         symbol: detail.symbol ?? null,
         releaseDate: detail.releaseDate ?? null,
         cardCount: detail.cardCount?.official ?? null,
+        abbreviation: detail.abbreviation?.official ?? null,
       };
     }
     console.log(`  ${s.name}: ${full.sets.length} sets`);

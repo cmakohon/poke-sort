@@ -40,6 +40,7 @@ export interface IdentityProfile {
     embedding: number;
     name: number;
     collectorNumber: number;
+    setAbbreviation: number;
     hp: number;
   };
   /** Sort as-is only when both hold; otherwise the card goes to review. */
@@ -55,13 +56,32 @@ const POKEMON_OCR: OcrProfile = {
     { x0: 0.06, y0: 0.045, x1: 0.72, y1: 0.13 },
     { x0: 0.14, y0: 0.05, x1: 0.7, y1: 0.12 },
   ],
-  // Bottom-right on classic and modern layouts; bottom-LEFT on e-Card and
-  // several promos, which is why both are tried.
+  /**
+   * Bands measured against real cards rather than guessed, because the printed
+   * number moved sides partway through the game's history: WOTC through XY put
+   * it bottom-RIGHT, Sword & Shield onward bottom-LEFT, and Scarlet & Violet
+   * reads most reliably from a full-width strip. Hit rates from a per-era sweep
+   * (4 cards each, so directional not precise):
+   *
+   *   era    R .90-.97   L .90-.97   W .92-1.0
+   *   base      2/4         0/4         0/4
+   *   bw        3/4         0/4         2/4
+   *   xy        3/4         0/4         2/4
+   *   swsh      0/4         3/4         2/4
+   *   sv        0/4         1/4         4/4
+   *
+   * The previous bands started at y=0.90 and ran to 0.99, which mostly caught
+   * the rules and copyright text sitting above the number — a crop returning
+   * "When your Pokemon is Knocked Out..." rather than "125/197".
+   *
+   * No charset restriction: the digits-only whitelist was telling Tesseract to
+   * discard the set abbreviation ("OBF", "SSH") printed right beside the
+   * number, which is a second, independent signal for which set a card is from.
+   */
   collectorNumber: [
-    { x0: 0.55, y0: 0.9, x1: 0.98, y1: 0.99, charset: "0123456789/" },
-    { x0: 0.02, y0: 0.9, x1: 0.45, y1: 0.99, charset: "0123456789/" },
-    // SV-era promos print an alphanumeric code (e.g. "SVP 001").
-    { x0: 0.55, y0: 0.88, x1: 0.98, y1: 0.99 },
+    { x0: 0.50, y0: 0.90, x1: 0.99, y1: 0.97 },
+    { x0: 0.02, y0: 0.90, x1: 0.50, y1: 0.97 },
+    { x0: 0.02, y0: 0.92, x1: 0.99, y1: 1.0 },
   ],
   hp: [{ x0: 0.6, y0: 0.03, x1: 0.98, y1: 0.12, charset: "0123456789HP" }],
 };
@@ -76,9 +96,14 @@ export const POKEMON_PROFILE: IdentityProfile = {
   // as final. The collector number is the strongest signal when OCR reads it,
   // but OCR fails often enough that the embedding still has to carry the run.
   weights: {
-    embedding: 0.45,
-    name: 0.25,
+    embedding: 0.4,
+    name: 0.2,
     collectorNumber: 0.25,
+    // Weighted just under the number: it is decisive when present, but only
+    // Sword & Shield era cards onward print one, so it is often absent. The
+    // fusion renormalises over the signals actually available, so a card with
+    // no printed code is not penalised for it.
+    setAbbreviation: 0.1,
     hp: 0.05,
   },
   accept: { minScore: 0.6, minMargin: 0.08 },

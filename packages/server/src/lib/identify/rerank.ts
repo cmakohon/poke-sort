@@ -21,6 +21,8 @@ export interface RerankInput {
   collectorNumber: string | null;
   setTotal: number | null;
   hp: number | null;
+  /** Printed set code, e.g. "OBF". Null for sets that never printed one. */
+  setAbbreviation: string | null;
 }
 
 /** Levenshtein, iterative with two rows — these strings are short. */
@@ -102,6 +104,30 @@ export function collectorNumberMatch(
   return 0.5;
 }
 
+/**
+ * Whether the candidate's printed set code appears in the bottom-band text.
+ *
+ * Reprints share art, name and often HP, but never a set — so this separates
+ * exactly the cases the embedding cannot. Matched against the raw reading
+ * rather than a parse, for the same reason the collector number is: OCR
+ * surrounds it with noise but rarely mangles the letters themselves.
+ *
+ * Requires 2+ characters and a boundary, so a two-letter code like "XY" cannot
+ * be matched out of the middle of an unrelated word.
+ */
+export function setAbbreviationMatch(
+  ocr: OcrReading,
+  candidate: RerankInput,
+): number {
+  const abbrev = candidate.setAbbreviation;
+  if (!abbrev || abbrev.length < 2 || !ocr.collectorNumberRaw) return 0;
+  const pattern = new RegExp(
+    `(^|[^A-Za-z])${abbrev.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^A-Za-z]|$)`,
+    "i",
+  );
+  return pattern.test(ocr.collectorNumberRaw) ? 1 : 0;
+}
+
 function hpMatch(ocr: OcrReading, candidate: RerankInput): number {
   if (ocr.hp == null || candidate.hp == null) return 0;
   return ocr.hp === candidate.hp ? 1 : 0;
@@ -121,6 +147,7 @@ export function scoreCandidate(
     embedding,
     name: nameSimilarity(ocr.name, candidate.name),
     collectorNumber: collectorNumberMatch(ocr, candidate),
+    setAbbreviation: setAbbreviationMatch(ocr, candidate),
     hp: hpMatch(ocr, candidate),
   };
 
@@ -133,6 +160,7 @@ const ALL_SIGNALS: SignalKey[] = [
   "embedding",
   "name",
   "collectorNumber",
+  "setAbbreviation",
   "hp",
 ];
 

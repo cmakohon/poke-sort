@@ -32,6 +32,12 @@ export interface IdentifySignals {
   embedding: number;
   name: number;
   collectorNumber: number;
+  /**
+   * The set's printed abbreviation ("OBF", "SSH") found in the bottom band.
+   * Independent of the collector number and decisive between reprints, which
+   * share art and a name but never a set.
+   */
+  setAbbreviation: number;
   hp: number;
 }
 

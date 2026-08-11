@@ -22,6 +22,8 @@ export interface SetInfo {
   symbol: string | null;
   releaseDate: string | null;
   cardCount: number | null;
+  /** Printed beside the collector number from Sword & Shield onward. */
+  abbreviation: string | null;
 }
 
 export interface SeriesInfo {

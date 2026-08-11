@@ -11,6 +11,7 @@ import {
   type PokemonCardDetail,
 } from "../pokemon/search";
 import { normalizeScryfallCard } from "../scryfall/search";
+import { getSetInfo } from "../set-index";
 import { readCard } from "./ocr";
 import {
   fetchFreshCard,
@@ -31,6 +32,7 @@ interface CandidateRow extends Record<string, unknown> {
   name: string;
   collector_number: string | null;
   set_total: number | null;
+  set_code: string;
   card_data: unknown;
 }
 
@@ -83,6 +85,15 @@ function minimalCard(row: CandidateRow): PlayingCard {
   };
 }
 
+/** The candidate set's printed code, from the local set index. */
+function abbreviationOf(gameKey: string, row: CandidateRow): string | null {
+  if (gameKey !== "pokemon") return null;
+  const setId =
+    ((row.card_data as { set?: { id?: string } } | null)?.set?.id) ??
+    row.set_code;
+  return getSetInfo(setId)?.abbreviation ?? null;
+}
+
 function hpOf(gameKey: string, data: unknown): number | null {
   if (gameKey !== "pokemon" || !data || typeof data !== "object") return null;
   const hp = (data as { hp?: unknown }).hp;
@@ -103,6 +114,7 @@ async function fetchCandidates(
       name,
       collector_number,
       set_total,
+      set_code,
       card_data,
       embedding <=> ${vector}::vector(768) AS distance
     FROM cards
@@ -165,6 +177,7 @@ async function withProfile(
     collectorNumber: row.collector_number,
     setTotal: row.set_total,
     hp: hpOf(gameKey, row.card_data),
+    setAbbreviation: abbreviationOf(gameKey, row),
   }));
 
   const ranked = rerank(inputs, ocr, profile);

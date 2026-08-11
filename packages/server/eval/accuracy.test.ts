@@ -48,6 +48,7 @@ interface Manifest {
 }
 
 let catalogSize = 0;
+let generatedFrom = "";
 
 async function loadManifest(): Promise<Fixture[]> {
   try {
@@ -55,6 +56,7 @@ async function loadManifest(): Promise<Fixture[]> {
       await readFile(path.join(FIXTURES, "manifest.json"), "utf-8"),
     ) as Manifest;
     catalogSize = parsed.catalogSize;
+    generatedFrom = parsed.generatedFrom;
     return parsed.cards;
   } catch {
     return [];
@@ -117,7 +119,7 @@ describe.skipIf(manifest.length === 0)("pokemon identification accuracy", () => 
       [
         "",
         `catalog:       ${catalogSize} cards`,
-        `probes:        ${n} (low-quality renders)`,
+        `probes:        ${n} (${generatedFrom})`,
         `top-1:         ${top1} (${pct(top1)})`,
         `top-5:         ${top5} (${pct(top5)})`,
         `accepted:      ${accepted} (${pct(accepted)})`,

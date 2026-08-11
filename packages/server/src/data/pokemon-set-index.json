@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-11T01:28:41.254Z",
+  "generatedAt": "2026-08-11T11:38:21.314Z",
   "series": {
     "misc": {
       "id": "misc",
@@ -137,7 +137,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "1996-01-01",
-      "cardCount": 1
+      "cardCount": 1,
+      "abbreviation": null
     },
     "jumbo": {
       "id": "jumbo",
@@ -147,7 +148,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2000-02-01",
-      "cardCount": 160
+      "cardCount": 160,
+      "abbreviation": null
     },
     "base1": {
       "id": "base1",
@@ -157,7 +159,8 @@
       "logo": "https://assets.tcgdex.net/en/base/base1/logo",
       "symbol": null,
       "releaseDate": "1999-01-09",
-      "cardCount": 102
+      "cardCount": 102,
+      "abbreviation": "BS"
     },
     "base2": {
       "id": "base2",
@@ -167,7 +170,8 @@
       "logo": "https://assets.tcgdex.net/en/base/base2/logo",
       "symbol": "https://assets.tcgdex.net/univ/base/base2/symbol",
       "releaseDate": "1999-06-16",
-      "cardCount": 64
+      "cardCount": 64,
+      "abbreviation": "JU"
     },
     "basep": {
       "id": "basep",
@@ -177,7 +181,8 @@
       "logo": "https://assets.tcgdex.net/en/base/basep/logo",
       "symbol": "https://assets.tcgdex.net/univ/base/basep/symbol",
       "releaseDate": "1999-07-01",
-      "cardCount": 53
+      "cardCount": 53,
+      "abbreviation": null
     },
     "wp": {
       "id": "wp",
@@ -187,7 +192,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "1999-09-01",
-      "cardCount": 7
+      "cardCount": 7,
+      "abbreviation": null
     },
     "base3": {
       "id": "base3",
@@ -197,7 +203,8 @@
       "logo": "https://assets.tcgdex.net/en/base/base3/logo",
       "symbol": "https://assets.tcgdex.net/univ/base/base3/symbol",
       "releaseDate": "1999-10-10",
-      "cardCount": 62
+      "cardCount": 62,
+      "abbreviation": "FO"
     },
     "base4": {
       "id": "base4",
@@ -207,7 +214,8 @@
       "logo": "https://assets.tcgdex.net/en/base/base4/logo",
       "symbol": "https://assets.tcgdex.net/univ/base/base4/symbol",
       "releaseDate": "2000-02-24",
-      "cardCount": 130
+      "cardCount": 130,
+      "abbreviation": "B2"
     },
     "base5": {
       "id": "base5",
@@ -217,7 +225,8 @@
       "logo": "https://assets.tcgdex.net/en/base/base5/logo",
       "symbol": "https://assets.tcgdex.net/univ/base/base5/symbol",
       "releaseDate": "2000-04-24",
-      "cardCount": 82
+      "cardCount": 82,
+      "abbreviation": "RO"
     },
     "gym1": {
       "id": "gym1",
@@ -227,7 +236,8 @@
       "logo": "https://assets.tcgdex.net/en/gym/gym1/logo",
       "symbol": "https://assets.tcgdex.net/univ/gym/gym1/symbol",
       "releaseDate": "2000-08-14",
-      "cardCount": 132
+      "cardCount": 132,
+      "abbreviation": "G1"
     },
     "gym2": {
       "id": "gym2",
@@ -237,7 +247,8 @@
       "logo": "https://assets.tcgdex.net/en/gym/gym2/logo",
       "symbol": "https://assets.tcgdex.net/univ/gym/gym2/symbol",
       "releaseDate": "2000-10-16",
-      "cardCount": 132
+      "cardCount": 132,
+      "abbreviation": "G2"
     },
     "neo1": {
       "id": "neo1",
@@ -247,7 +258,8 @@
       "logo": "https://assets.tcgdex.net/en/neo/neo1/logo",
       "symbol": "https://assets.tcgdex.net/univ/neo/neo1/symbol",
       "releaseDate": "2000-12-16",
-      "cardCount": 111
+      "cardCount": 111,
+      "abbreviation": "N1"
     },
     "neo2": {
       "id": "neo2",
@@ -257,7 +269,8 @@
       "logo": "https://assets.tcgdex.net/en/neo/neo2/logo",
       "symbol": "https://assets.tcgdex.net/univ/neo/neo2/symbol",
       "releaseDate": "2001-06-01",
-      "cardCount": 75
+      "cardCount": 75,
+      "abbreviation": "N2"
     },
     "si1": {
       "id": "si1",
@@ -267,7 +280,8 @@
       "logo": "https://assets.tcgdex.net/en/neo/si1/logo",
       "symbol": "https://assets.tcgdex.net/univ/neo/si1/symbol",
       "releaseDate": "2001-07-31",
-      "cardCount": 18
+      "cardCount": 18,
+      "abbreviation": "SI"
     },
     "neo3": {
       "id": "neo3",
@@ -277,7 +291,8 @@
       "logo": "https://assets.tcgdex.net/en/neo/neo3/logo",
       "symbol": "https://assets.tcgdex.net/univ/neo/neo3/symbol",
       "releaseDate": "2001-09-21",
-      "cardCount": 64
+      "cardCount": 64,
+      "abbreviation": "N3"
     },
     "neo4": {
       "id": "neo4",
@@ -287,7 +302,8 @@
       "logo": "https://assets.tcgdex.net/en/neo/neo4/logo",
       "symbol": "https://assets.tcgdex.net/univ/neo/neo4/symbol",
       "releaseDate": "2002-02-28",
-      "cardCount": 105
+      "cardCount": 105,
+      "abbreviation": "N4"
     },
     "lc": {
       "id": "lc",
@@ -297,7 +313,8 @@
       "logo": "https://assets.tcgdex.net/en/lc/lc/logo",
       "symbol": "https://assets.tcgdex.net/univ/lc/lc/symbol",
       "releaseDate": "2002-05-24",
-      "cardCount": 110
+      "cardCount": 110,
+      "abbreviation": "LC"
     },
     "sp": {
       "id": "sp",
@@ -307,7 +324,8 @@
       "logo": null,
       "symbol": "https://assets.tcgdex.net/univ/ecard/sp/symbol",
       "releaseDate": "2002-08-01",
-      "cardCount": 10
+      "cardCount": 10,
+      "abbreviation": null
     },
     "ecard1": {
       "id": "ecard1",
@@ -317,7 +335,8 @@
       "logo": "https://assets.tcgdex.net/en/ecard/ecard1/logo",
       "symbol": "https://assets.tcgdex.net/univ/ecard/ecard1/symbol",
       "releaseDate": "2002-09-15",
-      "cardCount": 165
+      "cardCount": 165,
+      "abbreviation": "EX"
     },
     "bog": {
       "id": "bog",
@@ -327,7 +346,8 @@
       "logo": null,
       "symbol": "https://assets.tcgdex.net/univ/ecard/bog/symbol",
       "releaseDate": "2002-12-01",
-      "cardCount": 9
+      "cardCount": 9,
+      "abbreviation": null
     },
     "ecard2": {
       "id": "ecard2",
@@ -337,7 +357,8 @@
       "logo": "https://assets.tcgdex.net/en/ecard/ecard2/logo",
       "symbol": "https://assets.tcgdex.net/univ/ecard/ecard2/symbol",
       "releaseDate": "2003-01-15",
-      "cardCount": 147
+      "cardCount": 147,
+      "abbreviation": "AQ"
     },
     "ecard3": {
       "id": "ecard3",
@@ -347,7 +368,8 @@
       "logo": "https://assets.tcgdex.net/en/ecard/ecard3/logo",
       "symbol": "https://assets.tcgdex.net/univ/ecard/ecard3/symbol",
       "releaseDate": "2003-05-12",
-      "cardCount": 144
+      "cardCount": 144,
+      "abbreviation": "SK"
     },
     "ex1": {
       "id": "ex1",
@@ -357,7 +379,8 @@
       "logo": "https://assets.tcgdex.net/en/ex/ex1/logo",
       "symbol": "https://assets.tcgdex.net/univ/ex/ex1/symbol",
       "releaseDate": "2003-07-01",
-      "cardCount": 109
+      "cardCount": 109,
+      "abbreviation": "RS"
     },
     "ex2": {
       "id": "ex2",
@@ -367,7 +390,8 @@
       "logo": "https://assets.tcgdex.net/en/ex/ex2/logo",
       "symbol": "https://assets.tcgdex.net/univ/ex/ex2/symbol",
       "releaseDate": "2003-09-18",
-      "cardCount": 100
+      "cardCount": 100,
+      "abbreviation": "SS"
     },
     "ex3": {
       "id": "ex3",
@@ -377,7 +401,8 @@
       "logo": "https://assets.tcgdex.net/en/ex/ex3/logo",
       "symbol": "https://assets.tcgdex.net/univ/ex/ex3/symbol",
       "releaseDate": "2003-11-24",
-      "cardCount": 97
+      "cardCount": 97,
+      "abbreviation": "DR"
     },
     "ex4": {
       "id": "ex4",
@@ -387,7 +412,8 @@
       "logo": "https://assets.tcgdex.net/en/ex/ex4/logo",
       "symbol": "https://assets.tcgdex.net/univ/ex/ex4/symbol",
       "releaseDate": "2004-03-01",
-      "cardCount": 95
+      "cardCount": 95,
+      "abbreviation": "MA"
     },
     "ex5": {
       "id": "ex5",
@@ -397,7 +423,8 @@
       "logo": "https://assets.tcgdex.net/en/ex/ex5/logo",
       "symbol": "https://assets.tcgdex.net/univ/ex/ex5/symbol",
       "releaseDate": "2004-06-01",
-      "cardCount": 101
+      "cardCount": 101,
+      "abbreviation": "HL"
     },
     "ex5.5": {
       "id": "ex5.5",
@@ -407,7 +434,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2004-07-01",
-      "cardCount": 5
+      "cardCount": 5,
+      "abbreviation": null
     },
     "ex6": {
       "id": "ex6",
@@ -417,7 +445,8 @@
       "logo": "https://assets.tcgdex.net/en/ex/ex6/logo",
       "symbol": "https://assets.tcgdex.net/univ/ex/ex6/symbol",
       "releaseDate": "2004-09-01",
-      "cardCount": 112
+      "cardCount": 112,
+      "abbreviation": "RG"
     },
     "ex7": {
       "id": "ex7",
@@ -427,7 +456,8 @@
       "logo": "https://assets.tcgdex.net/en/ex/ex7/logo",
       "symbol": "https://assets.tcgdex.net/univ/ex/ex7/symbol",
       "releaseDate": "2004-11-01",
-      "cardCount": 109
+      "cardCount": 109,
+      "abbreviation": "TR"
     },
     "ex8": {
       "id": "ex8",
@@ -437,7 +467,8 @@
       "logo": "https://assets.tcgdex.net/en/ex/ex8/logo",
       "symbol": "https://assets.tcgdex.net/univ/ex/ex8/symbol",
       "releaseDate": "2005-02-01",
-      "cardCount": 107
+      "cardCount": 107,
+      "abbreviation": "DX"
     },
     "ex9": {
       "id": "ex9",
@@ -447,7 +478,8 @@
       "logo": "https://assets.tcgdex.net/en/ex/ex9/logo",
       "symbol": "https://assets.tcgdex.net/univ/ex/ex9/symbol",
       "releaseDate": "2005-05-09",
-      "cardCount": 106
+      "cardCount": 106,
+      "abbreviation": "EM"
     },
     "exu": {
       "id": "exu",
@@ -457,7 +489,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2005-08-22",
-      "cardCount": 28
+      "cardCount": 28,
+      "abbreviation": null
     },
     "ex10": {
       "id": "ex10",
@@ -467,7 +500,8 @@
       "logo": "https://assets.tcgdex.net/en/ex/ex10/logo",
       "symbol": "https://assets.tcgdex.net/univ/ex/ex10/symbol",
       "releaseDate": "2005-08-22",
-      "cardCount": 115
+      "cardCount": 115,
+      "abbreviation": "UF"
     },
     "ex11": {
       "id": "ex11",
@@ -477,7 +511,8 @@
       "logo": "https://assets.tcgdex.net/en/ex/ex11/logo",
       "symbol": "https://assets.tcgdex.net/univ/ex/ex11/symbol",
       "releaseDate": "2005-10-31",
-      "cardCount": 113
+      "cardCount": 113,
+      "abbreviation": "DS"
     },
     "ex12": {
       "id": "ex12",
@@ -487,7 +522,8 @@
       "logo": "https://assets.tcgdex.net/en/ex/ex12/logo",
       "symbol": "https://assets.tcgdex.net/univ/ex/ex12/symbol",
       "releaseDate": "2006-02-13",
-      "cardCount": 92
+      "cardCount": 92,
+      "abbreviation": "LM"
     },
     "ex13": {
       "id": "ex13",
@@ -497,7 +533,8 @@
       "logo": "https://assets.tcgdex.net/en/ex/ex13/logo",
       "symbol": "https://assets.tcgdex.net/univ/ex/ex13/symbol",
       "releaseDate": "2006-05-03",
-      "cardCount": 110
+      "cardCount": 110,
+      "abbreviation": "HP"
     },
     "ex14": {
       "id": "ex14",
@@ -507,7 +544,8 @@
       "logo": "https://assets.tcgdex.net/en/ex/ex14/logo",
       "symbol": "https://assets.tcgdex.net/univ/ex/ex14/symbol",
       "releaseDate": "2006-08-30",
-      "cardCount": 100
+      "cardCount": 100,
+      "abbreviation": "CG"
     },
     "ex15": {
       "id": "ex15",
@@ -517,7 +555,8 @@
       "logo": "https://assets.tcgdex.net/en/ex/ex15/logo",
       "symbol": "https://assets.tcgdex.net/univ/ex/ex15/symbol",
       "releaseDate": "2006-11-08",
-      "cardCount": 101
+      "cardCount": 101,
+      "abbreviation": "DF"
     },
     "ex16": {
       "id": "ex16",
@@ -527,7 +566,8 @@
       "logo": "https://assets.tcgdex.net/en/ex/ex16/logo",
       "symbol": "https://assets.tcgdex.net/univ/ex/ex16/symbol",
       "releaseDate": "2007-02-17",
-      "cardCount": 108
+      "cardCount": 108,
+      "abbreviation": "PK"
     },
     "np": {
       "id": "np",
@@ -537,7 +577,8 @@
       "logo": "https://assets.tcgdex.net/en/pop/np/logo",
       "symbol": "https://assets.tcgdex.net/univ/pop/np/symbol",
       "releaseDate": "2003-10-01",
-      "cardCount": 40
+      "cardCount": 40,
+      "abbreviation": null
     },
     "pop1": {
       "id": "pop1",
@@ -547,7 +588,8 @@
       "logo": "https://assets.tcgdex.net/en/pop/pop1/logo",
       "symbol": "https://assets.tcgdex.net/univ/pop/pop1/symbol",
       "releaseDate": "2004-09-01",
-      "cardCount": 17
+      "cardCount": 17,
+      "abbreviation": "P1"
     },
     "pop2": {
       "id": "pop2",
@@ -557,7 +599,8 @@
       "logo": "https://assets.tcgdex.net/en/pop/pop2/logo",
       "symbol": "https://assets.tcgdex.net/univ/pop/pop2/symbol",
       "releaseDate": "2005-08-01",
-      "cardCount": 17
+      "cardCount": 17,
+      "abbreviation": "P2"
     },
     "pop3": {
       "id": "pop3",
@@ -567,7 +610,8 @@
       "logo": "https://assets.tcgdex.net/en/pop/pop3/logo",
       "symbol": "https://assets.tcgdex.net/univ/pop/pop3/symbol",
       "releaseDate": "2006-04-01",
-      "cardCount": 17
+      "cardCount": 17,
+      "abbreviation": "P3"
     },
     "pop4": {
       "id": "pop4",
@@ -577,7 +621,8 @@
       "logo": "https://assets.tcgdex.net/en/pop/pop4/logo",
       "symbol": "https://assets.tcgdex.net/univ/pop/pop4/symbol",
       "releaseDate": "2006-08-01",
-      "cardCount": 17
+      "cardCount": 17,
+      "abbreviation": "P4"
     },
     "pop5": {
       "id": "pop5",
@@ -587,7 +632,8 @@
       "logo": "https://assets.tcgdex.net/en/pop/pop5/logo",
       "symbol": "https://assets.tcgdex.net/univ/pop/pop5/symbol",
       "releaseDate": "2007-03-01",
-      "cardCount": 17
+      "cardCount": 17,
+      "abbreviation": "P5"
     },
     "pop6": {
       "id": "pop6",
@@ -597,7 +643,8 @@
       "logo": "https://assets.tcgdex.net/en/pop/pop6/logo",
       "symbol": "https://assets.tcgdex.net/univ/pop/pop6/symbol",
       "releaseDate": "2007-09-01",
-      "cardCount": 17
+      "cardCount": 17,
+      "abbreviation": "P6"
     },
     "pop7": {
       "id": "pop7",
@@ -607,7 +654,8 @@
       "logo": "https://assets.tcgdex.net/en/pop/pop7/logo",
       "symbol": "https://assets.tcgdex.net/univ/pop/pop7/symbol",
       "releaseDate": "2008-03-01",
-      "cardCount": 17
+      "cardCount": 17,
+      "abbreviation": "P7"
     },
     "pop8": {
       "id": "pop8",
@@ -617,7 +665,8 @@
       "logo": "https://assets.tcgdex.net/en/pop/pop8/logo",
       "symbol": "https://assets.tcgdex.net/univ/pop/pop8/symbol",
       "releaseDate": "2008-09-01",
-      "cardCount": 17
+      "cardCount": 17,
+      "abbreviation": "P8"
     },
     "pop9": {
       "id": "pop9",
@@ -627,7 +676,8 @@
       "logo": "https://assets.tcgdex.net/en/pop/pop9/logo",
       "symbol": "https://assets.tcgdex.net/univ/pop/pop9/symbol",
       "releaseDate": "2009-03-01",
-      "cardCount": 17
+      "cardCount": 17,
+      "abbreviation": "P9"
     },
     "tk-ex-latio": {
       "id": "tk-ex-latio",
@@ -637,7 +687,8 @@
       "logo": null,
       "symbol": "https://assets.tcgdex.net/univ/tk/tk-ex-latio/symbol",
       "releaseDate": "2004-07-01",
-      "cardCount": 10
+      "cardCount": 10,
+      "abbreviation": "TK1O"
     },
     "tk-ex-latia": {
       "id": "tk-ex-latia",
@@ -647,7 +698,8 @@
       "logo": null,
       "symbol": "https://assets.tcgdex.net/univ/tk/tk-ex-latia/symbol",
       "releaseDate": "2004-07-01",
-      "cardCount": 10
+      "cardCount": 10,
+      "abbreviation": "TK1A"
     },
     "tk-ex-p": {
       "id": "tk-ex-p",
@@ -657,7 +709,8 @@
       "logo": null,
       "symbol": "https://assets.tcgdex.net/univ/tk/tk-ex-p/symbol",
       "releaseDate": "2006-03-01",
-      "cardCount": 12
+      "cardCount": 12,
+      "abbreviation": "TK2P"
     },
     "tk-ex-m": {
       "id": "tk-ex-m",
@@ -667,7 +720,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2006-03-01",
-      "cardCount": 12
+      "cardCount": 12,
+      "abbreviation": "TK2M"
     },
     "tk-dp-m": {
       "id": "tk-dp-m",
@@ -677,7 +731,8 @@
       "logo": null,
       "symbol": "https://assets.tcgdex.net/univ/tk/tk-dp-m/symbol",
       "releaseDate": "2007-09-01",
-      "cardCount": 12
+      "cardCount": 12,
+      "abbreviation": "TK3M"
     },
     "tk-dp-l": {
       "id": "tk-dp-l",
@@ -687,7 +742,8 @@
       "logo": null,
       "symbol": "https://assets.tcgdex.net/univ/tk/tk-dp-l/symbol",
       "releaseDate": "2007-09-01",
-      "cardCount": 11
+      "cardCount": 11,
+      "abbreviation": "TK3L"
     },
     "tk-hs-g": {
       "id": "tk-hs-g",
@@ -697,7 +753,8 @@
       "logo": null,
       "symbol": "https://assets.tcgdex.net/univ/tk/tk-hs-g/symbol",
       "releaseDate": "2010-05-01",
-      "cardCount": 30
+      "cardCount": 30,
+      "abbreviation": "TK4G"
     },
     "tk-hs-r": {
       "id": "tk-hs-r",
@@ -707,7 +764,8 @@
       "logo": null,
       "symbol": "https://assets.tcgdex.net/univ/tk/tk-hs-r/symbol",
       "releaseDate": "2010-05-01",
-      "cardCount": 30
+      "cardCount": 30,
+      "abbreviation": "TK4R"
     },
     "tk-bw-e": {
       "id": "tk-bw-e",
@@ -717,7 +775,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2011-09-01",
-      "cardCount": 30
+      "cardCount": 30,
+      "abbreviation": "TK5E"
     },
     "tk-bw-z": {
       "id": "tk-bw-z",
@@ -727,7 +786,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2011-09-01",
-      "cardCount": 30
+      "cardCount": 30,
+      "abbreviation": "TK5Z"
     },
     "tk-xy-n": {
       "id": "tk-xy-n",
@@ -737,7 +797,8 @@
       "logo": null,
       "symbol": "https://assets.tcgdex.net/univ/tk/tk-xy-n/symbol",
       "releaseDate": "2014-03-12",
-      "cardCount": 30
+      "cardCount": 30,
+      "abbreviation": "TK6N"
     },
     "tk-xy-sy": {
       "id": "tk-xy-sy",
@@ -747,7 +808,8 @@
       "logo": null,
       "symbol": "https://assets.tcgdex.net/univ/tk/tk-xy-sy/symbol",
       "releaseDate": "2014-03-12",
-      "cardCount": 30
+      "cardCount": 30,
+      "abbreviation": "TK6S"
     },
     "tk-xy-w": {
       "id": "tk-xy-w",
@@ -757,7 +819,8 @@
       "logo": null,
       "symbol": "https://assets.tcgdex.net/univ/tk/tk-xy-w/symbol",
       "releaseDate": "2014-11-01",
-      "cardCount": 30
+      "cardCount": 30,
+      "abbreviation": "TK7B"
     },
     "tk-xy-b": {
       "id": "tk-xy-b",
@@ -767,7 +830,8 @@
       "logo": null,
       "symbol": "https://assets.tcgdex.net/univ/tk/tk-xy-b/symbol",
       "releaseDate": "2014-11-01",
-      "cardCount": 30
+      "cardCount": 30,
+      "abbreviation": "TK7A"
     },
     "tk-xy-latio": {
       "id": "tk-xy-latio",
@@ -777,7 +841,8 @@
       "logo": null,
       "symbol": "https://assets.tcgdex.net/univ/tk/tk-xy-latio/symbol",
       "releaseDate": "2015-04-29",
-      "cardCount": 30
+      "cardCount": 30,
+      "abbreviation": "TK8O"
     },
     "tk-xy-latia": {
       "id": "tk-xy-latia",
@@ -787,7 +852,8 @@
       "logo": null,
       "symbol": "https://assets.tcgdex.net/univ/tk/tk-xy-latia/symbol",
       "releaseDate": "2015-04-29",
-      "cardCount": 30
+      "cardCount": 30,
+      "abbreviation": "TK8A"
     },
     "tk-xy-p": {
       "id": "tk-xy-p",
@@ -797,7 +863,8 @@
       "logo": null,
       "symbol": "https://assets.tcgdex.net/univ/tk/tk-xy-p/symbol",
       "releaseDate": "2016-04-27",
-      "cardCount": 30
+      "cardCount": 30,
+      "abbreviation": "TK9P"
     },
     "tk-xy-su": {
       "id": "tk-xy-su",
@@ -807,7 +874,8 @@
       "logo": null,
       "symbol": "https://assets.tcgdex.net/univ/tk/tk-xy-su/symbol",
       "releaseDate": "2016-04-27",
-      "cardCount": 30
+      "cardCount": 30,
+      "abbreviation": "TK9S"
     },
     "tk-sm-l": {
       "id": "tk-sm-l",
@@ -817,7 +885,8 @@
       "logo": null,
       "symbol": "https://assets.tcgdex.net/univ/tk/tk-sm-l/symbol",
       "releaseDate": "2017-04-21",
-      "cardCount": 30
+      "cardCount": 30,
+      "abbreviation": "TK10L"
     },
     "tk-sm-r": {
       "id": "tk-sm-r",
@@ -827,7 +896,8 @@
       "logo": null,
       "symbol": "https://assets.tcgdex.net/univ/tk/tk-sm-r/symbol",
       "releaseDate": "2017-04-21",
-      "cardCount": 30
+      "cardCount": 30,
+      "abbreviation": "TK10A"
     },
     "dp1": {
       "id": "dp1",
@@ -837,7 +907,8 @@
       "logo": "https://assets.tcgdex.net/en/dp/dp1/logo",
       "symbol": "https://assets.tcgdex.net/univ/dp/dp1/symbol",
       "releaseDate": "2007-05-01",
-      "cardCount": 130
+      "cardCount": 130,
+      "abbreviation": "DP"
     },
     "dpp": {
       "id": "dpp",
@@ -847,7 +918,8 @@
       "logo": "https://assets.tcgdex.net/en/dp/dpp/logo",
       "symbol": "https://assets.tcgdex.net/univ/dp/dpp/symbol",
       "releaseDate": "2007-05-01",
-      "cardCount": 56
+      "cardCount": 56,
+      "abbreviation": null
     },
     "dp2": {
       "id": "dp2",
@@ -857,7 +929,8 @@
       "logo": "https://assets.tcgdex.net/en/dp/dp2/logo",
       "symbol": "https://assets.tcgdex.net/univ/dp/dp2/symbol",
       "releaseDate": "2007-08-01",
-      "cardCount": 123
+      "cardCount": 123,
+      "abbreviation": "MT"
     },
     "dp3": {
       "id": "dp3",
@@ -867,7 +940,8 @@
       "logo": "https://assets.tcgdex.net/en/dp/dp3/logo",
       "symbol": "https://assets.tcgdex.net/univ/dp/dp3/symbol",
       "releaseDate": "2007-11-01",
-      "cardCount": 132
+      "cardCount": 132,
+      "abbreviation": "SW"
     },
     "dp4": {
       "id": "dp4",
@@ -877,7 +951,8 @@
       "logo": "https://assets.tcgdex.net/en/dp/dp4/logo",
       "symbol": "https://assets.tcgdex.net/univ/dp/dp4/symbol",
       "releaseDate": "2008-02-01",
-      "cardCount": 106
+      "cardCount": 106,
+      "abbreviation": "GE"
     },
     "dp5": {
       "id": "dp5",
@@ -887,7 +962,8 @@
       "logo": "https://assets.tcgdex.net/en/dp/dp5/logo",
       "symbol": "https://assets.tcgdex.net/univ/dp/dp5/symbol",
       "releaseDate": "2008-05-01",
-      "cardCount": 100
+      "cardCount": 100,
+      "abbreviation": "MD"
     },
     "dp6": {
       "id": "dp6",
@@ -897,7 +973,8 @@
       "logo": "https://assets.tcgdex.net/en/dp/dp6/logo",
       "symbol": "https://assets.tcgdex.net/univ/dp/dp6/symbol",
       "releaseDate": "2008-08-01",
-      "cardCount": 146
+      "cardCount": 146,
+      "abbreviation": "LA"
     },
     "dp7": {
       "id": "dp7",
@@ -907,7 +984,8 @@
       "logo": "https://assets.tcgdex.net/en/dp/dp7/logo",
       "symbol": "https://assets.tcgdex.net/univ/dp/dp7/symbol",
       "releaseDate": "2008-11-01",
-      "cardCount": 100
+      "cardCount": 100,
+      "abbreviation": "SF"
     },
     "pl1": {
       "id": "pl1",
@@ -917,7 +995,8 @@
       "logo": "https://assets.tcgdex.net/en/pl/pl1/logo",
       "symbol": "https://assets.tcgdex.net/univ/pl/pl1/symbol",
       "releaseDate": "2009-02-11",
-      "cardCount": 127
+      "cardCount": 127,
+      "abbreviation": "PL"
     },
     "pl2": {
       "id": "pl2",
@@ -927,7 +1006,8 @@
       "logo": "https://assets.tcgdex.net/en/pl/pl2/logo",
       "symbol": "https://assets.tcgdex.net/univ/pl/pl2/symbol",
       "releaseDate": "2009-05-16",
-      "cardCount": 111
+      "cardCount": 111,
+      "abbreviation": "RR"
     },
     "pl3": {
       "id": "pl3",
@@ -937,7 +1017,8 @@
       "logo": "https://assets.tcgdex.net/en/pl/pl3/logo",
       "symbol": "https://assets.tcgdex.net/univ/pl/pl3/symbol",
       "releaseDate": "2009-08-19",
-      "cardCount": 147
+      "cardCount": 147,
+      "abbreviation": "SV"
     },
     "pl4": {
       "id": "pl4",
@@ -947,7 +1028,8 @@
       "logo": "https://assets.tcgdex.net/en/pl/pl4/logo",
       "symbol": "https://assets.tcgdex.net/univ/pl/pl4/symbol",
       "releaseDate": "2009-11-04",
-      "cardCount": 99
+      "cardCount": 99,
+      "abbreviation": "AR"
     },
     "ru1": {
       "id": "ru1",
@@ -957,7 +1039,8 @@
       "logo": "https://assets.tcgdex.net/en/pl/ru1/logo",
       "symbol": "https://assets.tcgdex.net/univ/pl/ru1/symbol",
       "releaseDate": "2009-12-02",
-      "cardCount": 16
+      "cardCount": 16,
+      "abbreviation": "RM"
     },
     "hgss1": {
       "id": "hgss1",
@@ -967,7 +1050,8 @@
       "logo": "https://assets.tcgdex.net/en/hgss/hgss1/logo",
       "symbol": "https://assets.tcgdex.net/univ/hgss/hgss1/symbol",
       "releaseDate": "2010-02-10",
-      "cardCount": 123
+      "cardCount": 123,
+      "abbreviation": "HS"
     },
     "hgssp": {
       "id": "hgssp",
@@ -977,7 +1061,8 @@
       "logo": "https://assets.tcgdex.net/en/hgss/hgssp/logo",
       "symbol": "https://assets.tcgdex.net/univ/hgss/hgssp/symbol",
       "releaseDate": "2010-02-11",
-      "cardCount": 25
+      "cardCount": 25,
+      "abbreviation": null
     },
     "hgss2": {
       "id": "hgss2",
@@ -987,7 +1072,8 @@
       "logo": "https://assets.tcgdex.net/en/hgss/hgss2/logo",
       "symbol": "https://assets.tcgdex.net/univ/hgss/hgss2/symbol",
       "releaseDate": "2010-05-12",
-      "cardCount": 95
+      "cardCount": 95,
+      "abbreviation": "UL"
     },
     "hgss3": {
       "id": "hgss3",
@@ -997,7 +1083,8 @@
       "logo": "https://assets.tcgdex.net/en/hgss/hgss3/logo",
       "symbol": "https://assets.tcgdex.net/univ/hgss/hgss3/symbol",
       "releaseDate": "2010-08-18",
-      "cardCount": 90
+      "cardCount": 90,
+      "abbreviation": "UND"
     },
     "hgss4": {
       "id": "hgss4",
@@ -1007,7 +1094,8 @@
       "logo": "https://assets.tcgdex.net/en/hgss/hgss4/logo",
       "symbol": "https://assets.tcgdex.net/univ/hgss/hgss4/symbol",
       "releaseDate": "2010-11-03",
-      "cardCount": 102
+      "cardCount": 102,
+      "abbreviation": "TRI"
     },
     "col1": {
       "id": "col1",
@@ -1017,7 +1105,8 @@
       "logo": "https://assets.tcgdex.net/en/col/col1/logo",
       "symbol": "https://assets.tcgdex.net/univ/col/col1/symbol",
       "releaseDate": "2011-02-09",
-      "cardCount": 95
+      "cardCount": 95,
+      "abbreviation": "COL"
     },
     "bw1": {
       "id": "bw1",
@@ -1027,7 +1116,8 @@
       "logo": "https://assets.tcgdex.net/en/bw/bw1/logo",
       "symbol": "https://assets.tcgdex.net/univ/bw/bw1/symbol",
       "releaseDate": "2011-04-25",
-      "cardCount": 114
+      "cardCount": 114,
+      "abbreviation": "BLW"
     },
     "bwp": {
       "id": "bwp",
@@ -1037,7 +1127,8 @@
       "logo": "https://assets.tcgdex.net/en/bw/bwp/logo",
       "symbol": "https://assets.tcgdex.net/univ/bw/bwp/symbol",
       "releaseDate": "2011-04-26",
-      "cardCount": 101
+      "cardCount": 101,
+      "abbreviation": "BWP"
     },
     "bw2": {
       "id": "bw2",
@@ -1047,7 +1138,8 @@
       "logo": "https://assets.tcgdex.net/en/bw/bw2/logo",
       "symbol": "https://assets.tcgdex.net/univ/bw/bw2/symbol",
       "releaseDate": "2011-08-31",
-      "cardCount": 98
+      "cardCount": 98,
+      "abbreviation": "EP"
     },
     "bw3": {
       "id": "bw3",
@@ -1057,7 +1149,8 @@
       "logo": "https://assets.tcgdex.net/en/bw/bw3/logo",
       "symbol": "https://assets.tcgdex.net/univ/bw/bw3/symbol",
       "releaseDate": "2011-11-16",
-      "cardCount": 101
+      "cardCount": 101,
+      "abbreviation": "NVI"
     },
     "bw4": {
       "id": "bw4",
@@ -1067,7 +1160,8 @@
       "logo": "https://assets.tcgdex.net/en/bw/bw4/logo",
       "symbol": "https://assets.tcgdex.net/univ/bw/bw4/symbol",
       "releaseDate": "2012-02-08",
-      "cardCount": 99
+      "cardCount": 99,
+      "abbreviation": "NXD"
     },
     "bw5": {
       "id": "bw5",
@@ -1077,7 +1171,8 @@
       "logo": "https://assets.tcgdex.net/en/bw/bw5/logo",
       "symbol": "https://assets.tcgdex.net/univ/bw/bw5/symbol",
       "releaseDate": "2012-05-09",
-      "cardCount": 108
+      "cardCount": 108,
+      "abbreviation": "DEX"
     },
     "bw6": {
       "id": "bw6",
@@ -1087,7 +1182,8 @@
       "logo": "https://assets.tcgdex.net/en/bw/bw6/logo",
       "symbol": "https://assets.tcgdex.net/univ/bw/bw6/symbol",
       "releaseDate": "2012-08-15",
-      "cardCount": 124
+      "cardCount": 124,
+      "abbreviation": "DRX"
     },
     "dv1": {
       "id": "dv1",
@@ -1097,7 +1193,8 @@
       "logo": "https://assets.tcgdex.net/en/bw/dv1/logo",
       "symbol": "https://assets.tcgdex.net/univ/bw/dv1/symbol",
       "releaseDate": "2012-10-05",
-      "cardCount": 20
+      "cardCount": 20,
+      "abbreviation": "DRV"
     },
     "bw7": {
       "id": "bw7",
@@ -1107,7 +1204,8 @@
       "logo": "https://assets.tcgdex.net/en/bw/bw7/logo",
       "symbol": "https://assets.tcgdex.net/univ/bw/bw7/symbol",
       "releaseDate": "2012-11-07",
-      "cardCount": 149
+      "cardCount": 149,
+      "abbreviation": "BCR"
     },
     "bw8": {
       "id": "bw8",
@@ -1117,7 +1215,8 @@
       "logo": "https://assets.tcgdex.net/en/bw/bw8/logo",
       "symbol": "https://assets.tcgdex.net/univ/bw/bw8/symbol",
       "releaseDate": "2013-02-06",
-      "cardCount": 135
+      "cardCount": 135,
+      "abbreviation": "PLS"
     },
     "bw9": {
       "id": "bw9",
@@ -1127,7 +1226,8 @@
       "logo": "https://assets.tcgdex.net/en/bw/bw9/logo",
       "symbol": "https://assets.tcgdex.net/univ/bw/bw9/symbol",
       "releaseDate": "2013-05-08",
-      "cardCount": 116
+      "cardCount": 116,
+      "abbreviation": "PLF"
     },
     "bw10": {
       "id": "bw10",
@@ -1137,7 +1237,8 @@
       "logo": "https://assets.tcgdex.net/en/bw/bw10/logo",
       "symbol": "https://assets.tcgdex.net/univ/bw/bw10/symbol",
       "releaseDate": "2013-08-14",
-      "cardCount": 101
+      "cardCount": 101,
+      "abbreviation": "PLB"
     },
     "bw11": {
       "id": "bw11",
@@ -1147,7 +1248,8 @@
       "logo": "https://assets.tcgdex.net/en/bw/bw11/logo",
       "symbol": "https://assets.tcgdex.net/univ/bw/bw11/symbol",
       "releaseDate": "2013-11-06",
-      "cardCount": 113
+      "cardCount": 113,
+      "abbreviation": "LTR"
     },
     "rc": {
       "id": "rc",
@@ -1157,7 +1259,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2013-11-06",
-      "cardCount": 25
+      "cardCount": 25,
+      "abbreviation": null
     },
     "2011bw": {
       "id": "2011bw",
@@ -1167,7 +1270,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2011-06-17",
-      "cardCount": 12
+      "cardCount": 12,
+      "abbreviation": "MCD11"
     },
     "2012bw": {
       "id": "2012bw",
@@ -1177,7 +1281,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2012-06-15",
-      "cardCount": 12
+      "cardCount": 12,
+      "abbreviation": "MCD12"
     },
     "2014xy": {
       "id": "2014xy",
@@ -1187,7 +1292,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2014-05-23",
-      "cardCount": 12
+      "cardCount": 12,
+      "abbreviation": "MCD14"
     },
     "2015xy": {
       "id": "2015xy",
@@ -1197,7 +1303,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2015-11-27",
-      "cardCount": 12
+      "cardCount": 12,
+      "abbreviation": "MCD15"
     },
     "2016xy": {
       "id": "2016xy",
@@ -1207,7 +1314,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2016-08-20",
-      "cardCount": 12
+      "cardCount": 12,
+      "abbreviation": "MCD16"
     },
     "2017sm": {
       "id": "2017sm",
@@ -1217,7 +1325,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2017-08-03",
-      "cardCount": 12
+      "cardCount": 12,
+      "abbreviation": "MCD17"
     },
     "2018sm": {
       "id": "2018sm",
@@ -1227,7 +1336,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2018-10-19",
-      "cardCount": 12
+      "cardCount": 12,
+      "abbreviation": "MCD18"
     },
     "2019sm": {
       "id": "2019sm",
@@ -1237,7 +1347,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2019-10-15",
-      "cardCount": 12
+      "cardCount": 12,
+      "abbreviation": "MCD19"
     },
     "2021swsh": {
       "id": "2021swsh",
@@ -1247,7 +1358,8 @@
       "logo": null,
       "symbol": "https://assets.tcgdex.net/univ/mc/2021swsh/symbol",
       "releaseDate": "2021-02-09",
-      "cardCount": 25
+      "cardCount": 25,
+      "abbreviation": "MCD21"
     },
     "2022swsh": {
       "id": "2022swsh",
@@ -1257,7 +1369,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2022-08-03",
-      "cardCount": 15
+      "cardCount": 15,
+      "abbreviation": "MCD22"
     },
     "2023sv": {
       "id": "2023sv",
@@ -1267,7 +1380,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2023-08-01",
-      "cardCount": 15
+      "cardCount": 15,
+      "abbreviation": "MCD23"
     },
     "2024sv": {
       "id": "2024sv",
@@ -1277,7 +1391,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2024-12-04",
-      "cardCount": 15
+      "cardCount": 15,
+      "abbreviation": "MCD24"
     },
     "xyp": {
       "id": "xyp",
@@ -1287,7 +1402,8 @@
       "logo": "https://assets.tcgdex.net/en/xy/xyp/logo",
       "symbol": "https://assets.tcgdex.net/univ/xy/xyp/symbol",
       "releaseDate": "2013-10-12",
-      "cardCount": 211
+      "cardCount": 211,
+      "abbreviation": "XYP"
     },
     "xy0": {
       "id": "xy0",
@@ -1297,7 +1413,8 @@
       "logo": "https://assets.tcgdex.net/en/xy/xy0/logo",
       "symbol": "https://assets.tcgdex.net/univ/xy/xy0/symbol",
       "releaseDate": "2013-11-08",
-      "cardCount": 39
+      "cardCount": 39,
+      "abbreviation": "KSS"
     },
     "xy1": {
       "id": "xy1",
@@ -1307,7 +1424,8 @@
       "logo": "https://assets.tcgdex.net/en/xy/xy1/logo",
       "symbol": "https://assets.tcgdex.net/univ/xy/xy1/symbol",
       "releaseDate": "2014-02-05",
-      "cardCount": 146
+      "cardCount": 146,
+      "abbreviation": "XY"
     },
     "xya": {
       "id": "xya",
@@ -1317,7 +1435,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2014-02-05",
-      "cardCount": 6
+      "cardCount": 6,
+      "abbreviation": null
     },
     "xy2": {
       "id": "xy2",
@@ -1327,7 +1446,8 @@
       "logo": "https://assets.tcgdex.net/en/xy/xy2/logo",
       "symbol": "https://assets.tcgdex.net/univ/xy/xy2/symbol",
       "releaseDate": "2014-05-07",
-      "cardCount": 106
+      "cardCount": 106,
+      "abbreviation": "FLF"
     },
     "xy3": {
       "id": "xy3",
@@ -1337,7 +1457,8 @@
       "logo": "https://assets.tcgdex.net/en/xy/xy3/logo",
       "symbol": "https://assets.tcgdex.net/univ/xy/xy3/symbol",
       "releaseDate": "2014-08-13",
-      "cardCount": 111
+      "cardCount": 111,
+      "abbreviation": "FFI"
     },
     "xy4": {
       "id": "xy4",
@@ -1347,7 +1468,8 @@
       "logo": "https://assets.tcgdex.net/en/xy/xy4/logo",
       "symbol": "https://assets.tcgdex.net/univ/xy/xy4/symbol",
       "releaseDate": "2014-11-05",
-      "cardCount": 119
+      "cardCount": 119,
+      "abbreviation": "PHF"
     },
     "xy5": {
       "id": "xy5",
@@ -1357,7 +1479,8 @@
       "logo": "https://assets.tcgdex.net/en/xy/xy5/logo",
       "symbol": "https://assets.tcgdex.net/univ/xy/xy5/symbol",
       "releaseDate": "2015-02-04",
-      "cardCount": 160
+      "cardCount": 160,
+      "abbreviation": "PRC"
     },
     "dc1": {
       "id": "dc1",
@@ -1367,7 +1490,8 @@
       "logo": "https://assets.tcgdex.net/en/xy/dc1/logo",
       "symbol": "https://assets.tcgdex.net/univ/xy/dc1/symbol",
       "releaseDate": "2015-03-25",
-      "cardCount": 34
+      "cardCount": 34,
+      "abbreviation": "DCR"
     },
     "xy6": {
       "id": "xy6",
@@ -1377,7 +1501,8 @@
       "logo": "https://assets.tcgdex.net/en/xy/xy6/logo",
       "symbol": "https://assets.tcgdex.net/univ/xy/xy6/symbol",
       "releaseDate": "2015-05-06",
-      "cardCount": 108
+      "cardCount": 108,
+      "abbreviation": "ROS"
     },
     "xy7": {
       "id": "xy7",
@@ -1387,7 +1512,8 @@
       "logo": "https://assets.tcgdex.net/en/xy/xy7/logo",
       "symbol": "https://assets.tcgdex.net/univ/xy/xy7/symbol",
       "releaseDate": "2015-08-12",
-      "cardCount": 98
+      "cardCount": 98,
+      "abbreviation": "AOR"
     },
     "xy8": {
       "id": "xy8",
@@ -1397,7 +1523,8 @@
       "logo": "https://assets.tcgdex.net/en/xy/xy8/logo",
       "symbol": "https://assets.tcgdex.net/univ/xy/xy8/symbol",
       "releaseDate": "2015-11-04",
-      "cardCount": 162
+      "cardCount": 162,
+      "abbreviation": "BKT"
     },
     "xy9": {
       "id": "xy9",
@@ -1407,7 +1534,8 @@
       "logo": "https://assets.tcgdex.net/en/xy/xy9/logo",
       "symbol": "https://assets.tcgdex.net/univ/xy/xy9/symbol",
       "releaseDate": "2016-02-03",
-      "cardCount": 122
+      "cardCount": 122,
+      "abbreviation": "BKP"
     },
     "g1": {
       "id": "g1",
@@ -1417,7 +1545,8 @@
       "logo": "https://assets.tcgdex.net/en/xy/g1/logo",
       "symbol": "https://assets.tcgdex.net/univ/xy/g1/symbol",
       "releaseDate": "2016-02-22",
-      "cardCount": 83
+      "cardCount": 83,
+      "abbreviation": "GEN"
     },
     "xy10": {
       "id": "xy10",
@@ -1427,7 +1556,8 @@
       "logo": "https://assets.tcgdex.net/en/xy/xy10/logo",
       "symbol": "https://assets.tcgdex.net/univ/xy/xy10/symbol",
       "releaseDate": "2016-05-02",
-      "cardCount": 124
+      "cardCount": 124,
+      "abbreviation": "FCO"
     },
     "xy11": {
       "id": "xy11",
@@ -1437,7 +1567,8 @@
       "logo": "https://assets.tcgdex.net/en/xy/xy11/logo",
       "symbol": "https://assets.tcgdex.net/univ/xy/xy11/symbol",
       "releaseDate": "2016-08-03",
-      "cardCount": 114
+      "cardCount": 114,
+      "abbreviation": "STS"
     },
     "xy12": {
       "id": "xy12",
@@ -1447,7 +1578,8 @@
       "logo": "https://assets.tcgdex.net/en/xy/xy12/logo",
       "symbol": "https://assets.tcgdex.net/univ/xy/xy12/symbol",
       "releaseDate": "2016-11-02",
-      "cardCount": 108
+      "cardCount": 108,
+      "abbreviation": "EVO"
     },
     "sm1": {
       "id": "sm1",
@@ -1457,7 +1589,8 @@
       "logo": "https://assets.tcgdex.net/en/sm/sm1/logo",
       "symbol": "https://assets.tcgdex.net/univ/sm/sm1/symbol",
       "releaseDate": "2017-02-03",
-      "cardCount": 149
+      "cardCount": 149,
+      "abbreviation": "SUM"
     },
     "smp": {
       "id": "smp",
@@ -1467,7 +1600,8 @@
       "logo": "https://assets.tcgdex.net/en/sm/smp/logo",
       "symbol": "https://assets.tcgdex.net/univ/sm/smp/symbol",
       "releaseDate": "2017-02-03",
-      "cardCount": 248
+      "cardCount": 248,
+      "abbreviation": "SMP"
     },
     "sm2": {
       "id": "sm2",
@@ -1477,7 +1611,8 @@
       "logo": "https://assets.tcgdex.net/en/sm/sm2/logo",
       "symbol": "https://assets.tcgdex.net/univ/sm/sm2/symbol",
       "releaseDate": "2017-05-05",
-      "cardCount": 145
+      "cardCount": 145,
+      "abbreviation": "GRI"
     },
     "sm3": {
       "id": "sm3",
@@ -1487,7 +1622,8 @@
       "logo": "https://assets.tcgdex.net/en/sm/sm3/logo",
       "symbol": "https://assets.tcgdex.net/univ/sm/sm3/symbol",
       "releaseDate": "2017-08-04",
-      "cardCount": 147
+      "cardCount": 147,
+      "abbreviation": "BUS"
     },
     "sm3.5": {
       "id": "sm3.5",
@@ -1497,7 +1633,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2017-10-06",
-      "cardCount": 73
+      "cardCount": 73,
+      "abbreviation": "SLG"
     },
     "sm4": {
       "id": "sm4",
@@ -1507,7 +1644,8 @@
       "logo": "https://assets.tcgdex.net/en/sm/sm4/logo",
       "symbol": "https://assets.tcgdex.net/univ/sm/sm4/symbol",
       "releaseDate": "2017-11-03",
-      "cardCount": 111
+      "cardCount": 111,
+      "abbreviation": "CIN"
     },
     "sm5": {
       "id": "sm5",
@@ -1517,7 +1655,8 @@
       "logo": "https://assets.tcgdex.net/en/sm/sm5/logo",
       "symbol": "https://assets.tcgdex.net/univ/sm/sm5/symbol",
       "releaseDate": "2018-02-02",
-      "cardCount": 156
+      "cardCount": 156,
+      "abbreviation": "UPR"
     },
     "sm6": {
       "id": "sm6",
@@ -1527,7 +1666,8 @@
       "logo": "https://assets.tcgdex.net/en/sm/sm6/logo",
       "symbol": "https://assets.tcgdex.net/univ/sm/sm6/symbol",
       "releaseDate": "2018-05-04",
-      "cardCount": 131
+      "cardCount": 131,
+      "abbreviation": "FLI"
     },
     "sm7": {
       "id": "sm7",
@@ -1537,7 +1677,8 @@
       "logo": "https://assets.tcgdex.net/en/sm/sm7/logo",
       "symbol": "https://assets.tcgdex.net/univ/sm/sm7/symbol",
       "releaseDate": "2018-08-03",
-      "cardCount": 168
+      "cardCount": 168,
+      "abbreviation": "CES"
     },
     "sm7.5": {
       "id": "sm7.5",
@@ -1547,7 +1688,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2018-09-07",
-      "cardCount": 70
+      "cardCount": 70,
+      "abbreviation": "DRM"
     },
     "sm8": {
       "id": "sm8",
@@ -1557,7 +1699,8 @@
       "logo": "https://assets.tcgdex.net/en/sm/sm8/logo",
       "symbol": "https://assets.tcgdex.net/univ/sm/sm8/symbol",
       "releaseDate": "2018-11-02",
-      "cardCount": 214
+      "cardCount": 214,
+      "abbreviation": "LOT"
     },
     "sm9": {
       "id": "sm9",
@@ -1567,7 +1710,8 @@
       "logo": "https://assets.tcgdex.net/en/sm/sm9/logo",
       "symbol": "https://assets.tcgdex.net/univ/sm/sm9/symbol",
       "releaseDate": "2019-01-31",
-      "cardCount": 181
+      "cardCount": 181,
+      "abbreviation": "TEU"
     },
     "det1": {
       "id": "det1",
@@ -1577,7 +1721,8 @@
       "logo": "https://assets.tcgdex.net/en/sm/det1/logo",
       "symbol": "https://assets.tcgdex.net/univ/sm/det1/symbol",
       "releaseDate": "2019-03-29",
-      "cardCount": 18
+      "cardCount": 18,
+      "abbreviation": "DET"
     },
     "sm10": {
       "id": "sm10",
@@ -1587,7 +1732,8 @@
       "logo": "https://assets.tcgdex.net/en/sm/sm10/logo",
       "symbol": "https://assets.tcgdex.net/univ/sm/sm10/symbol",
       "releaseDate": "2019-05-03",
-      "cardCount": 214
+      "cardCount": 214,
+      "abbreviation": "UNB"
     },
     "sm11": {
       "id": "sm11",
@@ -1597,7 +1743,8 @@
       "logo": "https://assets.tcgdex.net/en/sm/sm11/logo",
       "symbol": "https://assets.tcgdex.net/univ/sm/sm11/symbol",
       "releaseDate": "2019-08-02",
-      "cardCount": 236
+      "cardCount": 236,
+      "abbreviation": "UNM"
     },
     "sm115": {
       "id": "sm115",
@@ -1607,7 +1754,8 @@
       "logo": "https://assets.tcgdex.net/en/sm/sm115/logo",
       "symbol": "https://assets.tcgdex.net/univ/sm/sm115/symbol",
       "releaseDate": "2019-08-23",
-      "cardCount": 68
+      "cardCount": 68,
+      "abbreviation": "HIF"
     },
     "sma": {
       "id": "sma",
@@ -1617,7 +1765,8 @@
       "logo": null,
       "symbol": "https://assets.tcgdex.net/univ/sm/sma/symbol",
       "releaseDate": "2019-08-23",
-      "cardCount": 94
+      "cardCount": 94,
+      "abbreviation": null
     },
     "sm12": {
       "id": "sm12",
@@ -1627,7 +1776,8 @@
       "logo": "https://assets.tcgdex.net/en/sm/sm12/logo",
       "symbol": "https://assets.tcgdex.net/univ/sm/sm12/symbol",
       "releaseDate": "2019-11-01",
-      "cardCount": 236
+      "cardCount": 236,
+      "abbreviation": "CEC"
     },
     "swshp": {
       "id": "swshp",
@@ -1637,7 +1787,8 @@
       "logo": "https://assets.tcgdex.net/en/swsh/swshp/logo",
       "symbol": "https://assets.tcgdex.net/univ/swsh/swshp/symbol",
       "releaseDate": "2019-11-15",
-      "cardCount": 307
+      "cardCount": 307,
+      "abbreviation": null
     },
     "swsh1": {
       "id": "swsh1",
@@ -1647,7 +1798,8 @@
       "logo": "https://assets.tcgdex.net/en/swsh/swsh1/logo",
       "symbol": "https://assets.tcgdex.net/univ/swsh/swsh1/symbol",
       "releaseDate": "2020-02-07",
-      "cardCount": 202
+      "cardCount": 202,
+      "abbreviation": "SSH"
     },
     "swsh2": {
       "id": "swsh2",
@@ -1657,7 +1809,8 @@
       "logo": "https://assets.tcgdex.net/en/swsh/swsh2/logo",
       "symbol": "https://assets.tcgdex.net/univ/swsh/swsh2/symbol",
       "releaseDate": "2020-05-01",
-      "cardCount": 192
+      "cardCount": 192,
+      "abbreviation": "RCL"
     },
     "swsh3": {
       "id": "swsh3",
@@ -1667,7 +1820,8 @@
       "logo": "https://assets.tcgdex.net/en/swsh/swsh3/logo",
       "symbol": "https://assets.tcgdex.net/univ/swsh/swsh3/symbol",
       "releaseDate": "2020-08-14",
-      "cardCount": 189
+      "cardCount": 189,
+      "abbreviation": "DAA"
     },
     "fut2020": {
       "id": "fut2020",
@@ -1677,7 +1831,8 @@
       "logo": "https://assets.tcgdex.net/en/swsh/fut2020/logo",
       "symbol": "https://assets.tcgdex.net/univ/swsh/fut2020/symbol",
       "releaseDate": "2020-09-11",
-      "cardCount": 5
+      "cardCount": 5,
+      "abbreviation": "FUT20"
     },
     "swsh3.5": {
       "id": "swsh3.5",
@@ -1687,7 +1842,8 @@
       "logo": "https://assets.tcgdex.net/en/swsh/swsh3.5/logo",
       "symbol": "https://assets.tcgdex.net/univ/swsh/swsh3.5/symbol",
       "releaseDate": "2020-09-25",
-      "cardCount": 73
+      "cardCount": 73,
+      "abbreviation": "CPA"
     },
     "swsh4": {
       "id": "swsh4",
@@ -1697,7 +1853,8 @@
       "logo": "https://assets.tcgdex.net/en/swsh/swsh4/logo",
       "symbol": "https://assets.tcgdex.net/univ/swsh/swsh4/symbol",
       "releaseDate": "2020-11-13",
-      "cardCount": 185
+      "cardCount": 185,
+      "abbreviation": "VIV"
     },
     "swsh4.5": {
       "id": "swsh4.5",
@@ -1707,7 +1864,8 @@
       "logo": "https://assets.tcgdex.net/en/swsh/swsh4.5/logo",
       "symbol": "https://assets.tcgdex.net/univ/swsh/swsh4.5/symbol",
       "releaseDate": "2021-02-19",
-      "cardCount": 72
+      "cardCount": 72,
+      "abbreviation": "SHF"
     },
     "swsh4.5sv": {
       "id": "swsh4.5sv",
@@ -1717,7 +1875,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2021-02-19",
-      "cardCount": 122
+      "cardCount": 122,
+      "abbreviation": "SHF:SV"
     },
     "swsh5": {
       "id": "swsh5",
@@ -1727,7 +1886,8 @@
       "logo": "https://assets.tcgdex.net/en/swsh/swsh5/logo",
       "symbol": "https://assets.tcgdex.net/univ/swsh/swsh5/symbol",
       "releaseDate": "2021-03-19",
-      "cardCount": 163
+      "cardCount": 163,
+      "abbreviation": "BST"
     },
     "swsh6": {
       "id": "swsh6",
@@ -1737,7 +1897,8 @@
       "logo": "https://assets.tcgdex.net/en/swsh/swsh6/logo",
       "symbol": "https://assets.tcgdex.net/univ/swsh/swsh6/symbol",
       "releaseDate": "2021-06-18",
-      "cardCount": 198
+      "cardCount": 198,
+      "abbreviation": "CRE"
     },
     "swsh7": {
       "id": "swsh7",
@@ -1747,7 +1908,8 @@
       "logo": "https://assets.tcgdex.net/en/swsh/swsh7/logo",
       "symbol": "https://assets.tcgdex.net/univ/swsh/swsh7/symbol",
       "releaseDate": "2021-08-27",
-      "cardCount": 203
+      "cardCount": 203,
+      "abbreviation": "EVS"
     },
     "cel25": {
       "id": "cel25",
@@ -1757,7 +1919,8 @@
       "logo": "https://assets.tcgdex.net/en/swsh/cel25/logo",
       "symbol": "https://assets.tcgdex.net/univ/swsh/cel25/symbol",
       "releaseDate": "2021-10-08",
-      "cardCount": 25
+      "cardCount": 25,
+      "abbreviation": "CEL"
     },
     "cel25cc": {
       "id": "cel25cc",
@@ -1767,7 +1930,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2021-10-08",
-      "cardCount": 25
+      "cardCount": 25,
+      "abbreviation": "CEL:CC"
     },
     "swsh8": {
       "id": "swsh8",
@@ -1777,7 +1941,8 @@
       "logo": "https://assets.tcgdex.net/en/swsh/swsh8/logo",
       "symbol": "https://assets.tcgdex.net/univ/swsh/swsh8/symbol",
       "releaseDate": "2021-11-12",
-      "cardCount": 264
+      "cardCount": 264,
+      "abbreviation": "FST"
     },
     "swsh9.5tg": {
       "id": "swsh9.5tg",
@@ -1787,7 +1952,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2022-02-25",
-      "cardCount": 30
+      "cardCount": 30,
+      "abbreviation": "BRS:TG"
     },
     "swsh9": {
       "id": "swsh9",
@@ -1797,7 +1963,8 @@
       "logo": "https://assets.tcgdex.net/en/swsh/swsh9/logo",
       "symbol": "https://assets.tcgdex.net/univ/swsh/swsh9/symbol",
       "releaseDate": "2022-02-25",
-      "cardCount": 172
+      "cardCount": 172,
+      "abbreviation": "BRS"
     },
     "swsh10": {
       "id": "swsh10",
@@ -1807,7 +1974,8 @@
       "logo": "https://assets.tcgdex.net/en/swsh/swsh10/logo",
       "symbol": "https://assets.tcgdex.net/univ/swsh/swsh10/symbol",
       "releaseDate": "2022-05-27",
-      "cardCount": 189
+      "cardCount": 189,
+      "abbreviation": "ASR"
     },
     "swsh10.5tg": {
       "id": "swsh10.5tg",
@@ -1817,7 +1985,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2022-05-27",
-      "cardCount": 30
+      "cardCount": 30,
+      "abbreviation": "ASR:TG"
     },
     "swsh10.5": {
       "id": "swsh10.5",
@@ -1827,7 +1996,8 @@
       "logo": "https://assets.tcgdex.net/en/swsh/swsh10.5/logo",
       "symbol": "https://assets.tcgdex.net/univ/swsh/swsh10.5/symbol",
       "releaseDate": "2022-07-01",
-      "cardCount": 78
+      "cardCount": 78,
+      "abbreviation": "PGO"
     },
     "swsh11.5tg": {
       "id": "swsh11.5tg",
@@ -1837,7 +2007,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2022-09-09",
-      "cardCount": 30
+      "cardCount": 30,
+      "abbreviation": "LOR:TG"
     },
     "swsh11": {
       "id": "swsh11",
@@ -1847,7 +2018,8 @@
       "logo": "https://assets.tcgdex.net/en/swsh/swsh11/logo",
       "symbol": "https://assets.tcgdex.net/univ/swsh/swsh11/symbol",
       "releaseDate": "2022-09-09",
-      "cardCount": 196
+      "cardCount": 196,
+      "abbreviation": "LOR"
     },
     "swsh12": {
       "id": "swsh12",
@@ -1857,7 +2029,8 @@
       "logo": "https://assets.tcgdex.net/en/swsh/swsh12/logo",
       "symbol": "https://assets.tcgdex.net/univ/swsh/swsh12/symbol",
       "releaseDate": "2022-11-11",
-      "cardCount": 195
+      "cardCount": 195,
+      "abbreviation": "SIT"
     },
     "swsh12.5tg": {
       "id": "swsh12.5tg",
@@ -1867,7 +2040,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2022-11-11",
-      "cardCount": 30
+      "cardCount": 30,
+      "abbreviation": "SIT:TG"
     },
     "swsh12.5gg": {
       "id": "swsh12.5gg",
@@ -1877,7 +2051,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2023-01-20",
-      "cardCount": 70
+      "cardCount": 70,
+      "abbreviation": "CRZ:GG"
     },
     "swsh12.5": {
       "id": "swsh12.5",
@@ -1887,7 +2062,8 @@
       "logo": "https://assets.tcgdex.net/en/swsh/swsh12.5/logo",
       "symbol": "https://assets.tcgdex.net/univ/swsh/swsh12.5/symbol",
       "releaseDate": "2023-01-20",
-      "cardCount": 159
+      "cardCount": 159,
+      "abbreviation": "CRZ"
     },
     "sv01": {
       "id": "sv01",
@@ -1897,7 +2073,8 @@
       "logo": "https://assets.tcgdex.net/en/sv/sv01/logo",
       "symbol": "https://assets.tcgdex.net/univ/sv/sv01/symbol",
       "releaseDate": "2023-03-31",
-      "cardCount": 198
+      "cardCount": 198,
+      "abbreviation": "SVI"
     },
     "sve": {
       "id": "sve",
@@ -1907,7 +2084,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2023-03-31",
-      "cardCount": 24
+      "cardCount": 24,
+      "abbreviation": "SVE"
     },
     "svp": {
       "id": "svp",
@@ -1917,7 +2095,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2023-03-31",
-      "cardCount": 225
+      "cardCount": 225,
+      "abbreviation": "SVP"
     },
     "sv02": {
       "id": "sv02",
@@ -1927,7 +2106,8 @@
       "logo": "https://assets.tcgdex.net/en/sv/sv02/logo",
       "symbol": "https://assets.tcgdex.net/univ/sv/sv02/symbol",
       "releaseDate": "2023-06-09",
-      "cardCount": 193
+      "cardCount": 193,
+      "abbreviation": "PAL"
     },
     "sv03": {
       "id": "sv03",
@@ -1937,7 +2117,8 @@
       "logo": "https://assets.tcgdex.net/en/sv/sv03/logo",
       "symbol": "https://assets.tcgdex.net/univ/sv/sv03/symbol",
       "releaseDate": "2023-08-11",
-      "cardCount": 197
+      "cardCount": 197,
+      "abbreviation": "OBF"
     },
     "sv03.5": {
       "id": "sv03.5",
@@ -1947,7 +2128,8 @@
       "logo": "https://assets.tcgdex.net/en/sv/sv03.5/logo",
       "symbol": "https://assets.tcgdex.net/univ/sv/sv03.5/symbol",
       "releaseDate": "2023-09-22",
-      "cardCount": 165
+      "cardCount": 165,
+      "abbreviation": "MEW"
     },
     "mfb": {
       "id": "mfb",
@@ -1957,7 +2139,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2023-09-29",
-      "cardCount": 48
+      "cardCount": 48,
+      "abbreviation": "MFB"
     },
     "sv04": {
       "id": "sv04",
@@ -1967,7 +2150,8 @@
       "logo": "https://assets.tcgdex.net/en/sv/sv04/logo",
       "symbol": "https://assets.tcgdex.net/univ/sv/sv04/symbol",
       "releaseDate": "2023-11-03",
-      "cardCount": 182
+      "cardCount": 182,
+      "abbreviation": "PAR"
     },
     "sv04.5": {
       "id": "sv04.5",
@@ -1977,7 +2161,8 @@
       "logo": "https://assets.tcgdex.net/en/sv/sv04.5/logo",
       "symbol": "https://assets.tcgdex.net/univ/sv/sv04.5/symbol",
       "releaseDate": "2024-01-26",
-      "cardCount": 91
+      "cardCount": 91,
+      "abbreviation": "PAF"
     },
     "sv05": {
       "id": "sv05",
@@ -1987,7 +2172,8 @@
       "logo": null,
       "symbol": "https://assets.tcgdex.net/univ/sv/sv05/symbol",
       "releaseDate": "2024-03-22",
-      "cardCount": 162
+      "cardCount": 162,
+      "abbreviation": "TEF"
     },
     "sv06": {
       "id": "sv06",
@@ -1997,7 +2183,8 @@
       "logo": "https://assets.tcgdex.net/en/sv/sv06/logo",
       "symbol": "https://assets.tcgdex.net/univ/sv/sv06/symbol",
       "releaseDate": "2024-05-24",
-      "cardCount": 167
+      "cardCount": 167,
+      "abbreviation": "TWM"
     },
     "sv06.5": {
       "id": "sv06.5",
@@ -2007,7 +2194,8 @@
       "logo": "https://assets.tcgdex.net/en/sv/sv06.5/logo",
       "symbol": "https://assets.tcgdex.net/univ/sv/sv06.5/symbol",
       "releaseDate": "2024-08-02",
-      "cardCount": 64
+      "cardCount": 64,
+      "abbreviation": "SFA"
     },
     "sv07": {
       "id": "sv07",
@@ -2017,7 +2205,8 @@
       "logo": "https://assets.tcgdex.net/en/sv/sv07/logo",
       "symbol": null,
       "releaseDate": "2024-09-13",
-      "cardCount": 142
+      "cardCount": 142,
+      "abbreviation": "SCR"
     },
     "sv08": {
       "id": "sv08",
@@ -2027,7 +2216,8 @@
       "logo": "https://assets.tcgdex.net/en/sv/sv08/logo",
       "symbol": null,
       "releaseDate": "2024-11-08",
-      "cardCount": 191
+      "cardCount": 191,
+      "abbreviation": "SSP"
     },
     "sv08.5": {
       "id": "sv08.5",
@@ -2037,7 +2227,8 @@
       "logo": "https://assets.tcgdex.net/en/sv/sv08.5/logo",
       "symbol": null,
       "releaseDate": "2025-01-17",
-      "cardCount": 131
+      "cardCount": 131,
+      "abbreviation": "PRE"
     },
     "sv09": {
       "id": "sv09",
@@ -2047,7 +2238,8 @@
       "logo": "https://assets.tcgdex.net/en/sv/sv09/logo",
       "symbol": "https://assets.tcgdex.net/univ/sv/sv09/symbol",
       "releaseDate": "2025-03-28",
-      "cardCount": 159
+      "cardCount": 159,
+      "abbreviation": "JTG"
     },
     "sv10": {
       "id": "sv10",
@@ -2057,7 +2249,8 @@
       "logo": "https://assets.tcgdex.net/en/sv/sv10/logo",
       "symbol": "https://assets.tcgdex.net/univ/sv/sv10/symbol",
       "releaseDate": "2025-05-30",
-      "cardCount": 182
+      "cardCount": 182,
+      "abbreviation": "DRI"
     },
     "sv10.5b": {
       "id": "sv10.5b",
@@ -2067,7 +2260,8 @@
       "logo": "https://assets.tcgdex.net/en/sv/sv10.5b/logo",
       "symbol": "https://assets.tcgdex.net/univ/sv/sv10.5b/symbol",
       "releaseDate": "2025-07-17",
-      "cardCount": 86
+      "cardCount": 86,
+      "abbreviation": "BLK"
     },
     "sv10.5w": {
       "id": "sv10.5w",
@@ -2077,7 +2271,8 @@
       "logo": "https://assets.tcgdex.net/en/sv/sv10.5w/logo",
       "symbol": "https://assets.tcgdex.net/univ/sv/sv10.5w/symbol",
       "releaseDate": "2025-07-17",
-      "cardCount": 86
+      "cardCount": 86,
+      "abbreviation": "WHT"
     },
     "A1": {
       "id": "A1",
@@ -2087,7 +2282,8 @@
       "logo": "https://assets.tcgdex.net/en/tcgp/A1/logo",
       "symbol": "https://assets.tcgdex.net/univ/tcgp/A1/symbol",
       "releaseDate": "2024-10-30",
-      "cardCount": 226
+      "cardCount": 226,
+      "abbreviation": null
     },
     "P-A": {
       "id": "P-A",
@@ -2097,7 +2293,8 @@
       "logo": "https://assets.tcgdex.net/en/tcgp/P-A/logo",
       "symbol": null,
       "releaseDate": "2024-10-30",
-      "cardCount": 0
+      "cardCount": 0,
+      "abbreviation": null
     },
     "A1a": {
       "id": "A1a",
@@ -2107,7 +2304,8 @@
       "logo": "https://assets.tcgdex.net/en/tcgp/A1a/logo",
       "symbol": null,
       "releaseDate": "2024-12-17",
-      "cardCount": 68
+      "cardCount": 68,
+      "abbreviation": null
     },
     "A2": {
       "id": "A2",
@@ -2117,7 +2315,8 @@
       "logo": "https://assets.tcgdex.net/en/tcgp/A2/logo",
       "symbol": null,
       "releaseDate": "2025-01-30",
-      "cardCount": 140
+      "cardCount": 140,
+      "abbreviation": null
     },
     "A2a": {
       "id": "A2a",
@@ -2127,7 +2326,8 @@
       "logo": "https://assets.tcgdex.net/en/tcgp/A2a/logo",
       "symbol": "https://assets.tcgdex.net/univ/tcgp/A2a/symbol",
       "releaseDate": "2025-02-28",
-      "cardCount": 75
+      "cardCount": 75,
+      "abbreviation": null
     },
     "A2b": {
       "id": "A2b",
@@ -2137,7 +2337,8 @@
       "logo": "https://assets.tcgdex.net/en/tcgp/A2b/logo",
       "symbol": "https://assets.tcgdex.net/univ/tcgp/A2b/symbol",
       "releaseDate": "2025-03-27",
-      "cardCount": 72
+      "cardCount": 72,
+      "abbreviation": null
     },
     "A3": {
       "id": "A3",
@@ -2147,7 +2348,8 @@
       "logo": "https://assets.tcgdex.net/en/tcgp/A3/logo",
       "symbol": null,
       "releaseDate": "2025-04-30",
-      "cardCount": 155
+      "cardCount": 155,
+      "abbreviation": null
     },
     "A3a": {
       "id": "A3a",
@@ -2157,7 +2359,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2025-05-29",
-      "cardCount": 69
+      "cardCount": 69,
+      "abbreviation": null
     },
     "A3b": {
       "id": "A3b",
@@ -2167,7 +2370,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2025-06-26",
-      "cardCount": 69
+      "cardCount": 69,
+      "abbreviation": null
     },
     "A4": {
       "id": "A4",
@@ -2177,7 +2381,8 @@
       "logo": "https://assets.tcgdex.net/en/tcgp/A4/logo",
       "symbol": null,
       "releaseDate": "2025-07-30",
-      "cardCount": 161
+      "cardCount": 161,
+      "abbreviation": null
     },
     "A4a": {
       "id": "A4a",
@@ -2187,7 +2392,8 @@
       "logo": "https://assets.tcgdex.net/en/tcgp/A4a/logo",
       "symbol": "https://assets.tcgdex.net/univ/tcgp/A4a/symbol",
       "releaseDate": "2025-08-28",
-      "cardCount": 71
+      "cardCount": 71,
+      "abbreviation": null
     },
     "B1": {
       "id": "B1",
@@ -2197,7 +2403,8 @@
       "logo": "https://assets.tcgdex.net/en/tcgp/B1/logo",
       "symbol": "https://assets.tcgdex.net/univ/tcgp/B1/symbol",
       "releaseDate": "2025-10-30",
-      "cardCount": 226
+      "cardCount": 226,
+      "abbreviation": null
     },
     "B1a": {
       "id": "B1a",
@@ -2207,7 +2414,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2025-12-17",
-      "cardCount": 69
+      "cardCount": 69,
+      "abbreviation": null
     },
     "B2": {
       "id": "B2",
@@ -2217,7 +2425,8 @@
       "logo": "https://assets.tcgdex.net/en/tcgp/B2/logo",
       "symbol": "https://assets.tcgdex.net/univ/tcgp/B2/symbol",
       "releaseDate": "2026-01-29",
-      "cardCount": 155
+      "cardCount": 155,
+      "abbreviation": null
     },
     "B2a": {
       "id": "B2a",
@@ -2227,7 +2436,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2026-02-26",
-      "cardCount": 93
+      "cardCount": 93,
+      "abbreviation": null
     },
     "mee": {
       "id": "mee",
@@ -2237,7 +2447,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2025-09-25",
-      "cardCount": 8
+      "cardCount": 8,
+      "abbreviation": "MEE"
     },
     "mep": {
       "id": "mep",
@@ -2247,7 +2458,8 @@
       "logo": null,
       "symbol": null,
       "releaseDate": "2025-09-26",
-      "cardCount": 0
+      "cardCount": 0,
+      "abbreviation": "MEP"
     },
     "me01": {
       "id": "me01",
@@ -2257,7 +2469,8 @@
       "logo": "https://assets.tcgdex.net/en/me/me01/logo",
       "symbol": "https://assets.tcgdex.net/univ/me/me01/symbol",
       "releaseDate": "2025-09-26",
-      "cardCount": 132
+      "cardCount": 132,
+      "abbreviation": "MEG"
     },
     "me02": {
       "id": "me02",
@@ -2267,7 +2480,8 @@
       "logo": "https://assets.tcgdex.net/en/me/me02/logo",
       "symbol": null,
       "releaseDate": "2025-11-14",
-      "cardCount": 94
+      "cardCount": 94,
+      "abbreviation": "PFL"
     },
     "me02.5": {
       "id": "me02.5",
@@ -2277,7 +2491,8 @@
       "logo": "https://assets.tcgdex.net/en/me/me02.5/logo",
       "symbol": "https://assets.tcgdex.net/univ/me/me02.5/symbol",
       "releaseDate": "2026-01-30",
-      "cardCount": 217
+      "cardCount": 217,
+      "abbreviation": "ASC"
     },
     "me03": {
       "id": "me03",
@@ -2287,7 +2502,8 @@
       "logo": "https://assets.tcgdex.net/en/me/me03/logo",
       "symbol": "https://assets.tcgdex.net/univ/me/me03/symbol",
       "releaseDate": "2026-03-27",
-      "cardCount": 88
+      "cardCount": 88,
+      "abbreviation": "POR"
     },
     "me04": {
       "id": "me04",
@@ -2297,7 +2513,8 @@
       "logo": "https://assets.tcgdex.net/en/me/me04/logo",
       "symbol": "https://assets.tcgdex.net/univ/me/me04/symbol",
       "releaseDate": "2026-05-22",
-      "cardCount": 86
+      "cardCount": 86,
+      "abbreviation": "CRI"
     },
     "me05": {
       "id": "me05",
@@ -2307,7 +2524,8 @@
       "logo": "https://assets.tcgdex.net/en/me/me05/logo",
       "symbol": "https://assets.tcgdex.net/univ/me/me05/symbol",
       "releaseDate": "2026-07-17",
-      "cardCount": 84
+      "cardCount": 84,
+      "abbreviation": "PBL"
     }
   }
 }
