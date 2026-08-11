@@ -3,7 +3,7 @@ import {
   saveModuleConfig,
 } from "@/features/calibration/api/module-configs";
 import type { ModuleConfigsContextValue } from "@/features/calibration/types";
-import { useOrg } from "@/features/companies/api/use-organization";
+import { useOrg } from "@/hooks/use-org";
 import { useSerial } from "@/features/scanner/api/use-serial";
 import {
   DEFAULT_CALIBRATION,

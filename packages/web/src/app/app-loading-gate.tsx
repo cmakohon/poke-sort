@@ -1,5 +1,4 @@
 import { useCollections } from "@/features/collections/api/use-collections";
-import { useOrg } from "@/features/companies/api/use-organization";
 import { cn } from "@/lib/utils";
 import { IconLoader2, IconPigFilled } from "@tabler/icons-react";
 import { useEffect, useState, type ReactNode } from "react";
@@ -39,15 +38,15 @@ function AppLoadingScreen({
 }
 
 /**
- * Shows a full-screen splash only for the app's very first data load
- * (org + collections). Once that resolves, it fades out over the app
- * content and unmounts for good - background refetches, org switches,
- * and navigation should use inline/skeleton loading instead.
+ * Shows a full-screen splash only for the app's very first data load. Once
+ * that resolves, it fades out over the app content and unmounts for good -
+ * background refetches and navigation should use inline/skeleton loading
+ * instead. Org resolution used to gate this too; there is only one local org
+ * now, so collections are all it waits on.
  */
 export function AppLoadingGate({ children }: { children: ReactNode }) {
-  const { isLoading: orgLoading, activeOrg } = useOrg();
   const { isLoading: collectionsLoading } = useCollections();
-  const isInitialLoading = orgLoading || (!!activeOrg && collectionsLoading);
+  const isInitialLoading = collectionsLoading;
 
   const [phase, setPhase] = useState<"loading" | "exiting" | "ready">(
     "loading",

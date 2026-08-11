@@ -8,7 +8,7 @@ import {
 } from "@/features/collections/api/collections";
 import type { ScanLockInfo } from "@/features/collections/api/use-collection-locks";
 import { useCollectionLocks } from "@/features/collections/api/use-collection-locks";
-import { useOrg } from "@/features/companies/api/use-organization";
+import { useOrg } from "@/hooks/use-org";
 import {
   IconHeartRateMonitor,
   IconLoader2,

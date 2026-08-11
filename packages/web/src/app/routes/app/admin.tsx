@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useOrg } from "@/features/companies/api/use-organization";
+import { useOrg } from "@/hooks/use-org";
 import { GamesManager } from "@/features/games/components/games-manager";
 import {
   cancelSync,

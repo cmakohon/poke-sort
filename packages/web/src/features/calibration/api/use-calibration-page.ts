@@ -1,5 +1,5 @@
 import { modulesQueryOptions } from "@/features/calibration/api/module-configs";
-import { useOrg } from "@/features/companies/api/use-organization";
+import { useOrg } from "@/hooks/use-org";
 import { useFeederConfig } from "@/features/calibration/api/use-feeder-config";
 import { useModuleConfigs } from "@/features/calibration/api/use-module-configs";
 import { SERVOS } from "@/features/calibration/constants";

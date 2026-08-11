@@ -2,28 +2,24 @@ import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 
 import adminDe from "@/locales/de/admin.json";
-import authDe from "@/locales/de/auth.json";
 import binsDe from "@/locales/de/bins.json";
 import buildDe from "@/locales/de/build.json";
 import calibrationDe from "@/locales/de/calibration.json";
 import cardsDe from "@/locales/de/cards.json";
 import collectionsDe from "@/locales/de/collections.json";
 import commonDe from "@/locales/de/common.json";
-import companiesDe from "@/locales/de/companies.json";
 import gamesDe from "@/locales/de/games.json";
 import landingDe from "@/locales/de/landing.json";
 import notificationsDe from "@/locales/de/notifications.json";
 import scannerDe from "@/locales/de/scanner.json";
 import settingsDe from "@/locales/de/settings.json";
 import adminEn from "@/locales/en/admin.json";
-import authEn from "@/locales/en/auth.json";
 import binsEn from "@/locales/en/bins.json";
 import buildEn from "@/locales/en/build.json";
 import calibrationEn from "@/locales/en/calibration.json";
 import cardsEn from "@/locales/en/cards.json";
 import collectionsEn from "@/locales/en/collections.json";
 import commonEn from "@/locales/en/common.json";
-import companiesEn from "@/locales/en/companies.json";
 import gamesEn from "@/locales/en/games.json";
 import landingEn from "@/locales/en/landing.json";
 import notificationsEn from "@/locales/en/notifications.json";
@@ -47,13 +43,11 @@ const resources = {
     common: commonEn,
     landing: landingEn,
     build: buildEn,
-    auth: authEn,
     collections: collectionsEn,
     scanner: scannerEn,
     bins: binsEn,
     calibration: calibrationEn,
     cards: cardsEn,
-    companies: companiesEn,
     notifications: notificationsEn,
     admin: adminEn,
     games: gamesEn,
@@ -63,13 +57,11 @@ const resources = {
     common: commonDe,
     landing: landingDe,
     build: buildDe,
-    auth: authDe,
     collections: collectionsDe,
     scanner: scannerDe,
     bins: binsDe,
     calibration: calibrationDe,
     cards: cardsDe,
-    companies: companiesDe,
     notifications: notificationsDe,
     admin: adminDe,
     games: gamesDe,

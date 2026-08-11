@@ -20,6 +20,8 @@ export interface SessionMonitorState {
   collection: Collection | null;
   cards: ScannedCard[];
   viewers: SessionViewer[];
+  /** This connection's own entry in `viewers` - see the server's /stream handler. */
+  viewerId: string | null;
   errors: SessionError[];
   status: ConnectionStatus;
 }
@@ -29,6 +31,7 @@ export function useSessionMonitor(collectionGuid: string | undefined): SessionMo
   const [collection, setCollection] = useState<Collection | null>(null);
   const [cards, setCards] = useState<ScannedCard[]>([]);
   const [viewers, setViewers] = useState<SessionViewer[]>([]);
+  const [viewerId, setViewerId] = useState<string | null>(null);
   const [errors, setErrors] = useState<SessionError[]>([]);
   const [status, setStatus] = useState<ConnectionStatus>("connecting");
 
@@ -47,6 +50,7 @@ export function useSessionMonitor(collectionGuid: string | undefined): SessionMo
     setCards([]);
     setCollection(null);
     setViewers([]);
+    setViewerId(null);
     setErrors([]);
 
     createSessionEventSource(collectionGuid).then((es) => {
@@ -54,14 +58,16 @@ export function useSessionMonitor(collectionGuid: string | undefined): SessionMo
       esRef.current = es;
 
       es.addEventListener("session_init", (e) => {
-        const { collection, cards, viewers: initViewers } = JSON.parse((e as MessageEvent).data) as {
+        const { collection, cards, viewers: initViewers, viewerId: ownId } = JSON.parse((e as MessageEvent).data) as {
           collection: Collection;
           cards: ScannedCard[];
           viewers?: SessionViewer[];
+          viewerId?: string;
         };
         setCollection(collection);
         setCards(cards);
         if (initViewers) setViewers(initViewers);
+        if (ownId) setViewerId(ownId);
         setStatus("connected");
       });
 
@@ -130,5 +136,5 @@ export function useSessionMonitor(collectionGuid: string | undefined): SessionMo
     };
   }, [collectionGuid, t]);
 
-  return { collection, cards, viewers, errors, status };
+  return { collection, cards, viewers, viewerId, errors, status };
 }

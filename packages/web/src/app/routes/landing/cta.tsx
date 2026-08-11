@@ -17,7 +17,7 @@ export function LandingCta() {
           {t("cta.subtitle")}
         </p>
         <Link
-          to="/auth/sign-up"
+          to="/app"
           className={cn(
             buttonVariants({ variant: "default", size: "lg" }),
             "mt-2",

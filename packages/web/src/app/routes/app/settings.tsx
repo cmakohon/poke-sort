@@ -1,7 +1,6 @@
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { PrimaryColorPicker } from "@/components/primary-color-picker";
 import { ScannerLayoutToggle } from "@/components/scanner-layout-toggle";
-import { OrgSettings } from "@/features/companies/components/org-settings";
 import { DiscordWebhookSettings } from "@/features/notifications/components/discord-webhook-settings";
 import { useTranslation } from "react-i18next";
 
@@ -13,12 +12,6 @@ export default function SettingsPage() {
       <div>
         <h1 className="text-lg font-semibold font-heading">{t("title")}</h1>
         <p className="text-xs text-muted-foreground">{t("subtitle")}</p>
-      </div>
-      <div className="rounded-lg border p-4 flex flex-col gap-4">
-        <h2 className="text-base font-semibold">
-          {t("organizations.heading")}
-        </h2>
-        <OrgSettings />
       </div>
       <div className="rounded-lg border p-4 flex flex-col gap-4">
         <div>

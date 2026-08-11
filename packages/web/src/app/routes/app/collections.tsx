@@ -19,7 +19,7 @@ import {
 import { collectionsQueryOptions } from "@/features/collections/api/collections";
 import { CreateCollectionDialog } from "@/features/collections/components/create-collection-dialog";
 import { useCollections } from "@/features/collections/api/use-collections";
-import { useOrg } from "@/features/companies/api/use-organization";
+import { useOrg } from "@/hooks/use-org";
 import {
   renameCollectionSchema,
   type RenameCollectionFormValues,

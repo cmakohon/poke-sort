@@ -3,8 +3,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   orgSettingsQueryOptions,
   saveOrgSettings,
-} from "@/features/companies/api/org-settings";
-import { useOrg } from "@/features/companies/api/use-organization";
+} from "@/features/settings/api/org-settings";
+import { useOrg } from "@/hooks/use-org";
 import { useCameraContext } from "@/features/scanner/api/use-camera";
 import { getDefaultCardContour } from "@/features/scanner/lib/card-detection";
 import {

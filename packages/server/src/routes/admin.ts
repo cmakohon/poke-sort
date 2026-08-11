@@ -12,28 +12,12 @@ import {
   SYNC_SOURCES,
 } from "../lib/sync-job";
 import { vectorizeImageFromBuffer } from "../lib/vectorize";
-import {
-  getUserRole,
-  requireAuth,
-  requireRole,
-  verifyToken,
-  type AppEnv,
-} from "../middleware/auth";
+import { requireAuth, requireRole, type AppEnv } from "../middleware/auth";
 
 const router = new Hono<AppEnv>();
 
-// GET /admin/sync/stream — SSE, auth via ?token= query param (must be before GET /admin/sync)
+// GET /admin/sync/stream — SSE (must be before GET /admin/sync)
 router.get("/sync/stream", async (c) => {
-  const token = c.req.query("token");
-  if (!token) return c.json({ success: false, message: "Unauthorized" }, 401);
-
-  const payload = await verifyToken(token);
-  if (!payload?.sub)
-    return c.json({ success: false, message: "Unauthorized" }, 401);
-  const role = await getUserRole(payload.sub);
-  if (role !== "admin")
-    return c.json({ success: false, message: "Forbidden" }, 403);
-
   return streamSSE(c, async (stream) => {
     const unsubscribe = subscribeSSE((event, data) => {
       stream.writeSSE({ event, data: JSON.stringify(data) }).catch(() => {});
