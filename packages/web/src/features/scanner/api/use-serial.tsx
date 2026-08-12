@@ -26,6 +26,9 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation("scanner");
   const [isConnected, setIsConnected] = useState(false);
   const [isReady, setIsReady] = useState(false);
+  // Mirror of isReady for the reboot listener, which must read it without
+  // re-subscribing on every state change.
+  const isReadyRef = useRef(false);
   const portRef = useRef<SerialPort | null>(null);
   const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(
     null,
@@ -149,6 +152,35 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
     }
   }, [request]);
 
+  // Push stored calibration, then run the self-test. Runs on first connect
+  // and again whenever the firmware reboots mid-session (watchdog recovery,
+  // power blip): the sorter holds calibration in RAM only, so after any reset
+  // it is back on the inert compiled defaults until this re-push.
+  const runBootSequence = useCallback(
+    async (port: SerialPort) => {
+      for (const hook of [...preTestHooksRef.current]) {
+        await hook();
+        if (portRef.current !== port) return;
+      }
+      toast.info(t("serial.testingDevice"));
+      const ok = await sendTest();
+      if (portRef.current !== port) return;
+      if (ok) {
+        toast.success(t("serial.deviceReady"));
+      } else {
+        toast.error(t("serial.deviceTestFailed.title"), {
+          description: t("serial.deviceTestFailed.description"),
+        });
+        void reportSerialEvent({
+          command: "test",
+          sent: true,
+          response: null,
+        });
+      }
+    },
+    [sendTest, t],
+  );
+
   const disconnect = useCallback(() => {
     const port = portRef.current;
     const reader = readerRef.current;
@@ -160,6 +192,7 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
     writeQueueRef.current = Promise.resolve();
     setIsConnected(false);
     setIsReady(false);
+    isReadyRef.current = false;
 
     // Fail the in-flight request and everything queued behind it
     queue.reset();
@@ -249,31 +282,13 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
       (async () => {
         // Wait out the Arduino's boot before pushing config at it
         await waitForReady(5000);
-        if (!portRef.current) return;
-        for (const hook of [...preTestHooksRef.current]) {
-          await hook();
-          if (!portRef.current) return;
-        }
-        toast.info(t("serial.testingDevice"));
-        const ok = await sendTest();
-        if (!portRef.current) return;
-        if (ok) {
-          toast.success(t("serial.deviceReady"));
-        } else {
-          toast.error(t("serial.deviceTestFailed.title"), {
-            description: t("serial.deviceTestFailed.description"),
-          });
-          void reportSerialEvent({
-            command: "test",
-            sent: true,
-            response: null,
-          });
-        }
+        if (portRef.current !== port) return;
+        await runBootSequence(port);
       })();
 
       return true;
     },
-    [startReading, waitForReady, sendTest, disconnect, t],
+    [startReading, waitForReady, runBootSequence, disconnect, t],
   );
 
   const connect = useCallback(async () => {
@@ -331,6 +346,7 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
         (msg as Record<string, unknown>).status === "test_complete"
       ) {
         setIsReady(true);
+        isReadyRef.current = true;
       }
     };
     const listeners = listenersRef.current;
@@ -339,6 +355,41 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
       listeners.delete(listener);
     };
   }, []);
+
+  // A ready banner arriving mid-session means the firmware rebooted under us
+  // (watchdog recovery or a power blip). Whatever was in flight died with the
+  // reboot, and the sorter is back on default calibration — fail the queue
+  // fast, tell the user, and run the boot sequence again.
+  useEffect(() => {
+    const listener: SerialMessageListener = (msg) => {
+      if (
+        typeof msg !== "object" ||
+        msg === null ||
+        (msg as Record<string, unknown>).status !== "ready"
+      ) {
+        return;
+      }
+      const port = portRef.current;
+      // The first banner of a connection is openPort's to handle.
+      if (!port || !isReadyRef.current) return;
+      isReadyRef.current = false;
+      setIsReady(false);
+      queue.reset();
+      console.warn(
+        "[Serial] Device rebooted mid-session, cause:",
+        (msg as Record<string, unknown>).cause ?? "unknown",
+      );
+      toast.warning(t("serial.deviceRebooted.title"), {
+        description: t("serial.deviceRebooted.description"),
+      });
+      void runBootSequence(port);
+    };
+    const listeners = listenersRef.current;
+    listeners.add(listener);
+    return () => {
+      listeners.delete(listener);
+    };
+  }, [queue, runBootSequence, t]);
 
   const subscribe = useCallback((listener: SerialMessageListener) => {
     listenersRef.current.add(listener);

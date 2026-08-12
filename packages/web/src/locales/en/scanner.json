@@ -22,6 +22,10 @@
     "deviceTestFailed": {
       "title": "Device test failed",
       "description": "Connected but got no response. Try reconnecting."
+    },
+    "deviceRebooted": {
+      "title": "Sorter restarted unexpectedly",
+      "description": "Calibration was re-sent and the self-test is running again."
     }
   },
   "sessionMonitor": {
