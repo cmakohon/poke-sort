@@ -22,6 +22,10 @@
     "deviceTestFailed": {
       "title": "Gerätetest fehlgeschlagen",
       "description": "Verbunden, aber keine Antwort erhalten. Versuche eine erneute Verbindung."
+    },
+    "deviceRebooted": {
+      "title": "Sortierer unerwartet neu gestartet",
+      "description": "Die Kalibrierung wurde erneut gesendet und der Selbsttest läuft erneut."
     }
   },
   "sessionMonitor": {

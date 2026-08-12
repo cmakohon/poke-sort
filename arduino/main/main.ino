@@ -1,6 +1,7 @@
 #include <ArduinoJson.h>
 #include <Wire.h>
 #include <Adafruit_PWMServoDriver.h>
+#include <WDT.h>
 
 Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 
@@ -50,6 +51,7 @@ bool waitForCard(int module, int timeoutMs = IR_TIMEOUT_MS) {
   unsigned long start = millis();
   while (digitalRead(irPin(module)) == HIGH) {
     if (millis() - start > (unsigned long)timeoutMs) return false;
+    wdtRefresh();
     delay(5);
   }
   return true;
@@ -92,6 +94,28 @@ bool inputOverflowed = false;
 // Idle-time jam watch for module 1 — see checkModule1Jam().
 unsigned long module1PresentSince = 0;
 bool module1JamAlerted = false;
+
+// Hardware watchdog: servo current spikes can sag the rail and crash the MCU
+// mid-command (observed on the bench: silent wedge, USB still enumerated, no
+// serial output — recoverable by any reset). The watchdog turns that from
+// "machine plays dead until someone reconnects" into a self-reset within
+// WDT_TIMEOUT_MS; the app sees the ready banner and re-pushes calibration.
+// Armed at the end of setup(), never before: while (!Serial) legitimately
+// waits forever when no host is attached and must not become a reset loop.
+#define WDT_TIMEOUT_MS 5000  // UNO R4 hardware max is 5592 ms
+bool watchdogArmed = false;
+
+void wdtRefresh() {
+  if (watchdogArmed) WDT.refresh();
+}
+
+// delay() that also feeds the watchdog — for multi-step sequences whose
+// summed delays would exceed the watchdog period.
+void wdtDelay(int ms) {
+  wdtRefresh();
+  delay(ms);
+  wdtRefresh();
+}
 
 int getChannel(int module, int servoOffset) {
   return MODULE_CHANNEL_OFFSET + (module - 1) * 3 + servoOffset;
@@ -154,6 +178,7 @@ FeedResult runFeeder() {
         settleAndStopFeeder();
         return FEED_DETECTED;
       }
+      wdtRefresh();
       delay(2);
     }
     stopFeeder();
@@ -173,6 +198,7 @@ FeedResult runFeeder() {
         settleAndStopFeeder();
         return FEED_DETECTED;
       }
+      wdtRefresh();
       delay(2);
     }
 
@@ -187,7 +213,7 @@ FeedResult runFeeder() {
       }
       return FEED_DETECTED;
     }
-    delay(feederConfig.pauseDuration);
+    wdtDelay(feederConfig.pauseDuration);
   }
   return FEED_TIMEOUT;
 }
@@ -281,7 +307,7 @@ void routeCard(int bin) {
     for (int m = 1; m <= NUM_MODULES; m++) {
       setServoPosition(getChannel(m, 0), moduleConfig[m - 1].bottomOpen);
     }
-    delay(DELAY_PUSH);
+    wdtDelay(DELAY_PUSH);
     setAllNeutral();
     delay(200);
 
@@ -289,9 +315,9 @@ void routeCard(int bin) {
     // Module 1: open paddle, then push
     ModuleConfig& c = moduleConfig[0];
     setServoPosition(getChannel(1, 1), c.paddleOpen);
-    delay(DELAY_PADDLE);
+    wdtDelay(DELAY_PADDLE);
     setServoPosition(getChannel(1, 2), bin == 1 ? c.pusherLeft : c.pusherRight);
-    delay(DELAY_PUSH);
+    wdtDelay(DELAY_PUSH);
     setModuleNeutral(1);
     delay(200);
 
@@ -305,13 +331,13 @@ void routeCard(int bin) {
       setAllNeutral();
       return;
     }
-    delay(DELAY_CARD_ENTER);
+    wdtDelay(DELAY_CARD_ENTER);
 
     ModuleConfig& c2 = moduleConfig[1];
     setServoPosition(getChannel(2, 1), c2.paddleOpen);
-    delay(DELAY_PADDLE);
+    wdtDelay(DELAY_PADDLE);
     setServoPosition(getChannel(2, 2), pushLeft ? c2.pusherLeft : c2.pusherRight);
-    delay(DELAY_PUSH);
+    wdtDelay(DELAY_PUSH);
     setModuleNeutral(1);
     setModuleNeutral(2);
     delay(200);
@@ -334,13 +360,13 @@ void routeCard(int bin) {
       setAllNeutral();
       return;
     }
-    delay(DELAY_CARD_ENTER);
+    wdtDelay(DELAY_CARD_ENTER);
 
     ModuleConfig& c3 = moduleConfig[2];
     setServoPosition(getChannel(3, 1), c3.paddleOpen);
-    delay(DELAY_PADDLE);
+    wdtDelay(DELAY_PADDLE);
     setServoPosition(getChannel(3, 2), pushLeft ? c3.pusherLeft : c3.pusherRight);
-    delay(DELAY_PUSH);
+    wdtDelay(DELAY_PUSH);
     setModuleNeutral(1);
     setModuleNeutral(2);
     setModuleNeutral(3);
@@ -393,35 +419,35 @@ void handleCommand(char* json) {
       setServoPosition(getChannel(m, 0), moduleConfig[m - 1].bottomOpen);
       setServoPosition(getChannel(m, 1), moduleConfig[m - 1].paddleOpen);
     }
-    delay(DELAY_PUSH);
+    wdtDelay(DELAY_PUSH);
     for (int m = 1; m <= NUM_MODULES; m++) {
       setServoPosition(getChannel(m, 0), moduleConfig[m - 1].bottomClosed);
       setServoPosition(getChannel(m, 1), moduleConfig[m - 1].paddleClosed);
     }
-    delay(DELAY_PUSH);
+    wdtDelay(DELAY_PUSH);
 
     // Pushers, as a routing stroke: bottoms stay closed, paddles open,
     // left → neutral → right → neutral
     for (int m = 1; m <= NUM_MODULES; m++) {
       setServoPosition(getChannel(m, 1), moduleConfig[m - 1].paddleOpen);
     }
-    delay(DELAY_PADDLE);
+    wdtDelay(DELAY_PADDLE);
     for (int m = 1; m <= NUM_MODULES; m++) {
       setServoPosition(getChannel(m, 2), moduleConfig[m - 1].pusherLeft);
     }
-    delay(DELAY_PUSH);
+    wdtDelay(DELAY_PUSH);
     for (int m = 1; m <= NUM_MODULES; m++) {
       setServoPosition(getChannel(m, 2), moduleConfig[m - 1].pusherNeutral);
     }
-    delay(DELAY_PUSH);
+    wdtDelay(DELAY_PUSH);
     for (int m = 1; m <= NUM_MODULES; m++) {
       setServoPosition(getChannel(m, 2), moduleConfig[m - 1].pusherRight);
     }
-    delay(DELAY_PUSH);
+    wdtDelay(DELAY_PUSH);
     for (int m = 1; m <= NUM_MODULES; m++) {
       setServoPosition(getChannel(m, 2), moduleConfig[m - 1].pusherNeutral);
     }
-    delay(DELAY_PUSH);
+    wdtDelay(DELAY_PUSH);
 
     // Reset all servos
     setAllNeutral();
@@ -461,7 +487,7 @@ void handleCommand(char* json) {
     for (int m = 1; m <= NUM_MODULES; m++) {
       setServoPosition(getChannel(m, 0), moduleConfig[m - 1].bottomOpen);
     }
-    delay(DELAY_PUSH);
+    wdtDelay(DELAY_PUSH);
     setAllNeutral();
     delay(200);
     Serial.println(F("{\"status\":\"cleared\"}"));
@@ -608,6 +634,12 @@ void setup() {
   Serial.begin(9600);
   while (!Serial);
 
+  // RSTSR1 records why the MCU last reset (WDTRF = watchdog). Read before
+  // arming the watchdog, and clear it so the next ordinary reset doesn't
+  // still report "watchdog".
+  bool resetByWatchdog = R_SYSTEM->RSTSR1_b.WDTRF;
+  R_SYSTEM->RSTSR1 = 0;
+
   // IR sensors: active LOW (internal pull-up, sensor pulls LOW when card present)
   pinMode(IR_PIN_MODULE1, INPUT_PULLUP);
   pinMode(IR_PIN_MODULE2, INPUT_PULLUP);
@@ -618,7 +650,12 @@ void setup() {
   pwm.setPWMFreq(50);
   delay(10);
   setAllNeutral();
-  Serial.println(F("{\"status\":\"ready\",\"unsolicited\":true}"));
+
+  watchdogArmed = WDT.begin(WDT_TIMEOUT_MS) != 0;
+
+  Serial.print(F("{\"status\":\"ready\",\"unsolicited\":true,\"cause\":\""));
+  Serial.print(resetByWatchdog ? F("watchdog") : F("startup"));
+  Serial.println(F("\"}"));
 }
 
 void loop() {
@@ -643,4 +680,5 @@ void loop() {
     }
   }
   checkModule1Jam();
+  wdtRefresh();
 }
