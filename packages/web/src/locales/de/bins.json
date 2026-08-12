@@ -2,9 +2,11 @@
   "binCard": {
     "binLabel": "Fach {{number}}",
     "catchAll": "Auffangfach",
+    "reviewBin": "Prüfen",
     "ruleCount_one": "{{count}} Regel",
     "ruleCount_other": "{{count}} Regeln",
     "allUnmatched": "Alle nicht zugeordneten Karten",
+    "reviewOnly": "Nur unsichere Scans",
     "clickToConfigure": "Zum Konfigurieren klicken"
   },
   "binConfigPanel": {
@@ -13,6 +15,11 @@
     "catchAllEnabled": "Auffangfach aktiviert",
     "setCatchAll": "Als Auffangfach festlegen",
     "catchAllDescription": "Karten, die auf kein anderes Fach passen, landen hier.",
+    "reviewBinEnabled": "Prüf-Fach",
+    "setReviewBin": "Als Prüf-Fach festlegen",
+    "reviewBinDescription": "Scans, bei denen die Erkennung unsicher ist, landen hier statt im Auffangfach.",
+    "reviewBinHint": "Unsichere Scans landen derzeit im Auffangfach.",
+    "reviewBinElsewhere": "Fach {{number}} ist das Prüf-Fach.",
     "rulesLabel": "Regeln",
     "clear": "Leeren",
     "save": "Speichern"
@@ -22,7 +29,8 @@
   },
   "binLocationDiagram": {
     "binLabel": "Fach {{number}}",
-    "catchAll": "Auffangfach"
+    "catchAll": "Auffangfach",
+    "reviewBin": "Prüfen"
   },
   "conditionRow": {
     "selectPlaceholder": "Auswählen...",
@@ -48,6 +56,7 @@
   "presetSelector": {
     "binLabel": "Fach {{number}}",
     "catchAll": "Auffangfach",
+    "reviewBin": "Prüfen",
     "noRules": "keine Regeln",
     "conditionCount_one": "{{count}} Bedingung",
     "conditionCount_other": "{{count}} Bedingungen",

@@ -29,6 +29,7 @@ export function CardScanner({ className, compact }: CardScannerProps) {
   const {
     addCard,
     sendCatchAllBin,
+    sendReviewBin,
     autoFeed,
     setAutoFeed,
     registerCardArrivedHook,
@@ -82,7 +83,11 @@ export function CardScanner({ className, compact }: CardScannerProps) {
         addCard(cards[0], capturedImageUrl, cards.slice(1), outcome);
       }
     },
-    onNoMatch: sendCatchAllBin,
+    // A card nothing could be read off is the review case by definition, so it
+    // goes to the review bin when the sort names one (the catch-all otherwise,
+    // which is where it always went). A skipped duplicate below still uses the
+    // catch-all — that one is a deliberate discard, not an uncertain read.
+    onNoMatch: sendReviewBin,
     // The camera is mounted sideways over the feeder, so the capture is always
     // rotated. This was `!isMobile`, but the scanner only ever renders behind
     // DesktopOnlyGuard, so the mobile side of that was unreachable.

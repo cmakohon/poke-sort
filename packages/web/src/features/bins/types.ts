@@ -17,11 +17,18 @@ export interface BinConfigsContextValue {
   isActivating: boolean;
   isPresetMutating: boolean;
   hasCatchAll: boolean;
+  /** The bin low-confidence scans are diverted to, if one is dedicated. */
+  reviewBinNumber?: number;
   selectedBin: number;
   selectedSet?: BinSet;
   setSelectedBin: (bin: number) => void;
   selectedConfig: BinConfig;
-  save: (binNumber: number, rules: BinRuleGroup, isCatchAll?: boolean) => void;
+  save: (
+    binNumber: number,
+    rules: BinRuleGroup,
+    isCatchAll?: boolean,
+    isReviewBin?: boolean,
+  ) => void;
   clear: (binNumber: number) => void;
   activateSet: (guid: string) => Promise<void>;
   createSet: (name: string) => Promise<void>;

@@ -2,9 +2,11 @@
   "binCard": {
     "binLabel": "Bin {{number}}",
     "catchAll": "Catch-all",
+    "reviewBin": "Review",
     "ruleCount_one": "{{count}} rule",
     "ruleCount_other": "{{count}} rules",
     "allUnmatched": "All unmatched cards",
+    "reviewOnly": "Low-confidence scans only",
     "clickToConfigure": "Click to configure"
   },
   "binConfigPanel": {
@@ -13,6 +15,11 @@
     "catchAllEnabled": "Catch-all enabled",
     "setCatchAll": "Set as catch-all",
     "catchAllDescription": "Cards that don't match any other bin will go here.",
+    "reviewBinEnabled": "Review bin",
+    "setReviewBin": "Set as review bin",
+    "reviewBinDescription": "Scans the pipeline isn't confident about go here instead of the catch-all.",
+    "reviewBinHint": "Low-confidence scans currently go to the catch-all.",
+    "reviewBinElsewhere": "Bin {{number}} is the review bin.",
     "rulesLabel": "Rules",
     "clear": "Clear",
     "save": "Save"
@@ -22,7 +29,8 @@
   },
   "binLocationDiagram": {
     "binLabel": "Bin {{number}}",
-    "catchAll": "Catch-all"
+    "catchAll": "Catch-all",
+    "reviewBin": "Review"
   },
   "conditionRow": {
     "selectPlaceholder": "Select...",
@@ -48,6 +56,7 @@
   "presetSelector": {
     "binLabel": "Bin {{number}}",
     "catchAll": "catch-all",
+    "reviewBin": "review",
     "noRules": "no rules",
     "conditionCount_one": "{{count}} condition",
     "conditionCount_other": "{{count}} conditions",

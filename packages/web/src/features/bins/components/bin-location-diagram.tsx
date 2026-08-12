@@ -13,11 +13,13 @@ function BinCell({
   binNumber,
   active,
   isCatchAll,
+  isReviewBin,
   inverted,
 }: {
   binNumber: number;
   active: boolean;
   isCatchAll: boolean;
+  isReviewBin: boolean;
   inverted: boolean;
 }) {
   const { t } = useTranslation("bins");
@@ -33,7 +35,7 @@ function BinCell({
       )}
     >
       <span>{t("binLocationDiagram.binLabel", { number: binNumber })}</span>
-      {isCatchAll && (
+      {(isCatchAll || isReviewBin) && (
         <span
           className={cn(
             "text-[8px] font-normal uppercase tracking-wide",
@@ -44,7 +46,9 @@ function BinCell({
                 : "text-muted-foreground/70",
           )}
         >
-          {t("binLocationDiagram.catchAll")}
+          {isCatchAll
+            ? t("binLocationDiagram.catchAll")
+            : t("binLocationDiagram.reviewBin")}
         </span>
       )}
     </div>
@@ -64,6 +68,7 @@ export function BinLocationDiagram({
 }: BinLocationDiagramProps) {
   const { configs } = useBinConfigs();
   const catchAllBin = configs.find((c) => c.isCatchAll)?.binNumber;
+  const reviewBin = configs.find((c) => c.isReviewBin)?.binNumber;
 
   return (
     <div className="overflow-hidden rounded-lg">
@@ -73,12 +78,14 @@ export function BinLocationDiagram({
             binNumber={left}
             active={binNumber === left}
             isCatchAll={catchAllBin === left}
+            isReviewBin={reviewBin === left}
             inverted={inverted}
           />
           <BinCell
             binNumber={right}
             active={binNumber === right}
             isCatchAll={catchAllBin === right}
+            isReviewBin={reviewBin === right}
             inverted={inverted}
           />
         </div>
@@ -87,6 +94,7 @@ export function BinLocationDiagram({
         binNumber={OVERFLOW_BIN}
         active={binNumber === OVERFLOW_BIN}
         isCatchAll={catchAllBin === OVERFLOW_BIN}
+        isReviewBin={reviewBin === OVERFLOW_BIN}
         inverted={inverted}
       />
     </div>

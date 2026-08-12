@@ -48,14 +48,17 @@ export async function saveBinConfig({
   binNumber,
   rules,
   isCatchAll,
+  isReviewBin,
 }: {
   binNumber: number;
   rules: BinRuleGroup;
   isCatchAll?: boolean;
+  isReviewBin?: boolean;
 }): Promise<Result<BinConfig>> {
   return apiPut<Result<BinConfig>>(`/api/bins/bins/${binNumber}`, {
     rules,
     isCatchAll,
+    isReviewBin,
   });
 }
 

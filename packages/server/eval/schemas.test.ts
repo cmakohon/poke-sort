@@ -171,6 +171,17 @@ describe("game and bin bounds", () => {
   it("accepts a set name at the shared maximum", () => {
     accepts(RenameSetSchema, { name: "x".repeat(50) });
   });
+
+  // The panel sends both role flags on every save, and .strict() would have
+  // rejected the whole body over the field it had never heard of — which reads
+  // in the UI as "saving the bin failed", not "one flag is unknown".
+  it("accepts a bin dedicated to review", () => {
+    accepts(UpdateBinSchema, {
+      isCatchAll: false,
+      isReviewBin: true,
+      rules: { id: crypto.randomUUID(), combinator: "and", conditions: [] },
+    });
+  });
 });
 
 describe("collection and scan bounds", () => {

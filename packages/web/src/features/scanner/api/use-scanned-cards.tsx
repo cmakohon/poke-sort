@@ -1,10 +1,12 @@
 import {
+  type BinConfig,
   type PlayingCard,
   type PlayingCardWithDistance,
   type ScanOutcome,
   type ScannedCard,
   evaluateCardBin,
   getCatchAllBin,
+  getReviewBin,
 } from "@poke-sort/shared";
 
 import { useBinConfigs } from "@/features/bins/api/use-bin-configs";
@@ -272,17 +274,22 @@ export function ScannedCardsProvider({
 
       const needsReview = outcome?.tier === "review";
 
-      // An uncertain card is routed to the catch-all rather than to whichever
-      // bin its (possibly wrong) identification implies. Setting a handful of
-      // cards aside for a human beats confidently mis-sorting them, which is
-      // silent and only discovered much later.
+      // An uncertain card is set aside rather than routed to whichever bin its
+      // (possibly wrong) identification implies. Setting a handful of cards
+      // aside for a human beats confidently mis-sorting them, which is silent
+      // and only discovered much later.
+      //
+      // "Aside" is the dedicated review bin when the sort names one, and the
+      // catch-all otherwise — which is where every uncertain card used to go,
+      // mixed in with the cards no rule claimed. Keeping them apart is what
+      // makes the review stack worth carrying to a desk.
       const ruleBin = evaluateCardBin(
         card,
         binConfigsRef.current,
         fieldDefinitionsRef.current,
       );
       const matchedBin = needsReview
-        ? getCatchAllBin(binConfigsRef.current)
+        ? getReviewBin(binConfigsRef.current)
         : ruleBin;
 
       const record: ScannedCard = {
@@ -379,25 +386,30 @@ export function ScannedCardsProvider({
     [triggerAutoFeed, t],
   );
 
-  const sendCatchAllBin = useCallback(() => {
-    const catchAll = getCatchAllBin(binConfigsRef.current);
-    if (
-      catchAll &&
-      serialRef.current.isConnected &&
-      serialRef.current.isReady
-    ) {
-      serialRef.current.sendBin(catchAll.binNumber).then((response) => {
+  // Routes a card the app is NOT recording to a fixed bin: nothing was
+  // identified, or a duplicate is being skipped. No scan row, no rules — just
+  // get the card out of module 1 and keep the feeder cycling.
+  //
+  // Parameterised because there are now two such bins. A card that could not be
+  // read is a review case, while a skipped duplicate is not; before the review
+  // bin existed both meant "catch-all" and the distinction had nowhere to go.
+  const sendFixedBin = useCallback(
+    (bin: BinConfig | undefined, failureDescriptionKey: string) => {
+      if (!bin || !serialRef.current.isConnected || !serialRef.current.isReady) {
+        return;
+      }
+      serialRef.current.sendBin(bin.binNumber).then((response) => {
         if (!response) {
           toast.error(t("scannedCards.routingFailedCatchAll.title"), {
-            description: t("scannedCards.routingFailedCatchAll.description", {
-              binNumber: catchAll.binNumber,
+            description: t(failureDescriptionKey, {
+              binNumber: bin.binNumber,
             }),
           });
           void reportSerialEvent({
             command: "bin",
             sent: true,
             response: null,
-            binNumber: catchAll.binNumber,
+            binNumber: bin.binNumber,
           });
           autoFeedRef.current = false;
           setAutoFeedState(false);
@@ -414,7 +426,7 @@ export function ScannedCardsProvider({
             command: "bin",
             sent: true,
             response: res,
-            binNumber: catchAll.binNumber,
+            binNumber: bin.binNumber,
           });
           autoFeedRef.current = false;
           setAutoFeedState(false);
@@ -431,7 +443,7 @@ export function ScannedCardsProvider({
             command: "bin",
             sent: true,
             response: res,
-            binNumber: catchAll.binNumber,
+            binNumber: bin.binNumber,
           });
           autoFeedRef.current = false;
           setAutoFeedState(false);
@@ -441,8 +453,27 @@ export function ScannedCardsProvider({
           triggerAutoFeed();
         }
       });
-    }
-  }, [triggerAutoFeed, t]);
+    },
+    [triggerAutoFeed, t],
+  );
+
+  const sendCatchAllBin = useCallback(
+    () =>
+      sendFixedBin(
+        getCatchAllBin(binConfigsRef.current),
+        "scannedCards.routingFailedCatchAll.description",
+      ),
+    [sendFixedBin],
+  );
+
+  const sendReviewBin = useCallback(
+    () =>
+      sendFixedBin(
+        getReviewBin(binConfigsRef.current),
+        "scannedCards.routingFailedReview.description",
+      ),
+    [sendFixedBin],
+  );
 
   const removeCard = useCallback((scanId: string) => {
     const collection = activeCollectionRef.current;
@@ -567,6 +598,7 @@ export function ScannedCardsProvider({
         registerPauseHook,
         addCard,
         sendCatchAllBin,
+        sendReviewBin,
         removeCard,
         removeCards,
         correctCard,

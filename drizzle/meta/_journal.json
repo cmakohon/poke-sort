@@ -50,6 +50,13 @@
       "when": 1786500180000,
       "tag": "0006_capture_settle_delay",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1786500300000,
+      "tag": "0008_review_bin",
+      "breakpoints": true
     }
   ]
 }

@@ -155,6 +155,18 @@ export function getCatchAllBin(configs: BinConfig[]): BinConfig | undefined {
   return configs.find((c) => c.isCatchAll);
 }
 
+/**
+ * Where a card the pipeline is not confident about should go.
+ *
+ * The dedicated review bin when one is set, otherwise the catch-all — so a set
+ * that never opts in behaves exactly as it did before the flag existed. The
+ * fallback lives here rather than at each call site so no route can forget it
+ * and drop an uncertain card into whichever bin its rules imply.
+ */
+export function getReviewBin(configs: BinConfig[]): BinConfig | undefined {
+  return configs.find((c) => c.isReviewBin) ?? getCatchAllBin(configs);
+}
+
 export function evaluateCardBin(
   card: SourceCard,
   configs: BinConfig[],

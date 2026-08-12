@@ -10,6 +10,8 @@ export type DefaultBinInit = {
   binNumber: number;
   rules: BinRuleGroup;
   isCatchAll: boolean;
+  /** Omitted by the default layout: review falls back to the catch-all. */
+  isReviewBin?: boolean;
 };
 
 /**

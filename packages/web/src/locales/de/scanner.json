@@ -65,6 +65,10 @@
     "routingFailedCatchAll": {
       "title": "Weiterleitung fehlgeschlagen",
       "description": "Keine Antwort vom Sortierer für das Sammelfach {{binNumber}}."
+    },
+    "routingFailedReview": {
+      "title": "Weiterleitung fehlgeschlagen",
+      "description": "Keine Antwort vom Sortierer für Prüf-Fach {{binNumber}}."
     }
   },
   "cardScanner": {

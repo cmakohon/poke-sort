@@ -1,3 +1,6 @@
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { HNSW_EF_SEARCH, MIGRATIONS_DIR } from "../config";
 import { client, db } from ".";
@@ -13,7 +16,60 @@ import { client, db } from ".";
  */
 export async function migrateDatabase(): Promise<void> {
   await migrate(db, { migrationsFolder: MIGRATIONS_DIR });
+  await reportSkippedMigrations();
   await configureSession();
+}
+
+/**
+ * Names any migration the migrator declined to run.
+ *
+ * It applies a migration only when its journal timestamp is strictly greater
+ * than the newest `created_at` already recorded — so a migration whose `when`
+ * merely TIES the newest row is skipped without a word. That is not exotic:
+ * the timestamps here are hand-written, and two branches each writing "the next
+ * one" land on the same value (0007_review_bin and 0007_persist_scan_outcome
+ * both took 1786500240000). The failure then surfaces at the first query as
+ * `column ... does not exist`, pointing at the route rather than at the
+ * migration that never ran.
+ *
+ * A warning rather than a throw: the check is derived from how the migrator
+ * hashes files, so a change on that side should not stop a working machine from
+ * booting. The message carries the fix — raise the entry's `when` above every
+ * other branch's.
+ */
+async function reportSkippedMigrations(): Promise<void> {
+  try {
+    const journal = JSON.parse(
+      readFileSync(path.join(MIGRATIONS_DIR, "meta", "_journal.json"), "utf-8"),
+    ) as { entries: { when: number; tag: string }[] };
+
+    const applied = await client.query<{ hash: string }>(
+      "select hash from drizzle.__drizzle_migrations",
+    );
+    const seen = new Set(applied.rows.map((r) => r.hash));
+
+    const skipped = journal.entries.filter((entry) => {
+      const sql = readFileSync(
+        path.join(MIGRATIONS_DIR, `${entry.tag}.sql`),
+        "utf-8",
+      );
+      return !seen.has(createHash("sha256").update(sql).digest("hex"));
+    });
+
+    // Every entry looking unapplied means the hash no longer matches how the
+    // migrator computes it, not that the database is 8 migrations behind.
+    if (skipped.length === 0 || skipped.length === journal.entries.length) return;
+
+    for (const entry of skipped) {
+      console.error(
+        `[db] Migration ${entry.tag} (when=${entry.when}) is in the journal but was not applied.` +
+          " Its timestamp is probably not greater than the newest one already recorded;" +
+          " raise it above every `when` on every branch and restart.",
+      );
+    }
+  } catch (err) {
+    console.warn("[db] Could not verify applied migrations:", err);
+  }
 }
 
 /**

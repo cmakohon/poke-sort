@@ -67,6 +67,19 @@ export interface BinConfig {
   binNumber: number;
   rules: BinRuleGroup;
   isCatchAll?: boolean;
+  /**
+   * Low-confidence scans go here instead of the catch-all.
+   *
+   * Separating the two is an accuracy-tuning aid: the catch-all collects cards
+   * no rule claimed, which is a normal outcome, while a review-tier scan is the
+   * pipeline saying it does not trust its own answer. Mixed into one bin those
+   * are indistinguishable without going back to the UI, and the whole point of
+   * the review tier is that a human looks at that stack.
+   *
+   * Optional and at most one per set — with none set, review-tier scans fall
+   * back to the catch-all exactly as before.
+   */
+  isReviewBin?: boolean;
 }
 
 export interface BinSet {

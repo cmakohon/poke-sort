@@ -67,6 +67,7 @@ const DefaultBinInitSchema = z
   .object({
     binNumber: z.number().int().min(1).max(BIN_COUNT),
     isCatchAll: z.boolean(),
+    isReviewBin: z.boolean().optional(),
     rules: RuleGroupSchema,
   })
   .strict();
@@ -83,7 +84,11 @@ const ActivateSetSchema = z
   .strict();
 
 export const UpdateBinSchema = z
-  .object({ rules: RuleGroupSchema, isCatchAll: z.boolean().optional() })
+  .object({
+    rules: RuleGroupSchema,
+    isCatchAll: z.boolean().optional(),
+    isReviewBin: z.boolean().optional(),
+  })
   .strict();
 
 export const RenameSetSchema = z
@@ -116,6 +121,7 @@ function toBinSet(row: {
     binNumber: number;
     rules: unknown;
     isCatchAll: boolean;
+    isReviewBin: boolean;
   }[];
 }): BinSet {
   return {
@@ -127,6 +133,7 @@ function toBinSet(row: {
       binNumber: bin.binNumber,
       rules: bin.rules as BinRuleGroup,
       isCatchAll: bin.isCatchAll,
+      isReviewBin: bin.isReviewBin,
     })),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -143,7 +150,13 @@ const binSetQuery = {
   },
   with: {
     bins: {
-      columns: { guid: true, binNumber: true, rules: true, isCatchAll: true },
+      columns: {
+        guid: true,
+        binNumber: true,
+        rules: true,
+        isCatchAll: true,
+        isReviewBin: true,
+      },
     },
   },
 } as const;
@@ -165,13 +178,20 @@ async function _snapshotBinSet(
 ) {
   const rows = await tx.query.bins.findMany({
     where: (bins, { eq }) => eq(bins.binSet, binSetId),
-    columns: { guid: true, binNumber: true, rules: true, isCatchAll: true },
+    columns: {
+      guid: true,
+      binNumber: true,
+      rules: true,
+      isCatchAll: true,
+      isReviewBin: true,
+    },
   });
   const snapshot: BinConfig[] = rows.map((r) => ({
     guid: r.guid!,
     binNumber: r.binNumber,
     rules: r.rules as BinRuleGroup,
     isCatchAll: r.isCatchAll,
+    isReviewBin: r.isReviewBin,
   }));
   await tx.insert(binSetAudit).values({ binSetGuid, snapshot, orgId });
 }
@@ -246,7 +266,7 @@ router.post("/", requireAuth, requireOrg, async (c) => {
         .insert(binSets)
         .values({ name, isActive: true, orgId })
         .returning({ id: binSets.id });
-      const binsToInsert = Array.isArray(initialBins)
+      const binsToInsert: DefaultBinInit[] = Array.isArray(initialBins)
         ? initialBins
         : Array.from({ length: BIN_COUNT }, (_, i) => ({
             binNumber: i + 1,
@@ -258,6 +278,7 @@ router.post("/", requireAuth, requireOrg, async (c) => {
           binNumber: b.binNumber,
           rules: b.rules,
           isCatchAll: b.isCatchAll,
+          isReviewBin: b.isReviewBin ?? false,
           binSet: newBinSet.id,
           orgId,
         })),
@@ -284,7 +305,14 @@ router.post("/copies", requireAuth, requireOrg, async (c) => {
           and(eq(binSets.isActive, true), eq(binSets.orgId, orgId)),
         columns: { id: true },
         with: {
-          bins: { columns: { binNumber: true, rules: true, isCatchAll: true } },
+          bins: {
+            columns: {
+              binNumber: true,
+              rules: true,
+              isCatchAll: true,
+              isReviewBin: true,
+            },
+          },
         },
       });
       const activeBins = active?.bins ?? [];
@@ -298,6 +326,7 @@ router.post("/copies", requireAuth, requireOrg, async (c) => {
             binNumber: bin.binNumber,
             rules: bin.rules,
             isCatchAll: bin.isCatchAll,
+            isReviewBin: bin.isReviewBin,
             binSet: newBinSet.id,
             orgId,
           })),
@@ -318,9 +347,10 @@ router.put("/bins/:binNumber", requireAuth, requireOrg, async (c) => {
   const binNumber = parseInt(c.req.param("binNumber"));
   const parsed = await parseBody(c, UpdateBinSchema);
   if (!parsed.ok) return parsed.response;
-  const { rules, isCatchAll } = parsed.data as {
+  const { rules, isCatchAll, isReviewBin } = parsed.data as {
     rules: BinRuleGroup;
     isCatchAll?: boolean;
+    isReviewBin?: boolean;
   };
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
@@ -336,12 +366,25 @@ router.put("/bins/:binNumber", requireAuth, requireOrg, async (c) => {
       const existing = activeBinSet.bins.find((b) => b.binNumber === binNumber);
       let savedBin: BinConfig;
 
+      // A set has one review bin, so claiming it releases whichever bin held it
+      // before. Enforced here rather than trusted from the client: two review
+      // bins is not a state the editor can express, but it is a state the API
+      // could be talked into, and getReviewBin would then silently pick by row
+      // order — the card goes somewhere, just not where the screen says.
+      if (isReviewBin) {
+        await tx
+          .update(bins)
+          .set({ isReviewBin: false, updatedAt: new Date() })
+          .where(and(eq(bins.binSet, activeBinSet.id), eq(bins.orgId, orgId)));
+      }
+
       if (existing) {
         const [updated] = await tx
           .update(bins)
           .set({
             rules,
             isCatchAll: isCatchAll ?? false,
+            isReviewBin: isReviewBin ?? false,
             updatedAt: new Date(),
           })
           .where(eq(bins.id, existing.id))
@@ -350,12 +393,14 @@ router.put("/bins/:binNumber", requireAuth, requireOrg, async (c) => {
             binNumber: bins.binNumber,
             rules: bins.rules,
             isCatchAll: bins.isCatchAll,
+            isReviewBin: bins.isReviewBin,
           });
         savedBin = {
           guid: updated.guid!,
           binNumber: updated.binNumber,
           rules: updated.rules as BinRuleGroup,
           isCatchAll: updated.isCatchAll,
+          isReviewBin: updated.isReviewBin,
         };
       } else {
         const [inserted] = await tx
@@ -364,6 +409,7 @@ router.put("/bins/:binNumber", requireAuth, requireOrg, async (c) => {
             binNumber,
             rules,
             isCatchAll: isCatchAll ?? false,
+            isReviewBin: isReviewBin ?? false,
             binSet: activeBinSet.id,
             orgId,
           })
@@ -372,12 +418,14 @@ router.put("/bins/:binNumber", requireAuth, requireOrg, async (c) => {
             binNumber: bins.binNumber,
             rules: bins.rules,
             isCatchAll: bins.isCatchAll,
+            isReviewBin: bins.isReviewBin,
           });
         savedBin = {
           guid: inserted.guid!,
           binNumber: inserted.binNumber,
           rules: inserted.rules as BinRuleGroup,
           isCatchAll: inserted.isCatchAll,
+          isReviewBin: inserted.isReviewBin,
         };
       }
 
@@ -562,6 +610,7 @@ router.post("/history/:guid/revert", requireAuth, requireOrg, async (c) => {
             .set({
               rules: config.rules,
               isCatchAll: config.isCatchAll,
+              isReviewBin: config.isReviewBin ?? false,
               updatedAt: new Date(),
             })
             .where(eq(bins.id, existing.id));
@@ -572,6 +621,7 @@ router.post("/history/:guid/revert", requireAuth, requireOrg, async (c) => {
               binNumber: config.binNumber,
               rules: config.rules,
               isCatchAll: config.isCatchAll,
+              isReviewBin: config.isReviewBin ?? false,
               binSet: binSet.id,
               orgId,
             });

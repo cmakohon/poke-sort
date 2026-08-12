@@ -120,6 +120,12 @@ export const bins = pgTable(
     guid: uuid("guid").defaultRandom(),
     rules: jsonb("rules").notNull(),
     isCatchAll: boolean("is_catch_all").notNull().default(false),
+    // The bin low-confidence scans are diverted to, at most one per set. Kept
+    // apart from is_catch_all because "no rule claimed this" and "the pipeline
+    // does not trust its answer" are different stacks to a human tuning
+    // accuracy; false everywhere means review-tier scans fall back to the
+    // catch-all, which is what every existing set does.
+    isReviewBin: boolean("is_review_bin").notNull().default(false),
     binNumber: integer("bin_number").notNull(),
     binSet: integer("bin_set")
       .notNull()

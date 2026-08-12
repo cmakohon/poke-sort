@@ -98,6 +98,11 @@ export function BinConfigsProvider({
     [configs],
   );
 
+  const reviewBinNumber = useMemo(
+    () => configs.find((c) => c.isReviewBin)?.binNumber,
+    [configs],
+  );
+
   const selectedConfig =
     configs.find((c) => c.binNumber === selectedBin) ?? configs[0];
 
@@ -105,7 +110,7 @@ export function BinConfigsProvider({
 
   const saveBinMutation = useMutation({
     mutationFn: saveBinConfigAction,
-    onMutate: async ({ binNumber, rules, isCatchAll }) => {
+    onMutate: async ({ binNumber, rules, isCatchAll, isReviewBin }) => {
       await queryClient.cancelQueries({ queryKey: ["bins"] });
       const previous = queryClient.getQueryData<BinSet[]>(["bins"]);
       queryClient.setQueryData<BinSet[]>(["bins"], (old = []) =>
@@ -117,13 +122,21 @@ export function BinConfigsProvider({
             binNumber,
             rules: rules!,
             isCatchAll,
+            isReviewBin,
           };
+          // Claiming the review bin releases the previous holder, mirroring
+          // what the route does in the same transaction. The response only
+          // carries the saved bin, so without this the released bin keeps its
+          // badge in the cache until something else refetches.
+          const others = isReviewBin
+            ? set.bins.map((b) => ({ ...b, isReviewBin: false }))
+            : set.bins;
           return {
             ...set,
             bins:
               idx >= 0
-                ? set.bins.map((b, i) => (i === idx ? updated : b))
-                : [...set.bins, updated],
+                ? others.map((b, i) => (i === idx ? updated : b))
+                : [...others, updated],
           };
         }),
       );
@@ -249,11 +262,17 @@ export function BinConfigsProvider({
     deleteSetMutation.isPending;
 
   const save = useCallback(
-    (binNumber: number, rules: BinRuleGroup, isCatchAll?: boolean) => {
+    (
+      binNumber: number,
+      rules: BinRuleGroup,
+      isCatchAll?: boolean,
+      isReviewBin?: boolean,
+    ) => {
       saveBinMutation.mutate({
         binNumber,
         rules,
         isCatchAll,
+        isReviewBin,
       });
     },
     [saveBinMutation],
@@ -313,6 +332,7 @@ export function BinConfigsProvider({
         isActivating,
         isPresetMutating,
         hasCatchAll,
+        reviewBinNumber,
         selectedBin,
         setSelectedBin,
         selectedConfig,
