@@ -42,8 +42,7 @@ export function CardScanner({ className, compact }: CardScannerProps) {
     connect,
     disconnect,
     sendTest,
-    sendCommand,
-    receiveResponse,
+    request,
   } = useSerial();
   const [isFeeding, setIsFeeding] = useState(false);
   const [isClearingDevice, setIsClearingDevice] = useState(false);
@@ -133,7 +132,10 @@ export function CardScanner({ className, compact }: CardScannerProps) {
   const handleFeed = useCallback(async () => {
     setIsFeeding(true);
     try {
-      const sent = await sendCommand(JSON.stringify({ feeder: true }));
+      const { sent, response } = await request(
+        JSON.stringify({ feeder: true }),
+        10000,
+      );
       if (!sent) {
         toast.error(t("cardScanner.feedFailed.title"), {
           description: t("cardScanner.feedFailed.description"),
@@ -145,7 +147,6 @@ export function CardScanner({ className, compact }: CardScannerProps) {
         });
         return;
       }
-      const response = await receiveResponse(10000);
       if (!response) {
         toast.error(t("cardScanner.feedTimeout.title"), {
           description: t("cardScanner.feedTimeout.description"),
@@ -195,19 +196,21 @@ export function CardScanner({ className, compact }: CardScannerProps) {
     } finally {
       setIsFeeding(false);
     }
-  }, [sendCommand, receiveResponse, captureCard, handlePause, t]);
+  }, [request, captureCard, handlePause, t]);
 
   const handleClearDevice = useCallback(async () => {
     setIsClearingDevice(true);
     try {
-      const sent = await sendCommand(JSON.stringify({ clearDevice: true }));
+      const { sent, response } = await request(
+        JSON.stringify({ clearDevice: true }),
+        10000,
+      );
       if (!sent) {
         toast.error(t("cardScanner.clearFailed.title"), {
           description: t("cardScanner.clearFailed.description"),
         });
         return;
       }
-      const response = await receiveResponse(10000);
       if (!response) {
         toast.error(t("cardScanner.clearTimeout.title"), {
           description: t("cardScanner.clearTimeout.description"),
@@ -220,7 +223,7 @@ export function CardScanner({ className, compact }: CardScannerProps) {
     } finally {
       setIsClearingDevice(false);
     }
-  }, [sendCommand, receiveResponse, t]);
+  }, [request, t]);
 
   const handleSkipDuplicate = useCallback(() => {
     sendCatchAllBin();

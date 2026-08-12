@@ -1,4 +1,8 @@
 import { reportSerialEvent } from "@/features/notifications/api/notification-settings";
+import {
+  createSerialRequestQueue,
+  isUnsolicitedLine,
+} from "@/features/scanner/lib/serial-request-queue";
 import type {
   SerialContextValue,
   SerialMessageListener,
@@ -29,12 +33,45 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
   const writableRef = useRef<WritableStream<Uint8Array> | null>(null);
   const writeQueueRef = useRef<Promise<void>>(Promise.resolve());
   const bufferRef = useRef("");
-  const pendingRef = useRef<Array<(line: string) => void>>([]);
   const listenersRef = useRef(new Set<SerialMessageListener>());
   const disconnectingRef = useRef<Promise<void> | null>(null);
-  const preTestHookRef = useRef<(() => Promise<void>) | null>(null);
+  const preTestHooksRef = useRef(new Set<() => Promise<void>>());
 
   const decoderRef = useRef(new TextDecoder());
+
+  const writeRaw = useCallback((data: string): Promise<boolean> => {
+    if (!portRef.current || !writableRef.current) return Promise.resolve(false);
+
+    return new Promise<boolean>((resolve) => {
+      writeQueueRef.current = writeQueueRef.current.then(async () => {
+        if (!writableRef.current) {
+          resolve(false);
+          return;
+        }
+        const writer = writableRef.current.getWriter();
+        try {
+          console.log("[Serial] →", data.trim()); // eslint-disable-line no-console -- hardware debug trace
+          await writer.write(new TextEncoder().encode(data));
+          resolve(true);
+        } catch {
+          resolve(false);
+        } finally {
+          writer.releaseLock();
+        }
+      });
+    });
+  }, []);
+
+  // One command in flight at a time, each reply paired with the command that
+  // asked for it — see serial-request-queue.ts for why the FIFO-of-waiters
+  // approach this replaces lost the link during calibration.
+  const queueRef = useRef<ReturnType<typeof createSerialRequestQueue> | null>(
+    null,
+  );
+  if (queueRef.current === null) {
+    queueRef.current = createSerialRequestQueue(writeRaw);
+  }
+  const queue = queueRef.current;
 
   const startReading = useCallback(
     async (
@@ -65,9 +102,11 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
                 console.warn("[Serial] Non-JSON message:", trimmed);
               }
 
-              const pending = pendingRef.current.shift();
-              if (pending) {
-                pending(trimmed);
+              // Unsolicited traffic (jam alerts, the boot banner) goes to
+              // subscribers only — handing it to a request waiter is what used
+              // to shift every later exchange onto the wrong reply.
+              if (!isUnsolicitedLine(trimmed)) {
+                queue.handleLine(trimmed);
               }
             }
           }
@@ -81,59 +120,26 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
         onEnd?.();
       }
     },
-    [],
+    [queue],
   );
 
-  const waitForLine = useCallback((timeoutMs: number): Promise<string> => {
-    return new Promise<string>((resolve) => {
-      let wrapper: ((line: string) => void) | null = null;
+  const request = useCallback(
+    (data: string, timeoutMs?: number) => queue.request(data + "\n", timeoutMs),
+    [queue],
+  );
 
-      const timeout = setTimeout(() => {
-        if (wrapper) {
-          const idx = pendingRef.current.indexOf(wrapper);
-          if (idx !== -1) pendingRef.current.splice(idx, 1);
-        }
-        resolve("");
-      }, timeoutMs);
-
-      wrapper = (line: string) => {
-        clearTimeout(timeout);
-        resolve(line);
-      };
-
-      pendingRef.current.push(wrapper);
-    });
-  }, []);
-
-  const sendCommand = useCallback((data: string): Promise<boolean> => {
-    if (!portRef.current || !writableRef.current) return Promise.resolve(false);
-
-    return new Promise<boolean>((resolve) => {
-      writeQueueRef.current = writeQueueRef.current.then(async () => {
-        if (!writableRef.current) {
-          resolve(false);
-          return;
-        }
-        const writer = writableRef.current.getWriter();
-        try {
-          console.log("[Serial] →", data.trim()); // eslint-disable-line no-console -- hardware debug trace
-          await writer.write(new TextEncoder().encode(data));
-          resolve(true);
-        } catch {
-          resolve(false);
-        } finally {
-          writer.releaseLock();
-        }
-      });
-    });
-  }, []);
+  const requestLatest = useCallback(
+    (key: string, data: string, timeoutMs?: number) =>
+      queue.requestLatest(key, data + "\n", timeoutMs),
+    [queue],
+  );
 
   const sendTest = useCallback(async (): Promise<boolean> => {
-    const sent = await sendCommand(JSON.stringify({ test: true }) + "\n");
-    if (!sent) return false;
-
-    const response = await waitForLine(10000);
-    if (!response) return false;
+    const { sent, response } = await request(
+      JSON.stringify({ test: true }),
+      10000,
+    );
+    if (!sent || !response) return false;
 
     try {
       const parsed = JSON.parse(response);
@@ -141,7 +147,7 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
     } catch {
       return false;
     }
-  }, [sendCommand, waitForLine]);
+  }, [request]);
 
   const disconnect = useCallback(() => {
     const port = portRef.current;
@@ -155,11 +161,8 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
     setIsConnected(false);
     setIsReady(false);
 
-    // Reject any outstanding waiters
-    for (const pending of pendingRef.current) {
-      pending("");
-    }
-    pendingRef.current = [];
+    // Fail the in-flight request and everything queued behind it
+    queue.reset();
     bufferRef.current = "";
 
     // Async cleanup - stored so connect() can await it
@@ -182,6 +185,31 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
     });
 
     return cleanup;
+  }, [queue]);
+
+  // Resolves once the firmware's {"status":"ready"} banner arrives (the
+  // Arduino resets when the port opens), or after timeoutMs. The banner is
+  // unsolicited, so it only ever reaches subscribers — this cannot consume a
+  // command reply by accident.
+  const waitForReady = useCallback((timeoutMs: number): Promise<void> => {
+    return new Promise<void>((resolve) => {
+      const finish = () => {
+        clearTimeout(timer);
+        listenersRef.current.delete(listener);
+        resolve();
+      };
+      const listener: SerialMessageListener = (msg) => {
+        if (
+          typeof msg === "object" &&
+          msg !== null &&
+          (msg as Record<string, unknown>).status === "ready"
+        ) {
+          finish();
+        }
+      };
+      const timer = setTimeout(finish, timeoutMs);
+      listenersRef.current.add(listener);
+    });
   }, []);
 
   const openPort = useCallback(
@@ -219,13 +247,13 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
       });
 
       (async () => {
-        // Consume the Arduino's boot message before sending the test
-        await waitForLine(5000);
+        // Wait out the Arduino's boot before pushing config at it
+        await waitForReady(5000);
         if (!portRef.current) return;
-        if (preTestHookRef.current) {
-          await preTestHookRef.current();
+        for (const hook of [...preTestHooksRef.current]) {
+          await hook();
+          if (!portRef.current) return;
         }
-        if (!portRef.current) return;
         toast.info(t("serial.testingDevice"));
         const ok = await sendTest();
         if (!portRef.current) return;
@@ -245,7 +273,7 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
 
       return true;
     },
-    [startReading, waitForLine, sendTest, disconnect, t],
+    [startReading, waitForReady, sendTest, disconnect, t],
   );
 
   const connect = useCallback(async () => {
@@ -320,24 +348,11 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const registerPreTestHook = useCallback((fn: () => Promise<void>) => {
-    const previous = preTestHookRef.current;
-    preTestHookRef.current = previous
-      ? async () => {
-          await previous();
-          await fn();
-        }
-      : fn;
+    preTestHooksRef.current.add(fn);
+    return () => {
+      preTestHooksRef.current.delete(fn);
+    };
   }, []);
-
-  const sendCommandWithNewline = useCallback(
-    (data: string) => sendCommand(data + "\n"),
-    [sendCommand],
-  );
-
-  const receiveResponse = useCallback(
-    (timeoutMs = 5000) => waitForLine(timeoutMs),
-    [waitForLine],
-  );
 
   const binBusyRef = useRef(false);
 
@@ -348,13 +363,11 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
 
       binBusyRef.current = true;
       try {
-        const sent = await sendCommand(
-          JSON.stringify({ bin: binNumber }) + "\n",
+        const { sent, response } = await request(
+          JSON.stringify({ bin: binNumber }),
+          15000,
         );
-        if (!sent) return null;
-
-        const response = await waitForLine(15000);
-        if (!response) return null;
+        if (!sent || !response) return null;
 
         try {
           return JSON.parse(response);
@@ -366,7 +379,7 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
         binBusyRef.current = false;
       }
     },
-    [sendCommand, waitForLine],
+    [request],
   );
 
   return (
@@ -378,8 +391,8 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
         disconnect,
         sendBin,
         sendTest,
-        sendCommand: sendCommandWithNewline,
-        receiveResponse,
+        request,
+        requestLatest,
         subscribe,
         registerPreTestHook,
       }}

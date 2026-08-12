@@ -56,8 +56,7 @@ export function ScannedCardsProvider({
   cardsRef.current = cards;
   const [isLoading, setIsLoading] = useState(true);
   const { configs: binConfigs, fieldDefinitions } = useBinConfigs();
-  const { sendBin, sendCommand, receiveResponse, isConnected, isReady } =
-    useSerial();
+  const { sendBin, request, isConnected, isReady } = useSerial();
   const { activeCollection } = useCollections();
 
   const { locks, currentUserId } = useCollectionLocks();
@@ -75,8 +74,7 @@ export function ScannedCardsProvider({
   const fieldDefinitionsRef = useRef(fieldDefinitions);
   const serialRef = useRef({
     sendBin,
-    sendCommand,
-    receiveResponse,
+    request,
     isConnected,
     isReady,
   });
@@ -106,12 +104,11 @@ export function ScannedCardsProvider({
   useEffect(() => {
     serialRef.current = {
       sendBin,
-      sendCommand,
-      receiveResponse,
+      request,
       isConnected,
       isReady,
     };
-  }, [sendBin, sendCommand, receiveResponse, isConnected, isReady]);
+  }, [sendBin, request, isConnected, isReady]);
 
   const setAutoFeed = useCallback((enabled: boolean) => {
     autoFeedRef.current = enabled;
@@ -133,8 +130,9 @@ export function ScannedCardsProvider({
   }, []);
 
   const triggerAutoFeed = useCallback(async () => {
-    const sent = await serialRef.current.sendCommand(
+    const { sent, response } = await serialRef.current.request(
       JSON.stringify({ feeder: true }),
+      10000,
     );
     if (!sent) {
       autoFeedRef.current = false;
@@ -149,7 +147,6 @@ export function ScannedCardsProvider({
       });
       return;
     }
-    const response = await serialRef.current.receiveResponse(10000);
     if (!response) {
       autoFeedRef.current = false;
       setAutoFeedState(false);

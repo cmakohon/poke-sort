@@ -34,23 +34,30 @@ export function ModuleConfigsProvider({
   const { t } = useTranslation("calibration");
   const queryClient = useQueryClient();
   const { activeOrg } = useOrg();
-  const { sendCommand, receiveResponse, registerPreTestHook } = useSerial();
+  const { request, requestLatest, registerPreTestHook } = useSerial();
 
   const { data: configs = defaultConfigs() } = useQuery({ ...modulesQueryOptions, enabled: !!activeOrg });
 
   useEffect(() => {
-    registerPreTestHook(async () => {
+    return registerPreTestHook(async () => {
       const fresh = await queryClient.fetchQuery(modulesQueryOptions);
       for (const config of fresh) {
-        const p = receiveResponse();
-        await sendCommand(
+        const { sent, response } = await request(
           JSON.stringify({
             setConfig: { module: config.moduleNumber, ...config.calibration },
           }),
         );
-        const response = await p;
+        if (!sent || !response) {
+          toast.error(
+            t("useModuleConfigs.toasts.notSynced", {
+              module: config.moduleNumber,
+            }),
+            { description: t("useModuleConfigs.toasts.noResponse") },
+          );
+          continue;
+        }
         try {
-          const parsed = response ? JSON.parse(response) : null;
+          const parsed = JSON.parse(response);
           if (parsed?.error) {
             toast.error(
               t("useModuleConfigs.toasts.notSynced", {
@@ -65,15 +72,15 @@ export function ModuleConfigsProvider({
               module: config.moduleNumber,
             }),
             {
-              description: response
-                ? t("useModuleConfigs.toasts.unexpectedResponse", { response })
-                : t("useModuleConfigs.toasts.noResponse"),
+              description: t("useModuleConfigs.toasts.unexpectedResponse", {
+                response,
+              }),
             },
           );
         }
       }
     });
-  }, [registerPreTestHook, queryClient, sendCommand, receiveResponse, t]);
+  }, [registerPreTestHook, queryClient, request, t]);
 
   const saveConfigMutation = useMutation({
     mutationFn: ({
@@ -103,7 +110,7 @@ export function ModuleConfigsProvider({
     onSuccess: (result, { moduleNumber, calibration }) => {
       if (result.success && result.data) {
         queryClient.setQueryData(["modules"], result.data);
-        sendCommand(
+        void request(
           JSON.stringify({ setConfig: { module: moduleNumber, ...calibration } }),
         );
       }
@@ -123,9 +130,15 @@ export function ModuleConfigsProvider({
       servo: "bottom" | "paddle" | "pusher",
       value: number,
     ) => {
-      sendCommand(JSON.stringify({ servo, module, value }));
+      // Coalesced per servo: a drag produces values faster than the 9600-baud
+      // round trip drains them, so while one move is on the wire only the
+      // latest value stays queued — and its reply is consumed, never orphaned.
+      void requestLatest(
+        `servo:${module}:${servo}`,
+        JSON.stringify({ servo, module, value }),
+      );
     },
-    [sendCommand],
+    [requestLatest],
   );
 
   return (
