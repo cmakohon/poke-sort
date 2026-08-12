@@ -126,6 +126,33 @@ VITE_APP_ENV=                 # local/developement/QA/production
 
 The packaged desktop app sets `POKE_SORT_DATA_DIR` to Electron's `userData` directory and needs no configuration.
 
+### Which data directory am I running?
+
+Everything the app writes — database and scan captures — lives under one
+`POKE_SORT_DATA_DIR`, and only the card catalog is global. Sorts, bins,
+calibration, collections, scans and org settings are all **per directory**, so
+two installs on one machine drift apart independently. "My calibration reset" is
+almost always "I launched the other directory".
+
+| Directory | Set by | Holds |
+| --- | --- | --- |
+| `packages/server/.poke-sort` | the default, when nothing sets the variable: `pnpm dev`, `pnpm test`, `db:generate` | scratch. Created empty on demand; safe to delete |
+| `packages/server/.poke-sort-catalog` | `pnpm --filter @poke-sort/desktop dev` and `eval:accuracy` | the full catalog and real calibration — the dev install |
+| Electron `userData` | the packaged app, always | a real user's library |
+
+`resolveDataDir()` in `packages/desktop/src/main.ts` ignores the variable when
+`app.isPackaged`, so nothing in the environment can move a shipped user's
+library out from under them. Unpackaged, the desktop `dev` script points at the
+catalog directory, and an explicit `POKE_SORT_DATA_DIR` still overrides it.
+
+The browser dev flow (`pnpm dev`, Vite plus Hono on :3001) deliberately keeps
+the default scratch directory rather than sharing the catalog: PGlite allows one
+process per directory, and the Electron shell forks a server of its own.
+
+Calibration is worth keeping outside a database, since it describes physical
+hardware — see `collins-machine.json` and `pnpm --filter @poke-sort/server
+calibration export|template|import`.
+
 ## Database
 
 The database is an embedded PGlite instance under `POKE_SORT_DATA_DIR`. Migrations and

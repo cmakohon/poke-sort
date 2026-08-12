@@ -7,8 +7,8 @@
   "main": "dist/main.cjs",
   "scripts": {
     "build": "tsup",
-    "dev": "pnpm -w run build && electron dist/main.cjs",
-    "dev:catalog": "POKE_SORT_DATA_DIR=../server/.poke-sort-catalog pnpm dev",
+    "dev": "export POKE_SORT_DATA_DIR=${POKE_SORT_DATA_DIR:-../server/.poke-sort-catalog}; pnpm -w run build && electron dist/main.cjs",
+    "dev:catalog": "pnpm dev",
     "bundle:server": "rm -rf .server-bundle && pnpm --filter @poke-sort/server deploy --prod .server-bundle && node scripts/prune-bundle.mjs",
     "dist": "pnpm -w run build && pnpm bundle:server && electron-builder",
     "dist:dir": "pnpm -w run build && pnpm bundle:server && electron-builder --dir"

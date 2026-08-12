@@ -26,7 +26,13 @@ packages/desktop/release/
 /.models
 
 # local app data (embedded db + scan captures)
-.poke-sort/
+#
+# Glob, not an exact directory: a data directory acquires siblings — a
+# .poke-sort-catalog for the full catalog, a .poke-sort-catalog.backup before
+# surgery on one — and an exact pattern silently leaves those committable. A
+# 314 MB Postgres data directory in `git add -A` is not a mistake you make
+# twice.
+.poke-sort*
 
 # Phase 0 spikes - not committed
 /scratch
@@ -49,9 +55,6 @@ packages/desktop/.server-bundle/
 
 # eval fixture images (regenerate with `pnpm eval:build`)
 packages/server/eval/fixtures/
-
-# full-catalog build (background job)
-packages/server/.poke-sort-catalog/
 
 # tesseract language data, downloaded on first OCR run
 *.traineddata
