@@ -25,12 +25,14 @@
     "save": "Speichern"
   },
   "binList": {
-    "needCatchAll": "Ein Fach muss als Auffangfach festgelegt werden."
+    "needCatchAll": "Ein Fach muss als Auffangfach festgelegt werden.",
+    "viewpoint": "Ansicht von der Vorderseite der Maschine"
   },
   "binLocationDiagram": {
     "binLabel": "Fach {{number}}",
     "catchAll": "Auffangfach",
-    "reviewBin": "Prüfen"
+    "reviewBin": "Prüfen",
+    "viewpoint": "Ansicht von der Vorderseite der Maschine"
   },
   "conditionRow": {
     "selectPlaceholder": "Auswählen...",
