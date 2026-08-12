@@ -302,6 +302,7 @@ export function ScannedCardsProvider({
           ? alternativeMatches
           : undefined,
         score: outcome?.score,
+        margin: outcome?.margin,
         needsReview: needsReview || undefined,
       };
 

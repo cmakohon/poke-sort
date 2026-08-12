@@ -128,6 +128,8 @@
     "catchAll": "Auffangfach",
     "noBin": "kein Fach",
     "sentToBin": "beim Scan in Fach {{bin}}",
-    "rawData": "Rohdaten der Karte"
+    "rawData": "Rohdaten der Karte",
+    "heldForReview": "Zur Prüfung zurückgehalten: Der Scanner war nicht sicher genug, um automatisch zu sortieren — die Karte ging ins Auffangfach.",
+    "heldForReviewWithNumbers": "Zur Prüfung zurückgehalten (Score {{score}}, Marge {{margin}}): nicht sicher genug zum automatischen Sortieren — die Karte ging ins Auffangfach."
   }
 }

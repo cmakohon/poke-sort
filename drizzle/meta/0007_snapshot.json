@@ -1,6 +1,6 @@
 {
-  "id": "3d7bc13b-47fb-4960-8300-0c9d650d7217",
-  "prevId": "b3d61f70-92e4-48a5-bc17-6f5a08d92e41",
+  "id": "b3d61f70-92e4-48a5-bc17-6f5a08d92e41",
+  "prevId": "e7a92c14-5b08-4f6d-9e31-84d20fb7c153",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -155,13 +155,6 @@
         },
         "is_catch_all": {
           "name": "is_catch_all",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "is_review_bin": {
-          "name": "is_review_bin",
           "type": "boolean",
           "primaryKey": false,
           "notNull": true,

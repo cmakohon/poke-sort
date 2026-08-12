@@ -47,6 +47,9 @@ interface CardDetailPanelProps {
   capturedImageUrl?: string;
   isFoil?: boolean;
   binNumber?: number;
+  needsReview?: boolean;
+  scanScore?: number;
+  scanMargin?: number;
   onPrev?: () => void;
   onNext?: () => void;
   hasPrev?: boolean;
@@ -64,6 +67,9 @@ export function CardDetailPanel({
   capturedImageUrl,
   isFoil = false,
   binNumber,
+  needsReview,
+  scanScore,
+  scanMargin,
   onPrev,
   onNext,
   hasPrev,
@@ -384,6 +390,9 @@ export function CardDetailPanel({
                     <CardMetadataPanel
                       card={selectedCard}
                       assignedBin={binNumber}
+                      needsReview={needsReview}
+                      scanScore={scanScore}
+                      scanMargin={scanMargin}
                     />
                   </div>
                 )}

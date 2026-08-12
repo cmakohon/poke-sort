@@ -69,6 +69,7 @@ async function searchCardImage(
   alternativeMatches: PlayingCardWithDistance[];
   tier: IdentifyTier;
   score?: number;
+  margin?: number;
   debugImageUrl: string;
 }> {
   const warpedCanvas = contour ? extractCardImage(canvas, contour) : canvas;
@@ -112,6 +113,7 @@ async function searchCardImage(
     alternativeMatches,
     tier: data.tier,
     score: data.candidates[0].score,
+    margin: data.margin ?? undefined,
     debugImageUrl,
   };
 }
@@ -235,7 +237,7 @@ export function useCardScanner({
       }
 
       try {
-        const { card, alternativeMatches, tier, score, debugImageUrl } =
+        const { card, alternativeMatches, tier, score, margin, debugImageUrl } =
           await searchCardImage(
             canvas,
             contour,
@@ -259,7 +261,7 @@ export function useCardScanner({
             onSearchResultsRef.current?.(
               [card, ...alternativeMatches],
               debugImageUrl,
-              { tier, score },
+              { tier, score, margin },
             );
             updateStatus("scanning");
           }

@@ -6,6 +6,7 @@ import {
   integer,
   jsonb,
   pgTable,
+  real,
   serial,
   text,
   timestamp,
@@ -218,6 +219,13 @@ export const collectionCards = pgTable(
     isFoil: boolean("is_foil").notNull().default(false),
     isDownloaded: boolean("is_downloaded").notNull().default(false),
     alternativeMatches: jsonb("alternative_matches"),
+    // Why the scan landed where it did. needs_review means the pipeline sent
+    // the card to the catch-all for a human rather than trusting its ranking;
+    // score and margin are the numbers behind that call. Durable so the
+    // review queue and the card detail panel survive a reload.
+    needsReview: boolean("needs_review"),
+    scanScore: real("scan_score"),
+    scanMargin: real("scan_margin"),
     // Which printing this is (normal / reverse / holo / firstEdition). Drives
     // pricing and is expressible as a bin rule.
     variant: text("variant"),

@@ -38,6 +38,11 @@ export const AddScanSchema = z
     capturedImageUrl: z.string().max(20_000_000).nullable().optional(),
     isFoil: z.boolean().optional(),
     alternativeMatches: z.array(CardSchema).nullable().optional(),
+    // Why the pipeline routed it where it did; durable so the review queue
+    // survives a reload.
+    needsReview: z.boolean().optional(),
+    score: z.number().min(0).max(1).optional(),
+    margin: z.number().min(-1).max(1).nullable().optional(),
   })
   .passthrough();
 
@@ -157,6 +162,9 @@ function toScannedCard(row: {
   isDownloaded?: boolean | null;
   alternativeMatches?: unknown;
   variant?: string | null;
+  needsReview?: boolean | null;
+  scanScore?: number | null;
+  scanMargin?: number | null;
   originalCardId?: string | null;
   originalDistance?: number | null;
   originalScore?: number | null;
@@ -177,6 +185,9 @@ function toScannedCard(row: {
     alternativeMatches:
       (row.alternativeMatches as PlayingCardWithDistance[] | null) ?? undefined,
     variant: row.variant ?? undefined,
+    needsReview: row.needsReview ?? undefined,
+    score: row.scanScore ?? undefined,
+    margin: row.scanMargin ?? undefined,
     originalCardId: row.originalCardId ?? undefined,
     originalDistance: row.originalDistance ?? undefined,
     originalScore: row.originalScore ?? undefined,
@@ -512,6 +523,9 @@ router.get("/:guid/cards", requireAuth, requireOrg, async (c) => {
           isDownloaded: collectionCards.isDownloaded,
           alternativeMatches: collectionCards.alternativeMatches,
           variant: collectionCards.variant,
+          needsReview: collectionCards.needsReview,
+          scanScore: collectionCards.scanScore,
+          scanMargin: collectionCards.scanMargin,
           originalCardId: collectionCards.originalCardId,
           originalDistance: collectionCards.originalDistance,
           originalScore: collectionCards.originalScore,
@@ -545,7 +559,10 @@ router.post("/:guid/cards", requireAuth, requireOrg, async (c) => {
     capturedImageUrl,
     isFoil,
     alternativeMatches,
-  } = parsed.data as unknown as ScannedCard;
+    needsReview,
+    score,
+    margin,
+  } = parsed.data as unknown as ScannedCard & { margin?: number | null };
 
   const displayName = await getUserDisplayName(userId);
   if (!acquireLock(guid, userId, orgId, displayName)) {
@@ -597,6 +614,9 @@ router.post("/:guid/cards", requireAuth, requireOrg, async (c) => {
           // The identify pipeline stamps the winner's card with the detected
           // printing; keep it as a column so bin rules and exports see it.
           variant: (card as { variant?: string }).variant ?? null,
+          needsReview: needsReview ?? null,
+          scanScore: score ?? null,
+          scanMargin: margin ?? null,
           isFoil: isFoil ?? false,
           alternativeMatches: alternativeMatches?.length
             ? alternativeMatches
@@ -968,6 +988,9 @@ router.get("/:guid/stream", async (c) => {
             isDownloaded: collectionCards.isDownloaded,
             alternativeMatches: collectionCards.alternativeMatches,
             variant: collectionCards.variant,
+            needsReview: collectionCards.needsReview,
+            scanScore: collectionCards.scanScore,
+            scanMargin: collectionCards.scanMargin,
             originalCardId: collectionCards.originalCardId,
             originalDistance: collectionCards.originalDistance,
             originalScore: collectionCards.originalScore,
