@@ -25,12 +25,14 @@
     "save": "Save"
   },
   "binList": {
-    "needCatchAll": "One bin must be set as catch-all."
+    "needCatchAll": "One bin must be set as catch-all.",
+    "viewpoint": "As seen from the front of the machine"
   },
   "binLocationDiagram": {
     "binLabel": "Bin {{number}}",
     "catchAll": "Catch-all",
-    "reviewBin": "Review"
+    "reviewBin": "Review",
+    "viewpoint": "As seen from the front of the machine"
   },
   "conditionRow": {
     "selectPlaceholder": "Select...",

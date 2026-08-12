@@ -2,10 +2,15 @@ import { useBinConfigs } from "@/features/bins/api/use-bin-configs";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 
+// Physical layout as seen from the front of the machine (feeder toward you),
+// verified against the hardware 2026-08-12: each module's even bin sits on the
+// operator's LEFT, the odd bin on the right. The firmware's "push right"
+// naming is from the machine's own perspective, which is mirrored from the
+// operator's — render what the operator sees, not what the firmware calls it.
 const MODULES = [
-  { module: 1, left: 1, right: 2 },
-  { module: 2, left: 3, right: 4 },
-  { module: 3, left: 5, right: 6 },
+  { module: 1, left: 2, right: 1 },
+  { module: 2, left: 4, right: 3 },
+  { module: 3, left: 6, right: 5 },
 ] as const;
 const OVERFLOW_BIN = 7;
 
@@ -66,6 +71,7 @@ export function BinLocationDiagram({
   binNumber,
   inverted = true,
 }: BinLocationDiagramProps) {
+  const { t } = useTranslation("bins");
   const { configs } = useBinConfigs();
   const catchAllBin = configs.find((c) => c.isCatchAll)?.binNumber;
   const reviewBin = configs.find((c) => c.isReviewBin)?.binNumber;
@@ -97,6 +103,14 @@ export function BinLocationDiagram({
         isReviewBin={reviewBin === OVERFLOW_BIN}
         inverted={inverted}
       />
+      <p
+        className={cn(
+          "px-2 py-1 text-center text-[9px]",
+          inverted ? "text-background/50" : "text-muted-foreground/70",
+        )}
+      >
+        {t("binLocationDiagram.viewpoint")}
+      </p>
     </div>
   );
 }
