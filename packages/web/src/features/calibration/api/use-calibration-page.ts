@@ -17,7 +17,7 @@ import { toast } from "sonner";
 
 export function useCalibrationPage() {
   const { t } = useTranslation("calibration");
-  const { isConnected, connect, disconnect, sendCommand, sendBin, sendTest, receiveResponse } =
+  const { isConnected, connect, disconnect, request, sendBin, sendTest } =
     useSerial();
   const { configs, saveConfig, moveServo } = useModuleConfigs();
   const { feederConfig, saveConfig: saveFeeder, previewSpeed } = useFeederConfig();
@@ -41,8 +41,6 @@ export function useCalibrationPage() {
 
   const [sliderValues, setSliderValues] =
     useState<Record<SliderKey, number>>(defaultSliderValues);
-
-  const servoDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [ledStates, setLedStates] = useState<Record<1 | 2 | 3 | 4, boolean>>({
     1: false,
@@ -71,7 +69,6 @@ export function useCalibrationPage() {
   const [feederPulseDurationValue, setFeederPulseDurationValue] = useState(feederConfig.pulseDuration);
   const [feederPauseDurationValue, setFeederPauseDurationValue] = useState(feederConfig.pauseDuration);
   const [feederSettleDurationValue, setFeederSettleDurationValue] = useState(feederConfig.settleDuration);
-  const feederDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleControl = useCallback(
     (
@@ -83,7 +80,7 @@ export function useCalibrationPage() {
       const current = activeRef.current[key];
       const isToggleOff = current === position;
 
-      sendCommand(
+      void request(
         JSON.stringify({
           servo,
           module,
@@ -102,24 +99,25 @@ export function useCalibrationPage() {
         }
       }
     },
-    [sendCommand],
+    [request],
   );
 
   const handleReset = useCallback(
     (module: number, servo: ServoConfig) => {
-      sendCommand(
+      void request(
         JSON.stringify({ servo: servo.name, module, position: servo.defaultPosition }),
       );
       setActive((prev) => ({ ...prev, [`${module}:${servo.name}`]: null }));
     },
-    [sendCommand],
+    [request],
   );
 
   const handleSliderChange = useCallback(
     (module: 1 | 2 | 3, servo: "bottom" | "paddle" | "pusher", value: number) => {
       setSliderValues((prev) => ({ ...prev, [`${module}:${servo}`]: value }));
-      if (servoDebounceRef.current) clearTimeout(servoDebounceRef.current);
-      servoDebounceRef.current = setTimeout(() => moveServo(module, servo, value), 30);
+      // No debounce: moveServo coalesces per servo, so sends pace themselves
+      // to the link's actual round trip instead of a guessed interval.
+      moveServo(module, servo, value);
     },
     [moveServo],
   );
@@ -127,10 +125,10 @@ export function useCalibrationPage() {
   const handleLedToggle = useCallback(
     (led: 1 | 2 | 3 | 4) => {
       const next = !ledStates[led];
-      sendCommand(JSON.stringify({ led, on: next }));
+      void request(JSON.stringify({ led, on: next }));
       setLedStates((prev) => ({ ...prev, [led]: next }));
     },
-    [ledStates, sendCommand],
+    [ledStates, request],
   );
 
   const handleTest = useCallback(async () => {
@@ -231,8 +229,7 @@ export function useCalibrationPage() {
   const handleFeederSpeedChange = useCallback(
     (value: number) => {
       setFeederSpeedValue(value);
-      if (feederDebounceRef.current) clearTimeout(feederDebounceRef.current);
-      feederDebounceRef.current = setTimeout(() => previewSpeed(value), 30);
+      previewSpeed(value);
     },
     [previewSpeed],
   );
@@ -274,17 +271,18 @@ export function useCalibrationPage() {
   }, [feederConfig, feederSettleDurationValue, saveFeeder]);
 
   const handleFeed = useCallback(() => {
-    sendCommand(JSON.stringify({ feeder: true }));
-  }, [sendCommand]);
+    void request(JSON.stringify({ feeder: true }), 10000);
+  }, [request]);
 
   const readIR = useCallback(async () => {
     if (irBusyRef.current || activeBinRef.current !== null) return;
     irBusyRef.current = true;
     try {
-      const sent = await sendCommand(JSON.stringify({ readIR: true }));
-      if (!sent) return;
-      const response = await receiveResponse(2000);
-      if (!response) return;
+      const { sent, response } = await request(
+        JSON.stringify({ readIR: true }),
+        2000,
+      );
+      if (!sent || !response) return;
       const parsed = JSON.parse(response);
       if (Array.isArray(parsed.ir)) setIrStates(parsed.ir as boolean[]);
       if (typeof parsed.hopper === "boolean") setHopperHasCards(parsed.hopper);
@@ -293,7 +291,7 @@ export function useCalibrationPage() {
     } finally {
       irBusyRef.current = false;
     }
-  }, [sendCommand, receiveResponse]);
+  }, [request]);
 
   const handleToggleIrMonitor = useCallback(() => {
     setIrMonitoring((prev) => !prev);

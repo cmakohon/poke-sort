@@ -1,3 +1,4 @@
+import type { SerialRequestResult } from "@/features/scanner/lib/serial-request-queue";
 import type {
   PlayingCard,
   PlayingCardWithDistance,
@@ -66,10 +67,24 @@ export interface SerialContextValue {
   disconnect: () => Promise<void>;
   sendBin: (binNumber: number) => Promise<unknown | null>;
   sendTest: () => Promise<boolean>;
-  sendCommand: (data: string) => Promise<boolean>;
-  receiveResponse: (timeoutMs?: number) => Promise<string>;
+  /**
+   * One atomic write-then-read exchange: `data` is a JSON command without
+   * trailing newline, the result carries the reply that answered it. Replaces
+   * the old sendCommand/receiveResponse pair, which nothing kept paired.
+   */
+  request: (data: string, timeoutMs?: number) => Promise<SerialRequestResult>;
+  /**
+   * Same, but queued sends sharing `key` collapse to the latest payload —
+   * for sliders, where only the newest value matters.
+   */
+  requestLatest: (
+    key: string,
+    data: string,
+    timeoutMs?: number,
+  ) => Promise<SerialRequestResult>;
   subscribe: (listener: SerialMessageListener) => () => void;
-  registerPreTestHook: (fn: () => Promise<void>) => void;
+  /** Returns an unregister function — call it in effect cleanup. */
+  registerPreTestHook: (fn: () => Promise<void>) => () => void;
 }
 
 export interface ScannerControlsProps {

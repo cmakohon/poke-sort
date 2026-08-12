@@ -211,7 +211,9 @@ void checkModule1Jam() {
   }
   if (!module1JamAlerted && millis() - module1PresentSince > MODULE1_JAM_TIMEOUT_MS) {
     module1JamAlerted = true;
-    Serial.println(F("{\"error\":\"jam\",\"module\":1}"));
+    // "unsolicited" marks lines the app must not pair with a pending command
+    // (the app also string-matches jam/ready as a fallback for old firmware)
+    Serial.println(F("{\"error\":\"jam\",\"module\":1,\"unsolicited\":true}"));
   }
 }
 
@@ -616,7 +618,7 @@ void setup() {
   pwm.setPWMFreq(50);
   delay(10);
   setAllNeutral();
-  Serial.println(F("{\"status\":\"ready\"}"));
+  Serial.println(F("{\"status\":\"ready\",\"unsolicited\":true}"));
 }
 
 void loop() {

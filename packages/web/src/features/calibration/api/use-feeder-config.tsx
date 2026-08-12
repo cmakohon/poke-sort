@@ -34,19 +34,25 @@ export function FeederConfigProvider({
   const { t } = useTranslation("calibration");
   const queryClient = useQueryClient();
   const { activeOrg } = useOrg();
-  const { sendCommand, receiveResponse, registerPreTestHook } = useSerial();
+  const { request, requestLatest, registerPreTestHook } = useSerial();
 
   const { data: feederConfig = { ...DEFAULT_FEEDER_CALIBRATION } } =
     useQuery({ ...feederQueryOptions, enabled: !!activeOrg });
 
   useEffect(() => {
-    registerPreTestHook(async () => {
+    return registerPreTestHook(async () => {
       const fresh = await queryClient.fetchQuery(feederQueryOptions);
-      const p = receiveResponse();
-      await sendCommand(JSON.stringify({ setFeederConfig: fresh }));
-      const response = await p;
+      const { sent, response } = await request(
+        JSON.stringify({ setFeederConfig: fresh }),
+      );
+      if (!sent || !response) {
+        toast.error(t("useFeederConfig.toasts.notSynced"), {
+          description: t("useFeederConfig.toasts.noResponse"),
+        });
+        return;
+      }
       try {
-        const parsed = response ? JSON.parse(response) : null;
+        const parsed = JSON.parse(response);
         if (parsed?.error) {
           toast.error(t("useFeederConfig.toasts.notSynced"), {
             description: String(parsed.error),
@@ -54,13 +60,13 @@ export function FeederConfigProvider({
         }
       } catch {
         toast.error(t("useFeederConfig.toasts.notSynced"), {
-          description: response
-            ? t("useFeederConfig.toasts.unexpectedResponse", { response })
-            : t("useFeederConfig.toasts.noResponse"),
+          description: t("useFeederConfig.toasts.unexpectedResponse", {
+            response,
+          }),
         });
       }
     });
-  }, [registerPreTestHook, queryClient, sendCommand, receiveResponse, t]);
+  }, [registerPreTestHook, queryClient, request, t]);
 
   const saveConfigMutation = useMutation({
     mutationFn: (calibration: FeederCalibration) =>
@@ -79,7 +85,7 @@ export function FeederConfigProvider({
     onSuccess: (result) => {
       if (result.success && result.data) {
         queryClient.setQueryData(["feeder"], result.data);
-        sendCommand(JSON.stringify({ setFeederConfig: result.data }));
+        void request(JSON.stringify({ setFeederConfig: result.data }));
       }
     },
   });
@@ -93,9 +99,11 @@ export function FeederConfigProvider({
 
   const previewSpeed = useCallback(
     (value: number) => {
-      sendCommand(JSON.stringify({ feederValue: value }));
+      // Coalesced like moveServo: only the latest slider value stays queued
+      // while an exchange is on the wire, and the reply is consumed.
+      void requestLatest("feederValue", JSON.stringify({ feederValue: value }));
     },
-    [sendCommand],
+    [requestLatest],
   );
 
   return (
