@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { LANGUAGE_LABELS } from "@/lib/languages";
 import {
   getCatalogImportState,
   getCatalogStatus,
@@ -7,12 +8,13 @@ import {
 } from "@/lib/api/admin";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 /**
  * First-run catalog setup.
  *
- * A fresh install has no embeddings, so nothing can be identified — and
- * embedding 23,444 cards locally is hours of CPU. The expected path is to
+ * A fresh install has no recognition data, so nothing can be identified — and
+ * learning 23,444 cards locally is hours of CPU. The expected path is to
  * import a prebuilt pack, which is a download plus a few seconds of inserts.
  * Running a full sync instead remains possible from the panel above; it is
  * just slow.
@@ -20,10 +22,14 @@ import { useState } from "react";
 export function CatalogSetup({
   gameKey,
   lang = "en",
+  gameLabel,
 }: {
   gameKey: string;
   lang?: string;
+  /** Display name for the game; falls back to the raw key. */
+  gameLabel?: string;
 }) {
+  const { t } = useTranslation("admin");
   const queryClient = useQueryClient();
   const [url, setUrl] = useState("");
 
@@ -53,6 +59,9 @@ export function CatalogSetup({
   const busy = job?.phase === "downloading" || job?.phase === "importing";
   const count = statusQuery.data?.count ?? 0;
 
+  const game = gameLabel ?? gameKey;
+  const language = LANGUAGE_LABELS[lang] ?? lang;
+
   // Refresh the count once an import finishes.
   if (job?.phase === "completed" && count === 0 && !statusQuery.isFetching) {
     void queryClient.invalidateQueries({ queryKey: ["catalog-status"] });
@@ -61,19 +70,27 @@ export function CatalogSetup({
   const progress = (() => {
     if (job?.phase === "downloading" && job.totalBytes) {
       return {
-        label: `Downloading ${(job.downloadedBytes / 1e6).toFixed(0)} / ${(job.totalBytes / 1e6).toFixed(0)} MB`,
+        label: t("catalogSetup.downloadingOf", {
+          done: (job.downloadedBytes / 1e6).toFixed(0),
+          total: (job.totalBytes / 1e6).toFixed(0),
+        }),
         value: job.downloadedBytes / job.totalBytes,
       };
     }
     if (job?.phase === "downloading") {
       return {
-        label: `Downloading ${(job.downloadedBytes / 1e6).toFixed(0)} MB`,
+        label: t("catalogSetup.downloading", {
+          done: (job.downloadedBytes / 1e6).toFixed(0),
+        }),
         value: null,
       };
     }
     if (job?.phase === "importing" && job.cards) {
       return {
-        label: `Importing ${job.imported} / ${job.cards} cards`,
+        label: t("catalogSetup.importingCards", {
+          done: job.imported,
+          total: job.cards,
+        }),
         value: job.imported / job.cards,
       };
     }
@@ -84,11 +101,18 @@ export function CatalogSetup({
     <div className="rounded-lg border p-4 flex flex-col gap-3 mt-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold">Card catalog</h2>
+          <h2 className="text-base font-semibold">
+            {t("catalogSetup.heading")}
+          </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
             {count > 0
-              ? `${count.toLocaleString()} cards embedded for ${gameKey}/${lang}.`
-              : `No cards embedded for ${gameKey}/${lang} — scanning cannot identify anything yet.`}
+              ? t("catalogSetup.statusReady", {
+                  count,
+                  formattedCount: count.toLocaleString(),
+                  game,
+                  language,
+                })
+              : t("catalogSetup.statusEmpty", { game })}
           </p>
         </div>
         <Button
@@ -96,7 +120,11 @@ export function CatalogSetup({
           disabled={busy || importMutation.isPending}
           onClick={() => importMutation.mutate()}
         >
-          {busy ? "Importing…" : count > 0 ? "Re-import pack" : "Import catalog"}
+          {busy
+            ? t("catalogSetup.importing")
+            : count > 0
+              ? t("catalogSetup.reimport")
+              : t("catalogSetup.import")}
         </Button>
       </div>
 
@@ -120,7 +148,7 @@ export function CatalogSetup({
       )}
 
       <div className="flex flex-col gap-1.5">
-        <p className="text-xs font-medium">Pack source</p>
+        <p className="text-xs font-medium">{t("catalogSetup.packSource")}</p>
         <Input
           value={url}
           onChange={(e) => setUrl(e.target.value)}
@@ -128,8 +156,7 @@ export function CatalogSetup({
           disabled={busy}
         />
         <p className="text-xs text-muted-foreground">
-          Leave empty to use the published pack. A local file path also works,
-          for verifying a pack before releasing it.
+          {t("catalogSetup.packSourceHint")}
         </p>
       </div>
     </div>

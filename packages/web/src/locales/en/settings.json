@@ -1,19 +1,16 @@
 {
   "title": "Settings",
-  "subtitle": "Manage your organization, appearance, and notifications",
-  "organizations": {
-    "heading": "Organizations"
-  },
+  "subtitle": "Appearance, language, and alerts",
   "appearance": {
     "heading": "Appearance",
-    "description": "Customize the app's accent color.",
+    "description": "Colors, layout, and language.",
     "primaryColor": "Primary color",
     "resetColor": "Reset to default",
     "scannerLayout": "Scanner layout",
     "scannerLayoutHorizontal": "Horizontal",
-    "scannerLayoutHorizontalDescription": "Scanner in sidebar, cards on the right",
+    "scannerLayoutHorizontalDescription": "Camera on the left, scanned cards on the right",
     "scannerLayoutVertical": "Vertical",
-    "scannerLayoutVerticalDescription": "Scanner on top, card grid below",
+    "scannerLayoutVerticalDescription": "Camera on top, scanned cards below",
     "language": "Language"
   },
   "notifications": {

@@ -4,6 +4,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useCameraContext } from "@/features/scanner/api/use-camera";
+import { formatUsd } from "@/features/scanner/components/scan-stats";
 import { useScannedCards } from "@/features/scanner/api/use-scanned-cards";
 import { useSerial } from "@/features/scanner/api/use-serial";
 import { useRole } from "@/hooks/use-role";
@@ -134,7 +135,7 @@ function SyncStatusItem() {
           done: done.toLocaleString(),
           total: total.toLocaleString(),
         })
-      : t("statusFooter.syncStatus", { status });
+      : t(`statusFooter.syncState.${status}`);
 
   const tooltip =
     status === "running"
@@ -158,7 +159,7 @@ function SyncStatusItem() {
           {countLabel}
         </span>
         {status === "running" && syncState.currentCard && (
-          <span className="text-xs text-muted-foreground/70 truncate max-w-32">
+          <span className="text-xs text-muted-foreground/70 truncate max-w-56">
             — {syncState.currentCard}
           </span>
         )}
@@ -225,7 +226,7 @@ export function StatusFooter() {
           <p className="text-xs tabular-nums">
             {t("statusFooter.cardTotal", {
               count: cards.length,
-              value: totalValue.toFixed(2),
+              value: formatUsd(totalValue),
             })}
           </p>
         </>

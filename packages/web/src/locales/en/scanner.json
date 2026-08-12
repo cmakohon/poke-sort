@@ -1,26 +1,26 @@
 {
   "camera": {
     "permissionDenied": "Camera permission denied. Please allow camera access and try again.",
-    "accessError": "Could not access camera. Please check your device."
+    "accessError": "Couldn't open the camera. Make sure no other app is using it, then try reconnecting."
   },
   "scanEngine": {
-    "searchFailed": "Failed to search card",
-    "videoStartFailed": "Failed to start video",
-    "cameraReinitFailed": "Failed to reinitialize camera"
+    "searchFailed": "Couldn't identify that card — try again",
+    "videoStartFailed": "Camera didn't start",
+    "cameraReinitFailed": "Couldn't restart the camera"
   },
   "serial": {
     "connectionFailed": {
       "title": "Connection failed",
-      "description": "Failed to open port. Make sure no other application is using it."
+      "description": "Couldn't open the connection. Make sure no other app is using the sorter."
     },
     "noDeviceFound": {
-      "title": "No device found",
-      "description": "Plug the Arduino in over USB and try again. If it is connected, check the cable supports data."
+      "title": "No sorter found",
+      "description": "Plug the sorter in over USB and try again. If it's already connected, make sure the cable supports data."
     },
-    "testingDevice": "Testing device…",
-    "deviceReady": "Device ready",
+    "testingDevice": "Testing sorter…",
+    "deviceReady": "Sorter ready",
     "deviceTestFailed": {
-      "title": "Device test failed",
+      "title": "Sorter test failed",
       "description": "Connected but got no response. Try reconnecting."
     },
     "deviceRebooted": {
@@ -29,27 +29,27 @@
     }
   },
   "sessionMonitor": {
-    "connectionLost": "Connection to session lost."
+    "connectionLost": "Lost connection to the sort."
   },
   "scannedCards": {
     "autoFeedFailed": {
       "title": "Auto-feed failed",
-      "description": "Could not send feeder command."
+      "description": "Couldn't send the feed command."
     },
     "autoFeedTimeout": {
       "title": "Auto-feed timeout",
-      "description": "Feeder did not respond in time."
+      "description": "The feeder didn't respond in time."
     },
     "feederEmpty": {
-      "title": "Feeder empty",
-      "description": "No cards remaining in the hopper. Add more cards to continue."
+      "title": "Hopper empty",
+      "description": "The hopper is out of cards — add more to continue."
     },
     "feederError": {
       "title": "Feeder error"
     },
     "autoFeedError": {
       "title": "Auto-feed error",
-      "description": "Unexpected response from feeder."
+      "description": "Unexpected response from the feeder."
     },
     "noCollectionSelected": {
       "title": "No collection selected",
@@ -57,64 +57,64 @@
     },
     "collectionLocked": {
       "title": "Collection locked",
-      "description": "Another org member is currently scanning into this collection."
+      "description": "Someone else is scanning into this collection right now."
     },
     "routingFailed": {
       "title": "Routing failed",
-      "description": "No response from sorter for bin {{binNumber}}."
+      "description": "The sorter didn't respond while sending a card to bin {{binNumber}}."
     },
     "sorterError": {
       "title": "Sorter error"
     },
     "routingFailedCatchAll": {
       "title": "Routing failed",
-      "description": "No response from sorter for catch-all bin {{binNumber}}."
+      "description": "The sorter didn't respond while sending a card to the catch-all bin (bin {{binNumber}})."
     },
     "routingFailedReview": {
       "title": "Routing failed",
-      "description": "No response from sorter for review bin {{binNumber}}."
+      "description": "The sorter didn't respond while sending a card to the review bin (bin {{binNumber}})."
     }
   },
   "cardScanner": {
     "jamAutoScan": {
-      "title": "Card stuck at module 1 - forcing a scan",
-      "description": "It was never identified, so we're scanning it automatically."
+      "title": "Card stuck at the camera — scanning it now",
+      "description": "It hadn't been identified yet, so we scanned it automatically."
     },
     "jamDetected": {
       "title": "Card jam detected",
-      "description": "Card stuck at module {{module}}. Check the sorter and resume.",
-      "descriptionWithBin": "Card stuck at module {{module}} (heading to bin {{bin}}). Check the sorter and resume."
+      "description": "Card stuck at sorting arm {{module}}. Clear it, then press Resume.",
+      "descriptionWithBin": "Card stuck at sorting arm {{module}} on its way to bin {{bin}}. Clear it, then press Resume."
     },
     "feedFailed": {
       "title": "Feed failed",
-      "description": "Could not send feeder command."
+      "description": "Couldn't send the feed command."
     },
     "feedTimeout": {
       "title": "Feed timeout",
-      "description": "Feeder did not respond in time."
+      "description": "The feeder didn't respond in time."
     },
     "feederEmpty": {
-      "title": "Feeder empty",
-      "description": "No cards remaining in the hopper. Add more cards to continue."
+      "title": "Hopper empty",
+      "description": "The hopper is out of cards — add more to continue."
     },
     "feederError": {
       "title": "Feeder error"
     },
     "feedError": {
       "title": "Feed error",
-      "description": "Unexpected response from feeder."
+      "description": "Unexpected response from the feeder."
     },
     "clearFailed": {
       "title": "Clear failed",
-      "description": "Could not send command to the device."
+      "description": "Couldn't send the command to the sorter."
     },
     "clearTimeout": {
       "title": "Clear timeout",
-      "description": "Device did not respond in time."
+      "description": "The sorter didn't respond in time."
     },
     "deviceCleared": {
-      "title": "Device cleared",
-      "description": "All bottom paddles were opened to drop any stuck cards."
+      "title": "Sorter cleared",
+      "description": "Every gate was opened — check your bins for loose cards."
     },
     "lastSearchImageAlt": "Last search image"
   },
@@ -126,36 +126,36 @@
     "mostValuable": "{{price}} · {{name}}"
   },
   "gameSwitchAlert": {
-    "message": "When switching game types, you may have to re-adjust the feeder module tube wall."
+    "message": "Different game, different card size — adjust the feeder's card guide before you start."
   },
   "scanStats": {
     "emptyState": "Scan cards to see their stats.",
-    "totalCards": "Total Cards",
+    "totalCards": "Total cards",
     "unique": "Unique",
-    "totalValue": "Total Value",
-    "avgValue": "Avg Value",
-    "sessionTime": "Session Time",
-    "cardsPerHour": "Cards / hr",
-    "mostValuable": "Most Valuable",
-    "byRarity": "By Rarity",
-    "byType": "By Type",
-    "bySet": "By Set",
+    "totalValue": "Total value",
+    "avgValue": "Average value",
+    "sessionTime": "Time elapsed",
+    "cardsPerHour": "Cards per hour",
+    "mostValuable": "Most valuable",
+    "byRarity": "By rarity",
+    "byType": "By type",
+    "bySet": "By set",
     "showLess": "Show less",
     "showAllSets": "Show all {{count}} sets"
   },
   "scannerControls": {
-    "scanAgain": "Scan Again",
-    "addAgain": "Add Again",
+    "scanAgain": "Scan again",
+    "addAgain": "Add again",
     "skip": "Skip",
-    "scanNow": "Scan Now",
+    "scanNow": "Scan now",
     "resume": "Resume",
     "pause": "Pause"
   },
   "scannerDebug": {
     "heading": "Debug",
-    "simulateScan": "Simulate Scan",
-    "simulateMultiMatch": "Simulate Multi-Match",
-    "forceError": "Force Error"
+    "simulateScan": "Simulate scan",
+    "simulateMultiMatch": "Simulate multi-match",
+    "forceError": "Force error"
   },
   "scannerMenu": {
     "camera": "Camera",
@@ -164,65 +164,65 @@
     "zoom": "Zoom",
     "disconnect": "Disconnect",
     "connect": "Connect",
-    "scanner": "Scanner",
+    "scanner": "Sorter",
     "autoFeed": "Auto-feed",
     "allowDuplicates": "Allow duplicates",
     "calibrate": "Calibrate",
-    "retryConnection": "Retry Connection"
+    "retryConnection": "Retry connection"
   },
   "scannerOverlay": {
     "connectCamera": "Connect a camera to start scanning.",
-    "noCatchAllBin": "No catch-all bin configured - unmatched cards won't be sorted.",
+    "noCatchAllBin": "No catch-all bin set — cards that match nothing won't be sorted.",
     "initializing": "Initializing scanner…",
     "requestingCameraAccess": "Requesting camera access…",
     "identifyingCard": "Identifying card…",
-    "paused": "Scanner paused - press Resume to continue.",
-    "duplicate": "Same card scanned - use Add Again to add it anyway.",
-    "noMatch": "Card not recognized - try Scan Again or adjust lighting."
+    "paused": "Scanner paused — press Resume to continue.",
+    "duplicate": "You already scanned this card — Add Again records another copy.",
+    "noMatch": "Card not recognized — try Scan Again, or clean the card and check the lighting."
   },
   "sessionErrorsPanel": {
     "heading": "Errors"
   },
   "sessionStatsPanel": {
-    "totalCards": "Total Cards",
+    "totalCards": "Total cards",
     "unique": "Unique",
     "value": "Value",
-    "mostValuable": "Most Valuable",
-    "byRarity": "By Rarity"
+    "mostValuable": "Most valuable",
+    "byRarity": "By rarity"
   },
   "appScanner": {
     "cardCount_one": "{{count}} card",
     "cardCount_other": "{{count}} cards"
   },
   "monitorPage": {
-    "loadingSession": "Loading session…",
-    "connectFailed": "Could not connect.",
+    "loadingSession": "Loading…",
+    "connectFailed": "Lost connection to the machine.",
     "noCardsScannedYet": "No cards scanned yet.",
-    "noCardsMatchSearch": "No cards match the search query.",
+    "noCardsMatchSearch": "No cards match your search.",
     "isScanningTooltip": "{{name}} is scanning",
     "isWatchingTooltip": "{{name}} is watching",
     "viewCards_one": "View {{count}} card",
     "viewCards_other": "View {{count}} cards",
-    "viewCardsEmpty": "View Cards",
-    "scannedCardsTitle": "Scanned Cards"
+    "viewCardsEmpty": "View cards",
+    "scannedCardsTitle": "Scanned cards"
   },
   "monitorSessions": {
-    "yourSession": "Your session",
-    "scanning": "Scanning",
-    "sessionReleased": "Session released",
-    "releaseFailed": "Failed to release session",
-    "leaveSession": "Leave session",
-    "title": "Session Monitor",
-    "subtitle": "Join a live scanning session",
-    "noSessionsFound": "No sessions found",
-    "noSessionsHint": "Active sessions will appear here",
+    "yourSession": "Sorting (you)",
+    "scanning": "Sorting",
+    "sessionReleased": "Sort stopped",
+    "releaseFailed": "Couldn't stop the sort — try again",
+    "leaveSession": "Stop this sort",
+    "title": "Monitor",
+    "subtitle": "Watch a sort as it runs — anything live is at the top",
+    "noSessionsFound": "Nothing is running right now",
+    "noSessionsHint": "Start a sort from the Scanner and it'll show up here",
     "cardCount_one": "{{count}} card",
     "cardCount_other": "{{count}} cards",
-    "isScanningTooltip": "{{name}} is scanning"
+    "isScanningTooltip": "{{name}} is sorting into this collection"
   },
   "serialPicker": {
-    "title": "Which device is the sorter?",
-    "description": "More than one USB device is attached. Pick the Arduino running the sorter firmware.",
+    "title": "Which USB device is your sorter?",
+    "description": "More than one USB device is plugged in. Pick your sorter — it usually shows up as an Arduino.",
     "remembered": "This choice is remembered, so you will not be asked again for this device.",
     "cancel": "Cancel",
     "confirm": "Use this device"

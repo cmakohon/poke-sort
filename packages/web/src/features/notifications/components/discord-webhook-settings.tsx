@@ -43,7 +43,15 @@ export function DiscordWebhookSettings() {
         <Label>{t("discordWebhookSettings.heading")}</Label>
       </div>
       <p className="text-sm text-muted-foreground">
-        {t("discordWebhookSettings.description")}
+        {t("discordWebhookSettings.description")}{" "}
+        <a
+          href="https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary hover:underline"
+        >
+          {t("discordWebhookSettings.howTo")}
+        </a>
       </p>
       <div className="flex gap-2">
         <Input
@@ -66,7 +74,9 @@ export function DiscordWebhookSettings() {
             {t("discordWebhookSettings.notifyToggleLabel")}
           </span>
           <span className="text-xs text-muted-foreground">
-            {t("discordWebhookSettings.notifyToggleDescription")}
+            {!settings.discordWebhookUrl && !isLoading
+              ? t("discordWebhookSettings.notifyToggleDisabledHint")
+              : t("discordWebhookSettings.notifyToggleDescription")}
           </span>
         </span>
         <Switch
@@ -77,9 +87,11 @@ export function DiscordWebhookSettings() {
       </label>
       <div className="flex flex-col gap-1.5">
         <Label className="text-xs text-muted-foreground">
-          {isDirty
-            ? t("discordWebhookSettings.testHintDirty")
-            : t("discordWebhookSettings.testHintReady")}
+          {!webhookUrl && !settings.discordWebhookUrl
+            ? t("discordWebhookSettings.testHintNoUrl")
+            : isDirty
+              ? t("discordWebhookSettings.testHintDirty")
+              : t("discordWebhookSettings.testHintReady")}
         </Label>
         <div className="flex flex-wrap gap-2">
           {TEST_TYPES.map((type) => (

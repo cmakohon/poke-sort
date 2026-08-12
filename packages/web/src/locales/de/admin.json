@@ -1,6 +1,6 @@
 {
   "cardImageVectors": {
-    "heading": "Kartenbild-Vektoren",
+    "heading": "Kartenerkennung",
     "syncStatus": {
       "idle": "Inaktiv",
       "running": "Läuft",
@@ -8,39 +8,52 @@
       "failed": "Fehlgeschlagen",
       "cancelled": "Abgebrochen"
     },
-    "selectGamePlaceholder": "Spiel auswählen...",
-    "languagePlaceholder": "Sprache...",
+    "selectGamePlaceholder": "Spiel auswählen…",
+    "languagePlaceholder": "Sprache…",
     "cancelButton": "Abbrechen",
-    "cancellingButton": "Wird abgebrochen...",
+    "cancellingButton": "Wird abgebrochen…",
     "startSyncButton": "Sync starten",
-    "startingButton": "Wird gestartet...",
-    "progressCount": "{{done}} / {{total}}",
-    "vectorizedCount": "{{count}} vektorisiert",
-    "skippedCount": "{{count}} übersprungen",
+    "startingButton": "Wird gestartet…",
+    "progressCount": "{{done}} von {{total}} Karten",
+    "vectorizedCount": "{{count}} gelernt",
+    "skippedCount": "{{count}} bereits bekannt",
     "etaRemaining": "noch ~{{duration}}",
-    "errorsCount": "{{count}} Fehler"
+    "errorsCount": "{{count}} fehlgeschlagen"
   },
   "log": {
-    "heading": "Protokoll",
-    "empty": "Keine Einträge"
+    "heading": "Aktivität",
+    "empty": "Noch nichts"
   },
   "cardDatabase": {
     "heading": "Kartendatenbank",
     "cardCount_one": "{{count}} Karte",
     "cardCount_other": "{{count}} Karten",
-    "searchPlaceholder": "Nach Name suchen...",
-    "loading": "Wird geladen...",
+    "searchPlaceholder": "Nach Name suchen…",
+    "loading": "Wird geladen…",
     "loadError": "Karten konnten nicht geladen werden",
-    "revectorizeTitle": "Neu vektorisieren",
+    "revectorizeTitle": "Diese Karte neu lernen",
     "empty": "Keine Karten gefunden",
     "pageOf": "Seite {{page}} von {{total}}"
   },
   "syncCardById": {
-    "heading": "Karte per ID synchronisieren",
-    "description": "Ruft eine einzelne Karte ab und vektorisiert sie, fügt sie bei Bedarf neu zur Datenbank hinzu",
-    "cardIdPlaceholder": "Karten-ID...",
-    "syncButton": "Synchronisieren",
-    "syncingButton": "Wird synchronisiert..."
+    "heading": "Einzelne Karte hinzufügen",
+    "description": "Bringt dem Scanner eine bestimmte Karte per Katalog-ID bei und fügt sie bei Bedarf neu zur Datenbank hinzu",
+    "cardIdPlaceholder": "z. B. sv3pt5-25",
+    "syncButton": "Hinzufügen",
+    "syncingButton": "Wird hinzugefügt…"
+  },
+  "catalogSetup": {
+    "heading": "Kartenkatalog",
+    "statusReady": "{{formattedCount}} {{game}}-Karten erkennungsbereit ({{language}}).",
+    "statusEmpty": "Noch keine {{game}}-Karten geladen — der Scanner kann nichts erkennen, bis du das Kartenpaket importierst.",
+    "importing": "Wird importiert…",
+    "reimport": "Paket neu importieren",
+    "import": "Kartenpaket importieren",
+    "downloadingOf": "Lädt {{done}} / {{total}} MB herunter",
+    "downloading": "Lädt {{done}} MB herunter",
+    "importingCards": "Importiert {{done}} von {{total}} Karten",
+    "packSource": "Paketquelle",
+    "packSourceHint": "Leer lassen, um das Standardpaket herunterzuladen."
   },
   "dumpDatabase": {
     "heading": "Erkennungsdaten löschen",
@@ -54,8 +67,10 @@
     "confirmScoped": "Dadurch werden die Erkennungsdaten für {{scope}} dauerhaft gelöscht. Der Scanner erkennt diese Karten nicht mehr, bis du das Kartenpaket neu importierst (wenige Minuten) oder einen vollständigen Sync ausführst (mehrere Stunden)."
   },
   "toasts": {
-    "revectorizeError": "Neu-Vektorisierung von {{name}} fehlgeschlagen",
-    "syncCardError": "Synchronisierung der Karte {{id}} fehlgeschlagen",
+    "revectorizeSuccess": "{{name}} neu gelernt",
+    "revectorizeError": "{{name}} konnte nicht neu gelernt werden",
+    "syncCardSuccess": "{{id}} zur Kartendatenbank hinzugefügt",
+    "syncCardError": "Karte \"{{id}}\" nicht gefunden — prüfe die ID und versuche es erneut",
     "dumpSuccess": "Erkennungsdaten gelöscht",
     "dumpError": "Erkennungsdaten konnten nicht gelöscht werden"
   }

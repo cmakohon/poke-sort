@@ -32,22 +32,38 @@ function ModuleHistoryBody({ entry }: { entry: ModuleConfigAuditEntry }) {
   return (
     <div className="flex flex-col gap-0.5">
       <div className="flex gap-2">
-        <span className="w-16 shrink-0 text-muted-foreground">
+        <span className="w-24 shrink-0 text-muted-foreground">
           {t("calibratePage.moduleHistory.bottom")}
         </span>
-        <span>{c.bottomClosed} / {c.bottomOpen}</span>
+        <span>
+          {t("calibratePage.moduleHistory.closedOpen", {
+            closed: c.bottomClosed,
+            open: c.bottomOpen,
+          })}
+        </span>
       </div>
       <div className="flex gap-2">
-        <span className="w-16 shrink-0 text-muted-foreground">
+        <span className="w-24 shrink-0 text-muted-foreground">
           {t("calibratePage.moduleHistory.paddle")}
         </span>
-        <span>{c.paddleClosed} / {c.paddleOpen}</span>
+        <span>
+          {t("calibratePage.moduleHistory.closedOpen", {
+            closed: c.paddleClosed,
+            open: c.paddleOpen,
+          })}
+        </span>
       </div>
       <div className="flex gap-2">
-        <span className="w-16 shrink-0 text-muted-foreground">
+        <span className="w-24 shrink-0 text-muted-foreground">
           {t("calibratePage.moduleHistory.pusher")}
         </span>
-        <span>{c.pusherLeft} / {c.pusherNeutral} / {c.pusherRight}</span>
+        <span>
+          {t("calibratePage.moduleHistory.leftNeutralRight", {
+            left: c.pusherLeft,
+            neutral: c.pusherNeutral,
+            right: c.pusherRight,
+          })}
+        </span>
       </div>
     </div>
   );
@@ -128,9 +144,10 @@ export default function CalibratePage() {
     return (feederHistoryResult?.data ?? []).map((entry: FeederConfigAuditEntry) => ({
       guid: entry.guid,
       createdAt: entry.createdAt,
+      label: t("calibratePage.feederHistory.entryLabel"),
       body: <FeederHistoryBody entry={entry} />,
     }));
-  }, [feederHistoryResult]);
+  }, [feederHistoryResult, t]);
 
   const {
     isConnected,
@@ -180,6 +197,14 @@ export default function CalibratePage() {
 
   return (
     <div className="flex flex-col gap-4 p-4 overflow-y-auto">
+      <div className="flex flex-col gap-0.5">
+        <h1 className="text-lg font-bold font-heading">
+          {t("calibratePage.title")}
+        </h1>
+        <p className="text-xs text-muted-foreground">
+          {t("calibratePage.subtitle")}
+        </p>
+      </div>
       <div className="flex flex-wrap items-center gap-2">
         {isConnected ? (
           <Button variant="outline" onClick={disconnect}>

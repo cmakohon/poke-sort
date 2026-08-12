@@ -1,10 +1,9 @@
 const ENV = import.meta.env.VITE_APP_ENV as string | undefined;
 
+// "local" is deliberately absent: it's the normal state for a self-hosted
+// machine, and a permanent "LOCAL ENVIRONMENT" pill is deployment jargon the
+// owner doesn't need. The banner only marks genuinely unusual environments.
 const CONFIG = {
-  local: {
-    label: "Local",
-    className: "bg-pink-400/90 text-pink-950",
-  },
   development: {
     label: "Development",
     className: "bg-amber-400/90 text-amber-950",

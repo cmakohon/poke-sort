@@ -164,8 +164,8 @@ export default function AdminPage() {
   async function handleRevectorize(cardId: string, name: string) {
     setRevectorizingIds((prev) => new Set(prev).add(cardId));
     try {
-      const result = await revectorizeCard(cardId);
-      toast.success(result.message);
+      await revectorizeCard(cardId);
+      toast.success(t("toasts.revectorizeSuccess", { name }));
       cardsQuery.refetch();
     } catch {
       toast.error(t("toasts.revectorizeError", { name }));
@@ -186,8 +186,8 @@ export default function AdminPage() {
   const syncCardMutation = useMutation({
     mutationFn: () =>
       syncCardById(syncCardGameKey!, syncCardIdInput.trim(), syncCardLang),
-    onSuccess: (result) => {
-      toast.success(result.message);
+    onSuccess: () => {
+      toast.success(t("toasts.syncCardSuccess", { id: syncCardIdInput.trim() }));
       setSyncCardIdInput("");
       cardsQuery.refetch();
       cardGamesQuery.refetch();
@@ -429,9 +429,13 @@ export default function AdminPage() {
               <p className="text-xs font-medium flex-1 min-w-0 truncate">
                 {card.name}
               </p>
-              <p className="text-xs text-muted-foreground uppercase font-mono shrink-0">
-                {card.gameKey} · {card.setCode}
-                {card.lang !== "en" ? ` · ${card.lang}` : ""}
+              <p className="text-xs text-muted-foreground shrink-0">
+                {sourcesQuery.data?.find((s) => s.gameKey === card.gameKey)
+                  ?.label ?? card.gameKey}{" "}
+                · {card.setCode.toUpperCase()}
+                {card.lang !== "en"
+                  ? ` · ${LANGUAGE_LABELS[card.lang] ?? card.lang}`
+                  : ""}
               </p>
               <p className="text-xs text-muted-foreground tabular-nums shrink-0 hidden sm:block">
                 {new Date(card.updatedAt).toLocaleDateString()}
@@ -485,7 +489,13 @@ export default function AdminPage() {
         )}
       </div>
 
-      {syncGameKey && <CatalogSetup gameKey={syncGameKey} lang={syncLang} />}
+      {syncGameKey && (
+        <CatalogSetup
+          gameKey={syncGameKey}
+          lang={syncLang}
+          gameLabel={selectedSource?.label}
+        />
+      )}
 
       <div className="mt-4">
         <GamesManager />

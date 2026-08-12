@@ -56,8 +56,10 @@ function ServoControl({
   onSetPosition,
 }: ServoControlProps) {
   const { t } = useTranslation("calibration");
+  // No .toUpperCase() here — casing in code breaks languages where case
+  // carries meaning. The buttons uppercase visually via CSS instead.
   const positionLabel = (position: string) =>
-    t(`moduleCalibrationGrid.positions.${position}`).toUpperCase();
+    t(`moduleCalibrationGrid.positions.${position}`);
 
   return (
     <div className="flex flex-col gap-2">
@@ -82,7 +84,7 @@ function ServoControl({
             variant={activePosition === position ? "default" : "secondary"}
             disabled={!isConnected}
             onClick={() => onControl(module, servo.name, position)}
-            className="flex-1"
+            className="flex-1 uppercase"
           >
             {positionLabel(position)}
           </Button>

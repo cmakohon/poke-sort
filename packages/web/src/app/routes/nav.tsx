@@ -287,7 +287,7 @@ export function AppNav() {
             <span className="font-bold font-heading text-sm">PokeSort</span>
           )}
         </TooltipTrigger>
-        <TooltipContent side="right">v{__APP_VERSION__}</TooltipContent>
+        <TooltipContent side="right">PokeSort</TooltipContent>
       </Tooltip>
       <Separator />
       <nav
