@@ -153,6 +153,26 @@ Calibration is worth keeping outside a database, since it describes physical
 hardware — see `collins-machine.json` and `pnpm --filter @poke-sort/server
 calibration export|template|import`.
 
+#### Bringing a second install back in sync
+
+Two installs of one machine should not disagree about where its servos travel.
+The committed document is the source of truth; push it into the other install
+rather than re-tuning by hand (app closed — PGlite allows one process per
+directory):
+
+```bash
+POKE_SORT_DATA_DIR="$HOME/Library/Application Support/PokeSort" \
+  pnpm --filter @poke-sort/server calibration import ../../collins-machine.json
+```
+
+If boot logs `[db] Migration ... was not applied`, that install's migration
+history has a hole — usually from migrating it against a half-merged journal, and
+permanent, because the migrator only applies migrations newer than the newest one
+already recorded. On a scratch install the fix is to delete its `db` directory and
+let it rebuild; the rest of `userData` (window state, remembered serial device)
+must be left alone. On an install holding real data, repair it rather than delete
+it.
+
 ## Database
 
 The database is an embedded PGlite instance under `POKE_SORT_DATA_DIR`. Migrations and
