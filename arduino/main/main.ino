@@ -380,24 +380,44 @@ void handleCommand(char* json) {
     return;
   }
 
-  // {"test": true} — run a full mechanical test sequence then confirm connection
+  // {"test": true} — run a full mechanical test sequence then confirm connection.
+  // The pusher stroke must copy what routing does — bottom closed, paddle open,
+  // every move starting or ending at neutral. Sweeping extreme-to-extreme over
+  // an open trapdoor is a motion no routing path ever performs, and with real
+  // calibration loaded it detached module 1's pusher arm on every boot.
   if (doc["test"].is<bool>() && doc["test"].as<bool>()) {
-    // Open all bottoms and paddles
+    // Bottoms and paddles, with every pusher held at neutral
     for (int m = 1; m <= NUM_MODULES; m++) {
       setServoPosition(getChannel(m, 0), moduleConfig[m - 1].bottomOpen);
       setServoPosition(getChannel(m, 1), moduleConfig[m - 1].paddleOpen);
     }
     delay(DELAY_PUSH);
+    for (int m = 1; m <= NUM_MODULES; m++) {
+      setServoPosition(getChannel(m, 0), moduleConfig[m - 1].bottomClosed);
+      setServoPosition(getChannel(m, 1), moduleConfig[m - 1].paddleClosed);
+    }
+    delay(DELAY_PUSH);
 
-    // Move all pushers left
+    // Pushers, as a routing stroke: bottoms stay closed, paddles open,
+    // left → neutral → right → neutral
+    for (int m = 1; m <= NUM_MODULES; m++) {
+      setServoPosition(getChannel(m, 1), moduleConfig[m - 1].paddleOpen);
+    }
+    delay(DELAY_PADDLE);
     for (int m = 1; m <= NUM_MODULES; m++) {
       setServoPosition(getChannel(m, 2), moduleConfig[m - 1].pusherLeft);
     }
     delay(DELAY_PUSH);
-
-    // Move all pushers right
+    for (int m = 1; m <= NUM_MODULES; m++) {
+      setServoPosition(getChannel(m, 2), moduleConfig[m - 1].pusherNeutral);
+    }
+    delay(DELAY_PUSH);
     for (int m = 1; m <= NUM_MODULES; m++) {
       setServoPosition(getChannel(m, 2), moduleConfig[m - 1].pusherRight);
+    }
+    delay(DELAY_PUSH);
+    for (int m = 1; m <= NUM_MODULES; m++) {
+      setServoPosition(getChannel(m, 2), moduleConfig[m - 1].pusherNeutral);
     }
     delay(DELAY_PUSH);
 
