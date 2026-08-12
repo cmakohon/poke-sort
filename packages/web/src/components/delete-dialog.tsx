@@ -40,11 +40,14 @@ export function DeleteDialog({
   onConfirm,
 }: DeleteDialogProps) {
   const { t } = useTranslation("common");
+  // The confirmation keyword is localized so the instruction and the accepted
+  // input always match (e.g. "löschen" in German).
+  const keyword = t("deleteDialog.keyword");
   const schema = z.object({ input: z.string() }).superRefine((data, ctx) => {
-    if (confirm.type === "keyword" && data.input !== "delete") {
+    if (confirm.type === "keyword" && data.input !== keyword) {
       ctx.addIssue({
         code: "custom",
-        message: t("deleteDialog.typeDeleteToConfirm"),
+        message: t("deleteDialog.typeDeleteToConfirm", { keyword }),
         path: ["input"],
       });
     } else if (confirm.type === "name" && data.input !== confirm.name) {
@@ -77,18 +80,12 @@ export function DeleteDialog({
     onOpenChange(false);
   };
 
-  const placeholder =
-    confirm.type === "keyword"
-      ? "delete"
-      : confirm.type === "name"
-        ? confirm.name
-        : undefined;
-
   const label =
     confirm.type === "keyword" ? (
       <Trans
         t={t}
         i18nKey="deleteDialog.typeKeywordLabel"
+        values={{ keyword }}
         components={{
           code: <span className="font-mono font-medium text-foreground" />,
         }}
@@ -116,12 +113,7 @@ export function DeleteDialog({
           {confirm.type !== "simple" && (
             <Field className="my-4" data-invalid={!!errors.input}>
               <p className="text-sm text-muted-foreground mb-1.5">{label}</p>
-              <Input
-                {...register("input")}
-                placeholder={placeholder}
-                autoComplete="off"
-                autoFocus
-              />
+              <Input {...register("input")} autoComplete="off" autoFocus />
               <FieldError errors={[errors.input]} />
             </Field>
           )}

@@ -1,13 +1,5 @@
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { DeleteDialog } from "@/components/delete-dialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -206,14 +198,14 @@ export default function AdminPage() {
   });
   const dumpMutation = useMutation({
     mutationFn: (gameKey?: string) => dumpCards(gameKey),
-    onSuccess: (result) => {
+    onSuccess: () => {
       setDumpOpen(false);
-      toast.success(result.message);
+      toast.success(t("toasts.dumpSuccess"));
       cardsQuery.refetch();
       cardGamesQuery.refetch();
     },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : t("toasts.dumpError"));
+    onError: () => {
+      toast.error(t("toasts.dumpError"));
     },
   });
 
@@ -234,7 +226,7 @@ export default function AdminPage() {
   );
 
   return (
-    <div className="flex flex-col p-6 max-w-4xl mx-auto w-full h-full overlflow-hidden">
+    <div className="flex flex-col p-6 max-w-4xl mx-auto w-full h-full overflow-hidden">
       <div className="rounded-lg rounded-b-none border p-4 flex flex-col gap-4">
         <div className="flex items-center justify-between gap-3">
           <div className="flex flex-col gap-0.5 min-w-0">
@@ -584,43 +576,43 @@ export default function AdminPage() {
               <SelectItem value="__all__">{t("dumpDatabase.allGames")}</SelectItem>
               {(cardGamesQuery.data ?? []).map((g) => (
                 <SelectItem key={g.gameKey} value={g.gameKey}>
-                  {g.gameKey} ({g.count})
+                  {sourcesQuery.data?.find((s) => s.gameKey === g.gameKey)
+                    ?.label ?? g.gameKey}{" "}
+                  ({g.count.toLocaleString()})
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <Dialog open={dumpOpen} onOpenChange={setDumpOpen}>
-            <DialogTrigger
-              render={<Button variant="destructive" disabled={isRunning} />}
-            >
-              {t("dumpDatabase.dumpButton")}
-            </DialogTrigger>
-            <DialogContent showCloseButton={false}>
-              <DialogHeader>
-                <DialogTitle>{t("dumpDatabase.dialogTitle")}</DialogTitle>
-                <DialogDescription>
-                  {dumpGameKey === "__all__"
-                    ? t("dumpDatabase.confirmAll")
-                    : t("dumpDatabase.confirmScoped", { scope: dumpGameKey })}
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter showCloseButton>
-                <Button
-                  variant="destructive"
-                  disabled={dumpMutation.isPending}
-                  onClick={() =>
-                    dumpMutation.mutate(
-                      dumpGameKey === "__all__" ? undefined : dumpGameKey,
-                    )
-                  }
-                >
-                  {dumpMutation.isPending
-                    ? t("dumpDatabase.dumpingButton")
-                    : t("dumpDatabase.dumpButton")}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <Button
+            variant="destructive"
+            disabled={isRunning || dumpMutation.isPending}
+            onClick={() => setDumpOpen(true)}
+          >
+            {dumpMutation.isPending
+              ? t("dumpDatabase.dumpingButton")
+              : t("dumpDatabase.dumpButton")}
+          </Button>
+          <DeleteDialog
+            open={dumpOpen}
+            onOpenChange={setDumpOpen}
+            title={t("dumpDatabase.dialogTitle")}
+            description={
+              dumpGameKey === "__all__"
+                ? t("dumpDatabase.confirmAll")
+                : t("dumpDatabase.confirmScoped", {
+                    scope:
+                      sourcesQuery.data?.find(
+                        (s) => s.gameKey === dumpGameKey,
+                      )?.label ?? dumpGameKey,
+                  })
+            }
+            confirm={{ type: "keyword" }}
+            onConfirm={() =>
+              dumpMutation.mutate(
+                dumpGameKey === "__all__" ? undefined : dumpGameKey,
+              )
+            }
+          />
         </div>
       </div>
     </div>

@@ -43,7 +43,7 @@
     "cardCount_other": "{{count}} cards",
     "noGame": "No game",
     "setActiveCollection": "Set as active collection",
-    "editSortingRules": "Edit sorting rules",
+    "editSortingRules": "Edit sorting rules (shared by all collections)",
     "rename": "Rename",
     "emptyCollection": "Empty Collection",
     "deleteCollection": "Delete Collection"

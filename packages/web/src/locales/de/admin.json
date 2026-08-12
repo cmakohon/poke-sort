@@ -43,19 +43,20 @@
     "syncingButton": "Wird synchronisiert..."
   },
   "dumpDatabase": {
-    "heading": "Kartendatenbank leeren",
-    "description": "Löscht Kartenbild-Vektoren dauerhaft, für ein Spiel oder alle",
-    "scopePlaceholder": "Bereich auswählen...",
+    "heading": "Erkennungsdaten löschen",
+    "description": "Löscht die gelernten Kartenbilder dauerhaft – für ein Spiel oder alle",
+    "scopePlaceholder": "Auswählen, was gelöscht wird…",
     "allGames": "Alle Spiele",
-    "dumpButton": "Leeren",
-    "dumpingButton": "Wird geleert...",
-    "dialogTitle": "Kartendatenbank leeren",
-    "confirmAll": "Dadurch werden alle Kartenbild-Vektoren dauerhaft gelöscht, das kann nicht rückgängig gemacht werden. Bist du sicher?",
-    "confirmScoped": "Dadurch werden alle Kartenbild-Vektoren für „{{scope}}“ dauerhaft gelöscht, das kann nicht rückgängig gemacht werden. Bist du sicher?"
+    "dumpButton": "Löschen",
+    "dumpingButton": "Wird gelöscht…",
+    "dialogTitle": "Erkennungsdaten löschen?",
+    "confirmAll": "Dadurch werden die Erkennungsdaten aller Spiele dauerhaft gelöscht. Der Scanner erkennt keine Karten mehr, bis du das Kartenpaket neu importierst (wenige Minuten) oder einen vollständigen Sync ausführst (mehrere Stunden).",
+    "confirmScoped": "Dadurch werden die Erkennungsdaten für {{scope}} dauerhaft gelöscht. Der Scanner erkennt diese Karten nicht mehr, bis du das Kartenpaket neu importierst (wenige Minuten) oder einen vollständigen Sync ausführst (mehrere Stunden)."
   },
   "toasts": {
     "revectorizeError": "Neu-Vektorisierung von {{name}} fehlgeschlagen",
     "syncCardError": "Synchronisierung der Karte {{id}} fehlgeschlagen",
-    "dumpError": "Datenbank konnte nicht geleert werden"
+    "dumpSuccess": "Erkennungsdaten gelöscht",
+    "dumpError": "Erkennungsdaten konnten nicht gelöscht werden"
   }
 }

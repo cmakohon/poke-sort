@@ -11,9 +11,6 @@
     "collapseSidebar": "Seitenleiste einklappen ([)",
     "expandSidebar": "Seitenleiste ausklappen ([)"
   },
-  "breadcrumb": {
-    "sortingLogic": "Sortierlogik"
-  },
   "statusFooter": {
     "camera": "Kamera",
     "sorter": "Sortierer",
@@ -41,9 +38,10 @@
     "system": "System"
   },
   "deleteDialog": {
-    "typeDeleteToConfirm": "Gib \"delete\" ein, um zu bestätigen",
+    "keyword": "löschen",
+    "typeDeleteToConfirm": "Gib \"{{keyword}}\" ein, um zu bestätigen",
     "typeNameToConfirm": "Gib \"{{name}}\" ein, um zu bestätigen",
-    "typeKeywordLabel": "Gib <code>delete</code> ein, um zu bestätigen",
+    "typeKeywordLabel": "Gib <code>{{keyword}}</code> ein, um zu bestätigen",
     "typeNameLabel": "Gib <code>{{name}}</code> ein, um zu bestätigen"
   },
   "actions": {

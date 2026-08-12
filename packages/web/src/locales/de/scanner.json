@@ -119,7 +119,7 @@
     "lastSearchImageAlt": "Letztes Suchbild"
   },
   "documentTitle": {
-    "sorting": "Sortierung: {{setName}}",
+    "sorting": "Sortiert nach {{setName}}",
     "cardsScanned_one": "{{count}} Karte gescannt",
     "cardsScanned_other": "{{count}} Karten gescannt",
     "noCardsScanned": "Keine Karten gescannt",

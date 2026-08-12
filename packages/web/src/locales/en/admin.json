@@ -43,19 +43,20 @@
     "syncingButton": "Syncing..."
   },
   "dumpDatabase": {
-    "heading": "Dump Card Database",
-    "description": "Permanently delete card image vectors, for one game or all of them",
-    "scopePlaceholder": "Select scope...",
+    "heading": "Delete recognition data",
+    "description": "Permanently deletes the learned card images, for one game or all of them",
+    "scopePlaceholder": "Choose what to delete…",
     "allGames": "All games",
-    "dumpButton": "Dump",
-    "dumpingButton": "Dumping...",
-    "dialogTitle": "Dump card database",
-    "confirmAll": "This will permanently delete all card image vectors and cannot be undone. Are you sure?",
-    "confirmScoped": "This will permanently delete all \"{{scope}}\" card image vectors and cannot be undone. Are you sure?"
+    "dumpButton": "Delete",
+    "dumpingButton": "Deleting…",
+    "dialogTitle": "Delete recognition data?",
+    "confirmAll": "This permanently deletes the recognition data for every game. The scanner won't identify any cards until you re-import the card pack (a few minutes) or run a full sync (several hours).",
+    "confirmScoped": "This permanently deletes the recognition data for {{scope}}. The scanner won't identify those cards until you re-import the card pack (a few minutes) or run a full sync (several hours)."
   },
   "toasts": {
     "revectorizeError": "Failed to re-vectorize {{name}}",
     "syncCardError": "Failed to sync card {{id}}",
-    "dumpError": "Failed to dump database"
+    "dumpSuccess": "Recognition data deleted",
+    "dumpError": "Couldn't delete the recognition data"
   }
 }

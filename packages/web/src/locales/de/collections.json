@@ -43,7 +43,7 @@
     "cardCount_other": "{{count}} Karten",
     "noGame": "Kein Spiel",
     "setActiveCollection": "Als aktive Sammlung festlegen",
-    "editSortingRules": "Sortierregeln bearbeiten",
+    "editSortingRules": "Sortierregeln bearbeiten (gelten für alle Sammlungen)",
     "rename": "Umbenennen",
     "emptyCollection": "Sammlung leeren",
     "deleteCollection": "Sammlung löschen"

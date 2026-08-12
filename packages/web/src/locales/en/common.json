@@ -11,9 +11,6 @@
     "collapseSidebar": "Collapse sidebar ([)",
     "expandSidebar": "Expand sidebar ([)"
   },
-  "breadcrumb": {
-    "sortingLogic": "Sorting Logic"
-  },
   "statusFooter": {
     "camera": "Camera",
     "sorter": "Sorter",
@@ -41,9 +38,10 @@
     "system": "System"
   },
   "deleteDialog": {
-    "typeDeleteToConfirm": "Type \"delete\" to confirm",
+    "keyword": "delete",
+    "typeDeleteToConfirm": "Type \"{{keyword}}\" to confirm",
     "typeNameToConfirm": "Type \"{{name}}\" to confirm",
-    "typeKeywordLabel": "Type <code>delete</code> to confirm",
+    "typeKeywordLabel": "Type <code>{{keyword}}</code> to confirm",
     "typeNameLabel": "Type <code>{{name}}</code> to confirm"
   },
   "actions": {

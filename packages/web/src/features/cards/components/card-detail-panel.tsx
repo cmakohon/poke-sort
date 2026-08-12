@@ -1,4 +1,6 @@
 import { rarityColor } from "@/features/cards/lib/rarity-color";
+import { formatCardNumber } from "@/features/cards/lib/format-card-number";
+import { formatUsd } from "@/features/scanner/components/scan-stats";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Input } from "@/components/ui/input";
@@ -290,8 +292,10 @@ export function CardDetailPanel({
                                   ? "text-primary"
                                   : "text-muted-foreground",
                               )}
+                              title={`${c.setName || c.set} (${c.set.toUpperCase()})`}
                             >
-                              {c.set.toUpperCase()} #{c.collectorNumber}
+                              {c.setName || c.set.toUpperCase()} ·{" "}
+                              {formatCardNumber(c)}
                             </p>
                           </div>
                         </button>
@@ -350,7 +354,7 @@ export function CardDetailPanel({
                       <span className="capitalize">{selectedCard.rarity}</span>
                       <span>·</span>
                       <span>
-                        {selectedCard.setName} #{selectedCard.collectorNumber}
+                        {selectedCard.setName} · {formatCardNumber(selectedCard)}
                       </span>
                     </div>
                     {binNumber != null && (
@@ -368,7 +372,7 @@ export function CardDetailPanel({
                     )}
                     {selectedCard.price != null && (
                       <p className="text-xs text-muted-foreground">
-                        ${selectedCard.price.toFixed(2)}
+                        {formatUsd(selectedCard.price)}
                       </p>
                     )}
                     {selectedCard.artist && (
@@ -511,7 +515,8 @@ export function CardDetailPanel({
                           <div className="w-10 h-14 bg-muted rounded shrink-0" />
                         )}
                         <div className="absolute bottom-0 inset-x-0 bg-black/70 text-white text-[10px] leading-tight px-1 py-0.5 text-center truncate">
-                          {card.set.toUpperCase()} #{card.collectorNumber}
+                          {card.setName || card.set.toUpperCase()} ·{" "}
+                          {formatCardNumber(card)}
                         </div>
                       </Button>
                     ))}

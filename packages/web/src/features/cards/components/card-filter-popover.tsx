@@ -2,6 +2,7 @@ import { rarityColor } from "@/features/cards/lib/rarity-color";
 import { Button } from "@/components/ui/button";
 import { DynamicPopover } from "@/components/ui/responsive-popover";
 import { Slider } from "@/components/ui/slider";
+import { EMPTY_CARD_FILTERS } from "@/features/cards/api/use-card-filters";
 import type { CardFilters } from "@/features/cards/types";
 import {
   OptionPicker,
@@ -17,16 +18,6 @@ import {
   IconHelpCircle,
 } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
-
-const EMPTY_FILTERS: CardFilters = {
-  types: [],
-  rarities: [],
-  bins: [],
-  needsAttention: false,
-  showDownloaded: false,
-  sets: [],
-  minMatchPercent: 0,
-};
 
 function toggle<T>(arr: T[], item: T): T[] {
   return arr.includes(item) ? arr.filter((x) => x !== item) : [...arr, item];
@@ -291,13 +282,13 @@ export function CardFilterPopover({
             className={cn(
               chipBase,
               "flex items-center gap-1.5 px-2 h-7",
-              activeFilters.showDownloaded
+              !activeFilters.showDownloaded
                 ? "bg-primary text-primary-foreground border-primary"
                 : chipInactive,
             )}
           >
             <IconDownload className="size-3.5" />
-            {t("cardFilterPopover.showDownloadedCards")}
+            {t("cardFilterPopover.hideExportedCards")}
           </button>
         </div>
 
@@ -325,7 +316,7 @@ export function CardFilterPopover({
             variant="ghost"
             size="sm"
             className="w-full"
-            onClick={() => onFiltersChange(EMPTY_FILTERS)}
+            onClick={() => onFiltersChange(EMPTY_CARD_FILTERS)}
           >
             {t("cardFilterPopover.resetFilters")}
           </Button>
