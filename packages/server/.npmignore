@@ -1,0 +1,14 @@
+# Read by `npm pack` and by `pnpm deploy`, which is how the desktop app builds
+# its server bundle (`pnpm bundle:server`). Both walk THIS package directory and
+# never read the repo-root .gitignore, so a path being git-ignored says nothing
+# about whether it gets copied.
+#
+# Without this file, `pnpm dist` copies the dev data directory — a quarter
+# gigabyte of PGlite files plus every scan capture — into
+# packages/desktop/.server-bundle on every build, and the pruner then walks it.
+# Only .server-bundle/dist and .server-bundle/node_modules are packaged
+# (see electron-builder.yml extraResources), so none of this is wanted there.
+.poke-sort*
+.turbo/
+eval/
+*.traineddata

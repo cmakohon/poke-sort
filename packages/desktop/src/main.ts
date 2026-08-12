@@ -32,24 +32,44 @@ app.setName("PokeSort");
 const DEV_URL = process.env.POKE_SORT_DEV_URL;
 
 /**
+ * The one directory a dev run uses unless told otherwise.
+ *
+ * Unpackaged runs used to default to `userData`, the same directory the packaged
+ * app owns, so a dev session and a real install shared a library while a
+ * `dev:catalog` script pointed somewhere else entirely. Three ways to launch, two
+ * databases, and the symptom was never "you opened the other one" — it was "my
+ * calibration reset".
+ *
+ * Resolved from `__dirname`, not cwd: this is the same directory `SERVER_ENTRY`
+ * is found relative to, so it holds wherever the launcher was invoked from. It
+ * also means no shell variable is involved, which is what the `dev` script used
+ * to rely on — and `export VAR=...` is not a thing on Windows.
+ */
+const DEV_DATA_DIR = path.resolve(__dirname, "../../server/.poke-sort-catalog");
+
+/**
  * Where the server keeps the database and captures.
  *
  * A packaged app always uses `userData` — it owns that directory and an
  * environment variable should not be able to move a user's library out from
- * under them. Unpackaged, an explicit `POKE_SORT_DATA_DIR` wins, which is what
- * makes it possible to point a dev run at a full catalog instead of whatever
- * happens to be in the default location. The value used to be overwritten
- * unconditionally, so setting it did nothing and the override looked broken.
+ * under them. Unpackaged, an explicit `POKE_SORT_DATA_DIR` wins, so a dev run can
+ * be pointed at the packaged library or anywhere else; with nothing set it is the
+ * dev install above. The value used to be overwritten unconditionally, so setting
+ * it did nothing and the override looked broken.
  */
 function resolveDataDir(): string {
-  const override = process.env.POKE_SORT_DATA_DIR;
-  if (app.isPackaged || !override) return app.getPath("userData");
+  if (app.isPackaged) return app.getPath("userData");
 
   // The server resolves a relative value against its own cwd, so resolve it the
   // same way here and log the absolute path. A relative override that lands
   // somewhere unintended otherwise looks identical to one that worked.
-  const resolved = path.resolve(override);
-  console.log(`[main] POKE_SORT_DATA_DIR override -> ${resolved}`);
+  const override = process.env.POKE_SORT_DATA_DIR;
+  const resolved = override ? path.resolve(override) : DEV_DATA_DIR;
+  console.log(
+    override
+      ? `[main] POKE_SORT_DATA_DIR override -> ${resolved}`
+      : `[main] dev data dir -> ${resolved}`,
+  );
 
   // An empty or wrong path is not an error — the server will happily create the
   // directory, migrate, seed, and come up with a catalog of zero cards, which

@@ -126,6 +126,72 @@ VITE_APP_ENV=                 # local/developement/QA/production
 
 The packaged desktop app sets `POKE_SORT_DATA_DIR` to Electron's `userData` directory and needs no configuration.
 
+### Which data directory am I running?
+
+Everything the app writes — database and scan captures — lives under one
+`POKE_SORT_DATA_DIR`, and only the card catalog is global. Sorts, bins,
+calibration, collections, scans and org settings are all **per directory**, so
+two installs on one machine drift apart independently. "My calibration reset" is
+almost always "I launched the other directory".
+
+| Directory | Set by | Holds |
+| --- | --- | --- |
+| `packages/server/.poke-sort` | the default, when nothing sets the variable: `pnpm dev`, `pnpm test`, `db:generate`, `db:socket` | scratch. Created empty on demand; safe to delete |
+| `packages/server/.poke-sort-catalog` | any unpackaged Electron run (`dev`, `dev:catalog`) and every `eval:*` script that needs a catalog | the full catalog and real calibration — the dev install |
+| Electron `userData` | the packaged app, always | a real user's library |
+
+One exception to "everything": the remembered serial device
+(`serial-prefs.json`) is written to Electron's `userData` by every run, packaged
+or not, so it is per machine rather than per data directory.
+
+`resolveDataDir()` in `packages/desktop/src/main.ts` ignores the variable when
+`app.isPackaged`, so nothing in the environment can move a shipped user's
+library out from under them. Unpackaged it defaults to the catalog directory
+above — resolved from `__dirname`, so it does not depend on where the launcher
+was invoked, and no shell variable is involved (`export VAR=...` in a package
+script would not run on Windows). An explicit `POKE_SORT_DATA_DIR` still
+overrides it, from the environment rather than from `.env`, which neither
+Electron nor the desktop `dev` script reads.
+
+`dev` and `dev:catalog` are therefore the same command; the alias is kept only
+for muscle memory.
+
+PGlite allows one process per directory, so anything that opens the dev install
+needs the app closed first: `eval:accuracy`, `eval:build`, `eval:capture`,
+`eval:hnsw` and `calibration` all default to it now.
+
+The browser dev flow (`pnpm dev`, Vite plus Hono on :3001) deliberately keeps
+the default scratch directory rather than sharing the catalog: PGlite allows one
+process per directory, and the Electron shell forks a server of its own. Root
+`pnpm dev` is `turbo dev --filter='!@poke-sort/desktop'` for that reason —
+unfiltered, `turbo dev` also runs the desktop `dev` script, which would boot a
+second server against the catalog (and a nested `turbo build`) behind a command
+documented as the browser flow.
+
+Calibration is worth keeping outside a database, since it describes physical
+hardware — see `collins-machine.json` and `pnpm --filter @poke-sort/server
+calibration export|template|import`.
+
+#### Bringing a second install back in sync
+
+Two installs of one machine should not disagree about where its servos travel.
+The committed document is the source of truth; push it into the other install
+rather than re-tuning by hand (app closed — PGlite allows one process per
+directory):
+
+```bash
+POKE_SORT_DATA_DIR="$HOME/Library/Application Support/PokeSort" \
+  pnpm --filter @poke-sort/server calibration import ../../collins-machine.json
+```
+
+If boot logs `[db] Migration ... was not applied`, that install's migration
+history has a hole — usually from migrating it against a half-merged journal, and
+permanent, because the migrator only applies migrations newer than the newest one
+already recorded. On a scratch install the fix is to delete its `db` directory and
+let it rebuild; the rest of `userData` (window state, remembered serial device)
+must be left alone. On an install holding real data, repair it rather than delete
+it.
+
 ## Database
 
 The database is an embedded PGlite instance under `POKE_SORT_DATA_DIR`. Migrations and
@@ -136,6 +202,11 @@ pnpm --filter @poke-sort/server db:generate  # generate a migration from schema 
 pnpm --filter @poke-sort/server db:socket    # expose the embedded db on :5432
 pnpm --filter @poke-sort/server db:studio    # open Drizzle Studio (needs db:socket running)
 ```
+
+All three follow `POKE_SORT_DATA_DIR`, so point it at the install you mean to
+inspect — `POKE_SORT_DATA_DIR=./.poke-sort-catalog pnpm db:socket` for the dev
+install. Without it they open the scratch directory, and Drizzle Studio then
+shows an empty database that looks like data loss.
 
 Because PGlite is single-process, the server must be stopped before any script
 that opens the same data directory.
@@ -160,23 +231,25 @@ Inside the app the Hono server runs in an Electron `utilityProcess` on a random
 loopback port and serves the SPA itself, so the API is same-origin. There is no
 separate server to start — `dev` and `dist` both bundle it.
 
-The app keeps its database in Electron's `userData` directory
+The **packaged** app keeps its database in Electron's `userData` directory
 (`~/Library/Application Support/PokeSort` on macOS). Unpackaged runs set the app
-name explicitly so they land there too, rather than in the `Electron` directory
-that every unpackaged Electron app on the machine shares.
+name explicitly too, so whatever still lands in `userData` — the remembered
+serial device, Electron's own state — goes to `PokeSort` rather than to the
+`Electron` directory that every unpackaged Electron app on the machine shares.
 
-An unpackaged run can point somewhere else, which is how to develop against a
-full catalog rather than whichever database the default location happens to
-hold:
+An unpackaged run keeps its **database** somewhere else: `resolveDataDir()`
+defaults to `packages/server/.poke-sort-catalog`, so a dev run develops against
+the full catalog rather than against a user's library (see "Which data directory
+am I running?"). The default lives in `main.ts` rather than in the `dev` script
+so it holds however Electron was launched, and on Windows too. `dev:catalog` is a
+kept alias for `dev` and does the same thing.
 
-```bash
-pnpm --filter @poke-sort/desktop dev:catalog   # uses packages/server/.poke-sort-catalog
-```
-
-That is a thin wrapper over `POKE_SORT_DATA_DIR`, which takes any path:
+An explicit value overrides that default, and takes any path:
 
 ```bash
 POKE_SORT_DATA_DIR=/some/other/dir pnpm --filter @poke-sort/desktop dev
+POKE_SORT_DATA_DIR="$HOME/Library/Application Support/PokeSort" \
+  pnpm --filter @poke-sort/desktop dev   # the packaged app's own library
 ```
 
 The resolved absolute path is logged on boot, and a path with no database in it
