@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "exportedAt": "2026-08-12T13:29:00.000Z",
-  "note": "Collin's machine. Hand-recalibrated on the physical sorter 2026-08-12 and read back live from the running app (data dir packages/server/.poke-sort-catalog). These are the known-good values: import this file, do not edit it from memory. Servo numbers are PCA9685 pulse counts (120-490), not degrees.",
+  "exportedAt": "2026-08-12T19:44:40.731Z",
+  "note": "Collin's machine. Module 1's pusher re-tuned 2026-08-12: the old 155/235/315 range overshot the right mechanical stop (detaching the arm, stalling the servo) and could not reach full-left inside the firmware's 120-490 clamp; the new range sits in family with modules 2-3. Exported from the app database (data dir packages/server/.poke-sort-catalog). These are the known-good values: import this file, do not edit it from memory. Servo numbers are PCA9685 pulse counts (120-490), not degrees.",
   "modules": [
     {
       "moduleNumber": 1,
@@ -9,9 +9,9 @@
       "bottomOpen": 150,
       "paddleClosed": 490,
       "paddleOpen": 150,
-      "pusherLeft": 155,
-      "pusherNeutral": 235,
-      "pusherRight": 315
+      "pusherLeft": 220,
+      "pusherNeutral": 300,
+      "pusherRight": 380
     },
     {
       "moduleNumber": 2,
@@ -45,6 +45,5 @@
     "coverage": 0.89,
     "offsetX": -0.01,
     "offsetY": 0.01
-  },
-  "captureSettleDelayMs": 500
+  }
 }
