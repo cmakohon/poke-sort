@@ -3,7 +3,7 @@
   "version": "1.0.1",
   "private": true,
   "scripts": {
-    "dev": "turbo dev",
+    "dev": "turbo dev --filter='!@poke-sort/desktop'",
     "build": "turbo build",
     "lint": "turbo lint",
     "version:patch": "node scripts/version-bump.mjs patch",

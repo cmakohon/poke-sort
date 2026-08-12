@@ -6,16 +6,16 @@
     "dev": "tsx watch --env-file-if-exists ../../.env src/index.ts",
     "build": "tsup",
     "db:generate": "drizzle-kit generate",
-    "db:socket": "pglite-server --db ./.poke-sort/db --port 5432",
+    "db:socket": "pglite-server --db \"${POKE_SORT_DATA_DIR:-./.poke-sort}/db\" --port 5432",
     "db:studio": "drizzle-kit studio",
     "calibration": "tsx --env-file-if-exists ../../.env scripts/calibration.ts",
     "export:pack": "tsx --env-file-if-exists ../../.env scripts/export-pack.ts",
-    "eval:accuracy": "POKE_SORT_DATA_DIR=${POKE_SORT_DATA_DIR:-./.poke-sort-catalog} vitest run eval/accuracy.test.ts --disableConsoleIntercept",
-    "eval:build": "tsx eval/build-fixtures.ts",
-    "eval:capture": "tsx eval/capture-signals.ts",
+    "eval:accuracy": "POKE_SORT_DATA_DIR=${POKE_SORT_DATA_DIR:-./.poke-sort-catalog} POKE_SORT_MODEL_DIR=${POKE_SORT_MODEL_DIR:-../../.models} vitest run eval/accuracy.test.ts --disableConsoleIntercept",
+    "eval:build": "POKE_SORT_DATA_DIR=${POKE_SORT_DATA_DIR:-./.poke-sort-catalog} tsx eval/build-fixtures.ts",
+    "eval:capture": "POKE_SORT_DATA_DIR=${POKE_SORT_DATA_DIR:-./.poke-sort-catalog} POKE_SORT_MODEL_DIR=${POKE_SORT_MODEL_DIR:-../../.models} tsx eval/capture-signals.ts",
     "eval:tune": "tsx eval/tune.ts",
-    "test": "vitest run",
-    "eval:hnsw": "tsx eval/hnsw-recall.ts"
+    "test": "vitest run --exclude '**/accuracy.test.ts'",
+    "eval:hnsw": "POKE_SORT_DATA_DIR=${POKE_SORT_DATA_DIR:-./.poke-sort-catalog} POKE_SORT_MODEL_DIR=${POKE_SORT_MODEL_DIR:-../../.models} tsx eval/hnsw-recall.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "0.5.4",
