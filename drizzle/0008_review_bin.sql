@@ -1,0 +1,17 @@
+-- A bin can be dedicated to review-tier scans, separately from the catch-all.
+-- The catch-all collects cards no rule claimed, which is normal; a review-tier
+-- scan is the pipeline saying it does not trust its own identification. Mixed
+-- into one physical stack the two are indistinguishable, which is exactly the
+-- distinction someone tuning accuracy needs. false everywhere -> review-tier
+-- scans keep falling back to the catch-all, so existing sets are unchanged.
+--
+-- Numbered 0008, skipping 0007: fix/persist-scan-outcome already published
+-- 0007_persist_scan_outcome at when=1786500240000, and this file first shipped
+-- with that same timestamp. The migrator applies a migration only when its
+-- folderMillis is strictly GREATER than the newest created_at already recorded,
+-- so on any database that had seen that branch this one was skipped in silence
+-- — no error at boot, just a missing column at the first query. Two branches
+-- picking the same "next" timestamp is easy when they are hand-written, so the
+-- rule is: a new entry's `when` must exceed every `when` on every branch, not
+-- just on this one.
+ALTER TABLE "bins" ADD COLUMN IF NOT EXISTS "is_review_bin" boolean DEFAULT false NOT NULL;

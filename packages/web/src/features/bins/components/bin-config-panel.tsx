@@ -26,6 +26,7 @@ export function BinConfigPanel() {
     save,
     clear,
     configs,
+    reviewBinNumber,
     isPending,
   } = useBinConfigs();
 
@@ -33,6 +34,7 @@ export function BinConfigPanel() {
     resolver: zodResolver(binConfigSchema) as Resolver<BinConfigFormValues>,
     defaultValues: {
       isCatchAll: false,
+      isReviewBin: false,
       rules: emptyRuleGroup(),
     },
   });
@@ -40,6 +42,7 @@ export function BinConfigPanel() {
   useEffect(() => {
     form.reset({
       isCatchAll: config.isCatchAll ?? false,
+      isReviewBin: config.isReviewBin ?? false,
       rules:
         config.rules.conditions.length > 0 ? config.rules : emptyRuleGroup(),
     });
@@ -58,7 +61,12 @@ export function BinConfigPanel() {
         });
         return;
       }
-      save(config.binNumber, values.rules as BinRuleGroup, values.isCatchAll);
+      save(
+        config.binNumber,
+        values.rules as BinRuleGroup,
+        values.isCatchAll,
+        values.isReviewBin,
+      );
     },
     [config, save, isOnlyCatchAll, form, t],
   );
@@ -72,16 +80,23 @@ export function BinConfigPanel() {
     }
     form.reset({
       isCatchAll: false,
+      isReviewBin: false,
       rules: emptyRuleGroup(),
     });
     clear(config.binNumber);
   }, [config, clear, form, isOnlyCatchAll, t]);
 
   const isCatchAll = form.watch("isCatchAll");
+  // Which bin holds review while this panel is open, ignoring this bin — the
+  // hint is about where review cards are going *instead* of here.
+  const otherReviewBin =
+    reviewBinNumber != null && reviewBinNumber !== config.binNumber
+      ? reviewBinNumber
+      : undefined;
 
   return (
     <div className="flex flex-col">
-      <div className="flex items-center gap-4 mb-4">
+      <div className="flex items-center flex-wrap gap-x-4 gap-y-2 mb-4">
         <h2 className="font-semibold font-heading">
           {t("binConfigPanel.binHeading", { number: config.binNumber })}
         </h2>
@@ -94,7 +109,15 @@ export function BinConfigPanel() {
                 type="button"
                 variant={field.value ? "default" : "outline"}
                 size="sm"
-                onClick={() => field.onChange(!field.value)}
+                onClick={() => {
+                  const next = !field.value;
+                  field.onChange(next);
+                  // The catch-all already receives review-tier scans when no
+                  // bin is dedicated to them, so holding both roles is a
+                  // contradiction with no meaning — drop the review role
+                  // rather than save a flag the panel then hides.
+                  if (next) form.setValue("isReviewBin", false);
+                }}
               >
                 {field.value
                   ? t("binConfigPanel.catchAllEnabled")
@@ -108,6 +131,35 @@ export function BinConfigPanel() {
             </div>
           )}
         />
+        {!isCatchAll && (
+          <Controller
+            name="isReviewBin"
+            control={form.control}
+            render={({ field }) => (
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant={field.value ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => field.onChange(!field.value)}
+                >
+                  {field.value
+                    ? t("binConfigPanel.reviewBinEnabled")
+                    : t("binConfigPanel.setReviewBin")}
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  {field.value
+                    ? t("binConfigPanel.reviewBinDescription")
+                    : otherReviewBin != null
+                      ? t("binConfigPanel.reviewBinElsewhere", {
+                          number: otherReviewBin,
+                        })
+                      : t("binConfigPanel.reviewBinHint")}
+                </p>
+              </div>
+            )}
+          />
+        )}
       </div>
       {!isCatchAll && (
         <ScrollArea>

@@ -42,6 +42,11 @@ export interface ScannedCardsContextValue {
     outcome?: ScanOutcome,
   ) => void;
   sendCatchAllBin: () => void;
+  /**
+   * Routes a card the app is not recording to the review bin — an unreadable
+   * scan. Falls back to the catch-all when no bin is dedicated to review.
+   */
+  sendReviewBin: () => void;
   registerCardArrivedHook: (fn: () => void) => () => void;
   registerPauseHook: (fn: () => void) => () => void;
   removeCard: (scanId: string) => void;

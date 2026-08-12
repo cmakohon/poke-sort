@@ -72,6 +72,7 @@ function BinSnapshotSummary({ snapshot }: { snapshot: BinConfig[] }) {
                 : count === 0
                   ? t("presetSelector.noRules")
                   : t("presetSelector.conditionCount", { count })}
+              {bin.isReviewBin && ` · ${t("presetSelector.reviewBin")}`}
             </span>
           </div>
         );

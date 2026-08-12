@@ -56,6 +56,7 @@ export const binRuleGroupSchema: z.ZodType<{
 
 export const binConfigSchema = z.object({
   isCatchAll: z.boolean(),
+  isReviewBin: z.boolean(),
   rules: binRuleGroupSchema,
 });
 

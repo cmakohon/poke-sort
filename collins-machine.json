@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "exportedAt": "2026-08-12T13:29:00.000Z",
+  "note": "Collin's machine. Hand-recalibrated on the physical sorter 2026-08-12 and read back live from the running app (data dir packages/server/.poke-sort-catalog). These are the known-good values: import this file, do not edit it from memory. Servo numbers are PCA9685 pulse counts (120-490), not degrees.",
+  "modules": [
+    {
+      "moduleNumber": 1,
+      "bottomClosed": 420,
+      "bottomOpen": 150,
+      "paddleClosed": 490,
+      "paddleOpen": 150,
+      "pusherLeft": 155,
+      "pusherNeutral": 235,
+      "pusherRight": 315
+    },
+    {
+      "moduleNumber": 2,
+      "bottomClosed": 400,
+      "bottomOpen": 150,
+      "paddleClosed": 420,
+      "paddleOpen": 150,
+      "pusherLeft": 230,
+      "pusherNeutral": 310,
+      "pusherRight": 400
+    },
+    {
+      "moduleNumber": 3,
+      "bottomClosed": 400,
+      "bottomOpen": 150,
+      "paddleClosed": 470,
+      "paddleOpen": 130,
+      "pusherLeft": 230,
+      "pusherNeutral": 310,
+      "pusherRight": 400
+    }
+  ],
+  "feeder": {
+    "speed": 250,
+    "duration": 3000,
+    "pulseDuration": 80,
+    "pauseDuration": 0,
+    "settleDuration": 500
+  },
+  "scanRegion": {
+    "coverage": 0.89,
+    "offsetX": -0.01,
+    "offsetY": 0.01
+  },
+  "captureSettleDelayMs": 500
+}

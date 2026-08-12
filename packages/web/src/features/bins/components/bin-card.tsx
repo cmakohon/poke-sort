@@ -32,15 +32,22 @@ export function BinCard({ config, active, onClick }: BinCardProps) {
         <p className="font-medium text-sm font-heading">
           {t("binCard.binLabel", { number: config.binNumber })}
         </p>
-        {config.isCatchAll ? (
-          <Badge variant="default">{t("binCard.catchAll")}</Badge>
-        ) : (
-          !isEmpty && (
-            <Badge variant="secondary">
-              {t("binCard.ruleCount", { count: conditionCount })}
-            </Badge>
-          )
-        )}
+        <div className="flex items-center gap-1">
+          {/* Both badges can show: a review bin may still carry rules, and the
+              two answer different questions about where a card ends up. */}
+          {config.isReviewBin && (
+            <Badge variant="outline">{t("binCard.reviewBin")}</Badge>
+          )}
+          {config.isCatchAll ? (
+            <Badge variant="default">{t("binCard.catchAll")}</Badge>
+          ) : (
+            !isEmpty && (
+              <Badge variant="secondary">
+                {t("binCard.ruleCount", { count: conditionCount })}
+              </Badge>
+            )
+          )}
+        </div>
       </div>
       <div className="w-full text-xs">
         {config.isCatchAll ? (
@@ -48,7 +55,13 @@ export function BinCard({ config, active, onClick }: BinCardProps) {
             {t("binCard.allUnmatched")}
           </p>
         ) : isEmpty ? (
-          <p className="text-xs">{t("binCard.clickToConfigure")}</p>
+          config.isReviewBin ? (
+            <p className="text-xs text-muted-foreground">
+              {t("binCard.reviewOnly")}
+            </p>
+          ) : (
+            <p className="text-xs">{t("binCard.clickToConfigure")}</p>
+          )
         ) : (
           <RuleSummary rules={config.rules} />
         )}

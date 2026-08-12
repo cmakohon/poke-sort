@@ -65,6 +65,10 @@
     "routingFailedCatchAll": {
       "title": "Routing failed",
       "description": "No response from sorter for catch-all bin {{binNumber}}."
+    },
+    "routingFailedReview": {
+      "title": "Routing failed",
+      "description": "No response from sorter for review bin {{binNumber}}."
     }
   },
   "cardScanner": {
