@@ -294,8 +294,9 @@ export function CardDetailPanel({
                               )}
                               title={`${c.setName || c.set} (${c.set.toUpperCase()})`}
                             >
-                              {c.setName || c.set.toUpperCase()} ·{" "}
-                              {formatCardNumber(c)}
+                              {[c.setName || c.set.toUpperCase(), formatCardNumber(c)]
+                                .filter(Boolean)
+                                .join(" · ")}
                             </p>
                           </div>
                         </button>
@@ -354,7 +355,9 @@ export function CardDetailPanel({
                       <span className="capitalize">{selectedCard.rarity}</span>
                       <span>·</span>
                       <span>
-                        {selectedCard.setName} · {formatCardNumber(selectedCard)}
+                        {[selectedCard.setName, formatCardNumber(selectedCard)]
+                          .filter(Boolean)
+                          .join(" · ")}
                       </span>
                     </div>
                     {binNumber != null && (
@@ -515,8 +518,12 @@ export function CardDetailPanel({
                           <div className="w-10 h-14 bg-muted rounded shrink-0" />
                         )}
                         <div className="absolute bottom-0 inset-x-0 bg-black/70 text-white text-[10px] leading-tight px-1 py-0.5 text-center truncate">
-                          {card.setName || card.set.toUpperCase()} ·{" "}
-                          {formatCardNumber(card)}
+                          {[
+                            card.setName || card.set.toUpperCase(),
+                            formatCardNumber(card),
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
                         </div>
                       </Button>
                     ))}

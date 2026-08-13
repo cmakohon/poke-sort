@@ -571,12 +571,14 @@ export function ScannedCardsProvider({
     }
   }, []);
 
-  const clearCards = useCallback(() => {
+  const clearCards = useCallback((opts?: { skipServer?: boolean }) => {
     const collection = activeCollectionRef.current;
     setCards([]);
     setTimerTrigger(undefined);
     setTimerResetSignal((s) => s + 1);
-    if (collection) {
+    // skipServer: the caller already cleared the server (e.g. via
+    // emptyCollection) — don't issue a second DELETE.
+    if (collection && !opts?.skipServer) {
       clearCollectionCards(collection.guid).catch((err) =>
         console.error("Failed to clear cards:", err),
       );

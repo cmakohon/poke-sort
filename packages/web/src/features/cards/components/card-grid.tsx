@@ -137,12 +137,16 @@ export function CardGrid() {
   }, [removeCards, selectedIds]);
 
   // Empties the active collection's cards; the collection itself survives.
-  // clearCards() resets the local list and clears the server-side cards;
-  // emptyCollection() keeps the collections list cache (card counts) in step.
+  // The server delete goes through emptyCollection alone (awaited, so a
+  // failure surfaces before anything disappears locally); clearCards then
+  // only resets local state — passing skipServer avoids a second concurrent
+  // DELETE against the same endpoint.
   const handleClearSession = useCallback(async () => {
-    clearCards();
     if (activeCollection) {
       await emptyCollection(activeCollection.guid);
+      clearCards({ skipServer: true });
+    } else {
+      clearCards();
     }
   }, [activeCollection, emptyCollection, clearCards]);
 
@@ -370,6 +374,7 @@ export function CardGrid() {
               hasAlternatives={!!card.alternativeMatches?.length}
               isFoil={card.isFoil}
               isDownloaded={card.isDownloaded}
+              wasCorrected={card.wasCorrected}
             />
           ))}
         </div>

@@ -60,8 +60,12 @@ function formatCondition(
   if (Array.isArray(condition.value)) {
     valueStr = condition.value.map(resolve).join(", ");
   } else if (condition.field === "price_usd") {
-    const n = Number(condition.value);
-    valueStr = Number.isFinite(n) ? `$${n.toFixed(2)}` : String(condition.value);
+    // An unset value must not read as a real threshold — Number("") is 0,
+    // which would render an unfinished rule as "$0.00".
+    const raw = String(condition.value).trim();
+    const n = Number(raw);
+    valueStr =
+      raw !== "" && Number.isFinite(n) ? `$${n.toFixed(2)}` : "—";
   } else {
     valueStr = resolve(condition.value);
   }

@@ -108,17 +108,26 @@ export function useCardFilterSort(
     }
 
     if (filters.minMatchPercent > 0) {
+      // Rows without a distance (human-confirmed or legacy) always pass:
+      // they carry no score to compare, and a hand-picked card is the
+      // highest-confidence match there is.
       result = result.filter(
-        (entry) => (1 - entry.card.distance) * 100 >= filters.minMatchPercent,
+        (entry) =>
+          entry.wasCorrected ||
+          entry.card.distance == null ||
+          (1 - entry.card.distance) * 100 >= filters.minMatchPercent,
       );
     }
 
     const query = searchQuery.toLowerCase().trim();
     if (query) {
-      // Collectors write card numbers as "#25" or "025/191"; match on the
-      // number alone, ignoring the "#", the "/total" part, and leading zeros.
+      // Collectors write card numbers as "#25" or "025/191". A "#" prefix
+      // means exact number; a bare query also substring-matches. The "/total"
+      // part and leading zeros are ignored on both sides, so "025/191",
+      // "25/191", and "#025" all find collector number "25".
+      const hasHash = query.startsWith("#");
       const numberQuery = query.replace(/^#/, "");
-      const slashMatch = numberQuery.match(/^(\d+)\s*\/\s*\d+$/);
+      const slashMatch = numberQuery.match(/^([^/\s]+)\s*\/\s*\S+$/);
       const collectorQuery = (slashMatch ? slashMatch[1] : numberQuery).replace(
         /^0+(?=\d)/,
         "",
@@ -128,15 +137,20 @@ export function useCardFilterSort(
         const collector = c.collectorNumber
           .toLowerCase()
           .replace(/^0+(?=\d)/, "");
+        const collectorHit =
+          collectorQuery !== "" &&
+          (hasHash
+            ? collector === collectorQuery
+            : collector === collectorQuery ||
+              c.collectorNumber.toLowerCase().includes(numberQuery));
         return (
+          collectorHit ||
           c.name.toLowerCase().includes(query) ||
           c.setName.toLowerCase().includes(query) ||
           c.set.toLowerCase().includes(query) ||
           c.typeLine.toLowerCase().includes(query) ||
           (c.rarity?.toLowerCase().includes(query) ?? false) ||
           (c.artist?.toLowerCase().includes(query) ?? false) ||
-          c.collectorNumber.toLowerCase().includes(numberQuery) ||
-          collector === collectorQuery ||
           (c.text?.toLowerCase().includes(query) ?? false)
         );
       });

@@ -70,7 +70,7 @@
     "revectorizeSuccess": "Re-learned {{name}}",
     "revectorizeError": "Couldn't re-learn {{name}}",
     "syncCardSuccess": "Added {{id}} to the card database",
-    "syncCardError": "Couldn't find card \"{{id}}\" — check the ID and try again",
+    "syncCardError": "Couldn't add card \"{{id}}\"",
     "dumpSuccess": "Recognition data deleted",
     "dumpError": "Couldn't delete the recognition data"
   }

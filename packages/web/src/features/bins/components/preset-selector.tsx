@@ -255,16 +255,27 @@ export function PresetSelector({ readOnly }: PresetSelectorProps) {
           </>
         ) : (
           <>
+            {/* When the only blocker is "last remaining sort", the button
+                stays technically enabled (aria-disabled + no-op click) so it
+                keeps receiving hover — a natively disabled button gets
+                pointer-events:none and its explanatory tooltip could never
+                open. */}
             <Tooltip>
               <TooltipTrigger
                 render={
                   <Button
                     variant="outline"
                     size="icon"
-                    disabled={
-                      !selectedSet || isPresetMutating || sets.length <= 1
+                    disabled={!selectedSet || isPresetMutating}
+                    aria-disabled={sets.length <= 1 || undefined}
+                    className={
+                      sets.length <= 1
+                        ? "opacity-50 cursor-not-allowed"
+                        : undefined
                     }
-                    onClick={() => setDeleteDialogOpen(true)}
+                    onClick={() => {
+                      if (sets.length > 1) setDeleteDialogOpen(true);
+                    }}
                   >
                     <IconTrash />
                   </Button>

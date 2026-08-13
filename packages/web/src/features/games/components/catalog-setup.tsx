@@ -7,7 +7,7 @@ import {
   startCatalogImport,
 } from "@/lib/api/admin";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 /**
@@ -29,7 +29,7 @@ export function CatalogSetup({
   /** Display name for the game; falls back to the raw key. */
   gameLabel?: string;
 }) {
-  const { t } = useTranslation("admin");
+  const { t, i18n } = useTranslation("admin");
   const queryClient = useQueryClient();
   const [url, setUrl] = useState("");
 
@@ -60,12 +60,30 @@ export function CatalogSetup({
   const count = statusQuery.data?.count ?? 0;
 
   const game = gameLabel ?? gameKey;
-  const language = LANGUAGE_LABELS[lang] ?? lang;
+  // Language names come from Intl in the UI's own language ("Englisch" in a
+  // German UI), with the hand map and the raw code as fallbacks.
+  const language = (() => {
+    try {
+      return (
+        new Intl.DisplayNames([i18n.language], { type: "language" }).of(lang) ??
+        LANGUAGE_LABELS[lang] ??
+        lang
+      );
+    } catch {
+      return LANGUAGE_LABELS[lang] ?? lang;
+    }
+  })();
 
-  // Refresh the count once an import finishes.
-  if (job?.phase === "completed" && count === 0 && !statusQuery.isFetching) {
-    void queryClient.invalidateQueries({ queryKey: ["catalog-status"] });
-  }
+  // Refresh the count when an import finishes. An effect keyed on the phase
+  // transition, not the render body: invalidating during render whenever
+  // "completed && count === 0" held true looped forever on a zero-row import
+  // (invalidate → refetch → still 0 → invalidate …).
+  const jobPhase = job?.phase;
+  useEffect(() => {
+    if (jobPhase === "completed") {
+      void queryClient.invalidateQueries({ queryKey: ["catalog-status"] });
+    }
+  }, [jobPhase, queryClient]);
 
   const progress = (() => {
     if (job?.phase === "downloading" && job.totalBytes) {

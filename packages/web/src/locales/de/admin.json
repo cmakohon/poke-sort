@@ -70,7 +70,7 @@
     "revectorizeSuccess": "{{name}} neu gelernt",
     "revectorizeError": "{{name}} konnte nicht neu gelernt werden",
     "syncCardSuccess": "{{id}} zur Kartendatenbank hinzugefügt",
-    "syncCardError": "Karte \"{{id}}\" nicht gefunden — prüfe die ID und versuche es erneut",
+    "syncCardError": "Karte \"{{id}}\" konnte nicht hinzugefügt werden",
     "dumpSuccess": "Erkennungsdaten gelöscht",
     "dumpError": "Erkennungsdaten konnten nicht gelöscht werden"
   }

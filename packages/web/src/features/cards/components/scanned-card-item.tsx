@@ -29,6 +29,7 @@ export const ScannedCardItem = memo(function ScannedCardItem({
   hasAlternatives = false,
   isFoil = false,
   isDownloaded = false,
+  wasCorrected = false,
 }: ScannedCardItemProps) {
   const { t } = useTranslation("cards");
   return (
@@ -60,10 +61,27 @@ export const ScannedCardItem = memo(function ScannedCardItem({
             </div>
           )}
           <div className="absolute bottom-1 left-1 right-1 flex gap-1 items-center justify-between z-20">
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  card.distance != null ? (
+            {/* wasCorrected is the signal that a human picked this card —
+                corrected rows store distance: 0, so distance alone can't
+                distinguish "user confirmed" from "perfect scan match". */}
+            {wasCorrected ? (
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Badge variant="default">
+                      <IconCheck className="size-3" />
+                      {t("scannedCardItem.confirmed")}
+                    </Badge>
+                  }
+                />
+                <TooltipContent>
+                  {t("scannedCardItem.confirmedTooltip")}
+                </TooltipContent>
+              </Tooltip>
+            ) : card.distance != null ? (
+              <Tooltip>
+                <TooltipTrigger
+                  render={
                     <Badge
                       variant={
                         card.distance < 0.15 ? "default" : "destructive"
@@ -71,20 +89,15 @@ export const ScannedCardItem = memo(function ScannedCardItem({
                     >
                       {Math.round(100 - card.distance * 100)}%
                     </Badge>
-                  ) : (
-                    <Badge variant="default">
-                      <IconCheck className="size-3" />
-                      {t("scannedCardItem.confirmed")}
-                    </Badge>
-                  )
-                }
-              />
-              <TooltipContent>
-                {card.distance != null
-                  ? t("scannedCardItem.matchTooltip")
-                  : t("scannedCardItem.confirmedTooltip")}
-              </TooltipContent>
-            </Tooltip>
+                  }
+                />
+                <TooltipContent>
+                  {t("scannedCardItem.matchTooltip")}
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <span />
+            )}
             <Tooltip>
               <TooltipTrigger
                 render={

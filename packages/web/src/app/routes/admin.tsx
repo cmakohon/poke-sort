@@ -28,7 +28,7 @@ import {
   IconChevronRight,
   IconRefresh,
 } from "@tabler/icons-react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -42,6 +42,7 @@ import {
 export default function AdminPage() {
   const { t } = useTranslation("admin");
   const { activeOrg } = useOrg();
+  const queryClient = useQueryClient();
   const [syncState, setSyncState] = useState<SyncState>(DEFAULT_SYNC_STATE);
   const [now, setNow] = useState(() => Date.now());
   const [dumpOpen, setDumpOpen] = useState(false);
@@ -183,17 +184,24 @@ export default function AdminPage() {
       startSync(gameKey, lang),
   });
   const cancelSyncMutation = useMutation({ mutationFn: cancelSync });
+  // The mutation takes the id as its variable so the completion toasts name
+  // the card that was actually submitted, not whatever is in the input by
+  // the time the request finishes.
   const syncCardMutation = useMutation({
-    mutationFn: () =>
-      syncCardById(syncCardGameKey!, syncCardIdInput.trim(), syncCardLang),
-    onSuccess: () => {
-      toast.success(t("toasts.syncCardSuccess", { id: syncCardIdInput.trim() }));
+    mutationFn: (id: string) =>
+      syncCardById(syncCardGameKey!, id, syncCardLang),
+    onSuccess: (_result, id) => {
+      toast.success(t("toasts.syncCardSuccess", { id }));
       setSyncCardIdInput("");
       cardsQuery.refetch();
       cardGamesQuery.refetch();
     },
-    onError: () => {
-      toast.error(t("toasts.syncCardError", { id: syncCardIdInput.trim() }));
+    onError: (err, id) => {
+      // Keep the server's message: "not found", "source down", and "sync
+      // running" need different reactions from the operator.
+      toast.error(t("toasts.syncCardError", { id }), {
+        description: err instanceof Error ? err.message : undefined,
+      });
     },
   });
   const dumpMutation = useMutation({
@@ -203,9 +211,16 @@ export default function AdminPage() {
       toast.success(t("toasts.dumpSuccess"));
       cardsQuery.refetch();
       cardGamesQuery.refetch();
+      // The dump deletes from the same table catalog status counts and the
+      // rule-builder facets are derived from — drop those caches too, or the
+      // page keeps claiming the cards are still there.
+      void queryClient.invalidateQueries({ queryKey: ["catalog-status"] });
+      void queryClient.invalidateQueries({ queryKey: ["game-facets"] });
     },
-    onError: () => {
-      toast.error(t("toasts.dumpError"));
+    onError: (err) => {
+      toast.error(t("toasts.dumpError"), {
+        description: err instanceof Error ? err.message : undefined,
+      });
     },
   });
 
@@ -226,7 +241,7 @@ export default function AdminPage() {
   );
 
   return (
-    <div className="flex flex-col p-6 max-w-4xl mx-auto w-full h-full overflow-hidden">
+    <div className="flex flex-col p-6 max-w-4xl mx-auto w-full h-full overflow-y-auto">
       <div className="rounded-lg rounded-b-none border p-4 flex flex-col gap-4">
         <div className="flex items-center justify-between gap-3">
           <div className="flex flex-col gap-0.5 min-w-0">
@@ -551,6 +566,7 @@ export default function AdminPage() {
             placeholder={t("syncCardById.cardIdPlaceholder")}
             value={syncCardIdInput}
             onChange={(e) => setSyncCardIdInput(e.target.value)}
+            disabled={syncCardMutation.isPending}
           />
           <Button
             disabled={
@@ -558,7 +574,7 @@ export default function AdminPage() {
               !syncCardIdInput.trim() ||
               syncCardMutation.isPending
             }
-            onClick={() => syncCardMutation.mutate()}
+            onClick={() => syncCardMutation.mutate(syncCardIdInput.trim())}
           >
             {syncCardMutation.isPending
               ? t("syncCardById.syncingButton")
