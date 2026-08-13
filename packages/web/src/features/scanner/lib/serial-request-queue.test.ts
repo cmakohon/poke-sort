@@ -3,17 +3,25 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createSerialRequestQueue,
   isUnsolicitedLine,
+  type SerialQueueEvent,
 } from "./serial-request-queue";
 
 const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
-function makeHarness(writeResult: (data: string) => boolean = () => true) {
+function makeHarness(
+  writeResult: (data: string) => boolean = () => true,
+  onEvent?: (event: SerialQueueEvent) => void,
+) {
   const writes: string[] = [];
-  const queue = createSerialRequestQueue(async (data) => {
-    writes.push(data);
-    return writeResult(data);
-  });
-  return { writes, queue };
+  const events: SerialQueueEvent[] = [];
+  const queue = createSerialRequestQueue(
+    async (data) => {
+      writes.push(data);
+      return writeResult(data);
+    },
+    { onEvent: onEvent ?? ((event) => events.push(event)) },
+  );
+  return { writes, events, queue };
 }
 
 describe("isUnsolicitedLine", () => {
@@ -174,5 +182,160 @@ describe("createSerialRequestQueue", () => {
     queue.reset();
     expect(await p1).toEqual({ sent: true, response: null });
     expect(await p2).toEqual({ sent: false, response: null });
+  });
+});
+
+describe("createSerialRequestQueue events", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("emits an ok exchange with its reply and a latency", async () => {
+    const { events, queue } = makeHarness();
+    const p = queue.request("a", 1000);
+    await flush();
+    queue.handleLine("reply-a");
+    await p;
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      type: "exchange",
+      data: "a",
+      response: "reply-a",
+      outcome: "ok",
+      coalesced: 0,
+    });
+    expect(
+      (events[0] as { latencyMs: number }).latencyMs,
+    ).toBeGreaterThanOrEqual(0);
+  });
+
+  it("emits a timeout exchange — the previously invisible failure", async () => {
+    vi.useFakeTimers();
+    const { events, queue } = makeHarness();
+    const p = queue.request("a", 500);
+    await vi.advanceTimersByTimeAsync(500);
+    await p;
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      type: "exchange",
+      outcome: "timeout",
+      response: null,
+    });
+  });
+
+  it("emits a write_failed exchange", async () => {
+    const { events, queue } = makeHarness(() => false);
+    await queue.request("a", 1000);
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      type: "exchange",
+      outcome: "write_failed",
+    });
+  });
+
+  it("labels the in-flight exchange 'reset', not 'timeout', on reset", async () => {
+    const { events, queue } = makeHarness();
+    const p1 = queue.request("a", 60000);
+    await flush();
+    const p2 = queue.request("b", 60000);
+    queue.reset();
+    await p1;
+    await p2;
+    await flush();
+    expect(events).toEqual([
+      { type: "reset", flushedJobs: 1, hadInflight: true },
+      expect.objectContaining({
+        type: "exchange",
+        data: "a",
+        outcome: "reset",
+      }),
+    ]);
+  });
+
+  it("reset with nothing in flight emits only the reset event", async () => {
+    const { events, queue } = makeHarness();
+    queue.reset();
+    expect(events).toEqual([
+      { type: "reset", flushedJobs: 0, hadInflight: false },
+    ]);
+  });
+
+  it("a timeout after a reset is still a timeout", async () => {
+    vi.useFakeTimers();
+    const { events, queue } = makeHarness();
+    queue.reset();
+    const p = queue.request("a", 500);
+    await vi.advanceTimersByTimeAsync(500);
+    await p;
+    expect(events[1]).toMatchObject({ type: "exchange", outcome: "timeout" });
+  });
+
+  it("a reset racing a failing write does not poison the next timeout", async () => {
+    // Unplug scenario: the writer is torn down before reset() runs, so the
+    // in-flight write settles false AFTER reset armed the flag. The flag must
+    // be consumed there, not survive to mislabel the next real timeout.
+    vi.useFakeTimers();
+    const events: SerialQueueEvent[] = [];
+    const writes: Array<(v: boolean) => void> = [];
+    const queue = createSerialRequestQueue(
+      () => new Promise<boolean>((resolve) => writes.push(resolve)),
+      { onEvent: (event) => events.push(event) },
+    );
+
+    const p1 = queue.request("a", 60000);
+    await vi.advanceTimersByTimeAsync(0);
+    queue.reset();
+    writes[0](false);
+    expect(await p1).toEqual({ sent: false, response: null });
+
+    const p2 = queue.request("b", 500);
+    await vi.advanceTimersByTimeAsync(0);
+    writes[1](true);
+    await vi.advanceTimersByTimeAsync(500);
+    await p2;
+
+    expect(events[1]).toMatchObject({
+      type: "exchange",
+      data: "a",
+      outcome: "write_failed",
+    });
+    expect(events[2]).toMatchObject({
+      type: "exchange",
+      data: "b",
+      outcome: "timeout",
+    });
+  });
+
+  it("reports how many payloads coalesced into the exchange that ran", async () => {
+    const { events, queue } = makeHarness();
+    const inFlight = queue.request("move-0", 1000);
+    await flush();
+    const a = queue.requestLatest("servo", "move-1", 1000);
+    const b = queue.requestLatest("servo", "move-2", 1000);
+    queue.handleLine("ok-0");
+    await inFlight;
+    await flush();
+    queue.handleLine("ok-1");
+    await a;
+    await b;
+    expect(events[1]).toMatchObject({
+      type: "exchange",
+      data: "move-2",
+      outcome: "ok",
+      coalesced: 1,
+    });
+  });
+
+  it("a throwing observer does not affect the exchange", async () => {
+    const { queue } = makeHarness(
+      () => true,
+      () => {
+        throw new Error("observer bug");
+      },
+    );
+    const p = queue.request("a", 1000);
+    await flush();
+    queue.handleLine("reply-a");
+    expect(await p).toEqual({ sent: true, response: "reply-a" });
   });
 });

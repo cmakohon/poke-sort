@@ -1,13 +1,14 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { HOST, PORT, SHUTDOWN_TIMEOUT_MS, STATIC_DIR } from "./config";
+import { DATA_DIR, HOST, PORT, SHUTDOWN_TIMEOUT_MS, STATIC_DIR } from "./config";
 import { client } from "./db";
 import { migrateDatabase } from "./db/migrate";
 import { seedDatabase } from "./db/seed";
+import { pruneObservability } from "./lib/retention";
 import type { AppEnv } from "./middleware/auth";
 import { adminRouter } from "./routes/admin";
 import { sortBinsRouter } from "./routes/bins";
@@ -15,8 +16,10 @@ import { calibrationRouter } from "./routes/calibration";
 import { cardRouter } from "./routes/card";
 import { capturesRouter } from "./routes/captures";
 import { collectionsRouter } from "./routes/collections";
+import { debugRouter } from "./routes/debug";
 import { feederRouter } from "./routes/feeder";
 import { gamesRouter } from "./routes/games";
+import { machineEventsRouter } from "./routes/machine-events";
 import { moduleConfigsRouter } from "./routes/module-configs";
 import { notificationsRouter } from "./routes/notifications";
 import { orgSettingsRouter } from "./routes/org-settings";
@@ -30,6 +33,8 @@ const parentPort = (
     parentPort?: { postMessage(message: unknown): void };
   }
 ).parentPort;
+
+const PORT_FILE = path.join(DATA_DIR, "server.port");
 
 const app = new Hono<AppEnv>();
 
@@ -60,6 +65,8 @@ app.route("/api/games", gamesRouter);
 app.route("/api/notifications", notificationsRouter);
 app.route("/api/org-settings", orgSettingsRouter);
 app.route("/api/admin", adminRouter);
+app.route("/api/machine-events", machineEventsRouter);
+app.route("/api/debug", debugRouter);
 
 // An unmatched /api path must 404 as JSON. Without this the SPA fallback below
 // answers it with index.html and a 200, so a client calling a route that does
@@ -110,6 +117,17 @@ migrateDatabase()
       console.log(`[server] Running on http://${HOST}:${info.port}`);
       // The desktop shell asks for port 0 and learns the real one here.
       parentPort?.postMessage({ type: "listening", port: info.port });
+      // Housekeeping, not a prerequisite: a big prune (bulk deletes + capture
+      // unlinks) must not stand between the shell and a listening server.
+      void pruneObservability();
+      // The port is dynamic in the packaged app; the file lets anything
+      // outside the Electron process (a diagnosing assistant, curl) find the
+      // API without asking the user to read it out of a log.
+      try {
+        writeFileSync(PORT_FILE, String(info.port));
+      } catch (err) {
+        console.warn("[server] Could not write server.port:", err);
+      }
     });
     installShutdownHandlers(server);
   })
@@ -150,6 +168,9 @@ function installShutdownHandlers(server: { close(cb?: (err?: Error) => void): vo
     forceExit.unref();
 
     try {
+      // Best-effort: a stale port file only ever points a reader at a
+      // connection-refused, which is self-explaining.
+      rmSync(PORT_FILE, { force: true });
       await new Promise<void>((resolve) => server.close(() => resolve()));
       await client.close();
       console.log("[server] Database closed cleanly.");

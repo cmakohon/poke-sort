@@ -72,6 +72,9 @@ export async function updateCollectionCard(
   return apiPut<Result<ScannedCard>>(`/api/collections/${guid}/cards/${scanId}`, {
     card,
     binNumber,
+    // A human picking the card is the highest-confidence identification there
+    // is — release it from the review queue.
+    needsReview: false,
     ...provenance,
   });
 }

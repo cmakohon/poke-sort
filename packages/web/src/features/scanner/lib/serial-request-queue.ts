@@ -45,6 +45,31 @@ interface Job {
   data: string;
   timeoutMs: number;
   resolvers: Array<(result: SerialRequestResult) => void>;
+  /** How many same-key payloads were replaced before this one ran. */
+  coalesced: number;
+}
+
+/**
+ * What the queue tells an observer. One `exchange` per job that actually ran
+ * (with the write that was on the wire, how it ended, and the round-trip
+ * time); one `reset` per reset() call, standing in for every queued job it
+ * flushed. Timeouts used to be completely silent — this is the single choke
+ * point where they become visible.
+ */
+export type SerialQueueEvent =
+  | {
+      type: "exchange";
+      data: string;
+      response: string | null;
+      outcome: "ok" | "timeout" | "write_failed" | "reset";
+      latencyMs: number;
+      coalesced: number;
+    }
+  | { type: "reset"; flushedJobs: number; hadInflight: boolean };
+
+export interface SerialRequestQueueOptions {
+  /** Observer for telemetry; a throw here must never affect an exchange. */
+  onEvent?: (event: SerialQueueEvent) => void;
 }
 
 export interface SerialRequestQueue {
@@ -70,13 +95,25 @@ export interface SerialRequestQueue {
 
 export function createSerialRequestQueue(
   write: (data: string) => Promise<boolean>,
+  options?: SerialRequestQueueOptions,
 ): SerialRequestQueue {
   const queue: Job[] = [];
   let replyWaiter: ((line: string | null) => void) | null = null;
   let pumping = false;
+  // Distinguishes "reset() killed the in-flight exchange" from a genuine
+  // timeout: both surface in pump() as a null reply line.
+  let resetInFlight = false;
 
   const settle = (job: Job, result: SerialRequestResult) => {
     for (const resolve of job.resolvers) resolve(result);
+  };
+
+  const emit = (event: SerialQueueEvent) => {
+    try {
+      options?.onEvent?.(event);
+    } catch {
+      // Telemetry must never take an exchange down with it.
+    }
   };
 
   const pump = async () => {
@@ -86,6 +123,7 @@ export function createSerialRequestQueue(
       let job: Job | undefined;
       while ((job = queue.shift())) {
         const current = job;
+        const t0 = Date.now();
         // Arm the waiter before writing so a reply that lands while the write
         // is still settling cannot slip past it.
         const reply = new Promise<string | null>((resolve) => {
@@ -102,11 +140,33 @@ export function createSerialRequestQueue(
         const sent = await write(current.data);
         if (!sent) {
           replyWaiter?.(null);
+          // A reset can race an in-flight write that then fails (unplug nulls
+          // the writer before reset runs); consume the flag here too or the
+          // next genuine timeout gets mislabelled "reset".
+          resetInFlight = false;
           settle(current, { sent: false, response: null });
+          emit({
+            type: "exchange",
+            data: current.data,
+            response: null,
+            outcome: "write_failed",
+            latencyMs: Date.now() - t0,
+            coalesced: current.coalesced,
+          });
           continue;
         }
         const line = await reply;
+        const wasReset = resetInFlight;
+        resetInFlight = false;
         settle(current, { sent: true, response: line });
+        emit({
+          type: "exchange",
+          data: current.data,
+          response: line,
+          outcome: line !== null ? "ok" : wasReset ? "reset" : "timeout",
+          latencyMs: Date.now() - t0,
+          coalesced: current.coalesced,
+        });
       }
     } finally {
       pumping = false;
@@ -115,7 +175,7 @@ export function createSerialRequestQueue(
 
   const enqueue = (key: string | null, data: string, timeoutMs: number) =>
     new Promise<SerialRequestResult>((resolve) => {
-      queue.push({ key, data, timeoutMs, resolvers: [resolve] });
+      queue.push({ key, data, timeoutMs, resolvers: [resolve], coalesced: 0 });
       void pump();
     });
 
@@ -129,6 +189,7 @@ export function createSerialRequestQueue(
       if (waiting) {
         waiting.data = data;
         waiting.timeoutMs = timeoutMs;
+        waiting.coalesced += 1;
         return new Promise<SerialRequestResult>((resolve) => {
           waiting.resolvers.push(resolve);
         });
@@ -143,7 +204,17 @@ export function createSerialRequestQueue(
     reset() {
       const flushed = queue.splice(0, queue.length);
       for (const job of flushed) settle(job, { sent: false, response: null });
-      replyWaiter?.(null);
+      // One reset event stands in for every flushed job; the in-flight
+      // exchange (if any) reports itself from pump() with outcome "reset".
+      emit({
+        type: "reset",
+        flushedJobs: flushed.length,
+        hadInflight: replyWaiter !== null,
+      });
+      if (replyWaiter) {
+        resetInFlight = true;
+        replyWaiter(null);
+      }
     },
   };
 }

@@ -1,7 +1,13 @@
 import { reportSerialEvent } from "@/features/notifications/api/notification-settings";
 import {
+  beaconMachineEvents,
+  postMachineEvents,
+} from "@/features/scanner/api/machine-events";
+import { createMachineEventLog } from "@/features/scanner/lib/machine-event-log";
+import {
   createSerialRequestQueue,
   isUnsolicitedLine,
+  type SerialQueueEvent,
 } from "@/features/scanner/lib/serial-request-queue";
 import type {
   SerialContextValue,
@@ -22,6 +28,15 @@ export type { SerialMessageListener } from "@/features/scanner/types";
 
 const SerialContext = createContext<SerialContextValue | null>(null);
 
+/** The command key of a sent line ("bin", "servo", "test"…), for telemetry. */
+function commandOf(data: string): string | undefined {
+  try {
+    return Object.keys(JSON.parse(data))[0];
+  } catch {
+    return undefined;
+  }
+}
+
 export function SerialProvider({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation("scanner");
   const [isConnected, setIsConnected] = useState(false);
@@ -41,6 +56,23 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
   const preTestHooksRef = useRef(new Set<() => Promise<void>>());
 
   const decoderRef = useRef(new TextDecoder());
+
+  // Durable telemetry: every exchange and lifecycle event goes to the
+  // machine_events table via this log, so a disconnect can be diagnosed after
+  // the fact instead of from whatever DevTools happened to still show.
+  const logRef = useRef<ReturnType<typeof createMachineEventLog> | null>(null);
+  if (logRef.current === null) {
+    logRef.current = createMachineEventLog(postMachineEvents);
+  }
+  const log = logRef.current;
+
+  // pagehide is the last chance to get the tail of the buffer out; fetch
+  // promises are not guaranteed to run once the page is going away.
+  useEffect(() => {
+    const handler = () => beaconMachineEvents(log.drain());
+    window.addEventListener("pagehide", handler);
+    return () => window.removeEventListener("pagehide", handler);
+  }, [log]);
 
   const writeRaw = useCallback((data: string): Promise<boolean> => {
     if (!portRef.current || !writableRef.current) return Promise.resolve(false);
@@ -72,7 +104,32 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
     null,
   );
   if (queueRef.current === null) {
-    queueRef.current = createSerialRequestQueue(writeRaw);
+    const onEvent = (event: SerialQueueEvent) => {
+      const eventLog = logRef.current;
+      if (!eventLog) return;
+      if (event.type === "reset") {
+        eventLog.record({
+          eventType: "queue_reset",
+          payload: {
+            flushedJobs: event.flushedJobs,
+            hadInflight: event.hadInflight,
+          },
+        });
+        return;
+      }
+      eventLog.record({
+        eventType: "exchange",
+        command: commandOf(event.data),
+        outcome: event.outcome,
+        latencyMs: event.latencyMs,
+        payload: {
+          sent: event.data.trim(),
+          response: event.response,
+          ...(event.coalesced > 0 ? { coalesced: event.coalesced } : {}),
+        },
+      });
+    };
+    queueRef.current = createSerialRequestQueue(writeRaw, { onEvent });
   }
   const queue = queueRef.current;
 
@@ -103,6 +160,10 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
                 }
               } catch {
                 console.warn("[Serial] Non-JSON message:", trimmed);
+                log.record({
+                  eventType: "rx_non_json",
+                  payload: { line: trimmed },
+                });
               }
 
               // Unsolicited traffic (jam alerts, the boot banner) goes to
@@ -110,6 +171,11 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
               // to shift every later exchange onto the wrong reply.
               if (!isUnsolicitedLine(trimmed)) {
                 queue.handleLine(trimmed);
+              } else {
+                log.record({
+                  eventType: "rx_unsolicited",
+                  payload: { line: trimmed },
+                });
               }
             }
           }
@@ -118,12 +184,13 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
         // Reader was cancelled (disconnect) - expected
         if (!(e instanceof DOMException && e.name === "NetworkError")) {
           console.error("[Serial] Read error:", e);
+          log.record({ eventType: "read_error", payload: { error: String(e) } });
         }
       } finally {
         onEnd?.();
       }
     },
-    [queue],
+    [queue, log],
   );
 
   const request = useCallback(
@@ -166,8 +233,10 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
       const ok = await sendTest();
       if (portRef.current !== port) return;
       if (ok) {
+        log.record({ eventType: "boot_test_pass" });
         toast.success(t("serial.deviceReady"));
       } else {
+        log.record({ eventType: "boot_test_fail" });
         toast.error(t("serial.deviceTestFailed.title"), {
           description: t("serial.deviceTestFailed.description"),
         });
@@ -178,12 +247,15 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
         });
       }
     },
-    [sendTest, t],
+    [sendTest, t, log],
   );
 
   const disconnect = useCallback(() => {
     const port = portRef.current;
     const reader = readerRef.current;
+
+    // Before the queue reset so the events read in causal order.
+    if (port) log.record({ eventType: "disconnect" });
 
     // Clear refs and state immediately
     portRef.current = null;
@@ -197,6 +269,12 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
     // Fail the in-flight request and everything queued behind it
     queue.reset();
     bufferRef.current = "";
+
+    // The queue_reset event was stamped synchronously above, but the killed
+    // in-flight exchange reports itself from pump() on a microtask that reset()
+    // already queued — clear the connection id only after that has run, so the
+    // events describing how this connection died still carry its id.
+    queueMicrotask(() => log.setConnectionId(null));
 
     // Async cleanup - stored so connect() can await it
     const cleanup = (async () => {
@@ -218,18 +296,18 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
     });
 
     return cleanup;
-  }, [queue]);
+  }, [queue, log]);
 
   // Resolves once the firmware's {"status":"ready"} banner arrives (the
-  // Arduino resets when the port opens), or after timeoutMs. The banner is
-  // unsolicited, so it only ever reaches subscribers — this cannot consume a
-  // command reply by accident.
-  const waitForReady = useCallback((timeoutMs: number): Promise<void> => {
-    return new Promise<void>((resolve) => {
-      const finish = () => {
+  // Arduino resets when the port opens), or after timeoutMs — true when the
+  // banner actually came. The banner is unsolicited, so it only ever reaches
+  // subscribers — this cannot consume a command reply by accident.
+  const waitForReady = useCallback((timeoutMs: number): Promise<boolean> => {
+    return new Promise<boolean>((resolve) => {
+      const finish = (arrived: boolean) => {
         clearTimeout(timer);
         listenersRef.current.delete(listener);
-        resolve();
+        resolve(arrived);
       };
       const listener: SerialMessageListener = (msg) => {
         if (
@@ -237,10 +315,10 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
           msg !== null &&
           (msg as Record<string, unknown>).status === "ready"
         ) {
-          finish();
+          finish(true);
         }
       };
-      const timer = setTimeout(finish, timeoutMs);
+      const timer = setTimeout(() => finish(false), timeoutMs);
       listenersRef.current.add(listener);
     });
   }, []);
@@ -250,7 +328,11 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
       if (!port.readable || !port.writable) {
         try {
           await port.open({ baudRate: 9600 });
-        } catch {
+        } catch (err) {
+          log.record({
+            eventType: "port_open_failed",
+            payload: { error: String(err) },
+          });
           toast.error(t("serial.connectionFailed.title"), {
             description: t("serial.connectionFailed.description"),
           });
@@ -270,25 +352,33 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
       readerRef.current = reader;
       decoderRef.current = new TextDecoder();
 
+      log.setConnectionId(crypto.randomUUID());
+      log.record({ eventType: "port_opened" });
+
       setIsConnected(true);
 
       startReading(reader, () => {
         if (portRef.current === port) {
           console.warn("[Serial] Stream ended unexpectedly, disconnecting");
+          log.record({ eventType: "stream_ended" });
           disconnect();
         }
       });
 
       (async () => {
         // Wait out the Arduino's boot before pushing config at it
-        await waitForReady(5000);
+        const arrived = await waitForReady(5000);
+        // Staleness guard before recording: on a fast unplug/reconnect this
+        // port's waiter can fire on the NEXT port's banner (or time out), and
+        // recording that would stamp a spurious ready onto the new connection.
         if (portRef.current !== port) return;
+        log.record({ eventType: "ready", payload: { timedOut: !arrived } });
         await runBootSequence(port);
       })();
 
       return true;
     },
-    [startReading, waitForReady, runBootSequence, disconnect, t],
+    [startReading, waitForReady, runBootSequence, disconnect, t, log],
   );
 
   const connect = useCallback(async () => {
@@ -307,12 +397,20 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
       // this used to swallow, leaving the Connect button doing nothing at all
       // with no explanation.
       if (err instanceof DOMException && err.name === "NotFoundError") {
+        log.record({
+          eventType: "connect_failed",
+          payload: { reason: "no_device_found" },
+        });
         toast.error(t("serial.noDeviceFound.title"), {
           description: t("serial.noDeviceFound.description"),
         });
         return;
       }
       console.error("[Serial] requestPort failed:", err);
+      log.record({
+        eventType: "connect_failed",
+        payload: { error: String(err) },
+      });
       toast.error(t("serial.connectionFailed.title"), {
         description: t("serial.connectionFailed.description"),
       });
@@ -320,7 +418,7 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
     }
 
     await openPort(port);
-  }, [openPort, t]);
+  }, [openPort, t, log]);
 
   // Detect physical USB unplug
   useEffect(() => {
@@ -328,6 +426,7 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
     const handleDisconnect = (event: Event) => {
       if (portRef.current && portRef.current === (event.target as SerialPort)) {
         console.warn("[Serial] Device unplugged");
+        log.record({ eventType: "unplug" });
         disconnect();
       }
     };
@@ -335,7 +434,7 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
     return () => {
       navigator.serial.removeEventListener("disconnect", handleDisconnect);
     };
-  }, [disconnect]);
+  }, [disconnect, log]);
 
   useEffect(() => {
     const listener: SerialMessageListener = (msg) => {
@@ -374,11 +473,10 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
       if (!port || !isReadyRef.current) return;
       isReadyRef.current = false;
       setIsReady(false);
+      const cause = (msg as Record<string, unknown>).cause ?? "unknown";
+      log.record({ eventType: "reboot_detected", payload: { cause } });
       queue.reset();
-      console.warn(
-        "[Serial] Device rebooted mid-session, cause:",
-        (msg as Record<string, unknown>).cause ?? "unknown",
-      );
+      console.warn("[Serial] Device rebooted mid-session, cause:", cause);
       toast.warning(t("serial.deviceRebooted.title"), {
         description: t("serial.deviceRebooted.description"),
       });
@@ -389,7 +487,7 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
     return () => {
       listeners.delete(listener);
     };
-  }, [queue, runBootSequence, t]);
+  }, [queue, runBootSequence, t, log]);
 
   const subscribe = useCallback((listener: SerialMessageListener) => {
     listenersRef.current.add(listener);

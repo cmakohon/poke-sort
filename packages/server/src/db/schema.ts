@@ -239,6 +239,10 @@ export const collectionCards = pgTable(
     originalDistance: doublePrecision("original_distance"),
     originalScore: doublePrecision("original_score"),
     wasCorrected: boolean("was_corrected").notNull().default(false),
+    // Points at scan_events.guid — the full identify diagnostics (per-signal
+    // scores, OCR reading, candidate list) behind this row. Set at insert so
+    // there is no window where the link is missing.
+    scanEventGuid: text("scan_event_guid"),
     orgId: text("org_id").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
@@ -285,6 +289,91 @@ export const orgSettings = pgTable(
   },
   (table) => [
     unique("org_settings_org_idx").on(table.orgId),
+  ],
+);
+
+// ─── Observability tables ─────────────────────────────────────────────────────
+//
+// Local telemetry, not product data. machine_events carries no org_id on
+// purpose: it describes the one physical machine attached to this install,
+// and scoping it would only complicate the queries it exists to answer.
+
+export const machineEvents = pgTable(
+  "machine_events",
+  {
+    id: serial().primaryKey(),
+    // One session per app launch, one connection per successful port open —
+    // "did it reconnect?" and "which boot was this?" are the first questions
+    // asked when diagnosing a disconnect.
+    sessionId: text("session_id").notNull(),
+    connectionId: text("connection_id"),
+    // Client-side monotonic counter; orders events that share a millisecond.
+    seq: integer("seq").notNull(),
+    // Client event time. The renderer and server run on the same machine, so
+    // this clock is trustworthy; created_at records server receipt instead.
+    //
+    // timestamptz, unlike the rest of the schema: these columns exist to be
+    // compared against now() in ad-hoc interval queries ("the 30 seconds
+    // before the last disconnect"), and a naive timestamp written from a JS
+    // Date holds UTC wall-clock while now() returns local — a silent
+    // several-hour skew that would make every such query quietly wrong.
+    ts: timestamp("ts", { withTimezone: true }).notNull(),
+    eventType: text("event_type").notNull(),
+    // For exchange events: the command key sent ("bin", "servo", "test"...),
+    // how it ended, and how long the round trip took.
+    command: text("command"),
+    outcome: text("outcome"),
+    latencyMs: integer("latency_ms"),
+    payload: jsonb("payload"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("machine_events_ts_idx").on(table.ts),
+    index("machine_events_type_ts_idx").on(table.eventType, table.ts),
+    index("machine_events_session_idx").on(table.sessionId),
+  ],
+);
+
+export const scanEvents = pgTable(
+  "scan_events",
+  {
+    id: serial().primaryKey(),
+    guid: uuid("guid").defaultRandom(),
+    orgId: text("org_id").notNull(),
+    // Which collection was active at identify time; null when none was.
+    collectionGuid: text("collection_guid"),
+    gameKey: text("game_key").notNull(),
+    lang: text("lang").notNull(),
+    // accept | review | no-match — the pipeline's verdict. no-match scans
+    // previously left no trace at all; they are often the most interesting.
+    tier: text("tier").notNull(),
+    score: real("score"),
+    margin: real("margin"),
+    // The OCR reading and the top candidates ({id, name, distance, score,
+    // signals} — not hydrated cards) that decideTier saw. This is the data
+    // threshold tuning needs and the client used to drop on the floor.
+    ocr: jsonb("ocr"),
+    candidates: jsonb("candidates"),
+    stamp: jsonb("stamp"),
+    // "se-<guid>.jpeg" under CAPTURES_DIR, saved for every tier.
+    capturePath: text("capture_path"),
+    durationMs: integer("duration_ms"),
+    flippedRetry: boolean("flipped_retry").notNull().default(false),
+    // Set when a human corrects the saved card: predicted-vs-actual, the
+    // cheapest labelled eval data available.
+    correctedCardId: text("corrected_card_id"),
+    // timestamptz for the same interval-query reason as machine_events.ts.
+    correctedAt: timestamp("corrected_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    unique("scan_events_guid_idx").on(table.guid),
+    index("scan_events_created_idx").on(table.createdAt),
+    index("scan_events_tier_idx").on(table.tier),
   ],
 );
 

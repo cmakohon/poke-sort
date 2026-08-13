@@ -3,13 +3,19 @@ import {
   resolveCardSearch,
   resolveGameKeyAndLang,
 } from "../lib/card-search/resolve";
+import { saveCaptureBuffer } from "../lib/captures";
 import { sendDiscordNotification } from "../lib/discord";
 import { identifyCard } from "../lib/identify";
-import { requireAuth, type AppEnv } from "../middleware/auth";
+import {
+  clearScanEventCapture,
+  recordScanEvent,
+  scanEventCaptureName,
+} from "../lib/scan-events";
+import { requireAuth, requireOrg, type AppEnv } from "../middleware/auth";
 
 const router = new Hono<AppEnv>();
 
-router.post("/", requireAuth, async (c) => {
+router.post("/", requireAuth, requireOrg, async (c) => {
   const body = await c.req.parseBody();
   const file = body["image"];
   const collectionGuid =
@@ -42,11 +48,41 @@ router.post("/", requireAuth, async (c) => {
   }
 
   try {
+    const t0 = Date.now();
     const result = await identifyCard(
       imageBuffer,
       resolved.gameKey,
       resolved.lang,
     );
+    const durationMs = Date.now() - t0;
+
+    // Diagnostics row + capture for every attempt, no-match included — a scan
+    // that produced nothing sortable is still evidence. The row insert is
+    // awaited (milliseconds, and the guid must be real before the client can
+    // echo it back); the image write is not on the scan's critical path. A
+    // diagnostics failure must never fail the scan itself.
+    const scanEventId = crypto.randomUUID();
+    const capturePath = scanEventCaptureName(scanEventId);
+    try {
+      await recordScanEvent({
+        guid: scanEventId,
+        orgId: c.get("orgId"),
+        collectionGuid,
+        gameKey: resolved.gameKey,
+        lang: resolved.lang,
+        result,
+        durationMs,
+        capturePath,
+      });
+      void saveCaptureBuffer(capturePath, imageBuffer).catch(async (err) => {
+        console.error("[scan-events] capture write failed:", err);
+        await clearScanEventCapture(scanEventId).catch(() => {});
+      });
+      result.scanEventId = scanEventId;
+    } catch (err) {
+      console.error("[scan-events] record failed:", err);
+    }
+
     return c.json({
       success: true,
       message: "Successfully searched for card.",

@@ -94,8 +94,15 @@ export function useCardFilterSort(
     }
 
     if (filters.needsAttention) {
-      result = result.filter(
-        (entry) => (entry.alternativeMatches?.length ?? 0) > 0,
+      // The pipeline's own verdict, not a proxy. Filtering on the presence of
+      // alternative matches surfaced confidently-sorted cards that merely had
+      // close neighbours, and missed review-tier cards that had none. Rows
+      // scanned before the verdict was persisted carry no flag at all, so
+      // they keep the old heuristic rather than vanishing from the view.
+      result = result.filter((entry) =>
+        entry.needsReview == null
+          ? (entry.alternativeMatches?.length ?? 0) > 0
+          : entry.needsReview,
       );
     }
 
