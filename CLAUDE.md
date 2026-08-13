@@ -1,0 +1,59 @@
+# poke-sort — assistant notes
+
+Pokémon card sorting machine. pnpm/turbo monorepo: `packages/desktop` (Electron
+shell), `packages/server` (Hono + Drizzle + PGlite, serves the API and the built
+SPA), `packages/web` (React renderer — all serial hardware I/O lives here),
+`packages/shared` (types), `arduino/` (firmware).
+
+## Database: PGlite is single-process
+
+**Never open the database directory (or run scripts against it) while the app
+is running.** A second opener corrupts the WAL. Close the app first, or go
+through the running server's HTTP API instead — that is what the debug
+endpoints below are for.
+
+## Diagnosing issues: query the running app
+
+The server writes its port to `<dataDir>/server.port` on boot (dev data dir:
+`packages/server/.poke-sort`, or wherever `POKE_SORT_DATA_DIR` points; packaged:
+`~/Library/Application Support/poke-sort`). Dev default port is 3001.
+
+- `GET /api/machine-events?since=&until=&type=&session=&limit=` — serial
+  telemetry: every command/response exchange (with `outcome` ok / timeout /
+  write_failed / reset and `latency_ms`) plus lifecycle events (`port_opened`,
+  `ready`, `boot_test_pass/fail`, `reboot_detected`, `unplug`, `stream_ended`,
+  `queue_reset`, `disconnect`, `rx_unsolicited`, `rx_non_json`).
+- `GET /api/debug/scan-events?tier=&since=&corrected=1&full=1&limit=` — one
+  row per identify attempt (all tiers, no-match included) with score, margin,
+  OCR reading, top-10 candidates + per-signal scores (`full=1`), and a saved
+  capture at `GET /api/captures/se-<guid>.jpeg`.
+- `POST /api/debug/sql` with `{"sql": "select ..."}` — read-only ad-hoc SQL
+  (single statement, enforced by a READ ONLY transaction).
+
+Useful queries:
+
+```sql
+-- Everything around the last disconnect-ish event
+select * from machine_events
+where ts > (select max(ts) from machine_events
+            where event_type in ('unplug','stream_ended','reboot_detected'))
+           - interval '2 minutes'
+order by ts, seq;
+
+-- Corrections = labelled eval data (predicted vs actual)
+select guid, tier, score, margin, corrected_card_id, candidates->0 as predicted
+from scan_events where corrected_card_id is not null;
+```
+
+`collection_cards.scan_event_guid` joins a saved card to its `scan_events`
+diagnostics row. Retention: machine_events 14 days; scan_events 180 days;
+accept-tier capture images 30 days; corrected rows are kept forever.
+
+## Migrations
+
+`pnpm --filter @poke-sort/server db:generate`, then hand-edit the SQL (prose
+why-comment, `IF NOT EXISTS`) and the journal. **The `when` value in
+`drizzle/meta/_journal.json` is hand-maintained** (1786500000000 + 60000 per
+migration) and must strictly exceed every existing `when` on every branch — a
+tie is silently skipped (post-mortem in `drizzle/0008_review_bin.sql`). Check
+boot logs for the skipped-migration warning after the first run.

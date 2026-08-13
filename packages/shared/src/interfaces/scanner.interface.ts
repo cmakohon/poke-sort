@@ -47,6 +47,8 @@ export interface ScanOutcome {
   tier: IdentifyTier;
   score?: number;
   margin?: number;
+  /** guid of the server-side scan_events diagnostics row for this attempt. */
+  scanEventId?: string;
 }
 
 export interface CardScannerProps {
@@ -93,4 +95,6 @@ export interface ScannedCard {
   originalDistance?: number;
   originalScore?: number;
   wasCorrected?: boolean;
+  /** guid of the scan_events diagnostics row behind this scan. */
+  scanEventId?: string;
 }

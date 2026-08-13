@@ -43,6 +43,9 @@ export const AddScanSchema = z
     needsReview: z.boolean().optional(),
     score: z.number().min(0).max(1).optional(),
     margin: z.number().min(-1).max(1).nullable().optional(),
+    // Links the row to its scan_events diagnostics (per-signal scores, OCR,
+    // candidates); set at insert so corrections can be joined to them later.
+    scanEventId: z.string().uuid().optional(),
   })
   .passthrough();
 
@@ -56,6 +59,10 @@ export const UpdateScanSchema = z
     originalDistance: z.number().optional(),
     originalScore: z.number().optional(),
     wasCorrected: z.boolean().optional(),
+    // A correction re-confirms identity, so the client sends false to release
+    // the card from the review queue. The column used to be unclearable — the
+    // client reset it locally and the flag came back on every reload.
+    needsReview: z.boolean().optional(),
   })
   .strict();
 
@@ -95,6 +102,7 @@ import {
   releaseLock,
   subscribeOrgLocks,
 } from "../lib/scan-lock";
+import { recordCorrection } from "../lib/scan-events";
 import {
   emitToSession,
   getSessionViewers,
@@ -562,6 +570,7 @@ router.post("/:guid/cards", requireAuth, requireOrg, async (c) => {
     needsReview,
     score,
     margin,
+    scanEventId,
   } = parsed.data as unknown as ScannedCard & { margin?: number | null };
 
   const displayName = await getUserDisplayName(userId);
@@ -617,6 +626,7 @@ router.post("/:guid/cards", requireAuth, requireOrg, async (c) => {
           needsReview: needsReview ?? null,
           scanScore: score ?? null,
           scanMargin: margin ?? null,
+          scanEventGuid: scanEventId ?? null,
           isFoil: isFoil ?? false,
           alternativeMatches: alternativeMatches?.length
             ? alternativeMatches
@@ -652,6 +662,13 @@ router.post("/:guid/cards", requireAuth, requireOrg, async (c) => {
               captureUrl(capturedImagePath) ?? capturedImageUrl,
             isFoil,
             alternativeMatches,
+            // Monitor viewers get the same review context a reload would show;
+            // omitting these made a held-for-review card look like a clean sort
+            // until the page was refreshed.
+            variant: (card as { variant?: string }).variant,
+            needsReview,
+            score,
+            margin: margin ?? undefined,
           } as ScannedCard,
         },
         collectionName: collection.name,
@@ -709,6 +726,7 @@ router.put("/:guid/cards/:scanId", requireAuth, requireOrg, async (c) => {
     originalDistance,
     originalScore,
     wasCorrected,
+    needsReview,
   } = parsedUpdate.data as {
     card?: PlayingCardWithDistance;
     binNumber?: number;
@@ -718,6 +736,7 @@ router.put("/:guid/cards/:scanId", requireAuth, requireOrg, async (c) => {
     originalDistance?: number;
     originalScore?: number;
     wasCorrected?: boolean;
+    needsReview?: boolean;
   };
   try {
     const result = await authQuery(c.get("jwtClaims"), async (tx) => {
@@ -730,6 +749,7 @@ router.put("/:guid/cards/:scanId", requireAuth, requireOrg, async (c) => {
           binNumber: true,
           isFoil: true,
           wasCorrected: true,
+          scanEventGuid: true,
         },
       });
       if (!existing) return { success: false, message: "Card not found." };
@@ -742,11 +762,13 @@ router.put("/:guid/cards/:scanId", requireAuth, requireOrg, async (c) => {
       }
       if (isFoil !== undefined) updates.isFoil = isFoil;
       if (variant !== undefined) updates.variant = variant;
+      if (needsReview !== undefined) updates.needsReview = needsReview;
 
       // Written once, on the first correction: what the pipeline had predicted
       // before a human overruled it. Overwriting on a second correction would
       // replace the model's answer with the human's previous one.
-      if (wasCorrected && !existing.wasCorrected) {
+      const isFirstCorrection = wasCorrected && !existing.wasCorrected;
+      if (isFirstCorrection) {
         updates.wasCorrected = true;
         updates.originalCardId = originalCardId ?? null;
         updates.originalDistance = originalDistance ?? null;
@@ -760,6 +782,12 @@ router.put("/:guid/cards/:scanId", requireAuth, requireOrg, async (c) => {
 
       return {
         success: true,
+        // Outside the transaction: scan_events is a different table and the
+        // single-connection PGlite client must not be re-entered mid-tx.
+        correctionScanEventGuid:
+          isFirstCorrection && card !== undefined
+            ? existing.scanEventGuid
+            : null,
         data: toScannedCard({
           guid: scanId,
           card: (card ?? existing.card) as PlayingCardWithDistance,
@@ -770,6 +798,16 @@ router.put("/:guid/cards/:scanId", requireAuth, requireOrg, async (c) => {
         }),
       };
     });
+
+    // Any correction — review-tier or not — is a labelled example; a corrected
+    // "accept" is the most valuable one. Mirror it onto the scan_events
+    // diagnostics row so predicted-vs-actual can be queried. Best-effort: the
+    // card update itself already committed.
+    if (result.success && result.correctionScanEventGuid && card) {
+      await recordCorrection(result.correctionScanEventGuid, card.id).catch(
+        (err) => console.error("[scan-events] correction record failed:", err),
+      );
+    }
     if (result.success) emitToSession(guid, "card_updated", result.data);
     return c.json(result);
   } catch (err) {

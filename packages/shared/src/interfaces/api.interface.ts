@@ -62,6 +62,14 @@ export interface IdentifyResult {
   ocr?: OcrReading;
   /** 1st Edition stamp reading for the winner, when its card has that variant. */
   stamp?: { stamped: boolean; depth: number; darkFrac: number; spread: number };
+  /** True when the 180°-rotated retry pass produced this result. */
+  flippedRetry?: boolean;
+  /**
+   * guid of the scan_events diagnostics row recorded for this attempt. The
+   * client echoes it back when saving the card so a later correction can be
+   * joined to the full diagnostics.
+   */
+  scanEventId?: string;
 }
 
 export interface CardListResponse {

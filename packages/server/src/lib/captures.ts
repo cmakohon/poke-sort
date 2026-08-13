@@ -48,6 +48,23 @@ export async function saveCapture(
 }
 
 /**
+ * Writes an already-decoded image buffer to the captures directory. Used for
+ * scan-event diagnostics captures ("se-<guid>.jpeg"), which arrive as the raw
+ * upload buffer rather than a data URL. Same directory as saveCapture so the
+ * existing GET /api/captures/:fileName route serves them unchanged.
+ */
+export async function saveCaptureBuffer(
+  fileName: string,
+  buffer: Buffer,
+): Promise<string | null> {
+  const target = resolveSafe(fileName);
+  if (!target) return null;
+  await mkdir(CAPTURES_DIR, { recursive: true });
+  await writeFile(target, buffer);
+  return fileName;
+}
+
+/**
  * Only the types saveCapture is willing to write. Interpolating the extension
  * straight into the header let the file name choose the Content-Type, which is
  * both wrong for anything unexpected and a header-injection shape if a name

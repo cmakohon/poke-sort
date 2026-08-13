@@ -94,9 +94,10 @@ export function useCardFilterSort(
     }
 
     if (filters.needsAttention) {
-      result = result.filter(
-        (entry) => (entry.alternativeMatches?.length ?? 0) > 0,
-      );
+      // The pipeline's own verdict, not a proxy. Filtering on the presence of
+      // alternative matches surfaced confidently-sorted cards that merely had
+      // close neighbours, and missed review-tier cards that had none.
+      result = result.filter((entry) => entry.needsReview === true);
     }
 
     if (!filters.showDownloaded) {

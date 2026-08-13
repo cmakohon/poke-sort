@@ -310,7 +310,11 @@ export async function identifyCard(
   const second = await identifyOnce(flipped, gameKey, lang);
   // Strictly better or bust: on a genuinely unreadable capture both passes
   // fail, and the first result's diagnostics are the truthful ones.
-  return nearestDistance(second) < nearestDistance(first) ? second : first;
+  if (nearestDistance(second) < nearestDistance(first)) {
+    second.flippedRetry = true;
+    return second;
+  }
+  return first;
 }
 
 /**

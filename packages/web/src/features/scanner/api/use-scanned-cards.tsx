@@ -301,6 +301,7 @@ export function ScannedCardsProvider({
         score: outcome?.score,
         margin: outcome?.margin,
         needsReview: needsReview || undefined,
+        scanEventId: outcome?.scanEventId,
       };
 
       setCards((prev) => [record, ...prev]);
