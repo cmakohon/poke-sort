@@ -66,6 +66,44 @@ export function nameSimilarity(a: string | undefined, b: string): number {
 const stripZeros = (v: string) => v.replace(/^0+(?=\d)/, "").toLowerCase();
 
 /**
+ * Glyphs OCR reliably mistakes for digits (or the slash) in the tiny
+ * bottom-band number print. A real capture came back with "020/094" read as
+ * "oz0r09a0" — o for 0, z for 2, r for /, a for 4. Applied only inside
+ * collector-number matching, and only to runs that are already mostly digits
+ * (see digitNormalizedRuns): normalizing letters wholesale would turn prose
+ * like "creatures/gamefreak" into digit soup and hand out false matches.
+ */
+const DIGIT_CONFUSABLES: Record<string, string> = {
+  o: "0",
+  i: "1",
+  l: "1",
+  "|": "1",
+  z: "2",
+  a: "4",
+  s: "5",
+  b: "8",
+  g: "9",
+  r: "/",
+  "\\": "/",
+};
+
+const CONFUSABLE_RUN = /[0-9/oil|zasbgr\\]{4,}/g;
+
+/**
+ * Substrings of the raw reading that look like a garbled number: runs of
+ * digit-ish characters at least half of which are true digits, with the
+ * confusable glyphs mapped back to digits.
+ */
+function digitNormalizedRuns(compactRaw: string): string[] {
+  const runs = compactRaw.match(CONFUSABLE_RUN) ?? [];
+  return runs
+    .filter((run) => run.replace(/[^0-9]/g, "").length * 2 >= run.length)
+    .map((run) =>
+      run.replace(/[oil|zasbgr\\]/g, (ch) => DIGIT_CONFUSABLES[ch] ?? ch),
+    );
+}
+
+/**
  * 1.0 when the printed number matches in full ("58" of "58/102"), 0.5 when
  * only the card's own number matches, 0 otherwise.
  *
@@ -83,9 +121,24 @@ export function collectorNumberMatch(
   // which an exact parse comparison does not.
   if (ocr.collectorNumberRaw && candidate.setTotal != null) {
     const compact = (v: string) => v.replace(/\s+/g, "");
-    const printed = `${stripZeros(candidate.collectorNumber)}/${candidate.setTotal}`;
-    if (compact(ocr.collectorNumberRaw.toLowerCase()).includes(compact(printed))) {
-      return 1;
+    const raw = compact(ocr.collectorNumberRaw.toLowerCase());
+    // Two printed conventions: older sets print the number bare ("58/102"),
+    // modern sets zero-pad both halves to the numerator's width ("020/094").
+    // The bare form alone could never match a modern card — "020/094" does
+    // not contain "20/94" — which silenced this signal for exactly the
+    // recent-reprint cases it exists to separate.
+    const total = String(candidate.setTotal);
+    const printedForms = [
+      `${stripZeros(candidate.collectorNumber)}/${total}`,
+      `${candidate.collectorNumber.toLowerCase()}/${total.padStart(
+        candidate.collectorNumber.length,
+        "0",
+      )}`,
+    ];
+    const normalizedRuns = digitNormalizedRuns(raw);
+    for (const printed of printedForms) {
+      if (raw.includes(printed)) return 1;
+      if (normalizedRuns.some((run) => run.includes(printed))) return 1;
     }
   }
 

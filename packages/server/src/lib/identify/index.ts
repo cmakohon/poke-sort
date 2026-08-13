@@ -286,6 +286,22 @@ function nearestDistance(result: IdentifyResult): number {
 }
 
 /**
+ * Orientation of the previous winning scan, process-wide on purpose: there is
+ * one physical feeder, and cards come off a stack that was loaded one way.
+ * When the last card identified upside down, the next one almost certainly
+ * will too — so the remembered orientation is tried first, turning a flipped
+ * stack from every-card-pays-the-retry (an extra full pass, ~700ms+) into
+ * first-card-pays-it (the rest pay only a ~50ms rotate).
+ */
+let preferFlipped = false;
+
+/** Lossless 180° flip: a bare toBuffer() would re-encode the JPEG at quality
+ *  80, degrading exactly the marginal capture the retry exists to rescue. */
+function flip180(imageBuffer: Buffer): Promise<Buffer> {
+  return sharp(imageBuffer).rotate(180).png().toBuffer();
+}
+
+/**
  * The full pipeline with orientation recovery.
  *
  * A card fed upside down embeds to garbage — SigLIP is not rotation
@@ -293,27 +309,35 @@ function nearestDistance(result: IdentifyResult): number {
  * straight to no-match and the catch-all bin. When the first pass comes back
  * with nothing (or nothing closer than any real match ever measures), the
  * capture is flipped 180° and identified again, and the better pass wins.
- * The cost is a second full pass, but only on captures that had already
- * failed; a well-fed card never pays it.
+ * The winning orientation is remembered for the next scan (see preferFlipped).
+ *
+ * `flippedRetry` on the result means the winner ran on the 180°-rotated
+ * capture — i.e. the card was fed upside down relative to the camera —
+ * whether or not a retry pass was actually paid for it.
  */
 export async function identifyCard(
   imageBuffer: Buffer,
   gameKey: string,
   lang: string,
 ): Promise<IdentifyResult> {
-  const first = await identifyOnce(imageBuffer, gameKey, lang);
-  if (nearestDistance(first) <= RETRY_DISTANCE) return first;
+  const firstFlipped = preferFlipped;
+  const firstBuffer = firstFlipped ? await flip180(imageBuffer) : imageBuffer;
+  const first = await identifyOnce(firstBuffer, gameKey, lang);
+  if (nearestDistance(first) <= RETRY_DISTANCE) {
+    first.flippedRetry = firstFlipped;
+    return first;
+  }
 
-  // Lossless flip: a bare toBuffer() would re-encode the JPEG at quality 80,
-  // degrading exactly the marginal capture the retry exists to rescue.
-  const flipped = await sharp(imageBuffer).rotate(180).png().toBuffer();
-  const second = await identifyOnce(flipped, gameKey, lang);
+  const secondBuffer = firstFlipped ? imageBuffer : await flip180(imageBuffer);
+  const second = await identifyOnce(secondBuffer, gameKey, lang);
   // Strictly better or bust: on a genuinely unreadable capture both passes
   // fail, and the first result's diagnostics are the truthful ones.
   if (nearestDistance(second) < nearestDistance(first)) {
-    second.flippedRetry = true;
+    preferFlipped = !firstFlipped;
+    second.flippedRetry = !firstFlipped;
     return second;
   }
+  first.flippedRetry = firstFlipped;
   return first;
 }
 
