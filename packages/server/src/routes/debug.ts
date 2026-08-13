@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { client, db } from "../db";
 import { scanEvents } from "../db/schema";
+import { parseTimeParam } from "../lib/time";
 import { parseBody } from "../lib/validate";
 import { requireAuth, type AppEnv } from "../middleware/auth";
 
@@ -26,12 +27,10 @@ router.get("/scan-events", requireAuth, async (c) => {
   const full = c.req.query("full") === "1";
   const limit = Math.min(Number(c.req.query("limit")) || 100, 1000);
 
-  const sinceDate = since ? new Date(since) : null;
+  const sinceDate = parseTimeParam(since);
   const conditions = [
     tier ? eq(scanEvents.tier, tier) : undefined,
-    sinceDate && !Number.isNaN(sinceDate.getTime())
-      ? gte(scanEvents.createdAt, sinceDate)
-      : undefined,
+    sinceDate ? gte(scanEvents.createdAt, sinceDate) : undefined,
     corrected ? isNotNull(scanEvents.correctedCardId) : undefined,
   ].filter((f) => f !== undefined);
 
@@ -53,10 +52,25 @@ router.get("/scan-events", requireAuth, async (c) => {
 
 const SqlSchema = z.object({ sql: z.string().min(1).max(20_000) }).strict();
 
+/** Result-size ceiling; the wrapper subquery below enforces it. */
+const SQL_ROW_LIMIT = 1000;
+
+/**
+ * How long the HTTP response waits. This does NOT cancel the query — PGlite
+ * ignores statement_timeout and offers no cancel — and it is best-effort even
+ * as a response bound: PGlite executes on the main thread, so a CPU-bound
+ * query (verified with pg_sleep) starves the event loop and the timer itself
+ * until it finishes. A runaway query blocks the whole process — identify,
+ * saves, the machine itself. The only real protection is the row-limit
+ * wrapper above and callers keeping debug queries small.
+ */
+const SQL_RESPONSE_TIMEOUT_MS = 10_000;
+
 router.post("/sql", requireAuth, async (c) => {
   const parsed = await parseBody(c, SqlSchema);
   if (!parsed.ok) return parsed.response;
-  const sql = parsed.data.sql;
+  // Trailing semicolons would break the wrapper subquery; strip them.
+  const sql = parsed.data.sql.replace(/[\s;]+$/, "");
 
   // Belt: only statements that read. Suspenders: the transaction is READ ONLY,
   // so even a `WITH ... INSERT` that slips past the regex fails at the engine.
@@ -69,21 +83,46 @@ router.post("/sql", requireAuth, async (c) => {
     );
   }
 
-  try {
-    const result = await client.transaction(async (tx) => {
-      await tx.query("SET TRANSACTION READ ONLY");
-      return tx.query(sql);
-    });
-    return c.json({ success: true, data: result.rows });
-  } catch (err) {
+  const run = client.transaction(async (tx) => {
+    await tx.query("SET TRANSACTION READ ONLY");
+    // The wrapper caps an accidental `select * from cards` at a bounded
+    // response instead of megabytes of embeddings.
+    return tx.query(`select * from (${sql}) as _debug limit ${SQL_ROW_LIMIT}`);
+  });
+
+  const timedOut = Symbol("timedOut");
+  const outcome = await Promise.race([
+    run,
+    new Promise<typeof timedOut>((resolve) =>
+      setTimeout(() => resolve(timedOut), SQL_RESPONSE_TIMEOUT_MS),
+    ),
+  ]).catch((err: unknown) => err as Error);
+
+  if (outcome === timedOut) {
+    // Swallow the eventual settlement so it cannot become an unhandled
+    // rejection after this response has gone out.
+    run.catch(() => {});
     return c.json(
       {
         success: false,
-        message: err instanceof Error ? err.message : "Query failed.",
+        message:
+          "Query still running after 10s — PGlite cannot cancel it, and it " +
+          "blocks all other database work until it finishes. Keep debug " +
+          "queries small, especially while the machine is sorting.",
       },
-      400,
+      408,
     );
   }
+  if (outcome instanceof Error) {
+    return c.json({ success: false, message: outcome.message }, 400);
+  }
+  return c.json({
+    success: true,
+    data: outcome.rows,
+    ...(outcome.rows.length === SQL_ROW_LIMIT
+      ? { truncatedAt: SQL_ROW_LIMIT }
+      : {}),
+  });
 });
 
 export { router as debugRouter };

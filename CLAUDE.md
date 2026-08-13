@@ -21,14 +21,21 @@ The server writes its port to `<dataDir>/server.port` on boot (dev data dir:
 - `GET /api/machine-events?since=&until=&type=&session=&limit=` — serial
   telemetry: every command/response exchange (with `outcome` ok / timeout /
   write_failed / reset and `latency_ms`) plus lifecycle events (`port_opened`,
-  `ready`, `boot_test_pass/fail`, `reboot_detected`, `unplug`, `stream_ended`,
-  `queue_reset`, `disconnect`, `rx_unsolicited`, `rx_non_json`).
+  `port_open_failed`, `connect_failed`, `ready`, `boot_test_pass/fail`,
+  `reboot_detected`, `unplug`, `stream_ended`, `read_error`, `queue_reset`,
+  `disconnect`, `rx_unsolicited`, `rx_non_json`, `log_overflow`). `since` and
+  `until` take ISO strings or epoch milliseconds.
 - `GET /api/debug/scan-events?tier=&since=&corrected=1&full=1&limit=` — one
   row per identify attempt (all tiers, no-match included) with score, margin,
   OCR reading, top-10 candidates + per-signal scores (`full=1`), and a saved
   capture at `GET /api/captures/se-<guid>.jpeg`.
 - `POST /api/debug/sql` with `{"sql": "select ..."}` — read-only ad-hoc SQL
-  (single statement, enforced by a READ ONLY transaction).
+  (single statement, enforced by a READ ONLY transaction). Results cap at
+  1000 rows (`truncatedAt` in the response when hit). **PGlite cannot cancel
+  a running query and executes on the main thread** — a heavy query blocks
+  the entire process (even the endpoint's own 10s timeout) until it finishes,
+  so keep debug queries small and never run heavy ones while the machine is
+  actively sorting.
 
 Useful queries:
 

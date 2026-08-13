@@ -1,3 +1,4 @@
+import { MAX_POST_EVENTS } from "@/features/scanner/lib/machine-event-log";
 import { API_BASE } from "@/lib/api/client";
 import type { MachineEventInput } from "@poke-sort/shared";
 
@@ -23,10 +24,17 @@ export async function postMachineEvents(
 
 export function beaconMachineEvents(events: MachineEventInput[]): void {
   if (events.length === 0 || !navigator.sendBeacon) return;
-  // text/plain keeps the beacon a "simple" request (no preflight, which a
-  // closing page cannot answer); the server parses the body as JSON anyway.
-  navigator.sendBeacon(
-    `${API_BASE}/api/machine-events`,
-    new Blob([JSON.stringify({ events })], { type: "text/plain" }),
-  );
+  // Chunked for the same reason flush() chunks: sendBeacon shares the 64 KiB
+  // in-flight quota, and one oversized blob would be refused whole. A false
+  // return means the quota is exhausted — stop; this path is best-effort.
+  for (let i = 0; i < events.length; i += MAX_POST_EVENTS) {
+    const chunk = events.slice(i, i + MAX_POST_EVENTS);
+    // text/plain keeps the beacon a "simple" request (no preflight, which a
+    // closing page cannot answer); the server parses the body as JSON anyway.
+    const accepted = navigator.sendBeacon(
+      `${API_BASE}/api/machine-events`,
+      new Blob([JSON.stringify({ events: chunk })], { type: "text/plain" }),
+    );
+    if (!accepted) return;
+  }
 }

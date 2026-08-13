@@ -7,6 +7,7 @@ import { saveCaptureBuffer } from "../lib/captures";
 import { sendDiscordNotification } from "../lib/discord";
 import { identifyCard } from "../lib/identify";
 import {
+  clearScanEventCapture,
   recordScanEvent,
   scanEventCaptureName,
 } from "../lib/scan-events";
@@ -73,9 +74,10 @@ router.post("/", requireAuth, requireOrg, async (c) => {
         durationMs,
         capturePath,
       });
-      void saveCaptureBuffer(capturePath, imageBuffer).catch((err) =>
-        console.error("[scan-events] capture write failed:", err),
-      );
+      void saveCaptureBuffer(capturePath, imageBuffer).catch(async (err) => {
+        console.error("[scan-events] capture write failed:", err);
+        await clearScanEventCapture(scanEventId).catch(() => {});
+      });
       result.scanEventId = scanEventId;
     } catch (err) {
       console.error("[scan-events] record failed:", err);

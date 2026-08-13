@@ -59,6 +59,19 @@ export async function recordScanEvent(params: {
 }
 
 /**
+ * Nulls capture_path after a failed image write. The row is inserted before
+ * the (fire-and-forget) file write, so without this a full disk would leave a
+ * row permanently pointing at a file that never existed — indistinguishable,
+ * when diagnosing later, from a pruned image.
+ */
+export async function clearScanEventCapture(guid: string): Promise<void> {
+  await db
+    .update(scanEvents)
+    .set({ capturePath: null })
+    .where(eq(scanEvents.guid, guid));
+}
+
+/**
  * Joins a human correction back to the diagnostics row: predicted-vs-actual,
  * the cheapest labelled eval data available. First correction wins, matching
  * the original_card_id provenance rule on collection_cards.

@@ -1,7 +1,7 @@
 import type { MachineEventInput } from "@poke-sort/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createMachineEventLog } from "./machine-event-log";
+import { createMachineEventLog, MAX_POST_EVENTS } from "./machine-event-log";
 
 function makeHarness(postImpl?: (events: MachineEventInput[]) => Promise<void>) {
   const batches: MachineEventInput[][] = [];
@@ -130,6 +130,10 @@ describe("createMachineEventLog", () => {
       (overflow!.payload as { dropped: number }).dropped,
     ).toBeGreaterThan(0);
     expect(all.length).toBeLessThanOrEqual(501);
+    // Even the post-overflow recovery flush must respect the per-POST cap —
+    // the server rejects batches over 500 outright, and one oversized batch
+    // would be rebuilt and rejected identically forever.
+    expect(batches.every((b) => b.length <= MAX_POST_EVENTS)).toBe(true);
     // The oldest events are the ones that went.
     expect(
       all.some((e) => (e.payload as { i?: number })?.i === 0),
@@ -137,6 +141,26 @@ describe("createMachineEventLog", () => {
     expect(
       all.some((e) => (e.payload as { i?: number })?.i === 519),
     ).toBe(true);
+  });
+
+  it("splits a large backlog into server-acceptable chunks", async () => {
+    let fail = true;
+    const batches: MachineEventInput[][] = [];
+    const { log } = makeHarness(async (events) => {
+      if (fail) throw new Error("server down");
+      batches.push(events);
+    });
+    // Build a 260-event backlog against a dead server, then recover.
+    for (let i = 0; i < 260; i++) {
+      log.record({ eventType: "exchange", outcome: "ok" });
+    }
+    await vi.advanceTimersByTimeAsync(2000);
+    fail = false;
+    await vi.advanceTimersByTimeAsync(2000);
+
+    expect(batches.length).toBeGreaterThan(1);
+    expect(batches.every((b) => b.length <= MAX_POST_EVENTS)).toBe(true);
+    expect(batches.flat()).toHaveLength(260);
   });
 
   it("drain empties the buffer for a beacon", async () => {

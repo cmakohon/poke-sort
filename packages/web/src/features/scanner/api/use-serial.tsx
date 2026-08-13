@@ -256,7 +256,6 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
 
     // Before the queue reset so the events read in causal order.
     if (port) log.record({ eventType: "disconnect" });
-    log.setConnectionId(null);
 
     // Clear refs and state immediately
     portRef.current = null;
@@ -270,6 +269,12 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
     // Fail the in-flight request and everything queued behind it
     queue.reset();
     bufferRef.current = "";
+
+    // The queue_reset event was stamped synchronously above, but the killed
+    // in-flight exchange reports itself from pump() on a microtask that reset()
+    // already queued — clear the connection id only after that has run, so the
+    // events describing how this connection died still carry its id.
+    queueMicrotask(() => log.setConnectionId(null));
 
     // Async cleanup - stored so connect() can await it
     const cleanup = (async () => {
@@ -363,8 +368,11 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
       (async () => {
         // Wait out the Arduino's boot before pushing config at it
         const arrived = await waitForReady(5000);
-        log.record({ eventType: "ready", payload: { timedOut: !arrived } });
+        // Staleness guard before recording: on a fast unplug/reconnect this
+        // port's waiter can fire on the NEXT port's banner (or time out), and
+        // recording that would stamp a spurious ready onto the new connection.
         if (portRef.current !== port) return;
+        log.record({ eventType: "ready", payload: { timedOut: !arrived } });
         await runBootSequence(port);
       })();
 

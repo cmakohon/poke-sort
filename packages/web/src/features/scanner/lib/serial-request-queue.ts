@@ -140,6 +140,10 @@ export function createSerialRequestQueue(
         const sent = await write(current.data);
         if (!sent) {
           replyWaiter?.(null);
+          // A reset can race an in-flight write that then fails (unplug nulls
+          // the writer before reset runs); consume the flag here too or the
+          // next genuine timeout gets mislabelled "reset".
+          resetInFlight = false;
           settle(current, { sent: false, response: null });
           emit({
             type: "exchange",

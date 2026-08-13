@@ -112,13 +112,14 @@ app.onError((err, c) => {
 // serve a broken app.
 migrateDatabase()
   .then(seedDatabase)
-  // Pruning is housekeeping, not a prerequisite — it must never stop the boot.
-  .then(() => pruneObservability())
   .then(() => {
     const server = serve({ fetch: app.fetch, port: PORT, hostname: HOST }, (info) => {
       console.log(`[server] Running on http://${HOST}:${info.port}`);
       // The desktop shell asks for port 0 and learns the real one here.
       parentPort?.postMessage({ type: "listening", port: info.port });
+      // Housekeeping, not a prerequisite: a big prune (bulk deletes + capture
+      // unlinks) must not stand between the shell and a listening server.
+      void pruneObservability();
       // The port is dynamic in the packaged app; the file lets anything
       // outside the Electron process (a diagnosing assistant, curl) find the
       // API without asking the user to read it out of a log.

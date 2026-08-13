@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { db } from "../db";
 import { machineEvents } from "../db/schema";
+import { parseTimeParam } from "../lib/time";
 import { parseBody } from "../lib/validate";
 import { requireAuth, type AppEnv } from "../middleware/auth";
 
@@ -55,19 +56,9 @@ router.post("/", requireAuth, async (c) => {
   return c.json({ success: true });
 });
 
-/** Accepts ISO strings and epoch milliseconds; returns null for garbage. */
-function parseTime(value: string | undefined): Date | null {
-  if (!value) return null;
-  const asNumber = Number(value);
-  const date = Number.isFinite(asNumber)
-    ? new Date(asNumber)
-    : new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
 router.get("/", requireAuth, async (c) => {
-  const since = parseTime(c.req.query("since"));
-  const until = parseTime(c.req.query("until"));
+  const since = parseTimeParam(c.req.query("since"));
+  const until = parseTimeParam(c.req.query("until"));
   const type = c.req.query("type");
   const session = c.req.query("session");
   const limit = Math.min(Number(c.req.query("limit")) || 200, 2000);

@@ -40,6 +40,14 @@ export interface MachineEventLog {
 const FLUSH_INTERVAL_MS = 2000;
 const FLUSH_AT_COUNT = 25;
 const BUFFER_CAP = 500;
+/**
+ * Ceiling per POST, not per flush — a flush loops over chunks. Two hard limits
+ * sit above this: the server rejects batches over 500 events, and Chromium
+ * rejects keepalive bodies over 64 KiB. A retry batch that breaches either
+ * would be re-buffered and rebuilt identically every 2 s, wedging telemetry
+ * forever; 100 events (~30 KB worst case) clears both with margin.
+ */
+export const MAX_POST_EVENTS = 100;
 
 /** Event types that describe a failure and should not wait out the timer.
  *  Exchanges are critical too whenever their outcome is not "ok". */
@@ -117,17 +125,23 @@ export function createMachineEventLog(
     if (buffer.length === 0 && dropped === 0) return Promise.resolve();
     clearTimer();
     const batch = takeBatch();
-    inFlight = post(batch)
-      .catch(() => {
-        // Re-buffer ahead of anything recorded meanwhile and retry on the
-        // timer. Deliberately no event about the failure itself.
-        buffer = batch.concat(buffer);
-        trimToCap();
-        armTimer();
-      })
-      .finally(() => {
-        inFlight = null;
-      });
+    inFlight = (async () => {
+      for (let i = 0; i < batch.length; i += MAX_POST_EVENTS) {
+        try {
+          await post(batch.slice(i, i + MAX_POST_EVENTS));
+        } catch {
+          // Re-buffer this chunk and everything after it, ahead of anything
+          // recorded meanwhile, and retry on the timer. Deliberately no event
+          // about the failure itself.
+          buffer = batch.slice(i).concat(buffer);
+          trimToCap();
+          armTimer();
+          return;
+        }
+      }
+    })().finally(() => {
+      inFlight = null;
+    });
     return inFlight;
   };
 

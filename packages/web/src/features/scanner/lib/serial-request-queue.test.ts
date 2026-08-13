@@ -270,6 +270,42 @@ describe("createSerialRequestQueue events", () => {
     expect(events[1]).toMatchObject({ type: "exchange", outcome: "timeout" });
   });
 
+  it("a reset racing a failing write does not poison the next timeout", async () => {
+    // Unplug scenario: the writer is torn down before reset() runs, so the
+    // in-flight write settles false AFTER reset armed the flag. The flag must
+    // be consumed there, not survive to mislabel the next real timeout.
+    vi.useFakeTimers();
+    const events: SerialQueueEvent[] = [];
+    const writes: Array<(v: boolean) => void> = [];
+    const queue = createSerialRequestQueue(
+      () => new Promise<boolean>((resolve) => writes.push(resolve)),
+      { onEvent: (event) => events.push(event) },
+    );
+
+    const p1 = queue.request("a", 60000);
+    await vi.advanceTimersByTimeAsync(0);
+    queue.reset();
+    writes[0](false);
+    expect(await p1).toEqual({ sent: false, response: null });
+
+    const p2 = queue.request("b", 500);
+    await vi.advanceTimersByTimeAsync(0);
+    writes[1](true);
+    await vi.advanceTimersByTimeAsync(500);
+    await p2;
+
+    expect(events[1]).toMatchObject({
+      type: "exchange",
+      data: "a",
+      outcome: "write_failed",
+    });
+    expect(events[2]).toMatchObject({
+      type: "exchange",
+      data: "b",
+      outcome: "timeout",
+    });
+  });
+
   it("reports how many payloads coalesced into the exchange that ran", async () => {
     const { events, queue } = makeHarness();
     const inFlight = queue.request("move-0", 1000);
