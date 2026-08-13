@@ -1,26 +1,29 @@
 {
   "discordWebhookSettings": {
-    "heading": "Discord Webhook",
-    "description": "Receive a notification when card sorting fails, the device reports an error (jams, empty feeder, connection issues), a card search errors, or the sync job crashes.",
+    "heading": "Discord alerts",
+    "description": "Paste a Discord webhook link and PokeSort will ping that channel when a card jams, the hopper runs out, the machine loses connection, a card can't be identified, or a card database update fails.",
+    "howTo": "How do I create a webhook link?",
     "urlPlaceholder": "https://discord.com/api/webhooks/...",
     "saveButton": "Save",
-    "notifyToggleLabel": "Notify on every card scanned",
+    "notifyToggleLabel": "Post every scanned card",
     "notifyToggleDescription": "Posts the card's name, price, and image to Discord each time one is scanned.",
-    "testHintDirty": "Save webhook URL to enable test notifications",
-    "testHintReady": "Send a test notification",
+    "notifyToggleDisabledHint": "Available once a Discord link is saved.",
+    "testHintNoUrl": "Add a Discord link above to send test alerts",
+    "testHintDirty": "Save your changes to send test alerts",
+    "testHintReady": "Send a test alert to check it works",
     "sending": "Sending…",
     "testTypes": {
-      "sorter-error": "Sorter Error",
-      "feeder-empty": "Feeder Empty",
-      "card-jam": "Card Jam",
-      "card-search-error": "Card Search Error",
-      "sync-failure": "Sync Failure"
+      "sorter-error": "Sorter error",
+      "feeder-empty": "Hopper empty",
+      "card-jam": "Card jam",
+      "card-search-error": "Can't identify card",
+      "sync-failure": "Database update failed"
     }
   },
   "toasts": {
-    "saveError": "Failed to save notification settings.",
-    "saveSuccess": "Notification settings saved.",
-    "testSuccess": "Test notification sent.",
-    "testError": "Failed to send test notification."
+    "saveError": "Couldn't save Discord alerts",
+    "saveSuccess": "Discord alerts saved",
+    "testSuccess": "Test alert sent — check your Discord channel",
+    "testError": "Couldn't send the test alert"
   }
 }

@@ -30,8 +30,8 @@
     "minMatch": "Min. Übereinstimmung",
     "status": "Status",
     "needsAttention": "Benötigt Aufmerksamkeit",
-    "downloaded": "Heruntergeladen",
-    "showDownloadedCards": "Heruntergeladene Karten anzeigen",
+    "downloaded": "Exportiert",
+    "hideExportedCards": "Exportierte Karten ausblenden",
     "sets": "Editionen",
     "resetFilters": "Filter zurücksetzen",
     "allSets": "Alle Sets",
@@ -49,8 +49,9 @@
     "autoFeedOnTooltip": "Auto-Zuführung an — die nächste Karte wird nach jedem Scan automatisch zugeführt",
     "autoFeedOffTooltip": "Auto-Zuführung aus — jede Karte manuell zuführen",
     "clearDeviceTooltip": "Gerät leeren (öffnet alle unteren Klappen)",
-    "noCardsMatchFilters": "Keine Karten entsprechen den aktuellen Filtern",
-    "tryAdjusting": "Passe deine Suche, Sortierung oder Filter an",
+    "noCardsMatchFilters": "Keine Karten entsprechen deinen Filtern",
+    "tryAdjusting": "Passe deine Suche oder Filter an",
+    "clearFilters": "Suche & Filter zurücksetzen",
     "pageOf": "Seite {{page}} von {{total}}",
     "cardsSelected_one": "{{count}} Karte ausgewählt",
     "cardsSelected_other": "{{count}} Karten ausgewählt",
@@ -79,7 +80,7 @@
     "noCardsFound": "Keine Karten gefunden"
   },
   "cardToolbar": {
-    "searchPlaceholder": "Nach Name, Edition, Typ suchen...",
+    "searchPlaceholder": "Name, Edition, Nummer, Seltenheit suchen…",
     "sortPlaceholder": "Sortieren nach...",
     "scanOrder": "Scan-Reihenfolge",
     "sortAscString": "A-Z",
@@ -89,19 +90,21 @@
     "deselectAll": "Alle abwählen",
     "selectAll": "Alle auswählen",
     "sessionSummaryExport": "Sitzungsübersicht & Export",
-    "deleteScannedCardsTitle": "Gescannte Karten löschen",
-    "deleteScannedCardsDescription": "Dadurch werden alle Karten dauerhaft aus deiner Sammlung gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
+    "deleteScannedCardsTitle": "Alle gescannten Karten löschen?",
+    "deleteScannedCardsDescription": "Dadurch werden alle Karten in dieser Sammlung dauerhaft gelöscht. Die Sammlung selbst bleibt erhalten. Dies kann nicht rückgängig gemacht werden.",
     "cancel": "Abbrechen",
-    "clearing": "Wird geleert...",
+    "clearing": "Wird gelöscht…",
     "clearAll": "Alle löschen",
-    "clearAllCardsTitle": "Alle Karten leeren"
+    "clearAllCardsTitle": "Alle Karten löschen"
   },
   "scannedCardItem": {
-    "multipleMatchesTooltip": "Mehrere ähnliche Treffer - zum Überprüfen tippen",
+    "multipleMatchesTooltip": "Mehrere ähnliche Treffer — zum Überprüfen tippen",
     "foil": "Foil",
     "matchTooltip": "Wie genau das gescannte Bild mit dieser Karte übereinstimmt, basierend auf visueller Ähnlichkeitssuche",
+    "confirmed": "Bestätigt",
+    "confirmedTooltip": "Du hast diese Karte selbst ausgewählt – daher gibt es keinen Trefferwert",
     "bin": "Fach {{number}}",
-    "downloaded": "Heruntergeladen"
+    "downloaded": "Exportiert"
   },
   "sessionSummaryDialog": {
     "title": "Sitzungsübersicht",

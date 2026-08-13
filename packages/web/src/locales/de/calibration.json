@@ -1,71 +1,75 @@
 {
   "servos": {
     "bottom": {
-      "label": "Unteres Paddel",
+      "label": "Bodenklappe",
       "closed": "Geschlossen setzen",
       "open": "Offen setzen"
     },
     "paddle": {
-      "label": "Paddel",
+      "label": "Seitenpaddel",
       "closed": "Geschlossen setzen",
       "open": "Offen setzen"
     },
     "pusher": {
-      "label": "Schieber",
+      "label": "Schieberarm",
       "left": "Links setzen",
       "neutral": "Neutral setzen",
       "right": "Rechts setzen"
     }
   },
   "binRoutingControls": {
-    "label": "Fach-Routing",
-    "feed": "Zuführen",
+    "label": "Sortierweg testen",
+    "feed": "Eine Karte zuführen",
     "binActive": "Fach {{bin}}…",
     "running": "Läuft…",
-    "sampleRun": "Testlauf",
+    "sampleRun": "Jedes Fach testen",
     "binButton": "Fach {{bin}}"
   },
   "feederCalibrationPanel": {
-    "heading": "Zuführung",
-    "speedLabel": "Geschwindigkeit (PWM)",
-    "speedTooltip": "Motorgeschwindigkeit der Zuführung als roher PWM-Signalwert (120 = langsamste, 490 = schnellste vom Motorcontroller akzeptierte Geschwindigkeit)",
+    "heading": "Zuführer",
+    "speedLabel": "Zuführgeschwindigkeit",
+    "speedTooltip": "Wie schnell sich das Zuführrad dreht (120 = am langsamsten, 490 = am schnellsten). Niedriger ist schonender für Karten; höher führt schneller zu, kann aber doppelt einziehen.",
     "setSpeed": "Geschwindigkeit setzen",
-    "timeoutLabel": "Timeout (ms)",
-    "setTimeout": "Timeout setzen",
+    "timeoutLabel": "Max. Zuführzeit (ms)",
+    "setTimeout": "Max. Zuführzeit setzen",
     "msValue": "{{value}} ms",
-    "pulseDurationLabel": "Impulsdauer (ms)",
+    "savedValue": "Gespeichert: {{value}}",
+    "pulseDurationLabel": "Zuführimpuls (ms)",
+    "pulseDurationDescription": "Wie lange sich das Rad pro Schub dreht. Mit Dauerbetrieb läuft es ohne Pause.",
     "continuous": "Dauerbetrieb",
-    "continuousFeedButton": "Dauerhafte Zuführung",
-    "setPulseDuration": "Impulsdauer setzen",
-    "pauseDurationLabel": "Pausendauer (ms)",
-    "setPauseDuration": "Pausendauer setzen",
-    "settleDurationLabel": "Einlaufzeit (ms)",
-    "settleDurationDescription": "Zusätzliche Zeit, um die Zuführung fortzusetzen, nachdem der Sensor von Modul 1 die Karte erkannt hat, damit sie vollständig in den Mechanismus einläuft, bevor der Motor stoppt.",
-    "setSettleDuration": "Einlaufzeit setzen"
+    "continuousFeedButton": "Dauerbetrieb",
+    "setPulseDuration": "Zuführimpuls setzen",
+    "pauseDurationLabel": "Pause zwischen Impulsen (ms)",
+    "pauseDurationDescription": "Ruhezeit zwischen den Schüben. Längere Pausen verringern Doppeleinzüge.",
+    "setPauseDuration": "Pause setzen",
+    "settleDurationLabel": "Zusätzliche Zuführzeit (ms)",
+    "settleDurationDescription": "Zusätzliche Zeit, in der weiter zugeführt wird, sobald der erste Kartensensor die Karte sieht — damit sie ganz in den Mechanismus gelangt, bevor der Motor stoppt.",
+    "setSettleDuration": "Zusätzliche Zuführzeit setzen"
   },
   "irSensorPanel": {
-    "label": "IR-Sensoren",
-    "tooltip": "Infrarotsensoren, die erkennen, wann eine Karte im Zuführpfad jedes Moduls vorhanden ist",
-    "stop": "Stopp",
-    "monitor": "Überwachen",
-    "monitorTooltip": "Fragt die IR-Sensoren fortlaufend ab und aktualisiert die Badges unten in Echtzeit",
-    "read": "Lesen",
-    "readTooltip": "Nimmt eine einzelne Momentaufnahme der IR-Sensoren auf",
-    "moduleLabel": "Modul {{module}}",
-    "detectedTooltip": "Am IR-Sensor von Modul {{module}} wird derzeit eine Karte erkannt",
-    "notDetectedTooltip": "Am IR-Sensor von Modul {{module}} wird derzeit keine Karte erkannt",
-    "hopperEmpty": "Zuführbehälter leer",
-    "hopper": "Zuführbehälter",
-    "hopperTooltip": "Ob der IR-Sensor des Kartenbehälters derzeit auf die Zuführung wartende Karten erkennt"
+    "label": "Kartensensoren",
+    "tooltip": "Infrarotsensoren, die eine Karte am Zuführweg jedes Sortierarms erkennen",
+    "stop": "Beobachten beenden",
+    "monitor": "Live beobachten",
+    "monitorTooltip": "Sensoren fortlaufend prüfen und die Anzeigen aktualisieren, während Karten durchlaufen",
+    "read": "Einmal prüfen",
+    "readTooltip": "Jetzt eine einzelne Messung durchführen",
+    "moduleLabel": "Arm {{module}}",
+    "detectedTooltip": "Am Sensor von Sortierarm {{module}} liegt gerade eine Karte",
+    "notDetectedTooltip": "Keine Karte am Sensor von Sortierarm {{module}}",
+    "hopperEmpty": "Nachschub — leer",
+    "hopper": "Nachschub — Karten bereit",
+    "hopperUnknown": "Nachschub — noch nicht geprüft",
+    "hopperTooltip": "Ob der Sensor des Kartenschachts wartende Karten erkennt"
   },
   "ledControls": {
-    "label": "LEDs",
-    "ledLabel": "LED {{led}}"
+    "label": "Beleuchtung",
+    "ledLabel": "Licht {{led}}"
   },
   "moduleCalibrationGrid": {
-    "moduleHeading": "Modul {{module}}",
+    "moduleHeading": "Sortierarm {{module}}",
     "resetTo": "Auf {{position}} zurücksetzen",
-    "sliderTooltip": "Rohe Servo-Impulsposition (120-490). Verwende zuerst die Positionsschaltflächen oben und dann eine \"Setzen\"-Schaltfläche, um dies als Kalibrierungspunkt zu speichern.",
+    "sliderTooltip": "Armposition (120–490). Bewege den Arm mit den Tasten oben und drücke dann eine Setzen-Taste, um die Position zu speichern.",
     "positions": {
       "open": "Offen",
       "left": "Links",
@@ -74,80 +78,86 @@
     }
   },
   "scanRegionCalibrationPanel": {
-    "instructions": "Ziehe das Rechteck, um es zu verschieben, oder ziehe den Griff, um die Größe zu ändern. Richte es an einer Karte in Modul 1 aus.",
-    "connecting": "Verbindung wird hergestellt…",
-    "reconnectWebcam": "Webcam erneut verbinden",
-    "connectWebcam": "Webcam verbinden",
+    "instructions": "Ziehe die Box zum Verschieben oder den Griff zum Skalieren. Richte sie an einer Karte aus, die an der Kamera (Sortierarm 1) liegt.",
+    "connecting": "Wird verbunden…",
+    "reconnectWebcam": "Kamera erneut verbinden",
+    "connectWebcam": "Kamera verbinden",
     "waitingForCamera": "Warte auf Kamera…",
     "resetToDefault": "Auf Standard zurücksetzen",
     "saving": "Wird gespeichert…",
     "saveScanRegion": "Scanbereich speichern",
-    "savedSummary": "Gespeichert: {{coverage}}% Abdeckung, {{offsetX}}% / {{offsetY}}% Versatz",
-    "settleDelayLabel": "Aufnahmeverzögerung",
-    "settleDelayHint": "Wartezeit nach der Sensor-Erkennung, bevor das Foto aufgenommen wird. Erhöhen, wenn Aufnahmen die Karte noch in Bewegung zeigen.",
-    "saveSettleDelay": "Aufnahmeverzögerung speichern"
+    "savedSummary": "Scanbereich gespeichert",
+    "settleDelayLabel": "Fotoverzögerung",
+    "settleDelayHint": "Wie lange nach der Sensorerkennung gewartet wird, bevor das Foto entsteht. Erhöhe den Wert, wenn Karten auf den Aufnahmen noch rutschen.",
+    "saveSettleDelay": "Fotoverzögerung speichern",
+    "msValue": "{{value}} ms"
   },
   "useCalibrationPage": {
     "toasts": {
-      "notCalibrated": "Module nicht kalibriert",
-      "notCalibratedDescription": "Kalibriere alle drei Module, bevor du die Testsequenz ausführst.",
-      "runningTest": "Testsequenz läuft…",
-      "testComplete": "Test abgeschlossen",
-      "testFailed": "Test fehlgeschlagen",
+      "notCalibrated": "Sortierarme nicht kalibriert",
+      "notCalibratedDescription": "Richte alle drei Sortierarme ein, bevor du den Selbsttest startest.",
+      "runningTest": "Selbsttest läuft…",
+      "testComplete": "Selbsttest abgeschlossen",
+      "testFailed": "Selbsttest fehlgeschlagen",
       "noResponse": "Keine Antwort vom Sortierer.",
       "binFailed": "Fach {{bin}} fehlgeschlagen",
-      "startingSampleRun": "Testlauf wird gestartet…",
-      "sampleRunStopped": "Testlauf bei Fach {{bin}} gestoppt",
-      "sampleRunComplete": "Testlauf abgeschlossen"
+      "startingSampleRun": "Jedes Fach wird getestet…",
+      "sampleRunStopped": "Fachtest bei Fach {{bin}} gestoppt",
+      "sampleRunComplete": "Alle Fächer getestet"
     }
   },
   "useFeederConfig": {
     "toasts": {
-      "notSynced": "Zuführungskalibrierung nicht synchronisiert",
-      "unexpectedResponse": "Unerwartete Antwort: {{response}}",
+      "notSynced": "Gespeichert, aber der Sortierer hat nicht bestätigt. Verbinde neu und versuche es erneut.",
+      "unexpectedResponse": "Der Sortierer hat unerwartet geantwortet. Versuche, neu zu verbinden.",
       "noResponse": "Keine Antwort vom Sortierer.",
-      "saveFailed": "Zuführungskonfiguration konnte nicht gespeichert werden"
+      "saveFailed": "Zuführer-Einstellungen konnten nicht gespeichert werden"
     }
   },
   "useModuleConfigs": {
     "toasts": {
-      "notSynced": "Kalibrierung von Modul {{module}} nicht synchronisiert",
-      "unexpectedResponse": "Unerwartete Antwort: {{response}}",
+      "notSynced": "Gespeichert, aber der Sortierer hat Sortierarm {{module}} nicht bestätigt. Verbinde neu und versuche es erneut.",
+      "unexpectedResponse": "Der Sortierer hat unerwartet geantwortet. Versuche, neu zu verbinden.",
       "noResponse": "Keine Antwort vom Sortierer.",
-      "saveFailed": "Modulkonfiguration konnte nicht gespeichert werden"
+      "saveFailed": "Sortierarm-Einstellungen konnten nicht gespeichert werden"
     }
   },
   "calibratePage": {
+    "title": "Kalibrieren",
+    "subtitle": "Stelle Zuführer, Sensoren und Sortierarme der Maschine ein. Verbinde zuerst den Sortierer per USB.",
     "moduleHistory": {
-      "bottom": "Unten",
-      "paddle": "Paddel",
-      "pusher": "Schieber",
-      "moduleLabel": "Modul {{module}}"
+      "bottom": "Bodenklappe",
+      "paddle": "Seitenpaddel",
+      "pusher": "Schieberarm",
+      "closedOpen": "Geschlossen {{closed}} · Offen {{open}}",
+      "leftNeutralRight": "Links {{left}} · Neutral {{neutral}} · Rechts {{right}}",
+      "moduleLabel": "Sortierarm {{module}}"
     },
     "feederHistory": {
+      "entryLabel": "Zuführer-Einstellungen",
       "speed": "Geschwindigkeit",
-      "duration": "Dauer",
+      "duration": "Max. Zuführzeit",
       "pulse": "Impuls",
       "pause": "Pause",
-      "settle": "Einlaufzeit",
+      "settle": "Zusätzliche Zeit",
       "continuous": "Dauerbetrieb",
-      "msValue": "{{value}}ms"
+      "msValue": "{{value}} ms"
     },
     "toasts": {
-      "moduleReverted": "Modulkalibrierung zurückgesetzt",
-      "feederReverted": "Zuführungskalibrierung zurückgesetzt",
-      "revertFailed": "Zurücksetzen fehlgeschlagen"
+      "moduleReverted": "Sortierarm-Einstellungen wiederhergestellt",
+      "feederReverted": "Zuführer-Einstellungen wiederhergestellt",
+      "revertFailed": "Einstellungen konnten nicht wiederhergestellt werden — prüfe, ob der Sortierer verbunden ist"
     },
-    "disconnect": "Trennen",
-    "connectDevice": "Gerät verbinden",
+    "disconnect": "Sortierer trennen",
+    "connectDevice": "Sortierer verbinden",
     "testing": "Wird getestet…",
-    "runTest": "Test ausführen",
-    "calibrateBeforeTest": "Kalibriere alle Module, bevor du den Test ausführst",
+    "runTest": "Selbsttest starten",
+    "calibrateBeforeTest": "Kalibriere alle drei Sortierarme, bevor du den Selbsttest startest",
     "scanRegionLabel": "Scanbereich",
-    "feederCalibrationLabel": "Zuführungskalibrierung",
+    "feederCalibrationLabel": "Zuführer",
     "history": "Verlauf",
-    "moduleCalibrationLabel": "Modulkalibrierung",
-    "feederHistoryTitle": "Zuführungsverlauf",
-    "moduleHistoryTitle": "Modulverlauf"
+    "moduleCalibrationLabel": "Sortierarme",
+    "feederHistoryTitle": "Zuführer-Verlauf",
+    "moduleHistoryTitle": "Sortierarm-Verlauf"
   }
 }

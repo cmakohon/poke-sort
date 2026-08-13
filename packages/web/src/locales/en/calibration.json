@@ -1,71 +1,75 @@
 {
   "servos": {
     "bottom": {
-      "label": "Bottom Paddle",
-      "closed": "Set Closed",
-      "open": "Set Open"
+      "label": "Bottom gate",
+      "closed": "Set closed",
+      "open": "Set open"
     },
     "paddle": {
-      "label": "Paddles",
-      "closed": "Set Closed",
-      "open": "Set Open"
+      "label": "Side paddles",
+      "closed": "Set closed",
+      "open": "Set open"
     },
     "pusher": {
-      "label": "Pusher",
-      "left": "Set Left",
-      "neutral": "Set Neutral",
-      "right": "Set Right"
+      "label": "Pusher arm",
+      "left": "Set left",
+      "neutral": "Set neutral",
+      "right": "Set right"
     }
   },
   "binRoutingControls": {
-    "label": "Bin Routing",
-    "feed": "Feed",
+    "label": "Test the sorting path",
+    "feed": "Feed one card",
     "binActive": "Bin {{bin}}…",
     "running": "Running…",
-    "sampleRun": "Sample Run",
+    "sampleRun": "Test every bin",
     "binButton": "Bin {{bin}}"
   },
   "feederCalibrationPanel": {
     "heading": "Feeder",
-    "speedLabel": "Speed (PWM)",
-    "speedTooltip": "Feeder motor speed as a raw PWM signal value (120 = slowest, 490 = fastest the motor controller accepts)",
-    "setSpeed": "Set Speed",
-    "timeoutLabel": "Timeout (ms)",
-    "setTimeout": "Set Timeout",
+    "speedLabel": "Feed speed",
+    "speedTooltip": "How fast the feeder wheel turns (120 = slowest, 490 = fastest). Lower is gentler on cards; higher feeds faster but can double-feed.",
+    "setSpeed": "Set speed",
+    "timeoutLabel": "Max feed time (ms)",
+    "setTimeout": "Set max feed time",
     "msValue": "{{value}} ms",
-    "pulseDurationLabel": "Pulse Duration (ms)",
+    "savedValue": "Saved: {{value}}",
+    "pulseDurationLabel": "Feed pulse (ms)",
+    "pulseDurationDescription": "How long the wheel spins in one nudge. Use Continuous to run it non-stop.",
     "continuous": "Continuous",
-    "continuousFeedButton": "Continuous Feed",
-    "setPulseDuration": "Set Pulse Duration",
-    "pauseDurationLabel": "Pause Duration (ms)",
-    "setPauseDuration": "Set Pause Duration",
-    "settleDurationLabel": "Settle Duration (ms)",
-    "settleDurationDescription": "Extra time to keep feeding once the module 1 sensor sees the card, so it travels all the way into the mechanism before the motor stops.",
-    "setSettleDuration": "Set Settle Duration"
+    "continuousFeedButton": "Continuous feed",
+    "setPulseDuration": "Set feed pulse",
+    "pauseDurationLabel": "Pause between pulses (ms)",
+    "pauseDurationDescription": "Rest time between nudges. Longer pauses reduce double-feeds.",
+    "setPauseDuration": "Set pause",
+    "settleDurationLabel": "Extra feed time (ms)",
+    "settleDurationDescription": "Extra time to keep feeding once the first card sensor sees the card, so it travels all the way into the mechanism before the motor stops.",
+    "setSettleDuration": "Set extra feed time"
   },
   "irSensorPanel": {
-    "label": "IR Sensors",
-    "tooltip": "Infrared sensors that detect when a card is present at each module's feed path",
-    "stop": "Stop",
-    "monitor": "Monitor",
-    "monitorTooltip": "Continuously poll the IR sensors and update the badges below in real time",
-    "read": "Read",
-    "readTooltip": "Take a single snapshot reading of the IR sensors",
-    "moduleLabel": "Module {{module}}",
-    "detectedTooltip": "A card is currently detected at Module {{module}}'s IR sensor",
-    "notDetectedTooltip": "No card currently detected at Module {{module}}'s IR sensor",
-    "hopperEmpty": "Hopper empty",
-    "hopper": "Hopper",
-    "hopperTooltip": "Whether the card hopper's IR sensor currently detects cards waiting to be fed"
+    "label": "Card sensors",
+    "tooltip": "Infrared sensors that spot a card at each sorting arm's feed path",
+    "stop": "Stop watching",
+    "monitor": "Watch live",
+    "monitorTooltip": "Keep checking the sensors and update these badges as cards move",
+    "read": "Check once",
+    "readTooltip": "Take a single reading right now",
+    "moduleLabel": "Arm {{module}}",
+    "detectedTooltip": "A card is at sorting arm {{module}}'s sensor right now",
+    "notDetectedTooltip": "No card at sorting arm {{module}}'s sensor",
+    "hopperEmpty": "Hopper — empty",
+    "hopper": "Hopper — cards ready",
+    "hopperUnknown": "Hopper — not read yet",
+    "hopperTooltip": "Whether the hopper's sensor sees cards waiting to be fed"
   },
   "ledControls": {
-    "label": "LEDs",
-    "ledLabel": "LED {{led}}"
+    "label": "Lights",
+    "ledLabel": "Light {{led}}"
   },
   "moduleCalibrationGrid": {
-    "moduleHeading": "Module {{module}}",
+    "moduleHeading": "Sorting arm {{module}}",
     "resetTo": "Reset to {{position}}",
-    "sliderTooltip": "Raw servo pulse position (120-490). Use the position buttons above, then a \"Set\" button to save this as a calibration point.",
+    "sliderTooltip": "Arm position (120–490). Move the arm with the buttons above, then press a Set button to remember that position.",
     "positions": {
       "open": "Open",
       "left": "Left",
@@ -74,80 +78,86 @@
     }
   },
   "scanRegionCalibrationPanel": {
-    "instructions": "Drag the box to move it, or drag the handle to resize. Line it up with a card sitting at module 1.",
+    "instructions": "Drag the box to move it, or drag the handle to resize. Line it up with a card sitting at the camera (sorting arm 1).",
     "connecting": "Connecting…",
-    "reconnectWebcam": "Reconnect Webcam",
-    "connectWebcam": "Connect Webcam",
+    "reconnectWebcam": "Reconnect camera",
+    "connectWebcam": "Connect camera",
     "waitingForCamera": "Waiting for camera…",
     "resetToDefault": "Reset to default",
     "saving": "Saving…",
-    "saveScanRegion": "Save Scan Region",
-    "savedSummary": "Saved: {{coverage}}% coverage, {{offsetX}}% / {{offsetY}}% offset",
-    "settleDelayLabel": "Capture delay",
+    "saveScanRegion": "Save scan area",
+    "savedSummary": "Scan area saved",
+    "settleDelayLabel": "Photo delay",
     "settleDelayHint": "How long to wait after the sensor sees a card before the photo is taken. Raise this if captures show the card still sliding.",
-    "saveSettleDelay": "Save capture delay"
+    "saveSettleDelay": "Save photo delay",
+    "msValue": "{{value}} ms"
   },
   "useCalibrationPage": {
     "toasts": {
-      "notCalibrated": "Modules not calibrated",
-      "notCalibratedDescription": "Configure all three modules before running the test sequence.",
-      "runningTest": "Running test sequence…",
-      "testComplete": "Test complete",
-      "testFailed": "Test failed",
-      "noResponse": "No response from sorter.",
+      "notCalibrated": "Sorting arms not calibrated",
+      "notCalibratedDescription": "Set up all three sorting arms before running the self-test.",
+      "runningTest": "Running self-test…",
+      "testComplete": "Self-test complete",
+      "testFailed": "Self-test failed",
+      "noResponse": "No response from the sorter.",
       "binFailed": "Bin {{bin}} failed",
-      "startingSampleRun": "Starting sample run…",
-      "sampleRunStopped": "Sample run stopped at bin {{bin}}",
-      "sampleRunComplete": "Sample run complete"
+      "startingSampleRun": "Testing every bin…",
+      "sampleRunStopped": "Bin test stopped at bin {{bin}}",
+      "sampleRunComplete": "Every bin tested"
     }
   },
   "useFeederConfig": {
     "toasts": {
-      "notSynced": "Feeder calibration not synced",
-      "unexpectedResponse": "Unexpected response: {{response}}",
-      "noResponse": "No response from sorter.",
-      "saveFailed": "Failed to save feeder config"
+      "notSynced": "Saved, but the sorter didn't confirm. Reconnect and try again.",
+      "unexpectedResponse": "The sorter sent something unexpected. Try reconnecting.",
+      "noResponse": "No response from the sorter.",
+      "saveFailed": "Couldn't save the feeder settings"
     }
   },
   "useModuleConfigs": {
     "toasts": {
-      "notSynced": "Module {{module}} calibration not synced",
-      "unexpectedResponse": "Unexpected response: {{response}}",
-      "noResponse": "No response from sorter.",
-      "saveFailed": "Failed to save module config"
+      "notSynced": "Saved, but the sorter didn't confirm sorting arm {{module}}. Reconnect and try again.",
+      "unexpectedResponse": "The sorter sent something unexpected. Try reconnecting.",
+      "noResponse": "No response from the sorter.",
+      "saveFailed": "Couldn't save the sorting arm settings"
     }
   },
   "calibratePage": {
+    "title": "Calibrate",
+    "subtitle": "Tune the machine's feeder, sensors, and sorting arms. Connect the sorter over USB first.",
     "moduleHistory": {
-      "bottom": "Bottom",
-      "paddle": "Paddle",
-      "pusher": "Pusher",
-      "moduleLabel": "Module {{module}}"
+      "bottom": "Bottom gate",
+      "paddle": "Side paddles",
+      "pusher": "Pusher arm",
+      "closedOpen": "Closed {{closed}} · Open {{open}}",
+      "leftNeutralRight": "Left {{left}} · Neutral {{neutral}} · Right {{right}}",
+      "moduleLabel": "Sorting arm {{module}}"
     },
     "feederHistory": {
+      "entryLabel": "Feeder settings",
       "speed": "Speed",
-      "duration": "Duration",
+      "duration": "Max feed time",
       "pulse": "Pulse",
       "pause": "Pause",
-      "settle": "Settle",
+      "settle": "Extra feed",
       "continuous": "Continuous",
-      "msValue": "{{value}}ms"
+      "msValue": "{{value}} ms"
     },
     "toasts": {
-      "moduleReverted": "Reverted module calibration",
-      "feederReverted": "Reverted feeder calibration",
-      "revertFailed": "Failed to revert"
+      "moduleReverted": "Restored sorting arm settings",
+      "feederReverted": "Restored feeder settings",
+      "revertFailed": "Couldn't restore those settings — check the sorter is connected"
     },
-    "disconnect": "Disconnect",
-    "connectDevice": "Connect Device",
+    "disconnect": "Disconnect sorter",
+    "connectDevice": "Connect sorter",
     "testing": "Testing…",
-    "runTest": "Run Test",
-    "calibrateBeforeTest": "Calibrate all modules before running the test",
-    "scanRegionLabel": "Scan Region",
-    "feederCalibrationLabel": "Feeder Calibration",
+    "runTest": "Run self-test",
+    "calibrateBeforeTest": "Calibrate all three sorting arms before running the self-test",
+    "scanRegionLabel": "Scan area",
+    "feederCalibrationLabel": "Feeder",
     "history": "History",
-    "moduleCalibrationLabel": "Module Calibration",
-    "feederHistoryTitle": "Feeder History",
-    "moduleHistoryTitle": "Module History"
+    "moduleCalibrationLabel": "Sorting arms",
+    "feederHistoryTitle": "Feeder history",
+    "moduleHistoryTitle": "Sorting arm history"
   }
 }

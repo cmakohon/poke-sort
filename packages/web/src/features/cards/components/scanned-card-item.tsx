@@ -1,4 +1,6 @@
 import { rarityColor } from "@/features/cards/lib/rarity-color";
+import { formatCardNumber } from "@/features/cards/lib/format-card-number";
+import { formatUsd } from "@/features/scanner/components/scan-stats";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +29,7 @@ export const ScannedCardItem = memo(function ScannedCardItem({
   hasAlternatives = false,
   isFoil = false,
   isDownloaded = false,
+  wasCorrected = false,
 }: ScannedCardItemProps) {
   const { t } = useTranslation("cards");
   return (
@@ -58,23 +61,43 @@ export const ScannedCardItem = memo(function ScannedCardItem({
             </div>
           )}
           <div className="absolute bottom-1 left-1 right-1 flex gap-1 items-center justify-between z-20">
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Badge
-                    variant={card.distance < 0.15 ? "default" : "destructive"}
-                  >
-                    {card.distance != null
-                      ? (100 - card.distance * 100).toFixed(2)
-                      : "0.00"}
-                    %
-                  </Badge>
-                }
-              />
-              <TooltipContent>
-                {t("scannedCardItem.matchTooltip")}
-              </TooltipContent>
-            </Tooltip>
+            {/* wasCorrected is the signal that a human picked this card —
+                corrected rows store distance: 0, so distance alone can't
+                distinguish "user confirmed" from "perfect scan match". */}
+            {wasCorrected ? (
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Badge variant="default">
+                      <IconCheck className="size-3" />
+                      {t("scannedCardItem.confirmed")}
+                    </Badge>
+                  }
+                />
+                <TooltipContent>
+                  {t("scannedCardItem.confirmedTooltip")}
+                </TooltipContent>
+              </Tooltip>
+            ) : card.distance != null ? (
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Badge
+                      variant={
+                        card.distance < 0.15 ? "default" : "destructive"
+                      }
+                    >
+                      {Math.round(100 - card.distance * 100)}%
+                    </Badge>
+                  }
+                />
+                <TooltipContent>
+                  {t("scannedCardItem.matchTooltip")}
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <span />
+            )}
             <Tooltip>
               <TooltipTrigger
                 render={
@@ -108,17 +131,20 @@ export const ScannedCardItem = memo(function ScannedCardItem({
           <IconCheck />
         </Button>
       )}
-      <div className="flex flex-row justify-between items-center px-1 pb-1">
-        <div className="flex flex-row items-center gap-2">
+      <div className="flex flex-row justify-between items-center px-1 pb-1 gap-2">
+        <div className="flex flex-row items-center gap-2 min-w-0">
           <div
             className="size-3 rounded-full shrink-0"
             style={{ backgroundColor: rarityColor(card.rarity) }}
           />
-          <p className="text-xs font-semibold uppercase" title={card.set}>
-            {card.set}
+          <p
+            className="text-xs font-semibold truncate min-w-0"
+            title={`${card.setName || card.set} (${card.set.toUpperCase()})`}
+          >
+            {card.setName || card.set.toUpperCase()}
           </p>
-          <p className="text-xs text-muted-foreground">
-            #{card.collectorNumber}
+          <p className="text-xs text-muted-foreground shrink-0">
+            {formatCardNumber(card)}
           </p>
           {isDownloaded && (
             <span title={t("scannedCardItem.downloaded")}>
@@ -127,8 +153,8 @@ export const ScannedCardItem = memo(function ScannedCardItem({
           )}
         </div>
         {card.price != null && (
-          <p className="text-xs font-medium text-muted-foreground">
-            ${card.price.toFixed(2)}
+          <p className="text-xs font-medium text-muted-foreground shrink-0">
+            {formatUsd(card.price)}
           </p>
         )}
       </div>

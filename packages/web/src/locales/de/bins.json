@@ -3,8 +3,8 @@
     "binLabel": "Fach {{number}}",
     "catchAll": "Auffangfach",
     "reviewBin": "Prüfen",
-    "ruleCount_one": "{{count}} Regel",
-    "ruleCount_other": "{{count}} Regeln",
+    "ruleCount_one": "{{count}} Bedingung",
+    "ruleCount_other": "{{count}} Bedingungen",
     "allUnmatched": "Alle nicht zugeordneten Karten",
     "reviewOnly": "Nur unsichere Scans",
     "clickToConfigure": "Zum Konfigurieren klicken"
@@ -17,8 +17,8 @@
     "catchAllDescription": "Karten, die auf kein anderes Fach passen, landen hier.",
     "reviewBinEnabled": "Prüf-Fach",
     "setReviewBin": "Als Prüf-Fach festlegen",
-    "reviewBinDescription": "Scans, bei denen die Erkennung unsicher ist, landen hier statt im Auffangfach.",
-    "reviewBinHint": "Unsichere Scans landen derzeit im Auffangfach.",
+    "reviewBinDescription": "Karten, bei denen sich der Scanner unsicher ist, landen hier statt im Auffangfach.",
+    "reviewBinHint": "Karten, bei denen sich der Scanner unsicher ist, landen derzeit im Auffangfach.",
     "reviewBinElsewhere": "Fach {{number}} ist das Prüf-Fach.",
     "rulesLabel": "Regeln",
     "clear": "Leeren",
@@ -52,47 +52,46 @@
   },
   "ruleSummary": {
     "noConditions": "Keine Bedingungen",
-    "and": "UND",
-    "or": "ODER"
+    "and": "und",
+    "or": "oder"
   },
   "presetSelector": {
     "binLabel": "Fach {{number}}",
     "catchAll": "Auffangfach",
     "reviewBin": "Prüfen",
-    "noRules": "keine Regeln",
+    "noRules": "Keine Regeln",
     "conditionCount_one": "{{count}} Bedingung",
     "conditionCount_other": "{{count}} Bedingungen",
-    "sortingLogic": "Sortierlogik",
-    "selectSetPlaceholder": "Set auswählen...",
-    "editSortingLogic": "Sortierlogik bearbeiten",
-    "deleteSetTitle": "Set löschen",
-    "deleteSetDescription": "Löscht \"{{name}}\" endgültig. Dies kann nicht rückgängig gemacht werden.",
-    "revertSuccess": "Auf vorherigen Fach-Set-Stand zurückgesetzt",
-    "revertFailed": "Zurücksetzen fehlgeschlagen",
-    "renameSetTitle": "Set umbenennen",
-    "renameSetDescription": "Gib einen neuen Namen für dieses Set ein.",
+    "sortingLogic": "Aktive Sortierung",
+    "selectSetPlaceholder": "Sortierung auswählen…",
+    "editSortingLogic": "Sortierregeln bearbeiten",
+    "deleteSetTitle": "Sortierung löschen",
+    "deleteSetDescription": "Löscht die Sortierung \"{{name}}\" endgültig. Deine Karten und Sammlungen bleiben unberührt.",
+    "deleteSetTooltip": "Sortierung löschen",
+    "deleteSetDisabledTooltip": "Du brauchst mindestens eine Sortierung",
+    "revertSuccess": "Vorherige Version dieser Sortierung wiederhergestellt",
+    "revertFailed": "Version konnte nicht wiederhergestellt werden",
+    "renameSetTitle": "Sortierung umbenennen",
+    "renameSetDescription": "Gib einen neuen Namen für diese Sortierung ein.",
     "cancel": "Abbrechen",
     "rename": "Umbenennen",
-    "setNameLabel": "Set-Name",
-    "setNamePlaceholder": "Set-Name...",
-    "newSetTitle": "Neues Set",
-    "newSetDescription": "Erstellt ein neues Set mit 7 leeren Fächern.",
+    "setNameLabel": "Name der Sortierung",
+    "setNamePlaceholder": "Name der Sortierung…",
+    "newSetTitle": "Neue Sortierung",
+    "newSetDescription": "Startet eine neue Sortierung mit 7 leeren Fächern.",
     "create": "Erstellen",
     "viewHistory": "Verlauf anzeigen",
-    "historyTitle": "Fach-Set-Verlauf"
+    "historyTitle": "Sortierungsverlauf"
   },
   "useBinConfigs": {
     "toasts": {
-      "saveBinFailed": "Fach-Konfiguration konnte nicht gespeichert werden",
-      "clearBinFailed": "Fach-Konfiguration konnte nicht geleert werden",
-      "activateSetFailed": "Set konnte nicht aktiviert werden",
-      "createSetFailed": "Set konnte nicht erstellt werden",
-      "saveSetFailed": "Set konnte nicht gespeichert werden",
-      "renameSetFailed": "Set konnte nicht umbenannt werden",
-      "deleteSetFailed": "Set konnte nicht gelöscht werden"
+      "saveBinFailed": "Fach konnte nicht gespeichert werden",
+      "clearBinFailed": "Fach konnte nicht geleert werden",
+      "activateSetFailed": "Sortierung konnte nicht gewechselt werden",
+      "createSetFailed": "Sortierung konnte nicht erstellt werden",
+      "saveSetFailed": "Sortierung konnte nicht gespeichert werden",
+      "renameSetFailed": "Sortierung konnte nicht umbenannt werden",
+      "deleteSetFailed": "Sortierung konnte nicht gelöscht werden"
     }
-  },
-  "binsPage": {
-    "binLabel": "Fach {{number}}"
   }
 }

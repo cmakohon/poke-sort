@@ -1,4 +1,5 @@
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { Label } from "@/components/ui/label";
 import { PrimaryColorPicker } from "@/components/primary-color-picker";
 import { ScannerLayoutToggle } from "@/components/scanner-layout-toggle";
 import { DiscordWebhookSettings } from "@/features/notifications/components/discord-webhook-settings";
@@ -31,7 +32,12 @@ export default function SettingsPage() {
           <ScannerLayoutToggle />
         </div>
         <div className="flex flex-col gap-1.5">
-          <p className="text-xs font-medium">{t("appearance.language")}</p>
+          <Label
+            htmlFor="language-switcher"
+            className="text-xs font-medium w-fit"
+          >
+            {t("appearance.language")}
+          </Label>
           <LanguageSwitcher />
         </div>
       </div>

@@ -207,7 +207,7 @@ export default function CollectionsPage() {
                         variant="ghost"
                         size="icon"
                         render={
-                          <Link to={`/collections/${collection.guid}/bins`}>
+                          <Link to="/sorts">
                             <IconLayoutGrid />
                           </Link>
                         }

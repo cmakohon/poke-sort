@@ -6,13 +6,10 @@
     "monitor": "Überwachung",
     "calibrate": "Kalibrieren",
     "settings": "Einstellungen",
-    "admin": "Admin",
+    "admin": "Kartendatenbank",
     "collapse": "Einklappen",
-    "collapseSidebar": "Seitenleiste einklappen ([)",
-    "expandSidebar": "Seitenleiste ausklappen ([)"
-  },
-  "breadcrumb": {
-    "sortingLogic": "Sortierlogik"
+    "collapseSidebar": "Seitenleiste einklappen",
+    "expandSidebar": "Seitenleiste ausklappen"
   },
   "statusFooter": {
     "camera": "Kamera",
@@ -24,15 +21,21 @@
     "sorterDisconnected": "Kein Sortierer verbunden",
     "sorterSelfTest": "Sortierer verbunden, Selbsttest läuft…",
     "sorterReady": "Sortierer bereit",
-    "syncProgress": "Sync {{done}}/{{total}}",
-    "syncStatus": "Sync {{status}}",
-    "syncing": "Kartenbild-Vektoren werden synchronisiert…",
-    "syncingCard": "Kartenbild-Vektoren werden synchronisiert: {{card}}",
-    "syncCompleted": "Kartenbild-Vektor-Sync abgeschlossen",
-    "syncFailed": "Kartenbild-Vektor-Sync fehlgeschlagen",
-    "sync": "Kartenbild-Vektor-Sync",
-    "cardTotal_one": "{{count}} Karte · ${{value}}",
-    "cardTotal_other": "{{count}} Karten · ${{value}}"
+    "syncProgress": "Lernt {{done}}/{{total}}",
+    "syncState": {
+      "idle": "Kartenerkennung",
+      "running": "Kartenerkennung wird aktualisiert",
+      "completed": "Kartenerkennung ist aktuell",
+      "failed": "Aktualisierung der Kartenerkennung fehlgeschlagen",
+      "cancelled": "Aktualisierung der Kartenerkennung abgebrochen"
+    },
+    "syncing": "Kartenbilder werden gelernt…",
+    "syncingCard": "{{card}} wird gelernt…",
+    "syncCompleted": "Kartenerkennung ist aktuell",
+    "syncFailed": "Aktualisierung fehlgeschlagen — Details auf der Kartendatenbank-Seite",
+    "sync": "Kartenerkennung",
+    "cardTotal_one": "{{count}} Karte · {{value}}",
+    "cardTotal_other": "{{count}} Karten · {{value}}"
   },
   "theme": {
     "toggle": "Design umschalten",
@@ -41,9 +44,10 @@
     "system": "System"
   },
   "deleteDialog": {
-    "typeDeleteToConfirm": "Gib \"delete\" ein, um zu bestätigen",
+    "keyword": "löschen",
+    "typeDeleteToConfirm": "Gib \"{{keyword}}\" ein, um zu bestätigen",
     "typeNameToConfirm": "Gib \"{{name}}\" ein, um zu bestätigen",
-    "typeKeywordLabel": "Gib <code>delete</code> ein, um zu bestätigen",
+    "typeKeywordLabel": "Gib <code>{{keyword}}</code> ein, um zu bestätigen",
     "typeNameLabel": "Gib <code>{{name}}</code> ein, um zu bestätigen"
   },
   "actions": {
@@ -60,11 +64,11 @@
     "revert": "Zurücksetzen"
   },
   "loadingGate": {
-    "loadingVault": "Dein Vault wird geladen…"
+    "loadingVault": "Deine Sammlungen werden geladen…"
   },
   "notFound": {
     "title": "Seite nicht gefunden",
-    "description": "Die gesuchte Seite existiert nicht oder wurde verschoben.",
-    "backHome": "Zurück zur Startseite"
+    "description": "Dieser Link führt in PokeSort nirgendwohin.",
+    "backHome": "Zum Scanner"
   }
 }

@@ -25,7 +25,6 @@ import {
   type BinSetAuditEntry,
 } from "@/features/bins/api/sort-bins";
 import { useBinConfigs } from "@/features/bins/api/use-bin-configs";
-import { useCollections } from "@/features/collections/api/use-collections";
 import { useOrg } from "@/hooks/use-org";
 import type { PresetSelectorProps } from "@/features/bins/types";
 import {
@@ -93,7 +92,6 @@ export function PresetSelector({ readOnly }: PresetSelectorProps) {
     isActivating,
     isPresetMutating,
   } = useBinConfigs();
-  const { activeCollection } = useCollections();
   const { activeOrg } = useOrg();
   const queryClient = useQueryClient();
   const { isLoading } = useQuery({ ...binsQueryOptions, enabled: !!activeOrg });
@@ -219,7 +217,16 @@ export function PresetSelector({ readOnly }: PresetSelectorProps) {
                 {isActivating && (
                   <IconLoader2 className="size-3 animate-spin shrink-0 text-muted-foreground" />
                 )}
-                <span className="truncate">{selectedSet?.name}</span>
+                <span
+                  className={
+                    selectedSet
+                      ? "truncate"
+                      : "truncate text-muted-foreground"
+                  }
+                >
+                  {selectedSet?.name ??
+                    t("presetSelector.selectSetPlaceholder")}
+                </span>
               </span>
             </SelectValue>
           </SelectTrigger>
@@ -236,15 +243,8 @@ export function PresetSelector({ readOnly }: PresetSelectorProps) {
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <Button
-                    nativeButton={false}
-                    variant="outline"
-                    size="icon"
-                    disabled={!activeCollection}
-                  >
-                    <Link
-                      to={`/collections/${activeCollection?.guid}/bins`}
-                    >
+                  <Button nativeButton={false} variant="outline" size="icon">
+                    <Link to="/sorts">
                       <IconEdit />
                     </Link>
                   </Button>
@@ -255,14 +255,38 @@ export function PresetSelector({ readOnly }: PresetSelectorProps) {
           </>
         ) : (
           <>
-            <Button
-              variant="outline"
-              size="icon"
-              disabled={!selectedSet || isPresetMutating || sets.length <= 1}
-              onClick={() => setDeleteDialogOpen(true)}
-            >
-              <IconTrash />
-            </Button>
+            {/* When the only blocker is "last remaining sort", the button
+                stays technically enabled (aria-disabled + no-op click) so it
+                keeps receiving hover — a natively disabled button gets
+                pointer-events:none and its explanatory tooltip could never
+                open. */}
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    disabled={!selectedSet || isPresetMutating}
+                    aria-disabled={sets.length <= 1 || undefined}
+                    className={
+                      sets.length <= 1
+                        ? "opacity-50 cursor-not-allowed"
+                        : undefined
+                    }
+                    onClick={() => {
+                      if (sets.length > 1) setDeleteDialogOpen(true);
+                    }}
+                  >
+                    <IconTrash />
+                  </Button>
+                }
+              ></TooltipTrigger>
+              <TooltipContent>
+                {sets.length <= 1
+                  ? t("presetSelector.deleteSetDisabledTooltip")
+                  : t("presetSelector.deleteSetTooltip")}
+              </TooltipContent>
+            </Tooltip>
             <DeleteDialog
               open={deleteDialogOpen}
               onOpenChange={setDeleteDialogOpen}
@@ -283,6 +307,8 @@ export function PresetSelector({ readOnly }: PresetSelectorProps) {
                   variant="outline"
                   size="icon"
                   disabled={!selectedSet || isPresetMutating}
+                  title={t("presetSelector.renameSetTitle")}
+                  aria-label={t("presetSelector.renameSetTitle")}
                 >
                   <IconEdit />
                 </Button>
@@ -342,6 +368,8 @@ export function PresetSelector({ readOnly }: PresetSelectorProps) {
                   variant="outline"
                   size="icon"
                   disabled={isPresetMutating}
+                  title={t("presetSelector.newSetTitle")}
+                  aria-label={t("presetSelector.newSetTitle")}
                 >
                   <IconPlus />
                 </Button>

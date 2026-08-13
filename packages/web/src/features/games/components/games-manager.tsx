@@ -20,6 +20,15 @@ import {
   type GameFormValues,
 } from "./game-form-dialog";
 
+function hostnameOf(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return null;
+  }
+}
+
 export function GamesManager() {
   const { t } = useTranslation("games");
   const queryClient = useQueryClient();
@@ -83,8 +92,11 @@ export function GamesManager() {
         toast.error(r.message || t("gamesManager.toasts.deleteError"));
         return;
       }
+      const deleted = (gamesQuery.data ?? []).find((g) => g.guid === guid);
       setGames((gamesQuery.data ?? []).filter((g) => g.guid !== guid));
-      toast.success(t("gamesManager.toasts.deleteSuccess"));
+      toast.success(
+        t("gamesManager.toasts.deleteSuccess", { name: deleted?.name }),
+      );
     },
     onError: () => toast.error(t("gamesManager.toasts.deleteError")),
   });
@@ -130,11 +142,11 @@ export function GamesManager() {
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground truncate">
-                {game.key} ·{" "}
                 {t("gamesManager.fieldCount", {
                   count: game.fieldDefinitions.length,
-                })}{" "}
-                · {game.dataSourceUrl}
+                })}
+                {hostnameOf(game.dataSourceUrl) &&
+                  ` · ${hostnameOf(game.dataSourceUrl)}`}
               </p>
             </div>
             <ButtonGroup>

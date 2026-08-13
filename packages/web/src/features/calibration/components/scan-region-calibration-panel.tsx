@@ -408,7 +408,7 @@ export function ScanRegionCalibrationPanel() {
               -25
             </Button>
             <span className="flex-1 text-center text-sm font-medium tabular-nums">
-              {delay} ms
+              {t("scanRegionCalibrationPanel.msValue", { value: delay })}
             </span>
             <Button variant="outline" size="sm" onClick={() => stepDelay(25)}>
               +25

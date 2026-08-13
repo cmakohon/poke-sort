@@ -8,7 +8,10 @@ import {
 } from "@/components/ui/tooltip";
 import { useBinConfigs } from "@/features/bins/api/use-bin-configs";
 import { useCardFilterSort } from "@/features/cards/api/use-card-filter-sort";
-import { useCardFilters } from "@/features/cards/api/use-card-filters";
+import {
+  EMPTY_CARD_FILTERS,
+  useCardFilters,
+} from "@/features/cards/api/use-card-filters";
 import { CardDetailPanel } from "@/features/cards/components/card-detail-panel";
 import { CardToolbar } from "@/features/cards/components/card-toolbar";
 import { ScannedCardItem } from "@/features/cards/components/scanned-card-item";
@@ -40,7 +43,7 @@ export function CardGrid() {
   const { t } = useTranslation("cards");
   const {
     activeCollection,
-    deleteCollection,
+    emptyCollection,
     isLoading: collectionsLoading,
   } = useCollections();
   const {
@@ -133,13 +136,19 @@ export function CardGrid() {
     setSelectedIds(new Set());
   }, [removeCards, selectedIds]);
 
+  // Empties the active collection's cards; the collection itself survives.
+  // The server delete goes through emptyCollection alone (awaited, so a
+  // failure surfaces before anything disappears locally); clearCards then
+  // only resets local state — passing skipServer avoids a second concurrent
+  // DELETE against the same endpoint.
   const handleClearSession = useCallback(async () => {
     if (activeCollection) {
-      await deleteCollection(activeCollection.guid);
+      await emptyCollection(activeCollection.guid);
+      clearCards({ skipServer: true });
     } else {
       clearCards();
     }
-  }, [activeCollection, deleteCollection, clearCards]);
+  }, [activeCollection, emptyCollection, clearCards]);
 
   if (isLoading) {
     return (
@@ -331,13 +340,25 @@ export function CardGrid() {
         />
       </div>
       {filteredAndSorted.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground flex-1">
-          <p className="text-sm font-medium">
-            {t("cardGrid.noCardsMatchFilters")}
-          </p>
-          <p className="text-xs">
-            {t("cardGrid.tryAdjusting")}
-          </p>
+        <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground flex-1">
+          <div className="text-center">
+            <p className="text-sm font-medium">
+              {t("cardGrid.noCardsMatchFilters")}
+            </p>
+            <p className="text-xs">
+              {t("cardGrid.tryAdjusting")}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setFilters(EMPTY_CARD_FILTERS);
+              setSearchQuery("");
+            }}
+          >
+            {t("cardGrid.clearFilters")}
+          </Button>
         </div>
       )}
       <div className="p-2 flex-1">
@@ -353,6 +374,7 @@ export function CardGrid() {
               hasAlternatives={!!card.alternativeMatches?.length}
               isFoil={card.isFoil}
               isDownloaded={card.isDownloaded}
+              wasCorrected={card.wasCorrected}
             />
           ))}
         </div>

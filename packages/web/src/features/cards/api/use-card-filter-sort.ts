@@ -1,16 +1,7 @@
 import { getCardValue, type FieldMeta, type ScannedCard } from "@poke-sort/shared";
 import { useEffect, useMemo, useState } from "react";
+import { EMPTY_CARD_FILTERS } from "@/features/cards/api/use-card-filters";
 import type { CardFilters } from "@/features/cards/types";
-
-const EMPTY_FILTERS: CardFilters = {
-  types: [],
-  rarities: [],
-  bins: [],
-  needsAttention: false,
-  showDownloaded: false,
-  sets: [],
-  minMatchPercent: 0,
-};
 
 // Fields sortable on the card grid - multi-value ("set") fields don't have
 // a natural sort order, so they're left out.
@@ -46,7 +37,12 @@ function compareByField(
     return (ia === -1 ? order.length : ia) - (ib === -1 ? order.length : ib);
   }
 
-  return String(va ?? "").localeCompare(String(vb ?? ""));
+  // numeric:true keeps collector numbers in binder order (2 before 10, not
+  // "10" < "2") and handles names containing numbers sensibly.
+  return String(va ?? "").localeCompare(String(vb ?? ""), undefined, {
+    numeric: true,
+    sensitivity: "base",
+  });
 }
 
 export function useCardFilterSort(
@@ -56,7 +52,7 @@ export function useCardFilterSort(
 ) {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortKey, setSortKey] = useState<string | null>("scan-desc");
-  const [internalFilters, setInternalFilters] = useState<CardFilters>(EMPTY_FILTERS);
+  const [internalFilters, setInternalFilters] = useState<CardFilters>(EMPTY_CARD_FILTERS);
   const filters = external?.filters ?? internalFilters;
   const setFilters = external?.setFilters ?? setInternalFilters;
 
@@ -112,21 +108,49 @@ export function useCardFilterSort(
     }
 
     if (filters.minMatchPercent > 0) {
+      // Rows without a distance (human-confirmed or legacy) always pass:
+      // they carry no score to compare, and a hand-picked card is the
+      // highest-confidence match there is.
       result = result.filter(
-        (entry) => (1 - entry.card.distance) * 100 >= filters.minMatchPercent,
+        (entry) =>
+          entry.wasCorrected ||
+          entry.card.distance == null ||
+          (1 - entry.card.distance) * 100 >= filters.minMatchPercent,
       );
     }
 
     const query = searchQuery.toLowerCase().trim();
     if (query) {
+      // Collectors write card numbers as "#25" or "025/191". A "#" prefix
+      // means exact number; a bare query also substring-matches. The "/total"
+      // part and leading zeros are ignored on both sides, so "025/191",
+      // "25/191", and "#025" all find collector number "25".
+      const hasHash = query.startsWith("#");
+      const numberQuery = query.replace(/^#/, "");
+      const slashMatch = numberQuery.match(/^([^/\s]+)\s*\/\s*\S+$/);
+      const collectorQuery = (slashMatch ? slashMatch[1] : numberQuery).replace(
+        /^0+(?=\d)/,
+        "",
+      );
       result = result.filter((entry) => {
         const c = entry.card;
+        const collector = c.collectorNumber
+          .toLowerCase()
+          .replace(/^0+(?=\d)/, "");
+        const collectorHit =
+          collectorQuery !== "" &&
+          (hasHash
+            ? collector === collectorQuery
+            : collector === collectorQuery ||
+              c.collectorNumber.toLowerCase().includes(numberQuery));
         return (
+          collectorHit ||
           c.name.toLowerCase().includes(query) ||
           c.setName.toLowerCase().includes(query) ||
           c.set.toLowerCase().includes(query) ||
           c.typeLine.toLowerCase().includes(query) ||
-          c.collectorNumber.toLowerCase().includes(query) ||
+          (c.rarity?.toLowerCase().includes(query) ?? false) ||
+          (c.artist?.toLowerCase().includes(query) ?? false) ||
           (c.text?.toLowerCase().includes(query) ?? false)
         );
       });
@@ -150,7 +174,7 @@ export function useCardFilterSort(
     filters.bins.length +
     filters.sets.length +
     (filters.needsAttention ? 1 : 0) +
-    (filters.showDownloaded ? 1 : 0) +
+    (!filters.showDownloaded ? 1 : 0) +
     (filters.minMatchPercent > 0 ? 1 : 0);
 
   return {

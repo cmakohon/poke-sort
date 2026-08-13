@@ -1,12 +1,14 @@
 import type { CardFilters } from "@/features/cards/types";
 import { createContext, useCallback, useContext, useState } from "react";
 
+// showDownloaded defaults to true: exporting marks every card downloaded, and
+// hiding them by default made a whole grid silently vanish after an export.
 export const EMPTY_CARD_FILTERS: CardFilters = {
   types: [],
   rarities: [],
   bins: [],
   needsAttention: false,
-  showDownloaded: false,
+  showDownloaded: true,
   sets: [],
   minMatchPercent: 0,
 };

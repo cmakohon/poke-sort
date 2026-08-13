@@ -55,7 +55,7 @@ export interface ScannedCardsContextValue {
   correctCard: (scanId: string, card: PlayingCard) => void;
   toggleFoil: (scanId: string, isFoil: boolean) => void;
   markDownloaded: (scanIds: string[]) => void;
-  clearCards: () => void;
+  clearCards: (opts?: { skipServer?: boolean }) => void;
 }
 
 export type SerialMessageListener = (message: unknown) => void;

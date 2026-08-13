@@ -1,26 +1,29 @@
 {
   "discordWebhookSettings": {
-    "heading": "Discord-Webhook",
-    "description": "Erhalte eine Benachrichtigung, wenn das Sortieren fehlschlägt, das Gerät einen Fehler meldet (Klemmer, leerer Feeder, Verbindungsprobleme), eine Kartensuche fehlschlägt oder der Sync-Job abstürzt.",
+    "heading": "Discord-Benachrichtigungen",
+    "description": "Füge einen Discord-Webhook-Link ein und PokeSort meldet sich in diesem Kanal, wenn eine Karte klemmt, der Nachschub ausgeht, die Verbindung abbricht, eine Karte nicht erkannt wird oder ein Datenbank-Update fehlschlägt.",
+    "howTo": "Wie erstelle ich einen Webhook-Link?",
     "urlPlaceholder": "https://discord.com/api/webhooks/...",
     "saveButton": "Speichern",
-    "notifyToggleLabel": "Bei jeder gescannten Karte benachrichtigen",
+    "notifyToggleLabel": "Jede gescannte Karte posten",
     "notifyToggleDescription": "Sendet Name, Preis und Bild der Karte bei jedem Scan an Discord.",
-    "testHintDirty": "Webhook-URL speichern, um Testbenachrichtigungen zu aktivieren",
-    "testHintReady": "Testbenachrichtigung senden",
+    "notifyToggleDisabledHint": "Verfügbar, sobald ein Discord-Link gespeichert ist.",
+    "testHintNoUrl": "Füge oben einen Discord-Link ein, um Testmeldungen zu senden",
+    "testHintDirty": "Speichere deine Änderungen, um Testmeldungen zu senden",
+    "testHintReady": "Sende eine Testmeldung, um alles zu prüfen",
     "sending": "Wird gesendet…",
     "testTypes": {
       "sorter-error": "Sortierfehler",
-      "feeder-empty": "Feeder leer",
-      "card-jam": "Kartenklemmer",
-      "card-search-error": "Kartensuchfehler",
-      "sync-failure": "Sync-Fehler"
+      "feeder-empty": "Nachschub leer",
+      "card-jam": "Kartenstau",
+      "card-search-error": "Karte nicht erkannt",
+      "sync-failure": "Datenbank-Update fehlgeschlagen"
     }
   },
   "toasts": {
-    "saveError": "Benachrichtigungseinstellungen konnten nicht gespeichert werden.",
-    "saveSuccess": "Benachrichtigungseinstellungen gespeichert.",
-    "testSuccess": "Testbenachrichtigung gesendet.",
-    "testError": "Testbenachrichtigung konnte nicht gesendet werden."
+    "saveError": "Discord-Benachrichtigungen konnten nicht gespeichert werden",
+    "saveSuccess": "Discord-Benachrichtigungen gespeichert",
+    "testSuccess": "Testmeldung gesendet — sieh in deinem Discord-Kanal nach",
+    "testError": "Testmeldung konnte nicht gesendet werden"
   }
 }

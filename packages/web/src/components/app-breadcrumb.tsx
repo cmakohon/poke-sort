@@ -13,20 +13,11 @@ function useBreadcrumbs(): Crumb[] {
 
   if (pathname === "/") return [{ label: t("nav.scanner") }];
   if (pathname === "/collections") return [{ label: t("nav.collections") }];
+  if (pathname === "/sorts") return [{ label: t("nav.sorts") }];
   if (pathname === "/calibrate") return [{ label: t("nav.calibrate") }];
   if (pathname === "/settings") return [{ label: t("nav.settings") }];
   if (pathname === "/admin") return [{ label: t("nav.admin") }];
   if (pathname === "/monitor") return [{ label: t("nav.monitor") }];
-
-  const binsMatch = pathname.match(/^\/collections\/([^/]+)\/bins$/);
-  if (binsMatch) {
-    const collection = collections.find((c) => c.guid === binsMatch[1]);
-    return [
-      { label: t("nav.collections"), to: "/collections" },
-      { label: collection?.name ?? "…" },
-      { label: t("breadcrumb.sortingLogic") },
-    ];
-  }
 
   const monitorMatch = pathname.match(/^\/monitor\/([^/]+)$/);
   if (monitorMatch) {

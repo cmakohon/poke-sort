@@ -6,13 +6,10 @@
     "monitor": "Monitor",
     "calibrate": "Calibrate",
     "settings": "Settings",
-    "admin": "Admin",
+    "admin": "Card database",
     "collapse": "Collapse",
-    "collapseSidebar": "Collapse sidebar ([)",
-    "expandSidebar": "Expand sidebar ([)"
-  },
-  "breadcrumb": {
-    "sortingLogic": "Sorting Logic"
+    "collapseSidebar": "Collapse sidebar",
+    "expandSidebar": "Expand sidebar"
   },
   "statusFooter": {
     "camera": "Camera",
@@ -24,15 +21,21 @@
     "sorterDisconnected": "No sorter connected",
     "sorterSelfTest": "Sorter connected, running self-test…",
     "sorterReady": "Sorter ready",
-    "syncProgress": "Sync {{done}}/{{total}}",
-    "syncStatus": "Sync {{status}}",
-    "syncing": "Syncing card image vectors…",
-    "syncingCard": "Syncing card image vectors: {{card}}",
-    "syncCompleted": "Card image vector sync completed",
-    "syncFailed": "Card image vector sync failed",
-    "sync": "Card image vector sync",
-    "cardTotal_one": "{{count}} card · ${{value}}",
-    "cardTotal_other": "{{count}} cards · ${{value}}"
+    "syncProgress": "Learning {{done}}/{{total}}",
+    "syncState": {
+      "idle": "Card recognition",
+      "running": "Updating card recognition",
+      "completed": "Card recognition up to date",
+      "failed": "Card recognition update failed",
+      "cancelled": "Card recognition update cancelled"
+    },
+    "syncing": "Learning card images…",
+    "syncingCard": "Learning {{card}}…",
+    "syncCompleted": "Card recognition is up to date",
+    "syncFailed": "Card recognition update failed — open Card database for details",
+    "sync": "Card recognition",
+    "cardTotal_one": "{{count}} card · {{value}}",
+    "cardTotal_other": "{{count}} cards · {{value}}"
   },
   "theme": {
     "toggle": "Toggle theme",
@@ -41,9 +44,10 @@
     "system": "System"
   },
   "deleteDialog": {
-    "typeDeleteToConfirm": "Type \"delete\" to confirm",
+    "keyword": "delete",
+    "typeDeleteToConfirm": "Type \"{{keyword}}\" to confirm",
     "typeNameToConfirm": "Type \"{{name}}\" to confirm",
-    "typeKeywordLabel": "Type <code>delete</code> to confirm",
+    "typeKeywordLabel": "Type <code>{{keyword}}</code> to confirm",
     "typeNameLabel": "Type <code>{{name}}</code> to confirm"
   },
   "actions": {
@@ -60,11 +64,11 @@
     "revert": "Revert"
   },
   "loadingGate": {
-    "loadingVault": "Loading your vault…"
+    "loadingVault": "Loading your collections…"
   },
   "notFound": {
     "title": "Page not found",
-    "description": "The page you're looking for doesn't exist or has been moved.",
-    "backHome": "Back to home"
+    "description": "That link doesn't go anywhere in PokeSort.",
+    "backHome": "Go to the scanner"
   }
 }

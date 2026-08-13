@@ -1,6 +1,6 @@
 {
   "cardImageVectors": {
-    "heading": "Card Image Vectors",
+    "heading": "Card recognition",
     "syncStatus": {
       "idle": "Idle",
       "running": "Running",
@@ -8,54 +8,70 @@
       "failed": "Failed",
       "cancelled": "Cancelled"
     },
-    "selectGamePlaceholder": "Select a game...",
-    "languagePlaceholder": "Language...",
+    "selectGamePlaceholder": "Select a game…",
+    "languagePlaceholder": "Language…",
     "cancelButton": "Cancel",
-    "cancellingButton": "Cancelling...",
-    "startSyncButton": "Start Sync",
-    "startingButton": "Starting...",
-    "progressCount": "{{done}} / {{total}}",
-    "vectorizedCount": "{{count}} vectorized",
-    "skippedCount": "{{count}} skipped",
+    "cancellingButton": "Cancelling…",
+    "startSyncButton": "Start sync",
+    "startingButton": "Starting…",
+    "progressCount": "{{done}} of {{total}} cards",
+    "vectorizedCount": "{{count}} learned",
+    "skippedCount": "{{count}} already known",
     "etaRemaining": "~{{duration}} remaining",
-    "errorsCount": "{{count}} errors"
+    "errorsCount": "{{count}} failed"
   },
   "log": {
-    "heading": "Log",
-    "empty": "No Logs"
+    "heading": "Activity",
+    "empty": "Nothing yet"
   },
   "cardDatabase": {
-    "heading": "Card Database",
+    "heading": "Card database",
     "cardCount_one": "{{count}} card",
     "cardCount_other": "{{count}} cards",
-    "searchPlaceholder": "Search by name...",
-    "loading": "Loading...",
-    "loadError": "Failed to load cards",
-    "revectorizeTitle": "Re-vectorize",
+    "searchPlaceholder": "Search by name…",
+    "loading": "Loading…",
+    "loadError": "Couldn't load cards",
+    "revectorizeTitle": "Re-learn this card",
     "empty": "No cards found",
     "pageOf": "Page {{page}} of {{total}}"
   },
   "syncCardById": {
-    "heading": "Sync Card by ID",
-    "description": "Fetch and vectorize a single card, adding it if it isn't in the database yet",
-    "cardIdPlaceholder": "Card ID...",
-    "syncButton": "Sync",
-    "syncingButton": "Syncing..."
+    "heading": "Add a single card",
+    "description": "Teach the scanner one specific card by its catalog ID, adding it if it isn't in the database yet",
+    "cardIdPlaceholder": "e.g. sv3pt5-25",
+    "syncButton": "Add",
+    "syncingButton": "Adding…"
+  },
+  "catalogSetup": {
+    "heading": "Card catalog",
+    "statusReady": "{{formattedCount}} {{game}} cards ready to identify ({{language}}).",
+    "statusEmpty": "No {{game}} cards loaded yet — the scanner can't identify anything until you import the card pack.",
+    "importing": "Importing…",
+    "reimport": "Re-import pack",
+    "import": "Import card pack",
+    "downloadingOf": "Downloading {{done}} / {{total}} MB",
+    "downloading": "Downloading {{done}} MB",
+    "importingCards": "Importing {{done}} of {{total}} cards",
+    "packSource": "Pack source",
+    "packSourceHint": "Leave blank to download the standard pack."
   },
   "dumpDatabase": {
-    "heading": "Dump Card Database",
-    "description": "Permanently delete card image vectors, for one game or all of them",
-    "scopePlaceholder": "Select scope...",
+    "heading": "Delete recognition data",
+    "description": "Permanently deletes the learned card images, for one game or all of them",
+    "scopePlaceholder": "Choose what to delete…",
     "allGames": "All games",
-    "dumpButton": "Dump",
-    "dumpingButton": "Dumping...",
-    "dialogTitle": "Dump card database",
-    "confirmAll": "This will permanently delete all card image vectors and cannot be undone. Are you sure?",
-    "confirmScoped": "This will permanently delete all \"{{scope}}\" card image vectors and cannot be undone. Are you sure?"
+    "dumpButton": "Delete",
+    "dumpingButton": "Deleting…",
+    "dialogTitle": "Delete recognition data?",
+    "confirmAll": "This permanently deletes the recognition data for every game. The scanner won't identify any cards until you re-import the card pack (a few minutes) or run a full sync (several hours).",
+    "confirmScoped": "This permanently deletes the recognition data for {{scope}}. The scanner won't identify those cards until you re-import the card pack (a few minutes) or run a full sync (several hours)."
   },
   "toasts": {
-    "revectorizeError": "Failed to re-vectorize {{name}}",
-    "syncCardError": "Failed to sync card {{id}}",
-    "dumpError": "Failed to dump database"
+    "revectorizeSuccess": "Re-learned {{name}}",
+    "revectorizeError": "Couldn't re-learn {{name}}",
+    "syncCardSuccess": "Added {{id}} to the card database",
+    "syncCardError": "Couldn't add card \"{{id}}\"",
+    "dumpSuccess": "Recognition data deleted",
+    "dumpError": "Couldn't delete the recognition data"
   }
 }

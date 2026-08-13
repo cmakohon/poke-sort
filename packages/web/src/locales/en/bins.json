@@ -3,10 +3,10 @@
     "binLabel": "Bin {{number}}",
     "catchAll": "Catch-all",
     "reviewBin": "Review",
-    "ruleCount_one": "{{count}} rule",
-    "ruleCount_other": "{{count}} rules",
+    "ruleCount_one": "{{count}} condition",
+    "ruleCount_other": "{{count}} conditions",
     "allUnmatched": "All unmatched cards",
-    "reviewOnly": "Low-confidence scans only",
+    "reviewOnly": "Unsure matches only",
     "clickToConfigure": "Click to configure"
   },
   "binConfigPanel": {
@@ -17,8 +17,8 @@
     "catchAllDescription": "Cards that don't match any other bin will go here.",
     "reviewBinEnabled": "Review bin",
     "setReviewBin": "Set as review bin",
-    "reviewBinDescription": "Scans the pipeline isn't confident about go here instead of the catch-all.",
-    "reviewBinHint": "Low-confidence scans currently go to the catch-all.",
+    "reviewBinDescription": "Cards the scanner isn't sure about land here instead of the catch-all bin.",
+    "reviewBinHint": "Cards the scanner isn't sure about currently go to the catch-all bin.",
     "reviewBinElsewhere": "Bin {{number}} is the review bin.",
     "rulesLabel": "Rules",
     "clear": "Clear",
@@ -52,47 +52,46 @@
   },
   "ruleSummary": {
     "noConditions": "No conditions",
-    "and": "AND",
-    "or": "OR"
+    "and": "and",
+    "or": "or"
   },
   "presetSelector": {
     "binLabel": "Bin {{number}}",
-    "catchAll": "catch-all",
-    "reviewBin": "review",
-    "noRules": "no rules",
+    "catchAll": "Catch-all",
+    "reviewBin": "Review",
+    "noRules": "No rules",
     "conditionCount_one": "{{count}} condition",
     "conditionCount_other": "{{count}} conditions",
-    "sortingLogic": "Sorting Logic",
-    "selectSetPlaceholder": "Select a set...",
-    "editSortingLogic": "Edit Sorting Logic",
-    "deleteSetTitle": "Delete Set",
-    "deleteSetDescription": "Permanently deletes \"{{name}}\". This cannot be undone.",
-    "revertSuccess": "Reverted to previous bin set state",
-    "revertFailed": "Failed to revert",
-    "renameSetTitle": "Rename Set",
-    "renameSetDescription": "Enter a new name for this set.",
+    "sortingLogic": "Active sort",
+    "selectSetPlaceholder": "Choose a sort…",
+    "editSortingLogic": "Edit sorting rules",
+    "deleteSetTitle": "Delete sort",
+    "deleteSetDescription": "Permanently deletes the sort \"{{name}}\". Your cards and collections aren't affected.",
+    "deleteSetTooltip": "Delete sort",
+    "deleteSetDisabledTooltip": "You need at least one sort",
+    "revertSuccess": "Restored the previous version of this sort",
+    "revertFailed": "Couldn't restore that version",
+    "renameSetTitle": "Rename sort",
+    "renameSetDescription": "Enter a new name for this sort.",
     "cancel": "Cancel",
     "rename": "Rename",
-    "setNameLabel": "Set name",
-    "setNamePlaceholder": "Set name...",
-    "newSetTitle": "New Set",
-    "newSetDescription": "Create a new set with 7 empty bins.",
+    "setNameLabel": "Sort name",
+    "setNamePlaceholder": "Sort name…",
+    "newSetTitle": "New sort",
+    "newSetDescription": "Start a new sort with 7 empty bins.",
     "create": "Create",
-    "viewHistory": "View History",
-    "historyTitle": "Bin Set History"
+    "viewHistory": "View history",
+    "historyTitle": "Sort history"
   },
   "useBinConfigs": {
     "toasts": {
-      "saveBinFailed": "Failed to save bin config",
-      "clearBinFailed": "Failed to clear bin config",
-      "activateSetFailed": "Failed to activate set",
-      "createSetFailed": "Failed to create set",
-      "saveSetFailed": "Failed to save set",
-      "renameSetFailed": "Failed to rename set",
-      "deleteSetFailed": "Failed to delete set"
+      "saveBinFailed": "Couldn't save the bin",
+      "clearBinFailed": "Couldn't clear the bin",
+      "activateSetFailed": "Couldn't switch sorts",
+      "createSetFailed": "Couldn't create the sort",
+      "saveSetFailed": "Couldn't save the sort",
+      "renameSetFailed": "Couldn't rename the sort",
+      "deleteSetFailed": "Couldn't delete the sort"
     }
-  },
-  "binsPage": {
-    "binLabel": "Bin {{number}}"
   }
 }

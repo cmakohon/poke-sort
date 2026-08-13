@@ -123,7 +123,9 @@ export function FeederCalibrationPanel({
             <Skeleton className="h-3 w-16 rounded" />
           ) : calibration ? (
             <p className="text-xs text-muted-foreground text-center">
-              {calibration.speed}
+              {t("feederCalibrationPanel.savedValue", {
+                value: calibration.speed,
+              })}
             </p>
           ) : null}
         </div>
@@ -186,7 +188,11 @@ export function FeederCalibrationPanel({
             <Skeleton className="h-3 w-16 rounded" />
           ) : calibration ? (
             <p className="text-xs text-muted-foreground text-center">
-              {t("feederCalibrationPanel.msValue", { value: calibration.duration })}
+              {t("feederCalibrationPanel.savedValue", {
+                value: t("feederCalibrationPanel.msValue", {
+                  value: calibration.duration,
+                }),
+              })}
             </p>
           ) : null}
         </div>
@@ -201,6 +207,9 @@ export function FeederCalibrationPanel({
               </p>
             )}
           </div>
+          <p className="text-[10px] text-muted-foreground/70">
+            {t("feederCalibrationPanel.pulseDurationDescription")}
+          </p>
           <ButtonGroup className="w-full">
             <Button
               variant="secondary"
@@ -264,17 +273,23 @@ export function FeederCalibrationPanel({
             <Skeleton className="h-3 w-16 rounded" />
           ) : calibration ? (
             <p className="text-xs text-muted-foreground text-center">
-              {calibration.pulseDuration <= 0
-                ? t("feederCalibrationPanel.continuous")
-                : t("feederCalibrationPanel.msValue", {
-                    value: calibration.pulseDuration,
-                  })}
+              {t("feederCalibrationPanel.savedValue", {
+                value:
+                  calibration.pulseDuration <= 0
+                    ? t("feederCalibrationPanel.continuous")
+                    : t("feederCalibrationPanel.msValue", {
+                        value: calibration.pulseDuration,
+                      }),
+              })}
             </p>
           ) : null}
         </div>
         <div className="flex flex-col gap-2">
           <p className="text-xs text-muted-foreground">
             {t("feederCalibrationPanel.pauseDurationLabel")}
+          </p>
+          <p className="text-[10px] text-muted-foreground/70">
+            {t("feederCalibrationPanel.pauseDurationDescription")}
           </p>
           <ButtonGroup className="w-full">
             <Button
@@ -329,7 +344,11 @@ export function FeederCalibrationPanel({
             <Skeleton className="h-3 w-16 rounded" />
           ) : calibration ? (
             <p className="text-xs text-muted-foreground text-center">
-              {t("feederCalibrationPanel.msValue", { value: calibration.pauseDuration })}
+              {t("feederCalibrationPanel.savedValue", {
+                value: t("feederCalibrationPanel.msValue", {
+                  value: calibration.pauseDuration,
+                }),
+              })}
             </p>
           ) : null}
         </div>
@@ -393,7 +412,11 @@ export function FeederCalibrationPanel({
             <Skeleton className="h-3 w-16 rounded" />
           ) : calibration ? (
             <p className="text-xs text-muted-foreground text-center">
-              {t("feederCalibrationPanel.msValue", { value: calibration.settleDuration })}
+              {t("feederCalibrationPanel.savedValue", {
+                value: t("feederCalibrationPanel.msValue", {
+                  value: calibration.settleDuration,
+                }),
+              })}
             </p>
           ) : null}
         </div>

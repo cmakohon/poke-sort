@@ -180,7 +180,12 @@ export const POKEMON_FIELD_DEFINITIONS: FieldMeta[] = [
     type: "enum",
     path: "category",
     operators: ENUM_OPERATORS,
-    options: asOptions(["Energy", "Pokemon", "Trainer"]),
+    // Values are TCGdex's (accentless); only the label gets the é.
+    options: [
+      { value: "Energy", label: "Energy" },
+      { value: "Pokemon", label: "Pokémon" },
+      { value: "Trainer", label: "Trainer" },
+    ],
   },
   {
     // Absent on Trainer/Energy cards — those evaluate as "" and will not match
@@ -190,7 +195,11 @@ export const POKEMON_FIELD_DEFINITIONS: FieldMeta[] = [
     type: "enum",
     path: "stage",
     operators: ENUM_OPERATORS,
-    options: asOptions(POKEMON_STAGES),
+    // TCGdex writes "Stage1"/"Stage2" without the space; show the printed form.
+    options: POKEMON_STAGES.map((value) => ({
+      value,
+      label: value === "Stage1" ? "Stage 1" : value === "Stage2" ? "Stage 2" : value,
+    })),
   },
   {
     field: "hp",
@@ -288,7 +297,7 @@ export const POKEMON_FIELD_DEFINITIONS: FieldMeta[] = [
     // handful of cards depicting several Pokemon; a numeric comparison uses the
     // first entry, which is the one the card is named for.
     field: "dex_id",
-    label: "Pokedex Number",
+    label: "Pokédex Number",
     type: "numeric",
     path: "dexId",
     operators: NUMERIC_OPERATORS,
@@ -326,7 +335,7 @@ export const POKEMON_FIELD_DEFINITIONS: FieldMeta[] = [
   },
   {
     field: "legal_expanded",
-    label: "Expanded Legal",
+    label: "Legal in Expanded",
     type: "enum",
     path: "legal.expanded",
     operators: ENUM_OPERATORS,
@@ -340,7 +349,7 @@ export const POKEMON_FIELD_DEFINITIONS: FieldMeta[] = [
     // it is modelled as an enum of stringified booleans — conditions compare
     // via String(value), so "true"/"false" match correctly.
     field: "legal_standard",
-    label: "Standard Legal",
+    label: "Legal in Standard",
     type: "enum",
     path: "legal.standard",
     operators: ENUM_OPERATORS,

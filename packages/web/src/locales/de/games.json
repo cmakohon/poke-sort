@@ -3,7 +3,7 @@
     "heading": "Spiele",
     "description": "Lege fest, welche Trading Card Games gescannt werden können und wie ihre Karten mit Fach-Regeln abgeglichen werden.",
     "addGame": "Spiel hinzufügen",
-    "loading": "Wird geladen...",
+    "loading": "Wird geladen…",
     "active": "Aktiv",
     "inactive": "Inaktiv",
     "fieldCount_one": "{{count}} Feld",
@@ -21,18 +21,18 @@
       "updateError": "Spiel konnte nicht aktualisiert werden",
       "updateSuccess": "{{name}} gespeichert",
       "deleteError": "Spiel konnte nicht gelöscht werden",
-      "deleteSuccess": "Spiel gelöscht"
+      "deleteSuccess": "{{name}} gelöscht"
     }
   },
   "gameFormDialog": {
     "addTitle": "Spiel hinzufügen",
     "editTitle": "{{name}} bearbeiten",
     "description": "Lege fest, wie Karten für dieses Spiel abgerufen werden und welche Felder Fach-Regeln filtern können.",
-    "keyLabel": "Schlüssel",
+    "keyLabel": "Kurz-ID (für Dateien und Links)",
     "keyPlaceholder": "pokemon",
     "nameLabel": "Name",
     "namePlaceholder": "Pokémon",
-    "dataSourceUrlLabel": "Datenquellen-URL",
+    "dataSourceUrlLabel": "Woher die Karteninfos kommen (URL)",
     "dataSourceUrlPlaceholder": "https://api.pokemontcg.io/v2/cards",
     "activeLabel": "Aktiv",
     "cancel": "Abbrechen",
@@ -47,18 +47,18 @@
     }
   },
   "fieldDefinitionsEditor": {
-    "heading": "Feld-Definitionen",
-    "addField": "Feld hinzufügen",
-    "fieldKeyPlaceholder": "Feldschlüssel (z. B. rarity)",
-    "labelPlaceholder": "Beschriftung (z. B. Seltenheit)",
-    "dataPathPlaceholder": "Datenpfad (z. B. prices.usd)",
-    "optionsPlaceholder": "Optionen, kommagetrennt (z. B. common, uncommon, rare)",
-    "empty": "Noch keine Felder — füge mindestens eines hinzu, damit Fach-Regeln filtern können."
+    "heading": "Kartendetails, nach denen sortiert werden kann",
+    "addField": "Detail hinzufügen",
+    "fieldKeyPlaceholder": "Detail-ID (z. B. rarity)",
+    "labelPlaceholder": "Angezeigt als (z. B. Seltenheit)",
+    "dataPathPlaceholder": "Wo es in den Kartendaten steht (z. B. prices.usd)",
+    "optionsPlaceholder": "Auswahlmöglichkeiten, kommagetrennt (z. B. common, uncommon, rare)",
+    "empty": "Noch keine Details — füge mindestens eines hinzu, damit Sortierregeln filtern können."
   },
   "fieldTypes": {
     "string": "Text",
-    "numeric": "Numerisch",
-    "enum": "Enum",
-    "set": "Menge"
+    "numeric": "Zahl",
+    "enum": "Eines aus einer Liste",
+    "set": "Mehrere Werte"
   }
 }

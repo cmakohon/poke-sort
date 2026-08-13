@@ -59,4 +59,6 @@ export interface ScannedCardItemProps {
   hasAlternatives?: boolean;
   isFoil?: boolean;
   isDownloaded?: boolean;
+  /** A human picked this card (correction or manual add) — show Confirmed, not a match score. */
+  wasCorrected?: boolean;
 }

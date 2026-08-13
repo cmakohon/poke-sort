@@ -4,7 +4,7 @@
     "sessionReleased": "Session released",
     "releaseFailed": "Failed to release session",
     "monitorLinkCopied": "Monitor link copied",
-    "monitorLinkCopiedDescription": "Share this link with org members to let them watch the session.",
+    "monitorLinkCopiedDescription": "Anyone with this link can watch this sort live.",
     "copyLinkFailed": "Could not copy link",
     "noCollectionSelected": "No collection selected",
     "noCollection": "No collection",
@@ -22,7 +22,7 @@
     "cancel": "Cancel",
     "create": "Create",
     "nameLabel": "Collection name",
-    "namePlaceholder": "e.g. Commander Collection, Draft Haul...",
+    "namePlaceholder": "e.g. Bulk Box 2026, Surging Sparks Pulls…",
     "gameLabel": "Game",
     "gamePlaceholder": "Select a game...",
     "langLabel": "Language",
@@ -30,7 +30,7 @@
   },
   "requireDialog": {
     "title": "Create your first collection",
-    "description": "Collections organise your scanned cards. You need at least one before you can start scanning.",
+    "description": "Collections organize your scanned cards. You need at least one before you can start scanning.",
     "submit": "Create Collection"
   },
   "page": {
@@ -43,7 +43,7 @@
     "cardCount_other": "{{count}} cards",
     "noGame": "No game",
     "setActiveCollection": "Set as active collection",
-    "editSortingRules": "Edit sorting rules",
+    "editSortingRules": "Edit sorting rules (shared by all collections)",
     "rename": "Rename",
     "emptyCollection": "Empty Collection",
     "deleteCollection": "Delete Collection"

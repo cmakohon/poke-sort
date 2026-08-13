@@ -1,19 +1,16 @@
 {
   "title": "Einstellungen",
-  "subtitle": "Verwalte deine Organisation, das Erscheinungsbild und Benachrichtigungen",
-  "organizations": {
-    "heading": "Organisationen"
-  },
+  "subtitle": "Erscheinungsbild, Sprache und Benachrichtigungen",
   "appearance": {
     "heading": "Erscheinungsbild",
-    "description": "Passe die Akzentfarbe der App an.",
+    "description": "Farben, Layout und Sprache.",
     "primaryColor": "Primärfarbe",
     "resetColor": "Auf Standard zurücksetzen",
     "scannerLayout": "Scanner-Layout",
     "scannerLayoutHorizontal": "Horizontal",
-    "scannerLayoutHorizontalDescription": "Scanner in der Seitenleiste, Karten rechts",
+    "scannerLayoutHorizontalDescription": "Kamera links, gescannte Karten rechts",
     "scannerLayoutVertical": "Vertikal",
-    "scannerLayoutVerticalDescription": "Scanner oben, Kartenraster darunter",
+    "scannerLayoutVerticalDescription": "Kamera oben, gescannte Karten darunter",
     "language": "Sprache"
   },
   "notifications": {

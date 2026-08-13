@@ -30,8 +30,8 @@
     "minMatch": "Min. match",
     "status": "Status",
     "needsAttention": "Needs attention",
-    "downloaded": "Downloaded",
-    "showDownloadedCards": "Show downloaded cards",
+    "downloaded": "Exported",
+    "hideExportedCards": "Hide exported cards",
     "sets": "Sets",
     "resetFilters": "Reset filters",
     "allSets": "All sets",
@@ -49,8 +49,9 @@
     "autoFeedOnTooltip": "Auto-feed on — next card feeds automatically after each scan",
     "autoFeedOffTooltip": "Auto-feed off — feed each card manually",
     "clearDeviceTooltip": "Clear device (opens all bottom paddles)",
-    "noCardsMatchFilters": "No cards match the current filters",
-    "tryAdjusting": "Try adjusting your search, sort, or filter options",
+    "noCardsMatchFilters": "No cards match your filters",
+    "tryAdjusting": "Try adjusting your search or filters",
+    "clearFilters": "Clear search & filters",
     "pageOf": "Page {{page}} of {{total}}",
     "cardsSelected_one": "{{count}} card selected",
     "cardsSelected_other": "{{count}} cards selected",
@@ -79,7 +80,7 @@
     "noCardsFound": "No cards found"
   },
   "cardToolbar": {
-    "searchPlaceholder": "Search by name, set, type...",
+    "searchPlaceholder": "Search name, set, number, rarity…",
     "sortPlaceholder": "Sort by...",
     "scanOrder": "Scan Order",
     "sortAscString": "A-Z",
@@ -89,19 +90,21 @@
     "deselectAll": "Deselect all",
     "selectAll": "Select all",
     "sessionSummaryExport": "Session summary & export",
-    "deleteScannedCardsTitle": "Delete Scanned Cards",
-    "deleteScannedCardsDescription": "This will permanently delete all cards from your collection. This action cannot be undone.",
+    "deleteScannedCardsTitle": "Delete all scanned cards?",
+    "deleteScannedCardsDescription": "This permanently deletes every card in this collection. The collection itself is kept. This cannot be undone.",
     "cancel": "Cancel",
-    "clearing": "Clearing...",
-    "clearAll": "Clear All",
-    "clearAllCardsTitle": "Clear all cards"
+    "clearing": "Deleting…",
+    "clearAll": "Delete all",
+    "clearAllCardsTitle": "Delete all cards"
   },
   "scannedCardItem": {
-    "multipleMatchesTooltip": "Multiple close matches - tap to review",
+    "multipleMatchesTooltip": "Multiple close matches — tap to review",
     "foil": "Foil",
     "matchTooltip": "How closely the scanned image matches this card, based on visual similarity search",
+    "confirmed": "Confirmed",
+    "confirmedTooltip": "You picked this card yourself, so there's no match score",
     "bin": "Bin {{number}}",
-    "downloaded": "Downloaded"
+    "downloaded": "Exported"
   },
   "sessionSummaryDialog": {
     "title": "Session Summary",

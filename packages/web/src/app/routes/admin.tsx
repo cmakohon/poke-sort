@@ -1,13 +1,5 @@
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { DeleteDialog } from "@/components/delete-dialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -36,7 +28,7 @@ import {
   IconChevronRight,
   IconRefresh,
 } from "@tabler/icons-react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -50,6 +42,7 @@ import {
 export default function AdminPage() {
   const { t } = useTranslation("admin");
   const { activeOrg } = useOrg();
+  const queryClient = useQueryClient();
   const [syncState, setSyncState] = useState<SyncState>(DEFAULT_SYNC_STATE);
   const [now, setNow] = useState(() => Date.now());
   const [dumpOpen, setDumpOpen] = useState(false);
@@ -172,8 +165,8 @@ export default function AdminPage() {
   async function handleRevectorize(cardId: string, name: string) {
     setRevectorizingIds((prev) => new Set(prev).add(cardId));
     try {
-      const result = await revectorizeCard(cardId);
-      toast.success(result.message);
+      await revectorizeCard(cardId);
+      toast.success(t("toasts.revectorizeSuccess", { name }));
       cardsQuery.refetch();
     } catch {
       toast.error(t("toasts.revectorizeError", { name }));
@@ -191,29 +184,43 @@ export default function AdminPage() {
       startSync(gameKey, lang),
   });
   const cancelSyncMutation = useMutation({ mutationFn: cancelSync });
+  // The mutation takes the id as its variable so the completion toasts name
+  // the card that was actually submitted, not whatever is in the input by
+  // the time the request finishes.
   const syncCardMutation = useMutation({
-    mutationFn: () =>
-      syncCardById(syncCardGameKey!, syncCardIdInput.trim(), syncCardLang),
-    onSuccess: (result) => {
-      toast.success(result.message);
+    mutationFn: (id: string) =>
+      syncCardById(syncCardGameKey!, id, syncCardLang),
+    onSuccess: (_result, id) => {
+      toast.success(t("toasts.syncCardSuccess", { id }));
       setSyncCardIdInput("");
       cardsQuery.refetch();
       cardGamesQuery.refetch();
     },
-    onError: () => {
-      toast.error(t("toasts.syncCardError", { id: syncCardIdInput.trim() }));
+    onError: (err, id) => {
+      // Keep the server's message: "not found", "source down", and "sync
+      // running" need different reactions from the operator.
+      toast.error(t("toasts.syncCardError", { id }), {
+        description: err instanceof Error ? err.message : undefined,
+      });
     },
   });
   const dumpMutation = useMutation({
     mutationFn: (gameKey?: string) => dumpCards(gameKey),
-    onSuccess: (result) => {
+    onSuccess: () => {
       setDumpOpen(false);
-      toast.success(result.message);
+      toast.success(t("toasts.dumpSuccess"));
       cardsQuery.refetch();
       cardGamesQuery.refetch();
+      // The dump deletes from the same table catalog status counts and the
+      // rule-builder facets are derived from — drop those caches too, or the
+      // page keeps claiming the cards are still there.
+      void queryClient.invalidateQueries({ queryKey: ["catalog-status"] });
+      void queryClient.invalidateQueries({ queryKey: ["game-facets"] });
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : t("toasts.dumpError"));
+      toast.error(t("toasts.dumpError"), {
+        description: err instanceof Error ? err.message : undefined,
+      });
     },
   });
 
@@ -234,7 +241,7 @@ export default function AdminPage() {
   );
 
   return (
-    <div className="flex flex-col p-6 max-w-4xl mx-auto w-full h-full overlflow-hidden">
+    <div className="flex flex-col p-6 max-w-4xl mx-auto w-full h-full overflow-y-auto">
       <div className="rounded-lg rounded-b-none border p-4 flex flex-col gap-4">
         <div className="flex items-center justify-between gap-3">
           <div className="flex flex-col gap-0.5 min-w-0">
@@ -437,9 +444,13 @@ export default function AdminPage() {
               <p className="text-xs font-medium flex-1 min-w-0 truncate">
                 {card.name}
               </p>
-              <p className="text-xs text-muted-foreground uppercase font-mono shrink-0">
-                {card.gameKey} · {card.setCode}
-                {card.lang !== "en" ? ` · ${card.lang}` : ""}
+              <p className="text-xs text-muted-foreground shrink-0">
+                {sourcesQuery.data?.find((s) => s.gameKey === card.gameKey)
+                  ?.label ?? card.gameKey}{" "}
+                · {card.setCode.toUpperCase()}
+                {card.lang !== "en"
+                  ? ` · ${LANGUAGE_LABELS[card.lang] ?? card.lang}`
+                  : ""}
               </p>
               <p className="text-xs text-muted-foreground tabular-nums shrink-0 hidden sm:block">
                 {new Date(card.updatedAt).toLocaleDateString()}
@@ -493,7 +504,13 @@ export default function AdminPage() {
         )}
       </div>
 
-      {syncGameKey && <CatalogSetup gameKey={syncGameKey} lang={syncLang} />}
+      {syncGameKey && (
+        <CatalogSetup
+          gameKey={syncGameKey}
+          lang={syncLang}
+          gameLabel={selectedSource?.label}
+        />
+      )}
 
       <div className="mt-4">
         <GamesManager />
@@ -549,6 +566,7 @@ export default function AdminPage() {
             placeholder={t("syncCardById.cardIdPlaceholder")}
             value={syncCardIdInput}
             onChange={(e) => setSyncCardIdInput(e.target.value)}
+            disabled={syncCardMutation.isPending}
           />
           <Button
             disabled={
@@ -556,7 +574,7 @@ export default function AdminPage() {
               !syncCardIdInput.trim() ||
               syncCardMutation.isPending
             }
-            onClick={() => syncCardMutation.mutate()}
+            onClick={() => syncCardMutation.mutate(syncCardIdInput.trim())}
           >
             {syncCardMutation.isPending
               ? t("syncCardById.syncingButton")
@@ -584,43 +602,43 @@ export default function AdminPage() {
               <SelectItem value="__all__">{t("dumpDatabase.allGames")}</SelectItem>
               {(cardGamesQuery.data ?? []).map((g) => (
                 <SelectItem key={g.gameKey} value={g.gameKey}>
-                  {g.gameKey} ({g.count})
+                  {sourcesQuery.data?.find((s) => s.gameKey === g.gameKey)
+                    ?.label ?? g.gameKey}{" "}
+                  ({g.count.toLocaleString()})
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <Dialog open={dumpOpen} onOpenChange={setDumpOpen}>
-            <DialogTrigger
-              render={<Button variant="destructive" disabled={isRunning} />}
-            >
-              {t("dumpDatabase.dumpButton")}
-            </DialogTrigger>
-            <DialogContent showCloseButton={false}>
-              <DialogHeader>
-                <DialogTitle>{t("dumpDatabase.dialogTitle")}</DialogTitle>
-                <DialogDescription>
-                  {dumpGameKey === "__all__"
-                    ? t("dumpDatabase.confirmAll")
-                    : t("dumpDatabase.confirmScoped", { scope: dumpGameKey })}
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter showCloseButton>
-                <Button
-                  variant="destructive"
-                  disabled={dumpMutation.isPending}
-                  onClick={() =>
-                    dumpMutation.mutate(
-                      dumpGameKey === "__all__" ? undefined : dumpGameKey,
-                    )
-                  }
-                >
-                  {dumpMutation.isPending
-                    ? t("dumpDatabase.dumpingButton")
-                    : t("dumpDatabase.dumpButton")}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <Button
+            variant="destructive"
+            disabled={isRunning || dumpMutation.isPending}
+            onClick={() => setDumpOpen(true)}
+          >
+            {dumpMutation.isPending
+              ? t("dumpDatabase.dumpingButton")
+              : t("dumpDatabase.dumpButton")}
+          </Button>
+          <DeleteDialog
+            open={dumpOpen}
+            onOpenChange={setDumpOpen}
+            title={t("dumpDatabase.dialogTitle")}
+            description={
+              dumpGameKey === "__all__"
+                ? t("dumpDatabase.confirmAll")
+                : t("dumpDatabase.confirmScoped", {
+                    scope:
+                      sourcesQuery.data?.find(
+                        (s) => s.gameKey === dumpGameKey,
+                      )?.label ?? dumpGameKey,
+                  })
+            }
+            confirm={{ type: "keyword" }}
+            onConfirm={() =>
+              dumpMutation.mutate(
+                dumpGameKey === "__all__" ? undefined : dumpGameKey,
+              )
+            }
+          />
         </div>
       </div>
     </div>

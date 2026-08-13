@@ -95,7 +95,9 @@ export function IrSensorPanel({
                 <Badge variant={hopperHasCards ? "success" : "ghost"}>
                   {hopperHasCards === false
                     ? t("irSensorPanel.hopperEmpty")
-                    : t("irSensorPanel.hopper")}
+                    : hopperHasCards === true
+                      ? t("irSensorPanel.hopper")
+                      : t("irSensorPanel.hopperUnknown")}
                 </Badge>
               </div>
             }

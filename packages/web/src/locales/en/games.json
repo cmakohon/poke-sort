@@ -3,7 +3,7 @@
     "heading": "Games",
     "description": "Configure which trading card games can be scanned into and how their cards are matched against bin rules.",
     "addGame": "Add game",
-    "loading": "Loading...",
+    "loading": "Loading…",
     "active": "Active",
     "inactive": "Inactive",
     "fieldCount_one": "{{count}} field",
@@ -21,18 +21,18 @@
       "updateError": "Failed to update game",
       "updateSuccess": "Saved {{name}}",
       "deleteError": "Failed to delete game",
-      "deleteSuccess": "Game deleted"
+      "deleteSuccess": "Deleted {{name}}"
     }
   },
   "gameFormDialog": {
     "addTitle": "Add game",
     "editTitle": "Edit {{name}}",
     "description": "Define how cards for this game are fetched and which fields bin rules can filter on.",
-    "keyLabel": "Key",
+    "keyLabel": "Short ID (used in files and links)",
     "keyPlaceholder": "pokemon",
     "nameLabel": "Name",
     "namePlaceholder": "Pokémon",
-    "dataSourceUrlLabel": "Data source URL",
+    "dataSourceUrlLabel": "Where card info comes from (URL)",
     "dataSourceUrlPlaceholder": "https://api.pokemontcg.io/v2/cards",
     "activeLabel": "Active",
     "cancel": "Cancel",
@@ -47,18 +47,18 @@
     }
   },
   "fieldDefinitionsEditor": {
-    "heading": "Field definitions",
-    "addField": "Add field",
-    "fieldKeyPlaceholder": "Field key (e.g. rarity)",
-    "labelPlaceholder": "Label (e.g. Rarity)",
-    "dataPathPlaceholder": "Data path (e.g. prices.usd)",
-    "optionsPlaceholder": "Options, comma separated (e.g. common, uncommon, rare)",
-    "empty": "No fields yet — add at least one for bin rules to filter on."
+    "heading": "Card details you can sort by",
+    "addField": "Add detail",
+    "fieldKeyPlaceholder": "Detail ID (e.g. rarity)",
+    "labelPlaceholder": "Shown as (e.g. Rarity)",
+    "dataPathPlaceholder": "Where to find it in the card data (e.g. prices.usd)",
+    "optionsPlaceholder": "Choices, comma separated (e.g. common, uncommon, rare)",
+    "empty": "No details yet — add at least one so sorting rules have something to filter on."
   },
   "fieldTypes": {
-    "string": "String",
-    "numeric": "Numeric",
-    "enum": "Enum",
-    "set": "Set"
+    "string": "Text",
+    "numeric": "Number",
+    "enum": "One of a list",
+    "set": "Several values"
   }
 }

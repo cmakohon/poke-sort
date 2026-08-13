@@ -1,26 +1,26 @@
 {
   "camera": {
     "permissionDenied": "Kamerazugriff verweigert. Bitte erlaube den Kamerazugriff und versuche es erneut.",
-    "accessError": "Kamera konnte nicht aufgerufen werden. Bitte überprüfe dein Gerät."
+    "accessError": "Kamera konnte nicht geöffnet werden. Stelle sicher, dass keine andere App sie verwendet, und verbinde sie erneut."
   },
   "scanEngine": {
-    "searchFailed": "Kartensuche fehlgeschlagen",
-    "videoStartFailed": "Video konnte nicht gestartet werden",
-    "cameraReinitFailed": "Kamera konnte nicht neu initialisiert werden"
+    "searchFailed": "Karte konnte nicht erkannt werden — versuche es erneut",
+    "videoStartFailed": "Kamera ist nicht gestartet",
+    "cameraReinitFailed": "Kamera konnte nicht neu gestartet werden"
   },
   "serial": {
     "connectionFailed": {
       "title": "Verbindung fehlgeschlagen",
-      "description": "Port konnte nicht geöffnet werden. Stelle sicher, dass keine andere Anwendung ihn verwendet."
+      "description": "Verbindung konnte nicht geöffnet werden. Stelle sicher, dass keine andere App den Sortierer verwendet."
     },
     "noDeviceFound": {
-      "title": "Kein Gerät gefunden",
-      "description": "Schließe den Arduino per USB an und versuche es erneut. Falls er verbunden ist, prüfe, ob das Kabel Daten überträgt."
+      "title": "Kein Sortierer gefunden",
+      "description": "Schließe den Sortierer per USB an und versuche es erneut. Falls er verbunden ist, prüfe, ob das Kabel Daten überträgt."
     },
-    "testingDevice": "Gerät wird getestet…",
-    "deviceReady": "Gerät bereit",
+    "testingDevice": "Sortierer wird getestet…",
+    "deviceReady": "Sortierer bereit",
     "deviceTestFailed": {
-      "title": "Gerätetest fehlgeschlagen",
+      "title": "Sortierertest fehlgeschlagen",
       "description": "Verbunden, aber keine Antwort erhalten. Versuche eine erneute Verbindung."
     },
     "deviceRebooted": {
@@ -29,7 +29,7 @@
     }
   },
   "sessionMonitor": {
-    "connectionLost": "Verbindung zur Sitzung verloren."
+    "connectionLost": "Verbindung zur Sortierung verloren."
   },
   "scannedCards": {
     "autoFeedFailed": {
@@ -41,8 +41,8 @@
       "description": "Der Zuführer hat nicht rechtzeitig geantwortet."
     },
     "feederEmpty": {
-      "title": "Zuführer leer",
-      "description": "Keine Karten mehr im Trichter. Füge weitere Karten hinzu, um fortzufahren."
+      "title": "Nachschub leer",
+      "description": "Es sind keine Karten mehr im Schacht — lege welche nach, um fortzufahren."
     },
     "feederError": {
       "title": "Zuführerfehler"
@@ -57,33 +57,33 @@
     },
     "collectionLocked": {
       "title": "Sammlung gesperrt",
-      "description": "Ein anderes Organisationsmitglied scannt gerade in diese Sammlung."
+      "description": "Jemand anderes scannt gerade in diese Sammlung."
     },
     "routingFailed": {
       "title": "Weiterleitung fehlgeschlagen",
-      "description": "Keine Antwort vom Sortierer für Fach {{binNumber}}."
+      "description": "Der Sortierer hat beim Senden einer Karte zu Fach {{binNumber}} nicht geantwortet."
     },
     "sorterError": {
       "title": "Sortiererfehler"
     },
     "routingFailedCatchAll": {
       "title": "Weiterleitung fehlgeschlagen",
-      "description": "Keine Antwort vom Sortierer für das Sammelfach {{binNumber}}."
+      "description": "Der Sortierer hat beim Senden einer Karte zum Auffangfach (Fach {{binNumber}}) nicht geantwortet."
     },
     "routingFailedReview": {
       "title": "Weiterleitung fehlgeschlagen",
-      "description": "Keine Antwort vom Sortierer für Prüf-Fach {{binNumber}}."
+      "description": "Der Sortierer hat beim Senden einer Karte zum Prüf-Fach (Fach {{binNumber}}) nicht geantwortet."
     }
   },
   "cardScanner": {
     "jamAutoScan": {
-      "title": "Karte an Modul 1 blockiert - Scan wird erzwungen",
-      "description": "Sie wurde nie erkannt, daher wird sie automatisch gescannt."
+      "title": "Karte an der Kamera blockiert — wird jetzt gescannt",
+      "description": "Sie war noch nicht erkannt, daher wurde sie automatisch gescannt."
     },
     "jamDetected": {
       "title": "Kartenstau erkannt",
-      "description": "Karte an Modul {{module}} blockiert. Überprüfe den Sortierer und setze fort.",
-      "descriptionWithBin": "Karte an Modul {{module}} blockiert (unterwegs zu Fach {{bin}}). Überprüfe den Sortierer und setze fort."
+      "description": "Karte an Sortierarm {{module}} blockiert. Entferne sie und drücke Fortsetzen.",
+      "descriptionWithBin": "Karte an Sortierarm {{module}} blockiert, unterwegs zu Fach {{bin}}. Entferne sie und drücke Fortsetzen."
     },
     "feedFailed": {
       "title": "Zufuhr fehlgeschlagen",
@@ -94,8 +94,8 @@
       "description": "Der Zuführer hat nicht rechtzeitig geantwortet."
     },
     "feederEmpty": {
-      "title": "Zuführer leer",
-      "description": "Keine Karten mehr im Trichter. Füge weitere Karten hinzu, um fortzufahren."
+      "title": "Nachschub leer",
+      "description": "Es sind keine Karten mehr im Schacht — lege welche nach, um fortzufahren."
     },
     "feederError": {
       "title": "Zuführerfehler"
@@ -106,27 +106,27 @@
     },
     "clearFailed": {
       "title": "Leeren fehlgeschlagen",
-      "description": "Befehl konnte nicht an das Gerät gesendet werden."
+      "description": "Befehl konnte nicht an den Sortierer gesendet werden."
     },
     "clearTimeout": {
       "title": "Zeitüberschreitung beim Leeren",
-      "description": "Das Gerät hat nicht rechtzeitig geantwortet."
+      "description": "Der Sortierer hat nicht rechtzeitig geantwortet."
     },
     "deviceCleared": {
-      "title": "Gerät geleert",
-      "description": "Alle unteren Klappen wurden geöffnet, um festsitzende Karten zu lösen."
+      "title": "Sortierer geleert",
+      "description": "Alle Klappen wurden geöffnet — sieh in den Fächern nach losen Karten."
     },
     "lastSearchImageAlt": "Letztes Suchbild"
   },
   "documentTitle": {
-    "sorting": "Sortierung: {{setName}}",
+    "sorting": "Sortiert nach {{setName}}",
     "cardsScanned_one": "{{count}} Karte gescannt",
     "cardsScanned_other": "{{count}} Karten gescannt",
     "noCardsScanned": "Keine Karten gescannt",
     "mostValuable": "{{price}} · {{name}}"
   },
   "gameSwitchAlert": {
-    "message": "Beim Wechsel des Spieltyps musst du möglicherweise die Schlauchwand des Zuführmoduls neu anpassen."
+    "message": "Anderes Spiel, andere Kartengröße — stelle die Kartenführung des Zuführers ein, bevor du startest."
   },
   "scanStats": {
     "emptyState": "Scanne Karten, um ihre Statistiken zu sehen.",
@@ -134,14 +134,14 @@
     "unique": "Einzigartig",
     "totalValue": "Gesamtwert",
     "avgValue": "Durchschnittswert",
-    "sessionTime": "Sitzungsdauer",
-    "cardsPerHour": "Karten/Std",
+    "sessionTime": "Verstrichene Zeit",
+    "cardsPerHour": "Karten pro Stunde",
     "mostValuable": "Wertvollste",
     "byRarity": "Nach Seltenheit",
     "byType": "Nach Typ",
-    "bySet": "Nach Set",
+    "bySet": "Nach Edition",
     "showLess": "Weniger anzeigen",
-    "showAllSets": "Alle {{count}} Sets anzeigen"
+    "showAllSets": "Alle {{count}} Editionen anzeigen"
   },
   "scannerControls": {
     "scanAgain": "Erneut scannen",
@@ -164,7 +164,7 @@
     "zoom": "Zoom",
     "disconnect": "Trennen",
     "connect": "Verbinden",
-    "scanner": "Scanner",
+    "scanner": "Sortierer",
     "autoFeed": "Automatische Zufuhr",
     "allowDuplicates": "Duplikate zulassen",
     "calibrate": "Kalibrieren",
@@ -172,13 +172,13 @@
   },
   "scannerOverlay": {
     "connectCamera": "Verbinde eine Kamera, um mit dem Scannen zu beginnen.",
-    "noCatchAllBin": "Kein Sammelfach konfiguriert - nicht zugeordnete Karten werden nicht sortiert.",
+    "noCatchAllBin": "Kein Auffangfach festgelegt — Karten ohne Treffer werden nicht sortiert.",
     "initializing": "Scanner wird initialisiert…",
     "requestingCameraAccess": "Kamerazugriff wird angefordert…",
     "identifyingCard": "Karte wird identifiziert…",
-    "paused": "Scanner pausiert - drücke Fortsetzen, um weiterzumachen.",
-    "duplicate": "Gleiche Karte erneut gescannt - verwende Erneut hinzufügen, um sie trotzdem hinzuzufügen.",
-    "noMatch": "Karte nicht erkannt - versuche Erneut scannen oder passe die Beleuchtung an."
+    "paused": "Scanner pausiert — drücke Fortsetzen, um weiterzumachen.",
+    "duplicate": "Diese Karte wurde bereits gescannt — Erneut hinzufügen erfasst ein weiteres Exemplar.",
+    "noMatch": "Karte nicht erkannt — versuche Erneut scannen oder reinige die Karte und prüfe die Beleuchtung."
   },
   "sessionErrorsPanel": {
     "heading": "Fehler"
@@ -195,10 +195,10 @@
     "cardCount_other": "{{count}} Karten"
   },
   "monitorPage": {
-    "loadingSession": "Sitzung wird geladen…",
-    "connectFailed": "Verbindung konnte nicht hergestellt werden.",
+    "loadingSession": "Wird geladen…",
+    "connectFailed": "Verbindung zur Maschine verloren.",
     "noCardsScannedYet": "Noch keine Karten gescannt.",
-    "noCardsMatchSearch": "Keine Karten entsprechen der Suche.",
+    "noCardsMatchSearch": "Keine Karten entsprechen deiner Suche.",
     "isScanningTooltip": "{{name}} scannt gerade",
     "isWatchingTooltip": "{{name}} schaut zu",
     "viewCards_one": "{{count}} Karte ansehen",
@@ -207,22 +207,22 @@
     "scannedCardsTitle": "Gescannte Karten"
   },
   "monitorSessions": {
-    "yourSession": "Deine Sitzung",
-    "scanning": "Wird gescannt",
-    "sessionReleased": "Sitzung freigegeben",
-    "releaseFailed": "Sitzung konnte nicht freigegeben werden",
-    "leaveSession": "Sitzung verlassen",
-    "title": "Sitzungsüberwachung",
-    "subtitle": "Einer laufenden Scan-Sitzung beitreten",
-    "noSessionsFound": "Keine Sitzungen gefunden",
-    "noSessionsHint": "Aktive Sitzungen werden hier angezeigt",
+    "yourSession": "Sortiert (du)",
+    "scanning": "Sortiert",
+    "sessionReleased": "Sortierung gestoppt",
+    "releaseFailed": "Sortierung konnte nicht gestoppt werden — versuche es erneut",
+    "leaveSession": "Diese Sortierung stoppen",
+    "title": "Überwachung",
+    "subtitle": "Sieh einer Sortierung live zu — laufende stehen oben",
+    "noSessionsFound": "Gerade läuft nichts",
+    "noSessionsHint": "Starte eine Sortierung im Scanner und sie erscheint hier",
     "cardCount_one": "{{count}} Karte",
     "cardCount_other": "{{count}} Karten",
-    "isScanningTooltip": "{{name}} scannt gerade"
+    "isScanningTooltip": "{{name}} sortiert in diese Sammlung"
   },
   "serialPicker": {
-    "title": "Welches Gerät ist der Sortierer?",
-    "description": "Es sind mehrere USB-Geräte angeschlossen. Wähle den Arduino mit der Sortierer-Firmware.",
+    "title": "Welches USB-Gerät ist dein Sortierer?",
+    "description": "Es sind mehrere USB-Geräte angeschlossen. Wähle deinen Sortierer — er erscheint meist als Arduino.",
     "remembered": "Diese Auswahl wird gespeichert, du wirst für dieses Gerät nicht erneut gefragt.",
     "cancel": "Abbrechen",
     "confirm": "Dieses Gerät verwenden"

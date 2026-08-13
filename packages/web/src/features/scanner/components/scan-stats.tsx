@@ -7,8 +7,13 @@ import { cn } from "@/lib/utils";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+const usdFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+});
+
 export function formatUsd(value: number): string {
-  return `$${value.toFixed(2)}`;
+  return usdFormatter.format(value);
 }
 
 export function formatElapsed(ms: number): string {
