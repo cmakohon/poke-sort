@@ -2,6 +2,7 @@ import {
   type BinConfig,
   type PlayingCard,
   type PlayingCardWithDistance,
+  type ReviewCardSync,
   type ScanOutcome,
   type ScannedCard,
   evaluateCardBin,
@@ -127,6 +128,29 @@ export function ScannedCardsProvider({
     return () => {
       if (pauseHookRef.current === fn) pauseHookRef.current = null;
     };
+  }, []);
+
+  // Review-screen verdicts update the card server-side; this list only
+  // refetches on collection switch, so the verdict endpoint returns the
+  // card's new state and the review screen patches it in here. A scanId
+  // from another (non-active) collection simply matches nothing.
+  const applyReviewSync = useCallback((sync: ReviewCardSync) => {
+    setCards((prev) =>
+      prev.map((c) =>
+        c.scanId === sync.scanId
+          ? {
+              ...c,
+              ...(sync.card ? { card: sync.card } : {}),
+              needsReview: sync.needsReview,
+              wasCorrected: sync.wasCorrected,
+              originalCardId: sync.originalCardId ?? undefined,
+              originalDistance: sync.originalDistance ?? undefined,
+              originalScore: sync.originalScore ?? undefined,
+              reviewVerdict: sync.reviewVerdict,
+            }
+          : c,
+      ),
+    );
   }, []);
 
   const triggerAutoFeed = useCallback(async () => {
@@ -606,6 +630,7 @@ export function ScannedCardsProvider({
         toggleFoil,
         markDownloaded,
         clearCards,
+        applyReviewSync,
       }}
     >
       {children}

@@ -375,6 +375,8 @@ export function CardGrid() {
               isFoil={card.isFoil}
               isDownloaded={card.isDownloaded}
               wasCorrected={card.wasCorrected}
+              needsReview={card.needsReview}
+              reviewVerdict={card.reviewVerdict}
             />
           ))}
         </div>

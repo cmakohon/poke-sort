@@ -4,7 +4,9 @@ import type {
   MismatchReason,
   OcrReading,
   PlayingCard,
+  PlayingCardWithDistance,
   ReviewCandidate,
+  ReviewCardSync,
   ReviewDetail,
   ReviewQueueItem,
   ReviewStats,
@@ -334,7 +336,13 @@ router.post("/:guid/verdict", requireAuth, requireOrg, async (c) => {
 
   const row = await db.query.scanEvents.findFirst({
     where: (t, { and, eq }) => and(eq(t.guid, guid), eq(t.orgId, orgId)),
-    columns: { guid: true, gameKey: true, candidates: true, correctedCardId: true },
+    columns: {
+      guid: true,
+      gameKey: true,
+      candidates: true,
+      correctedCardId: true,
+      collectionGuid: true,
+    },
   });
   if (!row) {
     return c.json({ success: false, message: "Scan event not found." }, 404);
@@ -399,55 +407,55 @@ router.post("/:guid/verdict", requireAuth, requireOrg, async (c) => {
   // the collection would keep the retracted answer forever.
   const hadCorrection = row.correctedCardId != null;
   let propagated = false;
+  let updatedCard: ReviewCardSync | undefined;
   try {
-    // An unresolvable verdict on a never-corrected row touches nothing —
-    // skip the lookup entirely rather than scan for a card only to ignore it.
-    const needsLookup = verdict !== "unresolvable" || hadCorrection;
-    const existing = needsLookup
-      ? await db.query.collectionCards.findFirst({
-          where: (t, { and, eq }) =>
-            and(eq(t.scanEventGuid, guid), eq(t.orgId, orgId)),
-          columns: {
-            id: true,
-            cardId: true,
-            card: true,
-            wasCorrected: true,
-            scanScore: true,
-            originalCardId: true,
-            originalDistance: true,
-          },
-        })
-      : undefined;
-    if (existing && verdict === "corrected" && truthCard) {
+    const existing = await db.query.collectionCards.findFirst({
+      where: (t, { and, eq }) =>
+        and(eq(t.scanEventGuid, guid), eq(t.orgId, orgId)),
+      columns: {
+        id: true,
+        guid: true,
+        cardId: true,
+        card: true,
+        wasCorrected: true,
+        scanScore: true,
+        originalCardId: true,
+        originalDistance: true,
+        originalScore: true,
+      },
+    });
+    if (existing) {
+      // Every verdict stamps the card's review state — the scan screen's
+      // "reviewed" badge — and sets needsReview to match: a judged card is
+      // out of the review queue unless the judgment was "identity unknown".
       const updates: Partial<typeof collectionCards.$inferInsert> = {
-        card: { ...truthCard, distance: 0 },
-        cardId: truthCard.id,
-        needsReview: false,
+        reviewedAt: new Date(),
+        reviewVerdict: verdict,
+        needsReview: verdict === "unresolvable",
       };
-      // Same first-correction rule as the collections route: original_* holds
-      // what the pipeline predicted, never a human's earlier answer.
-      if (!existing.wasCorrected) {
-        const prevDistance = (existing.card as { distance?: number } | null)
-          ?.distance;
-        updates.wasCorrected = true;
-        updates.originalCardId = existing.cardId;
-        updates.originalDistance =
-          typeof prevDistance === "number" ? prevDistance : null;
-        updates.originalScore = existing.scanScore ?? null;
-      }
-      await db
-        .update(collectionCards)
-        .set(updates)
-        .where(eq(collectionCards.id, existing.id));
-      propagated = true;
-    } else if (existing && verdict !== "corrected") {
-      const updates: Partial<typeof collectionCards.$inferInsert> = {};
-      if (verdict === "correct") updates.needsReview = false;
-      // Leaving the corrected state: restore the pipeline's original pick
-      // and clear the provenance the correction wrote, so card and verdict
-      // tell the same story again. Unresolvable puts the card back under
-      // review — its identity is explicitly unknown now.
-      if (hadCorrection && existing.wasCorrected && existing.originalCardId) {
+      if (verdict === "corrected" && truthCard) {
+        updates.card = { ...truthCard, distance: 0 };
+        updates.cardId = truthCard.id;
+        // Same first-correction rule as the collections route: original_*
+        // holds what the pipeline predicted, never a human's earlier answer.
+        if (!existing.wasCorrected) {
+          const prevDistance = (existing.card as { distance?: number } | null)
+            ?.distance;
+          updates.wasCorrected = true;
+          updates.originalCardId = existing.cardId;
+          updates.originalDistance =
+            typeof prevDistance === "number" ? prevDistance : null;
+          updates.originalScore = existing.scanScore ?? null;
+        }
+      } else if (
+        verdict !== "corrected" &&
+        hadCorrection &&
+        existing.wasCorrected &&
+        existing.originalCardId
+      ) {
+        // Leaving the corrected state: restore the pipeline's original pick
+        // and clear the provenance the correction wrote, so card and verdict
+        // tell the same story again.
         const resolved = await resolveAdapterForGame(row.gameKey);
         const original = resolved
           ? await resolved.adapter
@@ -464,26 +472,43 @@ router.post("/:guid/verdict", requireAuth, requireOrg, async (c) => {
           updates.originalCardId = null;
           updates.originalDistance = null;
           updates.originalScore = null;
-          if (verdict === "unresolvable") updates.needsReview = true;
         } else {
           console.warn(
             `[review] could not rehydrate original card ${existing.originalCardId}; leaving collection card as-is`,
           );
         }
       }
-      if (Object.keys(updates).length > 0) {
-        await db
-          .update(collectionCards)
-          .set(updates)
-          .where(eq(collectionCards.id, existing.id));
-        propagated = true;
-      }
+      await db
+        .update(collectionCards)
+        .set(updates)
+        .where(eq(collectionCards.id, existing.id));
+      propagated = true;
+      updatedCard = {
+        scanId: existing.guid ?? "",
+        collectionGuid: row.collectionGuid ?? null,
+        card: updates.card as PlayingCardWithDistance | undefined,
+        needsReview: updates.needsReview ?? false,
+        wasCorrected: updates.wasCorrected ?? existing.wasCorrected,
+        originalCardId:
+          "originalCardId" in updates
+            ? (updates.originalCardId ?? null)
+            : existing.originalCardId,
+        originalDistance:
+          "originalDistance" in updates
+            ? (updates.originalDistance ?? null)
+            : existing.originalDistance,
+        originalScore:
+          "originalScore" in updates
+            ? (updates.originalScore ?? null)
+            : existing.originalScore,
+        reviewVerdict: verdict,
+      };
     }
   } catch (err) {
     console.error("[review] collection card propagation failed:", err);
   }
 
-  return c.json({ success: true, data: { guid, verdict, propagated } });
+  return c.json({ success: true, data: { guid, verdict, propagated, updatedCard } });
 });
 
 export { router as reviewRouter };

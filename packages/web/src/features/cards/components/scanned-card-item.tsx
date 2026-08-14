@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import {
   IconCheck,
   IconDownload,
+  IconEyeCheck,
   IconHelpCircle,
   IconSparkles,
 } from "@tabler/icons-react";
@@ -30,8 +31,15 @@ export const ScannedCardItem = memo(function ScannedCardItem({
   isFoil = false,
   isDownloaded = false,
   wasCorrected = false,
+  needsReview,
+  reviewVerdict,
 }: ScannedCardItemProps) {
   const { t } = useTranslation("cards");
+  // The amber ? means "the pipeline was unsure" — held for review, or (for
+  // rows predating the tier system) had close alternative matches. A human
+  // verdict settles the question, so it clears the marker.
+  const showAttention =
+    reviewVerdict == null && (needsReview ?? hasAlternatives);
   return (
     <div
       className={cn(
@@ -41,7 +49,7 @@ export const ScannedCardItem = memo(function ScannedCardItem({
     >
       <button type="button" className="w-full cursor-pointer" onClick={onOpen}>
         <div className="aspect-[2.5/3.5] rounded-lg overflow-hidden relative">
-          {hasAlternatives && (
+          {showAttention && (
             <div
               className="absolute top-1 left-1 z-20 rounded-full bg-amber-500 p-0.5 shadow-md"
               title={t("scannedCardItem.multipleMatchesTooltip")}
@@ -53,7 +61,7 @@ export const ScannedCardItem = memo(function ScannedCardItem({
             <div
               className={cn(
                 "absolute top-1 z-20 rounded-full p-0.5 shadow-md bg-gradient-to-br from-fuchsia-400 via-cyan-400 to-amber-300",
-                hasAlternatives ? "left-6" : "left-1",
+                showAttention ? "left-6" : "left-1",
               )}
               title={t("scannedCardItem.foil")}
             >
@@ -61,10 +69,32 @@ export const ScannedCardItem = memo(function ScannedCardItem({
             </div>
           )}
           <div className="absolute bottom-1 left-1 right-1 flex gap-1 items-center justify-between z-20">
-            {/* wasCorrected is the signal that a human picked this card —
-                corrected rows store distance: 0, so distance alone can't
-                distinguish "user confirmed" from "perfect scan match". */}
-            {wasCorrected ? (
+            {/* A human verdict outranks everything: the original scan
+                confidence is preserved in originalDistance/originalScore,
+                but what the tile shows is that a person has judged this
+                card. wasCorrected alone (scanner-screen path before review
+                state existed) still shows Confirmed. */}
+            {reviewVerdict != null ? (
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Badge
+                      variant={
+                        reviewVerdict === "unresolvable"
+                          ? "secondary"
+                          : "default"
+                      }
+                    >
+                      <IconEyeCheck className="size-3" />
+                      {t(`scannedCardItem.reviewed.${reviewVerdict}`)}
+                    </Badge>
+                  }
+                />
+                <TooltipContent>
+                  {t("scannedCardItem.reviewedTooltip")}
+                </TooltipContent>
+              </Tooltip>
+            ) : wasCorrected ? (
               <Tooltip>
                 <TooltipTrigger
                   render={

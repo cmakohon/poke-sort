@@ -239,6 +239,11 @@ export const collectionCards = pgTable(
     originalDistance: doublePrecision("original_distance"),
     originalScore: doublePrecision("original_score"),
     wasCorrected: boolean("was_corrected").notNull().default(false),
+    // Stamped when a human records a verdict for this card — on the review
+    // screen or via a scanner-screen correction. What the scan screen's
+    // "reviewed" badge reads; NULL means no human has judged this scan.
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    reviewVerdict: text("review_verdict"),
     // Points at scan_events.guid — the full identify diagnostics (per-signal
     // scores, OCR reading, candidate list) behind this row. Set at insert so
     // there is no window where the link is missing.

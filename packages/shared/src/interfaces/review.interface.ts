@@ -1,5 +1,5 @@
 import type { IdentifySignals, IdentifyTier, OcrReading } from "./api.interface";
-import type { PlayingCard } from "./card.interface";
+import type { PlayingCard, PlayingCardWithDistance } from "./card.interface";
 
 /**
  * Why a prediction was wrong, from the human reviewer's point of view.
@@ -87,11 +87,33 @@ export interface ReviewVerdictRequest {
   note?: string;
 }
 
+/**
+ * The linked collection card's state after a verdict propagated to it, so
+ * the scanner screen's in-memory list can be patched in place — it only
+ * refetches on collection switch, and a reviewed card must not keep
+ * showing its pre-review state until then.
+ */
+export interface ReviewCardSync {
+  /** collection_cards.guid — the client's scanId. */
+  scanId: string;
+  collectionGuid: string | null;
+  /** Present when the verdict changed the card (correction or revert). */
+  card?: PlayingCardWithDistance;
+  needsReview: boolean;
+  wasCorrected: boolean;
+  originalCardId: string | null;
+  originalDistance: number | null;
+  originalScore: number | null;
+  reviewVerdict: ReviewVerdict;
+}
+
 export interface ReviewVerdictResponse {
   guid: string;
   verdict: ReviewVerdict;
   /** True when a linked collection card was updated too. */
   propagated: boolean;
+  /** Set when propagated: what the linked card looks like now. */
+  updatedCard?: ReviewCardSync;
 }
 
 export interface ReviewStats {

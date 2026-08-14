@@ -2,6 +2,7 @@ import type { SerialRequestResult } from "@/features/scanner/lib/serial-request-
 import type {
   PlayingCard,
   PlayingCardWithDistance,
+  ReviewCardSync,
   ScanOutcome,
   ScannedCard,
   ScannerStatus,
@@ -56,6 +57,12 @@ export interface ScannedCardsContextValue {
   toggleFoil: (scanId: string, isFoil: boolean) => void;
   markDownloaded: (scanIds: string[]) => void;
   clearCards: (opts?: { skipServer?: boolean }) => void;
+  /**
+   * Patches one card in place after a review-screen verdict propagated to
+   * it server-side. The list only refetches on collection switch, so
+   * without this the scan screen keeps showing the pre-review card.
+   */
+  applyReviewSync: (sync: ReviewCardSync) => void;
 }
 
 export type SerialMessageListener = (message: unknown) => void;

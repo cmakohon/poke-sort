@@ -95,6 +95,8 @@ export interface ScannedCard {
   originalDistance?: number;
   originalScore?: number;
   wasCorrected?: boolean;
+  /** Human verdict from the review screen; undefined = never reviewed. */
+  reviewVerdict?: "correct" | "corrected" | "unresolvable";
   /** guid of the scan_events diagnostics row behind this scan. */
   scanEventId?: string;
 }
