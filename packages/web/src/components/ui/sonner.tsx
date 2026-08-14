@@ -1,5 +1,6 @@
 "use client"
 
+import { TOAST_DURATION_MS } from "@/lib/toast"
 import { useTheme } from "next-themes"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
 import { IconCircleCheck, IconInfoCircle, IconAlertTriangle, IconAlertOctagon, IconLoader } from "@tabler/icons-react"
@@ -19,6 +20,11 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme={(resolvedTheme ?? "system") as ToasterProps["theme"]}
       className="toaster group"
+      // Every toast gets an X and a finite lifetime. Without the close button
+      // a toast could only be waited out, and the machine-fault ones were
+      // `duration: Infinity` — so a jam notice from an hour ago just sat there.
+      closeButton
+      duration={TOAST_DURATION_MS}
       icons={{
         success: (
           <IconCircleCheck className="size-4" />
