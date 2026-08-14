@@ -230,6 +230,15 @@ export const scanSessions = pgTable(
       () => collections.id,
       { onDelete: "set null" },
     ),
+    // What the run's cards were actually identified against, stamped from the
+    // target when the first card is staged and frozen from then on.
+    //
+    // The target alone cannot answer this: switching collections mid-run
+    // re-points it, so by save time it may name a different game entirely
+    // while the staged cards still came from the original catalog. This is
+    // what the save dialog's mismatch warning compares against.
+    identifiedGameKey: text("identified_game_key"),
+    identifiedLang: text("identified_lang"),
     startedAt: timestamp("started_at").defaultNow().notNull(),
     // NULL means open. Closing stamps the outcome; saved runs also record
     // where they landed, which is not necessarily the target.

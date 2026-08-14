@@ -27,6 +27,14 @@ export interface ScanSession {
    */
   targetCollectionGuid: string | null;
   targetCollectionName: string | null;
+  /**
+   * What the staged cards were actually read against, frozen at the first
+   * staged card. The target is not a substitute: switching collections mid-run
+   * re-points it, so by save time it can name a different game than the one
+   * the cards came from. Null until the run has staged something.
+   */
+  identifiedGameKey: string | null;
+  identifiedLang: string | null;
   startedAt: string;
   closedAt: string | null;
   outcome: ScanSessionOutcome | null;
