@@ -1,5 +1,5 @@
-import type { PlayingCard, Result } from "@poke-sort/shared";
-import { QUERY_MIN_LENGTH } from "@poke-sort/shared";
+import type { CardPricing, PlayingCard, Result } from "@poke-sort/shared";
+import { QUERY_MIN_LENGTH, resolvePrintingKey } from "@poke-sort/shared";
 import type { CardSearchAdapter } from "../card-search/types";
 import { getSetInfo, releaseYear } from "../set-index";
 
@@ -37,13 +37,6 @@ type PokemonVariant =
   | "firstEdition"
   | "wPromo";
 
-interface PokemonPricing {
-  cardmarket?: { avg?: number };
-  tcgplayer?: Partial<
-    Record<PokemonVariant | "holofoil" | "reverseHolofoil", { marketPrice?: number }>
-  >;
-}
-
 export interface PokemonCardDetail extends PokemonCardBrief {
   category?: string;
   illustrator?: string;
@@ -60,7 +53,7 @@ export interface PokemonCardDetail extends PokemonCardBrief {
   weaknesses?: { type?: string; value?: string }[];
   abilities?: PokemonAbility[];
   retreat?: number;
-  pricing?: PokemonPricing;
+  pricing?: CardPricing;
   set?: {
     id: string;
     name: string;
@@ -77,40 +70,25 @@ function assetUrl(image: string, quality: "low" | "high"): string {
 }
 
 /**
- * TCGplayer keys prices by printing. Preferring `normal` unconditionally meant
- * a reverse holo — often worth several times a normal — was priced as a normal
- * whenever both existed. Prefer the variant actually in hand; only fall back to
- * whatever is available when it is unknown.
+ * The one number bin rules route on.
+ *
+ * Which printing it comes from is decided by resolvePrintingKey in shared, so
+ * the detail panel can label the number without re-deriving the choice and
+ * drifting from it. The keys this used to try — `reverseHolofoil`, `reverse`,
+ * `firstEdition` — do not exist upstream; the real one is `reverse-holofoil`,
+ * and there is no first-edition key at all.
+ *
+ * cardmarket.avg stays the last resort: a few cards carry it and nothing else.
  */
-const PRICE_KEYS: Record<PokemonVariant, string[]> = {
-  normal: ["normal"],
-  reverse: ["reverseHolofoil", "reverse"],
-  holo: ["holofoil", "holo"],
-  firstEdition: ["firstEdition", "holofoil", "normal"],
-  wPromo: ["normal"],
-};
-
-const FALLBACK_ORDER = [
-  "normal",
-  "holofoil",
-  "holo",
-  "reverseHolofoil",
-  "reverse",
-];
-
 function resolvePrice(
-  pricing: PokemonPricing | undefined,
+  pricing: CardPricing | undefined,
   variant?: PokemonVariant,
 ): number | null {
-  if (!pricing) return null;
-  const tcg = pricing.tcgplayer ?? {};
-  const order = variant ? [...PRICE_KEYS[variant], ...FALLBACK_ORDER] : FALLBACK_ORDER;
-
-  for (const key of order) {
-    const price = tcg[key as keyof typeof tcg]?.marketPrice;
-    if (price != null) return price;
-  }
-  return pricing.cardmarket?.avg ?? null;
+  const resolved = resolvePrintingKey(pricing, variant);
+  const market = resolved
+    ? pricing?.tcgplayer?.[resolved.key]?.marketPrice
+    : null;
+  return market ?? pricing?.cardmarket?.avg ?? null;
 }
 
 export function normalizePokemonCard(
@@ -177,6 +155,7 @@ export function normalizePokemonCard(
     types: raw.types ?? [],
     artist: raw.illustrator ?? undefined,
     price: resolvePrice(raw.pricing, variant),
+    pricing: raw.pricing,
     sourceUrl: `https://tcgdex.dev/cards/${raw.id}`,
     retreatCost: raw.retreat,
     raw: enrichedRaw,

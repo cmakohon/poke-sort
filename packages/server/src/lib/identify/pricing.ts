@@ -87,12 +87,25 @@ export function persistRefreshedCard(cardId: string, fresh: PlayingCard): void {
     });
 }
 
-/** Applies a fresh price to a hydrated card, leaving everything else alone. */
+/**
+ * Applies fresh pricing to a hydrated card, leaving everything else alone.
+ *
+ * Both halves have to move together. The card was hydrated from `card_data`,
+ * which is as old as the last sync; taking the fresh scalar but leaving the
+ * stored structured pricing would put a live headline price next to a
+ * pack-time breakdown of the same card, disagreeing with itself on screen.
+ *
+ * `fresh.price ?? card.price` keeps the old behaviour of standing by the
+ * stored price when the upstream one is missing.
+ */
 export function withFreshPrice(
   card: PlayingCard | null,
   fresh: PlayingCard | null,
 ): PlayingCard | null {
-  if (!card) return card;
-  if (!fresh || fresh.price == null) return card;
-  return { ...card, price: fresh.price };
+  if (!card || !fresh) return card;
+  return {
+    ...card,
+    price: fresh.price ?? card.price,
+    pricing: fresh.pricing ?? card.pricing,
+  };
 }
