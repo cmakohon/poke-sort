@@ -100,7 +100,14 @@ export function CardSearchPicker({
             onValueChange={(value) => setSelectedSet(value)}
           >
             <SelectTrigger className="w-40 shrink-0">
-              <SelectValue placeholder={t("cardDetailPanel.allSets")} />
+              {/* Base UI renders the raw value without children — here a set
+                  code rather than the set name. */}
+              <SelectValue placeholder={t("cardDetailPanel.allSets")}>
+                {selectedSet === "all"
+                  ? t("cardDetailPanel.allSetsCount", { count: results.length })
+                  : (sets.find((s) => s.code === selectedSet)?.name ??
+                    selectedSet)}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">

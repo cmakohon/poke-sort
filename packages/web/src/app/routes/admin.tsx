@@ -278,7 +278,11 @@ export default function AdminPage() {
                 }}
               >
                 <SelectTrigger className="w-56">
-                  <SelectValue placeholder={t("cardImageVectors.selectGamePlaceholder")} />
+                  {/* Base UI renders the raw value unless given children, and
+                      the value here is a game key, not a label. */}
+                  <SelectValue placeholder={t("cardImageVectors.selectGamePlaceholder")}>
+                    {selectedSource?.label}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {(sourcesQuery.data ?? []).map((source) => (
@@ -295,7 +299,9 @@ export default function AdminPage() {
                 onValueChange={(value) => setSyncLang(value ?? "en")}
               >
                 <SelectTrigger className="w-32">
-                  <SelectValue placeholder={t("cardImageVectors.languagePlaceholder")} />
+                  <SelectValue placeholder={t("cardImageVectors.languagePlaceholder")}>
+                    {LANGUAGE_LABELS[syncLang] ?? syncLang}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {selectedSource?.languages.map((lang) => (
@@ -535,7 +541,9 @@ export default function AdminPage() {
             }}
           >
             <SelectTrigger className="w-40">
-              <SelectValue placeholder={t("cardImageVectors.selectGamePlaceholder")} />
+              <SelectValue placeholder={t("cardImageVectors.selectGamePlaceholder")}>
+                {selectedCardSource?.label}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {(sourcesQuery.data ?? []).map((source) => (
@@ -551,7 +559,9 @@ export default function AdminPage() {
               onValueChange={(value) => setSyncCardLang(value ?? "en")}
             >
               <SelectTrigger className="w-32">
-                <SelectValue placeholder={t("cardImageVectors.languagePlaceholder")} />
+                <SelectValue placeholder={t("cardImageVectors.languagePlaceholder")}>
+                  {LANGUAGE_LABELS[syncCardLang] ?? syncCardLang}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {selectedCardSource?.languages.map((lang) => (
@@ -596,7 +606,12 @@ export default function AdminPage() {
             onValueChange={(value) => setDumpGameKey(value ?? "__all__")}
           >
             <SelectTrigger className="w-48">
-              <SelectValue placeholder={t("dumpDatabase.scopePlaceholder")} />
+              <SelectValue placeholder={t("dumpDatabase.scopePlaceholder")}>
+                {dumpGameKey === "__all__"
+                  ? t("dumpDatabase.allGames")
+                  : (sourcesQuery.data?.find((s) => s.gameKey === dumpGameKey)
+                      ?.label ?? dumpGameKey)}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">{t("dumpDatabase.allGames")}</SelectItem>
