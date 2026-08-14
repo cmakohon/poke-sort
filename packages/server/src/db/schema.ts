@@ -370,6 +370,14 @@ export const orgSettings = pgTable(
     // ms between the IR sensor confirming a card and the frame capture.
     // Nullable: absent means the client's default (500ms) applies.
     captureSettleDelayMs: integer("capture_settle_delay_ms"),
+    // Retention thresholds in whole days, all nullable for the same reason as
+    // the delay above: NULL means the shipped default in DEFAULT_RETENTION, so
+    // an untouched install follows the policy the build was released with. A
+    // stored 0 is a choice, and means keep forever.
+    retentionMachineEventDays: integer("retention_machine_event_days"),
+    retentionScanEventDays: integer("retention_scan_event_days"),
+    retentionAcceptCaptureDays: integer("retention_accept_capture_days"),
+    retentionConfigAuditDays: integer("retention_config_audit_days"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },

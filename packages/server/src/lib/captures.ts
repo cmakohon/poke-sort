@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { CAPTURES_DIR } from "../config";
 
@@ -91,14 +91,43 @@ export async function readCapture(
   }
 }
 
-/** Best-effort: a leftover file is a wasted 150 KB, not a correctness problem. */
-export async function deleteCaptures(fileNames: (string | null)[]): Promise<void> {
-  await Promise.all(
+export interface CaptureDeletion {
+  filesDeleted: number;
+  bytesFreed: number;
+}
+
+/**
+ * Best-effort: a leftover file is a wasted 150 KB, not a correctness problem.
+ *
+ * Sizes are read before the unlink because this is the only place in the app
+ * where a delete frees real disk, and therefore the only place the settings
+ * screen can honestly say how much. A file that vanished between the stat and
+ * the unlink counts as deleted with zero bytes rather than failing the batch.
+ */
+export async function deleteCaptures(
+  fileNames: (string | null)[],
+): Promise<CaptureDeletion> {
+  const results = await Promise.all(
     fileNames.filter((n): n is string => !!n).map(async (name) => {
       const target = resolveSafe(name);
-      if (target) await rm(target, { force: true });
+      if (!target) return { deleted: 0, bytes: 0 };
+      let bytes = 0;
+      try {
+        const info = await stat(target);
+        // Allocated blocks, not apparent size, so the number matches what the
+        // directory walk measured and what `du` will report afterwards.
+        bytes = info.blocks > 0 ? info.blocks * 512 : info.size;
+      } catch {
+        // Already gone, or unreadable: the unlink below is still worth trying.
+      }
+      await rm(target, { force: true });
+      return { deleted: 1, bytes };
     }),
   );
+  return {
+    filesDeleted: results.reduce((sum, r) => sum + r.deleted, 0),
+    bytesFreed: results.reduce((sum, r) => sum + r.bytes, 0),
+  };
 }
 
 /** The URL the client puts in an `<img src>`; `/api` is stripped by the proxy. */

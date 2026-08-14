@@ -1,10 +1,10 @@
 import {
+  DEFAULT_ORG_SETTINGS,
   orgSettingsQueryOptions,
   saveOrgSettings,
 } from "@/features/settings/api/org-settings";
 import { useOrg } from "@/hooks/use-org";
 import { cn } from "@/lib/utils";
-import { DEFAULT_SCAN_REGION } from "@poke-sort/shared";
 import { IconLayoutColumns, IconLayoutRows } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -40,13 +40,12 @@ export function ScannerLayoutToggle() {
       const previous = queryClient.getQueryData(queryOpts.queryKey);
       queryClient.setQueryData(
         queryOpts.queryKey,
+        // See primary-color-picker: spread the shared defaults so a setting
+        // added elsewhere cannot vanish from the cache on save.
         (old: typeof data): typeof data => ({
-          primaryColor: old?.primaryColor ?? null,
+          ...DEFAULT_ORG_SETTINGS,
+          ...old,
           scannerLayout,
-          discordWebhookUrl: old?.discordWebhookUrl ?? null,
-          discordNotifyOnScan: old?.discordNotifyOnScan ?? false,
-          scanRegion: old?.scanRegion ?? DEFAULT_SCAN_REGION,
-          captureSettleDelayMs: old?.captureSettleDelayMs ?? 500,
         }),
       );
       return { previous };

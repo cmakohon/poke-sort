@@ -1,6 +1,6 @@
 {
   "title": "Settings",
-  "subtitle": "Appearance, language, and alerts",
+  "subtitle": "Appearance, alerts, and storage",
   "appearance": {
     "heading": "Appearance",
     "description": "Colors, layout, and language.",
@@ -15,5 +15,145 @@
   },
   "notifications": {
     "heading": "Notifications"
+  },
+  "dataUsage": {
+    "heading": "Data usage",
+    "description": "What this app is storing on your disk, and how to reclaim it.",
+    "barLabel": "Data usage breakdown, {{total}} total",
+    "diskFree": "{{free}} free of {{total}} on this disk",
+    "measuredAt": "Measured at {{time}}",
+    "model": "Recognition model: {{size}}",
+    "refresh": "Refresh",
+    "loadError": "Could not measure data usage.",
+    "partial": "Some of this could not be measured: {{parts}}. The total is lower than the real one.",
+    "reusable": "{{size}} of dead space the database will reuse",
+    "protectedKept_one": "{{count}} reviewed, kept forever",
+    "protectedKept_other": "{{count}} reviewed, kept forever",
+    "categories": {
+      "catalog": {
+        "label": "Card catalog",
+        "manageLink": "Card database"
+      },
+      "collection": {
+        "label": "Collection",
+        "hint": "Your saved cards and their images. Never deleted from here."
+      },
+      "scanCaptures": {
+        "label": "Scan captures"
+      },
+      "scanDiagnostics": {
+        "label": "Scan diagnostics"
+      },
+      "machineTelemetry": {
+        "label": "Machine telemetry"
+      },
+      "configHistory": {
+        "label": "Config history"
+      },
+      "databaseOverhead": {
+        "label": "Database overhead",
+        "hint": "The write-ahead log, system catalogs, and free space inside the database files."
+      },
+      "otherFiles": {
+        "label": "Other app files",
+        "hint": "Leftover downloads and bookkeeping files."
+      }
+    },
+    "count": {
+      "cards_one": "{{formatted}} card",
+      "cards_other": "{{formatted}} cards",
+      "images_one": "{{formatted}} image",
+      "images_other": "{{formatted}} images",
+      "scans_one": "{{formatted}} scan",
+      "scans_other": "{{formatted}} scans",
+      "events_one": "{{formatted}} event",
+      "events_other": "{{formatted}} events",
+      "snapshots_one": "{{formatted}} snapshot",
+      "snapshots_other": "{{formatted}} snapshots",
+      "files_one": "{{formatted}} file",
+      "files_other": "{{formatted}} files"
+    },
+    "trim": {
+      "button": "Trim…",
+      "cancel": "Cancel",
+      "continue": "Continue",
+      "dialogTitle": "Trim {{category}}",
+      "dialogDescription": {
+        "scanCaptures": "Deletes the saved photo of each scan. The scan's numbers — score, candidates, OCR reading — are kept. This frees real disk space.",
+        "scanDiagnostics": "Deletes the record of past identify attempts: scores, candidates, and OCR readings used for tuning accuracy.",
+        "machineTelemetry": "Deletes the serial log of commands sent to and from the machine. Used to diagnose jams and disconnects.",
+        "configHistory": "Deletes saved snapshots of your bin, module, and feeder settings. These are the restore points behind the Restore buttons — your current settings are not affected."
+      },
+      "age": {
+        "1w": "Older than 1 week",
+        "1m": "Older than 1 month",
+        "3m": "Older than 3 months",
+        "all": "Everything"
+      },
+      "affected": {
+        "images_one": "{{formatted}} image",
+        "images_other": "{{formatted}} images",
+        "scans_one": "{{formatted}} scan",
+        "scans_other": "{{formatted}} scans",
+        "events_one": "{{formatted}} event",
+        "events_other": "{{formatted}} events",
+        "snapshots_one": "{{formatted}} snapshot",
+        "snapshots_other": "{{formatted}} snapshots",
+        "files_one": "{{formatted}} file",
+        "files_other": "{{formatted}} files"
+      },
+      "protectedNote_one": "{{count}} reviewed scan is always kept, at every age. Reviewed scans are labelled training data and cannot be regenerated.",
+      "protectedNote_other": "{{count}} reviewed scans are always kept, at every age. Reviewed scans are labelled training data and cannot be regenerated.",
+      "notShrinkNote": "Deleted rows free space inside the database file for new data to reuse. The file itself does not shrink.",
+      "confirmTitle": "Delete {{category}}?",
+      "confirmBounded": {
+        "scanCaptures": "Deletes {{count}} capture images older than the age you picked. The scans themselves are kept.",
+        "scanDiagnostics": "Deletes {{count}} scan records older than the age you picked, along with their capture images.",
+        "machineTelemetry": "Deletes {{count}} telemetry events older than the age you picked.",
+        "configHistory": "Deletes {{count}} config snapshots older than the age you picked. Your current settings are not affected."
+      },
+      "confirmAll": {
+        "scanCaptures": "Deletes all {{count}} capture images. The scans keep their numbers but lose their photos. This cannot be undone.",
+        "scanDiagnostics": "Deletes all {{count}} scan records and their capture images. Reviewed scans are kept. This cannot be undone — diagnostics for past scans cannot be recreated.",
+        "machineTelemetry": "Deletes all {{count}} telemetry events. You will have no serial history to diagnose the next jam or disconnect with.",
+        "configHistory": "Deletes all {{count}} config snapshots. Your current bin, module, and feeder settings keep working, but you will not be able to restore any earlier version of them."
+      },
+      "confirmLabel": "Delete"
+    },
+    "toasts": {
+      "trimBoth": "Deleted {{rows}} records and {{files}} images.",
+      "trimRows_one": "Deleted {{count}} record.",
+      "trimRows_other": "Deleted {{count}} records.",
+      "trimFiles_one": "Deleted {{count}} image.",
+      "trimFiles_other": "Deleted {{count}} images.",
+      "trimNothing": "Nothing matched — nothing was deleted.",
+      "trimError": "Could not delete that data.",
+      "freed": "{{size}} returned to your disk."
+    },
+    "retention": {
+      "heading": "Keep data for",
+      "description": "Anything older is deleted automatically. Reviewed scans are always kept.",
+      "appliedAtLaunch": "Applied when the app starts. Use Trim above to clean up right now.",
+      "saveError": "Could not save that setting.",
+      "forever": "Forever",
+      "days_one": "{{count}} day",
+      "days_other": "{{count}} days",
+      "machineEventDays": {
+        "label": "Machine telemetry",
+        "hint": "Serial log used to diagnose jams and disconnects"
+      },
+      "scanEventDays": {
+        "label": "Scan diagnostics",
+        "hint": "Scores and candidates from past identify attempts"
+      },
+      "acceptCaptureDays": {
+        "label": "Captures of accepted scans",
+        "hint": "The photo only; the scan's numbers are kept"
+      },
+      "configAuditDays": {
+        "label": "Config history",
+        "hint": "Restore points for bin, module, and feeder settings"
+      }
+    }
   }
 }

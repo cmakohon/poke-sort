@@ -1,4 +1,5 @@
 import {
+  DEFAULT_ORG_SETTINGS,
   orgSettingsQueryOptions,
   saveOrgSettings,
 } from "@/features/settings/api/org-settings";
@@ -10,7 +11,6 @@ import {
   type ThemeColor,
 } from "@/lib/primary-color";
 import { cn } from "@/lib/utils";
-import { DEFAULT_SCAN_REGION } from "@poke-sort/shared";
 import { IconCheck, IconRotate } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -32,12 +32,12 @@ export function PrimaryColorPicker() {
       const previous = queryClient.getQueryData(queryOpts.queryKey);
       queryClient.setQueryData(
         queryOpts.queryKey,
+        // Spread the shared defaults rather than enumerating every field: a
+        // hand-written literal silently drops any setting added elsewhere out
+        // of the cache until the next refetch.
         (old: typeof data): typeof data => ({
-          scannerLayout: old?.scannerLayout ?? "horizontal",
-          discordWebhookUrl: old?.discordWebhookUrl ?? null,
-          discordNotifyOnScan: old?.discordNotifyOnScan ?? false,
-          scanRegion: old?.scanRegion ?? DEFAULT_SCAN_REGION,
-          captureSettleDelayMs: old?.captureSettleDelayMs ?? 500,
+          ...DEFAULT_ORG_SETTINGS,
+          ...old,
           primaryColor,
         }),
       );
