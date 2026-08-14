@@ -73,6 +73,11 @@ export interface CardCollectionViewProps {
    * collection" was simply untrue.
    */
   deleteScope?: "session" | "collection";
+  /**
+   * Whether the detail panel offers the scan's other candidates. On the scan
+   * screen the match is still an open question; in a collection it is settled.
+   */
+  showCandidates?: boolean;
 }
 
 export function CardCollectionView({
@@ -95,6 +100,7 @@ export function CardCollectionView({
   footerSlot,
   toolbarWatchers,
   deleteScope = "collection",
+  showCandidates = true,
 }: CardCollectionViewProps) {
   const { t } = useTranslation("cards");
   const [summaryOpen, setSummaryOpen] = useState(false);
@@ -234,6 +240,7 @@ export function CardCollectionView({
         scanMargin={openEntry.margin}
         searchCollectionGuid={searchCollectionGuid}
         fieldDefinitions={fieldDefinitions}
+        showCandidates={showCandidates}
         onCorrect={onCorrectCard}
         onAdd={onAddCard}
         onToggleFoil={onToggleFoil}

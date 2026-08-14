@@ -85,6 +85,12 @@ interface CardDetailPanelProps {
    * game, so a collection of a different game shows its own field set.
    */
   fieldDefinitions?: FieldMeta[];
+  /**
+   * Whether to offer the other candidates the scan matched. True while a card
+   * is being sorted or reviewed; false once it is filed, where the match is
+   * settled and the strip only crowds out the card itself.
+   */
+  showCandidates?: boolean;
 }
 
 export function CardDetailPanel({
@@ -110,6 +116,7 @@ export function CardDetailPanel({
   onToggleFoil,
   searchCollectionGuid,
   fieldDefinitions,
+  showCandidates = true,
 }: CardDetailPanelProps) {
   const { t } = useTranslation("cards");
   const [editing, setEditing] = useState(false);
@@ -165,7 +172,15 @@ export function CardDetailPanel({
 
   const selectedCard =
     candidates.find((c) => c.id === selectedId) ?? currentCard;
-  const hasMultipleCandidates = candidates.length > 1;
+  /**
+   * The candidate picker earns its space while a card is still being sorted or
+   * reviewed, where "is this the right match?" is the open question. Once the
+   * card is in a collection that question is settled, and a row of rejected
+   * alternatives is just a large thing between you and the card. Correcting a
+   * filed card is still one button away — it opens a catalog search seeded
+   * with the card's name, which finds the same alternatives.
+   */
+  const showCandidateStrip = showCandidates && candidates.length > 1;
 
   const cardName = selectedCard?.name ?? t("cardDetailPanel.cardDetailsFallback");
   const typeLine = selectedCard?.typeLine ?? "";
@@ -231,7 +246,7 @@ export function CardDetailPanel({
         <div className="p-6 flex flex-col gap-5 @container">
           {currentCard && !editing ? (
             <>
-              {hasMultipleCandidates && (
+              {showCandidateStrip && (
                 <div className="flex flex-col gap-3">
                   {capturedImageUrl ? (
                     <div className="flex items-center gap-4">
@@ -304,7 +319,7 @@ export function CardDetailPanel({
                   whenever there are multiple candidates, and a fixed grid track
                   would leave a hole where it used to be. */}
               <div className="flex flex-col @2xl:flex-row @2xl:flex-wrap gap-6 items-start">
-                {!hasMultipleCandidates && (
+                {!showCandidateStrip && (
                   <div className="shrink-0 flex flex-col gap-3 items-center">
                     <div className="w-44 aspect-[2.5/3.5] rounded-lg overflow-hidden border shadow-sm">
                       <img
