@@ -64,13 +64,18 @@ export interface ScannedCardsContextValue {
   correctCard: (scanId: string, card: PlayingCard) => void;
   toggleFoil: (scanId: string, isFoil: boolean) => void;
   markDownloaded: (scanIds: string[]) => void;
-  /** Commits the run's staged cards into a collection and closes the run. */
-  saveSession: (collectionGuid: string) => Promise<void>;
+  /**
+   * Commits the run's staged cards into a collection and closes the run.
+   * Resolves false when the run is still open, so the caller can keep its
+   * dialog up rather than implying the cards were saved.
+   */
+  saveSession: (collectionGuid: string) => Promise<boolean>;
   /**
    * Throws the run away. The scan_events rows behind these scans survive, so
-   * the review screen keeps its training data for a discarded run.
+   * the review screen keeps its training data for a discarded run. Resolves
+   * false when the run is still open.
    */
-  discardSession: () => Promise<void>;
+  discardSession: () => Promise<boolean>;
   /** A save or discard is in flight; the session bar disables itself. */
   isClosingSession: boolean;
   /**

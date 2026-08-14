@@ -422,12 +422,25 @@ export function ScannedCardsProvider({
           return addSessionCard(open.guid, record);
         })
         .then((result) => {
-          if (result && !result.success) {
-            setCards((prev) => prev.filter((c) => c.scanId !== record.scanId));
-            toast.error(t("scannedCards.collectionLocked.title"), {
-              description: t("scannedCards.collectionLocked.description"),
-            });
-          }
+          if (!result || result.success) return;
+          setCards((prev) => prev.filter((c) => c.scanId !== record.scanId));
+          // Two different failures reach here. A 423 means someone else holds
+          // the collection; a 409 means the run was saved or discarded while
+          // this scan was in flight — the race the in-transaction re-check
+          // exists for. Diagnosing the second as the first sends the operator
+          // looking for another user who isn't there, for a card the machine
+          // has already routed into a bin.
+          const closed = result.message === "session_closed";
+          toast.error(
+            closed
+              ? t("scannedCards.sessionClosedMidScan.title")
+              : t("scannedCards.collectionLocked.title"),
+            {
+              description: closed
+                ? t("scannedCards.sessionClosedMidScan.description")
+                : t("scannedCards.collectionLocked.description"),
+            },
+          );
         })
         .catch((err) => console.error("Failed to persist card:", err));
 
@@ -684,20 +697,21 @@ export function ScannedCardsProvider({
     setTimerResetSignal((s) => s + 1);
   }, []);
 
+  // Both of these report whether the run actually closed. The caller needs to
+  // know: dismissing the dialog on a failed save or discard tells the operator
+  // the cards were dealt with when they are still staged on the server.
+  //
+  // The failure arrives as a rejection, not as `success: false` — apiPost
+  // throws on any non-2xx and every failure path on these two endpoints is a
+  // 409, so a `!result.success` check alone never runs.
   const saveSession = useCallback(
-    async (collectionGuid: string) => {
+    async (collectionGuid: string): Promise<boolean> => {
       const open = sessionRef.current;
-      if (!open) return;
+      if (!open) return false;
       setIsClosingSession(true);
       try {
         const result = await commitScanSession(open.guid, collectionGuid);
-        if (!result.success) {
-          toast.error(t("scannedCards.saveSessionFailed.title"), {
-            description:
-              result.message ?? t("scannedCards.saveSessionFailed.description"),
-          });
-          return;
-        }
+        if (!result.success) throw new Error(result.message ?? "commit failed");
         resetSessionState();
         // Card counts moved between collections, and the destination's card
         // list is now stale.
@@ -705,6 +719,13 @@ export function ScannedCardsProvider({
         void queryClient.invalidateQueries({
           queryKey: ["collection-cards", collectionGuid],
         });
+        return true;
+      } catch (err) {
+        console.error("Failed to save scan session:", err);
+        toast.error(t("scannedCards.saveSessionFailed.title"), {
+          description: t("scannedCards.saveSessionFailed.description"),
+        });
+        return false;
       } finally {
         setIsClosingSession(false);
       }
@@ -712,23 +733,24 @@ export function ScannedCardsProvider({
     [queryClient, resetSessionState, t],
   );
 
-  const discardSession = useCallback(async () => {
+  const discardSession = useCallback(async (): Promise<boolean> => {
     const open = sessionRef.current;
     if (!open) {
       resetSessionState();
-      return;
+      return true;
     }
     setIsClosingSession(true);
     try {
       const result = await discardScanSession(open.guid);
-      if (!result.success) {
-        toast.error(t("scannedCards.discardSessionFailed.title"), {
-          description:
-            result.message ?? t("scannedCards.discardSessionFailed.description"),
-        });
-        return;
-      }
+      if (!result.success) throw new Error(result.message ?? "discard failed");
       resetSessionState();
+      return true;
+    } catch (err) {
+      console.error("Failed to discard scan session:", err);
+      toast.error(t("scannedCards.discardSessionFailed.title"), {
+        description: t("scannedCards.discardSessionFailed.description"),
+      });
+      return false;
     } finally {
       setIsClosingSession(false);
     }

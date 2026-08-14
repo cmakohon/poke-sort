@@ -79,11 +79,14 @@ export function CardToolbar({
     setIsClearing(true);
     try {
       await onClearAll?.();
+      setClearAllDialogOpen(false);
     } catch (error) {
+      // Stay open on failure. Dismissing used to happen in a finally, so a
+      // clear that failed server-side still looked like it had worked — for a
+      // destructive action, on a list that only reverts on the next refetch.
       console.error("Failed to clear cards:", error);
     } finally {
       setIsClearing(false);
-      setClearAllDialogOpen(false);
     }
   };
 

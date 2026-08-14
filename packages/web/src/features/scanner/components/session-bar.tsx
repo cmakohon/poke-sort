@@ -39,25 +39,29 @@ export function SessionBar() {
     if (!saveOpen) setDestination(session?.targetCollectionGuid ?? undefined);
   }, [saveOpen, session?.targetCollectionGuid]);
 
-  const target = useMemo(
-    () => collections.find((c) => c.guid === session?.targetCollectionGuid),
-    [collections, session?.targetCollectionGuid],
-  );
   const chosen = useMemo(
     () => collections.find((c) => c.guid === destination),
     [collections, destination],
   );
 
-  // The staged cards were identified against the target's game and language.
-  // Saving them somewhere else is allowed — the operator may have picked the
-  // wrong collection at the start — but it is worth saying out loud, because
-  // nothing re-identifies the cards on the way in.
+  // Compared against what the run was actually read against, not against its
+  // target. The target follows the collection switcher, so a mid-run switch
+  // would make it equal the destination and hide the very mismatch this
+  // exists to catch. Saving elsewhere stays allowed — the operator may have
+  // started on the wrong collection — but nothing re-identifies the cards on
+  // the way in, so it is worth saying out loud.
   const mismatch =
     !!chosen &&
-    !!target &&
-    (chosen.game?.key !== target.game?.key || chosen.lang !== target.lang);
+    !!session?.identifiedGameKey &&
+    (chosen.game?.key !== session.identifiedGameKey ||
+      chosen.lang !== session.identifiedLang);
 
-  if (!session || cards.length === 0) return null;
+  // An open run with nothing staged still needs an exit: deleting every card
+  // (a plausible "those were all misreads" move) would otherwise hide the bar
+  // and leave the session open with no way to close or retarget it. Saving is
+  // meaningless with nothing to save, so only discard is offered.
+  if (!session) return null;
+  const isEmpty = cards.length === 0;
 
   const startedAt = new Date(session.startedAt);
 
@@ -78,7 +82,7 @@ export function SessionBar() {
         </span>
         <Button
           size="sm"
-          disabled={isClosingSession}
+          disabled={isClosingSession || isEmpty}
           onClick={() => setSaveOpen(true)}
         >
           {isClosingSession ? (
@@ -116,8 +120,9 @@ export function SessionBar() {
               disabled={!destination || isClosingSession}
               onClick={async () => {
                 if (!destination) return;
-                await saveSession(destination);
-                setSaveOpen(false);
+                // Only dismiss on success — closing over a failed save would
+                // say the cards are filed when they are still staged.
+                if (await saveSession(destination)) setSaveOpen(false);
               }}
             >
               {isClosingSession && (
@@ -154,7 +159,12 @@ export function SessionBar() {
           {mismatch && (
             <p className="text-xs text-amber-600 dark:text-amber-500">
               {t("sessionBar.saveDialog.gameMismatch", {
-                target: target?.name ?? "",
+                identified: [
+                  session?.identifiedGameKey,
+                  session?.identifiedLang?.toUpperCase(),
+                ]
+                  .filter(Boolean)
+                  .join(" / "),
                 destination: chosen?.name ?? "",
               })}
             </p>
@@ -169,9 +179,11 @@ export function SessionBar() {
         description={t("sessionBar.discardDialog.description")}
         confirm={{ type: "keyword" }}
         confirmLabel={t("sessionBar.discardDialog.confirm")}
-        onConfirm={() => {
-          void discardSession();
-          setDiscardOpen(false);
+        // Throwing keeps the dialog open; discardSession has already toasted.
+        // Dismissing on failure would say the run was thrown away when its
+        // cards are still staged.
+        onConfirm={async () => {
+          if (!(await discardSession())) throw new Error("discard failed");
         }}
       />
     </>

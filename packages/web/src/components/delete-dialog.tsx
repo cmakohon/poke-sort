@@ -27,7 +27,8 @@ interface DeleteDialogProps {
   description: string;
   confirm?: ConfirmMode;
   confirmLabel?: string;
-  onConfirm: () => void;
+  /** Rejecting keeps the dialog open — see onSubmit. */
+  onConfirm: () => void | Promise<unknown>;
 }
 
 export function DeleteDialog({
@@ -75,9 +76,17 @@ export function DeleteDialog({
     if (!open) reset();
   }, [open, reset]);
 
-  const onSubmit = () => {
-    onConfirm();
-    onOpenChange(false);
+  // Closes only when the confirm actually succeeded. It used to close
+  // unconditionally, so an action that failed server-side still dismissed the
+  // dialog — which reads as "done" for a destructive operation that did not
+  // happen. Synchronous handlers are unaffected: they resolve immediately.
+  const onSubmit = async () => {
+    try {
+      await onConfirm();
+      onOpenChange(false);
+    } catch (err) {
+      console.error("Delete confirmation failed:", err);
+    }
   };
 
   const label =
