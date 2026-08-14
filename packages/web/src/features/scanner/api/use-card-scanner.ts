@@ -408,7 +408,12 @@ export function useCardScanner({
       confidence: 1,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scanRegion.coverage, scanRegion.offsetX, scanRegion.offsetY]);
+  }, [
+    scanRegion.coverage,
+    scanRegion.offsetX,
+    scanRegion.offsetY,
+    scanRegion.rotation,
+  ]);
 
   const handleForceAddDuplicate = useCallback(() => {
     if (duplicateCard) {

@@ -18,10 +18,15 @@ import {
  * card sits in the *raw* frame rotated - same assumption extractCardImage's
  * isLandscape branch below already relies on.
  *
- * `region` (coverage + offsetX/offsetY, all fractions of the frame) is
- * calibrated per-org in the app's calibration screen to match a given
- * camera's field of view and mounting - see
+ * `region` (coverage + offsetX/offsetY + rotation, the first three as
+ * fractions of the frame) is calibrated per-org in the app's calibration
+ * screen to match a given camera's field of view and mounting - see
  * features/calibration/components/scan-region-calibration-panel.tsx.
+ *
+ * With a non-zero rotation the returned quadrilateral is no longer
+ * axis-aligned. It is still a rectangle - rotation is rigid, so the corners
+ * stay square and the edges keep their lengths - which is what lets
+ * extractCardImage below undo it with a rotation rather than a homography.
  */
 export function getDefaultCardContour(
   width: number,
@@ -38,21 +43,35 @@ export function getDefaultCardContour(
   const left = (width - boxW) / 2 + region.offsetX * width;
   const top = (height - boxH) / 2 + region.offsetY * height;
 
+  // Turn the box about its own centre, so rotating never moves the region the
+  // operator has already lined up - the two adjustments stay independent.
+  const cx = left + boxW / 2;
+  const cy = top + boxH / 2;
+  const angle = ((region.rotation ?? 0) * Math.PI) / 180;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const corner = (x: number, y: number) => {
+    const dx = x - cx;
+    const dy = y - cy;
+    return { x: cx + dx * cos - dy * sin, y: cy + dx * sin + dy * cos };
+  };
+
   return {
-    topLeft: { x: left, y: top },
-    topRight: { x: left + boxW, y: top },
-    bottomRight: { x: left + boxW, y: top + boxH },
-    bottomLeft: { x: left, y: top + boxH },
+    topLeft: corner(left, top),
+    topRight: corner(left + boxW, top),
+    bottomRight: corner(left + boxW, top + boxH),
+    bottomLeft: corner(left, top + boxH),
   };
 }
 
 /**
  * Extract the card region from a canvas, straightened to a fixed-size
  * portrait output. `contour` always comes from getDefaultCardContour above,
- * which only ever produces an axis-aligned rectangle (no skew) - so this is
- * a plain crop, not a general four-point perspective warp. If a contour
- * source that can return a skewed quadrilateral is ever reintroduced (e.g.
- * per-frame edge detection), this needs a real homography again.
+ * which only ever produces a rectangle - possibly turned, never skewed - so
+ * this is a crop plus a rotation, not a general four-point perspective warp.
+ * If a contour source that can return a skewed quadrilateral is ever
+ * reintroduced (e.g. per-frame edge detection), this needs a real homography
+ * again.
  */
 export function extractCardImage(
   sourceCanvas: HTMLCanvasElement,
@@ -61,10 +80,21 @@ export function extractCardImage(
 ): HTMLCanvasElement {
   const outputHeight = Math.round(outputWidth / CARD_ASPECT_RATIO);
 
-  const left = contour.topLeft.x;
-  const top = contour.topLeft.y;
-  const boxW = contour.topRight.x - contour.topLeft.x;
-  const boxH = contour.bottomLeft.y - contour.topLeft.y;
+  // Measured along the region's own edges rather than off the corners'
+  // coordinates: once the box can be turned, topRight.x - topLeft.x is the
+  // width of its shadow on the x axis, not the width of the box.
+  const edgeX = {
+    x: contour.topRight.x - contour.topLeft.x,
+    y: contour.topRight.y - contour.topLeft.y,
+  };
+  const boxW = Math.hypot(edgeX.x, edgeX.y);
+  const boxH = Math.hypot(
+    contour.bottomLeft.x - contour.topLeft.x,
+    contour.bottomLeft.y - contour.topLeft.y,
+  );
+  const angle = Math.atan2(edgeX.y, edgeX.x);
+  const cx = (contour.topLeft.x + contour.bottomRight.x) / 2;
+  const cy = (contour.topLeft.y + contour.bottomRight.y) / 2;
 
   // If the card bounding box is wider than tall, it's landscape in the frame.
   // Crop into a landscape canvas matching that ratio, then rotate 90° CW to
@@ -79,7 +109,18 @@ export function extractCardImage(
   cropCanvas.height = cropH;
   const cropCtx = cropCanvas.getContext("2d");
   if (!cropCtx) throw new Error("Could not get canvas context");
-  cropCtx.drawImage(sourceCanvas, left, top, boxW, boxH, 0, 0, cropW, cropH);
+  cropCtx.imageSmoothingQuality = "high";
+  // Read right to left: put the region's centre at the origin, turn the frame
+  // back by the region's own angle, scale the box to the output, then move the
+  // origin to the middle of the output. Everything outside the box falls
+  // outside the canvas and is clipped. At angle 0 this is exactly the crop
+  // this function used to do.
+  cropCtx.translate(cropW / 2, cropH / 2);
+  cropCtx.scale(cropW / boxW, cropH / boxH);
+  cropCtx.rotate(-angle);
+  cropCtx.translate(-cx, -cy);
+  cropCtx.drawImage(sourceCanvas, 0, 0);
+  cropCtx.setTransform(1, 0, 0, 1, 0, 0);
 
   if (!isLandscape) return cropCanvas;
 

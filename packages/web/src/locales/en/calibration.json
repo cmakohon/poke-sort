@@ -78,7 +78,11 @@
     }
   },
   "scanRegionCalibrationPanel": {
-    "instructions": "Drag the box to move it, or drag the handle to resize. Line it up with a card sitting at the camera (sorting arm 1).",
+    "instructions": "Drag the box to move it, the corner handle to resize, or the top handle to turn it. Line it up with a card sitting at the camera (sorting arm 1).",
+    "rotateHandle": "Turn the scan area",
+    "rotateLeft": "Turn a half degree left",
+    "rotateRight": "Turn a half degree right",
+    "degreeValue": "{{value}}°",
     "connecting": "Connecting…",
     "reconnectWebcam": "Reconnect camera",
     "connectWebcam": "Connect camera",
@@ -86,7 +90,7 @@
     "resetToDefault": "Reset to default",
     "saving": "Saving…",
     "saveScanRegion": "Save scan area",
-    "savedSummary": "Scan area saved",
+    "savedSummary": "Scan area saved · turned {{rotation}}°",
     "settleDelayLabel": "Photo delay",
     "settleDelayHint": "How long to wait after the sensor sees a card before the photo is taken. Raise this if captures show the card still sliding.",
     "saveSettleDelay": "Save photo delay",

@@ -362,6 +362,11 @@ export const orgSettings = pgTable(
     scanCoverage: integer("scan_coverage"),
     scanOffsetX: integer("scan_offset_x"),
     scanOffsetY: integer("scan_offset_y"),
+    // Tenths of a degree, signed, clockwise. Integer for the same reason the
+    // three above are: the region is stored as whole units of its own scale,
+    // not as floats. Tenths rather than hundredths because this corrects a
+    // mounting angle, and 0.1° is already finer than a camera bracket holds.
+    scanRotation: integer("scan_rotation"),
     // ms between the IR sensor confirming a card and the frame capture.
     // Nullable: absent means the client's default (500ms) applies.
     captureSettleDelayMs: integer("capture_settle_delay_ms"),

@@ -4,6 +4,7 @@ import {
   SCAN_COVERAGE_MAX,
   SCAN_COVERAGE_MIN,
   SCAN_OFFSET_LIMIT,
+  SCAN_ROTATION_LIMIT,
 } from "@poke-sort/shared";
 import { z } from "zod";
 import { parseBody } from "../lib/validate";
@@ -13,12 +14,18 @@ import { requireAuth, requireOrg, type AppEnv } from "../middleware/auth";
 
 const router = new Hono<AppEnv>();
 
-const DEFAULT_SCAN_REGION = { coverage: 0.85, offsetX: 0, offsetY: 0 };
+const DEFAULT_SCAN_REGION = {
+  coverage: 0.85,
+  offsetX: 0,
+  offsetY: 0,
+  rotation: 0,
+};
 
 function toScanRegion(row?: {
   scanCoverage: number | null;
   scanOffsetX: number | null;
   scanOffsetY: number | null;
+  scanRotation?: number | null;
 }) {
   return {
     coverage:
@@ -33,6 +40,11 @@ function toScanRegion(row?: {
       row?.scanOffsetY != null
         ? row.scanOffsetY / 100
         : DEFAULT_SCAN_REGION.offsetY,
+    // Stored in tenths of a degree, unlike the hundredths above.
+    rotation:
+      row?.scanRotation != null
+        ? row.scanRotation / 10
+        : DEFAULT_SCAN_REGION.rotation,
   };
 }
 
@@ -81,6 +93,8 @@ router.get("/", requireAuth, requireOrg, async (c) => {
 const coverage = z.number().min(SCAN_COVERAGE_MIN).max(SCAN_COVERAGE_MAX);
 /** Signed: the capture window moves either way from the centre of the frame. */
 const offset = z.number().min(-SCAN_OFFSET_LIMIT).max(SCAN_OFFSET_LIMIT);
+/** Signed degrees, clockwise, about the region's own centre. */
+const rotation = z.number().min(-SCAN_ROTATION_LIMIT).max(SCAN_ROTATION_LIMIT);
 
 export const OrgSettingsSchema = z
   .object({
@@ -96,6 +110,9 @@ export const OrgSettingsSchema = z
         coverage,
         offsetX: offset,
         offsetY: offset,
+        // Optional so a client that predates rotation can still save a region
+        // without silently claiming it is square.
+        rotation: rotation.optional(),
       })
       .strict()
       .nullable()
@@ -155,6 +172,17 @@ router.put("/", requireAuth, requireOrg, async (c) => {
               ? Math.round(body.scanRegion.offsetY * 100)
               : null
             : (existing?.scanOffsetY ?? null),
+        // A region sent without `rotation` leaves the stored angle alone
+        // rather than straightening the box, so an older client saving a
+        // coverage tweak cannot undo a rotation it does not know exists.
+        scanRotation:
+          "scanRegion" in body
+            ? body.scanRegion
+              ? body.scanRegion.rotation !== undefined
+                ? Math.round(body.scanRegion.rotation * 10)
+                : (existing?.scanRotation ?? null)
+              : null
+            : (existing?.scanRotation ?? null),
       };
       await tx
         .insert(orgSettings)

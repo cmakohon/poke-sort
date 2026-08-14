@@ -119,6 +119,24 @@ describe("calibration bounds", () => {
   it("accepts a whole real calibration document", () => {
     accepts(CalibrationDocumentSchema, { version: 1, ...REAL_MACHINE });
   });
+
+  it("still accepts a scan region written before rotation existed", () => {
+    // REAL_MACHINE.scanRegion has no `rotation`, and every stored region and
+    // exported file predating the feature is the same shape. Making rotation
+    // required would have rejected all of them.
+    accepts(OrgSettingsSchema, { scanRegion: REAL_MACHINE.scanRegion });
+    accepts(CalibrationDocumentSchema, { version: 1, ...REAL_MACHINE });
+  });
+
+  it("accepts a turned scan region to the limits the UI allows", () => {
+    const turned = (rotation: number) => ({ ...REAL_MACHINE.scanRegion, rotation });
+    accepts(OrgSettingsSchema, { scanRegion: turned(1.5) });
+    accepts(OrgSettingsSchema, { scanRegion: turned(-45) });
+    accepts(OrgSettingsSchema, { scanRegion: turned(45) });
+    expect(OrgSettingsSchema.safeParse({ scanRegion: turned(45.1) }).success).toBe(false);
+    expect(OrgSettingsSchema.safeParse({ scanRegion: turned(-90) }).success).toBe(false);
+  });
+
 });
 
 describe("game and bin bounds", () => {
