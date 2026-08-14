@@ -139,16 +139,34 @@ const ESCALATION: ReadOptions[] = [
   { scale: 4, threshold: 100, negate: true },
 ];
 
+/**
+ * Largest plausible printed denominator. The catalog's biggest set is 307, so
+ * this leaves headroom while still rejecting the three-digit garbage OCR reads
+ * out of the copyright line ("901", "716", "710") and the dropped-digit "000".
+ */
+const MAX_SET_TOTAL = 400;
+
 /** "58/102" -> {58, 102}; also accepts "058/102" and spaced variants. */
 export function parseCollectorNumber(
   text: string,
 ): { collectorNumber: string; setTotal?: number } | null {
   const fraction = /(\d{1,3})\s*\/\s*(\d{1,3})/.exec(text);
   if (fraction) {
-    return {
-      collectorNumber: fraction[1].replace(/^0+(?=\d)/, ""),
-      setTotal: Number(fraction[2]),
-    };
+    const total = Number(fraction[2]);
+    // An impossible denominator means the "fraction" is noise that happened to
+    // straddle a slash, so the numerator beside it is not trustworthy either.
+    // Reporting setTotal anyway did real damage: it is the flag that says "a
+    // full number was read", so it both overwrote a better collectorNumber and
+    // suppressed the escalation retry that exists to recover one. Returning it
+    // without a setTotal keeps the weak reading as a fallback while letting
+    // escalation run. Same plausibility guard parseHp already applies.
+    if (total >= 1 && total <= MAX_SET_TOTAL) {
+      return {
+        collectorNumber: fraction[1].replace(/^0+(?=\d)/, ""),
+        setTotal: total,
+      };
+    }
+    return { collectorNumber: fraction[1].replace(/^0+(?=\d)/, "") };
   }
   // SV-era promos: "SVP 001", "GG01". No denominator is printed.
   const promo = /\b([A-Z]{2,4})\s*[- ]?\s*(\d{1,3})\b/.exec(text.toUpperCase());
