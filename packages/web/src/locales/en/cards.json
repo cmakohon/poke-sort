@@ -60,7 +60,11 @@
     "deleteCardsTitle_one": "Delete {{count}} card?",
     "deleteCardsTitle_other": "Delete {{count}} cards?",
     "deleteCardsDescription_one": "This will permanently remove the selected card from your collection. This action cannot be undone.",
-    "deleteCardsDescription_other": "This will permanently remove the selected cards from your collection. This action cannot be undone."
+    "deleteCardsDescription_other": "This will permanently remove the selected cards from your collection. This action cannot be undone.",
+    "sessionExplainer": "Scans stay in this session until you save them. Cards you saved earlier live in your collection.",
+    "viewCollection": "View {{name}}",
+    "deleteCardsDescriptionSession_one": "This removes the selected card from this scan session. It was never added to a collection. This cannot be undone.",
+    "deleteCardsDescriptionSession_other": "This removes the selected cards from this scan session. They were never added to a collection. This cannot be undone."
   },
   "cardSelectDialog": {
     "defaultTitle": "Select Card",
@@ -89,13 +93,13 @@
     "sortDescDefault": "High-Low",
     "deselectAll": "Deselect all",
     "selectAll": "Select all",
-    "sessionSummaryExport": "Session summary & export",
-    "deleteScannedCardsTitle": "Delete all scanned cards?",
+    "sessionSummaryExport": "Session summary & CSV export",
+    "deleteScannedCardsTitle": "Delete all cards in this collection?",
     "deleteScannedCardsDescription": "This permanently deletes every card in this collection. The collection itself is kept. This cannot be undone.",
     "cancel": "Cancel",
     "clearing": "Deleting…",
     "clearAll": "Delete all",
-    "clearAllCardsTitle": "Delete all cards"
+    "clearAllCardsTitle": "Delete all cards in this collection"
   },
   "scannedCardItem": {
     "multipleMatchesTooltip": "Multiple close matches — tap to review",
@@ -113,7 +117,7 @@
     "downloaded": "Exported"
   },
   "sessionSummaryDialog": {
-    "title": "Session Summary",
+    "title": "Session summary & CSV export",
     "totalCards": "Total Cards",
     "unique": "Unique",
     "totalValue": "Total Value",
@@ -125,7 +129,7 @@
     "topSets": "Top Sets",
     "includePreviouslyDownloaded": "Include previously downloaded",
     "close": "Close",
-    "download": "Download ({{count}})"
+    "download": "Download CSV ({{count}})"
   },
   "metadata": {
     "title": "Sorting data",
@@ -140,5 +144,27 @@
     "rawData": "Raw card data",
     "heldForReview": "Held for review: the scanner was not confident enough to sort this automatically, so it went to the catch-all bin.",
     "heldForReviewWithNumbers": "Held for review (score {{score}}, margin {{margin}}): not confident enough to sort automatically, so it went to the catch-all bin."
+  },
+  "sessionBar": {
+    "staged_one": "{{count}} card staged",
+    "staged_other": "{{count}} cards staged",
+    "started": "started {{time}} on {{date}}",
+    "save": "Save to collection",
+    "discard": "Discard",
+    "saveDialog": {
+      "title": "Save this scan session",
+      "description_one": "Add {{count}} scanned card to a collection.",
+      "description_other": "Add {{count}} scanned cards to a collection.",
+      "selectPlaceholder": "Choose a collection",
+      "gameMismatch": "These cards were identified against {{target}}. {{destination}} uses a different game or language, and nothing is re-identified on the way in.",
+      "cancel": "Cancel",
+      "confirm": "Save to collection"
+    },
+    "discardDialog": {
+      "title_one": "Discard {{count}} scanned card?",
+      "title_other": "Discard {{count}} scanned cards?",
+      "description": "The cards are removed from this session and never reach a collection. The scan diagnostics behind them are kept, so the review screen is unaffected.",
+      "confirm": "Discard session"
+    }
   }
 }

@@ -67,5 +67,11 @@
     "renameFailed": "Failed to rename collection",
     "deleteFailed": "Failed to delete collection",
     "emptyFailed": "Failed to empty collection"
+  },
+  "detail": {
+    "backToCollections": "Back to collections",
+    "emptyTitle": "No cards in this collection",
+    "emptyDescription": "Scan a session and save it here to fill this collection.",
+    "goScan": "Go to scanner"
   }
 }

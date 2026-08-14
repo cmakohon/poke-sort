@@ -73,6 +73,14 @@
     "routingFailedReview": {
       "title": "Weiterleitung fehlgeschlagen",
       "description": "Der Sortierer hat beim Senden einer Karte zum Prüf-Fach (Fach {{binNumber}}) nicht geantwortet."
+    },
+    "saveSessionFailed": {
+      "title": "Scan-Sitzung konnte nicht gespeichert werden",
+      "description": "Die Karten sind weiterhin vorgemerkt — bitte erneut versuchen."
+    },
+    "discardSessionFailed": {
+      "title": "Scan-Sitzung konnte nicht verworfen werden",
+      "description": "Die Karten sind weiterhin vorgemerkt — bitte erneut versuchen."
     }
   },
   "cardScanner": {

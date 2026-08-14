@@ -73,6 +73,14 @@
     "routingFailedReview": {
       "title": "Routing failed",
       "description": "The sorter didn't respond while sending a card to the review bin (bin {{binNumber}})."
+    },
+    "saveSessionFailed": {
+      "title": "Could not save the scan session",
+      "description": "The cards are still staged — try again."
+    },
+    "discardSessionFailed": {
+      "title": "Could not discard the scan session",
+      "description": "The cards are still staged — try again."
     }
   },
   "cardScanner": {
