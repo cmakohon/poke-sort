@@ -100,14 +100,30 @@ export function useCollectionCards(guid: string | undefined, fieldDefinitions: F
   const toggleFoil = useCallback(
     (scanId: string, isFoil: boolean) => {
       if (!guid) return;
+      // Flip immediately so the switch feels like a switch, then take the
+      // server's card back: it re-prices the copy for the printing this flag
+      // now claims, and that number belongs to one implementation rather than
+      // being derived again here.
       patch((prev) =>
         prev.map((c) => (c.scanId === scanId ? { ...c, isFoil } : c)),
       );
-      setCollectionCardFoil(guid, scanId, isFoil).catch((err) =>
-        console.error("Failed to update foil status:", err),
-      );
+      setCollectionCardFoil(guid, scanId, isFoil)
+        .then((result) => {
+          if (!result.success || !result.data) return;
+          const updated = result.data;
+          patch((prev) =>
+            // The price lives on the inner card, which is what computeStats
+            // and the export both read.
+            prev.map((c) =>
+              c.scanId === scanId ? { ...c, isFoil, card: updated.card } : c,
+            ),
+          );
+          // The collection's total value is built from these prices.
+          void queryClient.invalidateQueries({ queryKey: ["collections"] });
+        })
+        .catch((err) => console.error("Failed to update foil status:", err));
     },
-    [guid, patch],
+    [guid, patch, queryClient],
   );
 
   const markDownloaded = useCallback(

@@ -4,7 +4,12 @@ import type {
   PlayingCardWithDistance,
   ScannedCard,
 } from "@poke-sort/shared";
-import { LOCAL_ORG_ID, LOCAL_USER_ID } from "@poke-sort/shared";
+import {
+  getCardPricing,
+  LOCAL_ORG_ID,
+  LOCAL_USER_ID,
+  resolvePrintingKey,
+} from "@poke-sort/shared";
 import { and, count, desc, eq, isNull, or } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -703,6 +708,25 @@ router.put("/:guid/cards/:scanId", requireAuth, requireOrg, async (c) => {
       if (variant !== undefined) updates.variant = variant;
       if (needsReview !== undefined) updates.needsReview = needsReview;
 
+      // Saying a copy is the reverse holo re-prices it: that printing is
+      // routinely worth several times the normal one, and a collection total
+      // built from the wrong printing is wrong by that much. Recomputed here
+      // rather than trusted from the client so one implementation decides
+      // which printing a price comes from.
+      if (isFoil !== undefined && card === undefined) {
+        const stored = existing.card as PlayingCardWithDistance | null;
+        const pricing = stored ? getCardPricing(stored) : undefined;
+        const resolved = resolvePrintingKey(pricing, isFoil ? "reverse" : undefined);
+        const market = resolved
+          ? pricing?.tcgplayer?.[resolved.key]?.marketPrice
+          : null;
+        // Leave the price alone when the printing has no price of its own —
+        // better a stale number than a confidently wrong one.
+        if (stored && market != null) {
+          updates.card = { ...stored, price: market };
+        }
+      }
+
       // Written once, on the first correction: what the pipeline had predicted
       // before a human overruled it. Overwriting on a second correction would
       // replace the model's answer with the human's previous one.
@@ -734,7 +758,11 @@ router.put("/:guid/cards/:scanId", requireAuth, requireOrg, async (c) => {
             : null,
         data: toScannedCard({
           guid: scanId,
-          card: (card ?? existing.card) as PlayingCardWithDistance,
+          // updates.card first, so a foil toggle's recomputed price comes back
+          // in the response and the client does not have to derive it again.
+          card: (updates.card ??
+            card ??
+            existing.card) as PlayingCardWithDistance,
           scannedAt: existing.scannedAt,
           binNumber:
             card !== undefined ? (binNumber ?? null) : existing.binNumber,

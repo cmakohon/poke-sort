@@ -8,7 +8,6 @@
     "multipleMatches": "Multiple close matches - select the correct version:",
     "cardDetailsFallback": "Card Details",
     "capturedScan": "Captured scan",
-    "foil": "Foil",
     "correctCard": "Correct Card",
     "remove": "Remove",
     "searchForCorrectVersion": "Your scanned card - search for the correct version below",
@@ -21,7 +20,8 @@
     "binLocation": "Bin location",
     "artBy": "Art by {{artist}}",
     "viewSource": "View source",
-    "enlargeImage": "Enlarge {{name}}"
+    "enlargeImage": "Enlarge {{name}}",
+    "reverseHolo": "Reverse Holo"
   },
   "cardFilterPopover": {
     "type": "Type",

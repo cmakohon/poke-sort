@@ -109,6 +109,20 @@ describe("CardPricingPanel", () => {
     expect(screen.getByText(/Reverse Holofoil.*detected/)).toBeDefined();
   });
 
+  // What the reverse-holo switch drives. The card's own variant is undefined
+  // for essentially every modern card, so the override is the only way the
+  // panel learns which printing is in hand.
+  it("re-prices from the variant override, beating the card's own", () => {
+    render(<CardPricingPanel card={card()} variant="reverse" />);
+    expect(screen.getByText("$0.52")).toBeDefined();
+    expect(screen.getByText(/Reverse Holofoil/)).toBeDefined();
+  });
+
+  it("falls back to the card's variant when no override is given", () => {
+    render(<CardPricingPanel card={card({ variant: "reverse" })} />);
+    expect(screen.getByText("$0.52")).toBeDefined();
+  });
+
   it("shows the low/mid/high range of the resolved printing", () => {
     render(<CardPricingPanel card={card()} />);
     expect(screen.getByText("Low")).toBeDefined();

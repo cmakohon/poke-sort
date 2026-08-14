@@ -26,6 +26,12 @@ import { useTranslation } from "react-i18next";
  */
 interface CardPricingPanelProps {
   card: PlayingCard;
+  /**
+   * Overrides the card's own variant. The detail screen uses it so the
+   * reverse-holo toggle re-prices the card as you flip it, without writing a
+   * variant the scan never detected.
+   */
+  variant?: string;
   className?: string;
 }
 
@@ -35,11 +41,15 @@ function money(value: number | null | undefined, currency: string): string {
   return value == null ? EM_DASH : formatMoney(value, currency);
 }
 
-export function CardPricingPanel({ card, className }: CardPricingPanelProps) {
+export function CardPricingPanel({
+  card,
+  variant,
+  className,
+}: CardPricingPanelProps) {
   const { t, i18n } = useTranslation("cards");
 
   const pricing = getCardPricing(card);
-  const resolved = resolvePrintingKey(pricing, card.variant);
+  const resolved = resolvePrintingKey(pricing, variant ?? card.variant);
   const printings = listPrintings(pricing);
 
   const tcg = pricing?.tcgplayer;

@@ -406,10 +406,48 @@ export function CardDetailPanel({
                   </div>
                 )}
                 {selectedCard && (
-                  <CardPricingPanel
-                    card={selectedCard}
-                    className="w-full @5xl:w-80 @5xl:shrink-0 @5xl:basis-auto"
-                  />
+                  // Actions ride above pricing rather than at the foot of the
+                  // page: they were three screens down past the sorting table,
+                  // and the reverse-holo switch in particular belongs next to
+                  // the number it changes.
+                  <div className="w-full @5xl:w-80 @5xl:shrink-0 @5xl:basis-auto flex flex-col gap-3">
+                    <div className="flex flex-col gap-3 rounded-lg border p-4">
+                      <Label className="flex items-center gap-2 w-fit">
+                        <Switch
+                          checked={isFoil}
+                          onCheckedChange={(checked) => {
+                            if (scanId) onToggleFoil?.(scanId, checked);
+                          }}
+                          disabled={!scanId || !onToggleFoil}
+                        />
+                        {t("cardDetailPanel.reverseHolo")}
+                      </Label>
+                      <div className="flex gap-2 flex-wrap">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setEditing(true)}
+                        >
+                          <IconPencil className="size-4" />
+                          {t("cardDetailPanel.correctCard")}
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => onRemove?.()}
+                        >
+                          <IconTrash className="size-4" />
+                          {t("cardDetailPanel.remove")}
+                        </Button>
+                      </div>
+                    </div>
+                    <CardPricingPanel
+                      card={selectedCard}
+                      // Follows the switch immediately, before the server's
+                      // repriced card comes back.
+                      variant={isFoil ? "reverse" : undefined}
+                    />
+                  </div>
                 )}
               </div>
               {/* Last: where the card physically went is a fact about one past
@@ -425,29 +463,6 @@ export function CardDetailPanel({
                   </div>
                 </div>
               )}
-              <Label className="flex items-center gap-2 w-fit">
-                <Switch
-                  checked={isFoil}
-                  onCheckedChange={(checked) => {
-                    if (scanId) onToggleFoil?.(scanId, checked);
-                  }}
-                  disabled={!scanId || !onToggleFoil}
-                />
-                {t("cardDetailPanel.foil")}
-              </Label>
-              <div className="flex gap-3 pt-1">
-                <Button
-                  variant="outline"
-                  onClick={() => setEditing(true)}
-                >
-                  <IconPencil className="size-4" />
-                  {t("cardDetailPanel.correctCard")}
-                </Button>
-                <Button variant="destructive" onClick={() => onRemove?.()}>
-                  <IconTrash className="size-4" />
-                  {t("cardDetailPanel.remove")}
-                </Button>
-              </div>
             </>
           ) : (
             <>

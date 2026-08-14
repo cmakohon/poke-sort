@@ -8,7 +8,6 @@
     "multipleMatches": "Mehrere ähnliche Treffer - wähle die richtige Version aus:",
     "cardDetailsFallback": "Kartendetails",
     "capturedScan": "Aufgenommener Scan",
-    "foil": "Foil",
     "correctCard": "Karte korrigieren",
     "remove": "Entfernen",
     "searchForCorrectVersion": "Deine gescannte Karte - suche unten nach der richtigen Version",
@@ -21,7 +20,8 @@
     "binLocation": "Fachposition",
     "artBy": "Illustration von {{artist}}",
     "viewSource": "Quelle ansehen",
-    "enlargeImage": "{{name}} vergrößern"
+    "enlargeImage": "{{name}} vergrößern",
+    "reverseHolo": "Reverse Holo"
   },
   "cardFilterPopover": {
     "type": "Typ",
