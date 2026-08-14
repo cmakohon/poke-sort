@@ -24,6 +24,7 @@ import {
   IconChecklist,
   IconHelpCircle,
   IconLoader2,
+  IconRubberStamp,
   IconSearch,
 } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
@@ -183,6 +184,10 @@ export function ReviewScreen() {
           dispatch({ type: "MARK_UNRESOLVABLE" });
           return true;
         }
+        if (e.key === "v") {
+          dispatch({ type: "MARK_WRONG_VARIANT" });
+          return true;
+        }
         if (e.key === "j" || e.key === "ArrowRight") {
           goTo(index + 1);
           return true;
@@ -207,8 +212,10 @@ export function ReviewScreen() {
       }
 
       case "reason": {
-        if (/^[1-9]$/.test(e.key)) {
-          const reason = MISMATCH_REASONS[Number(e.key) - 1];
+        if (/^[0-9]$/.test(e.key)) {
+          // 1–9 are the first nine reasons; 0 is the tenth.
+          const idx = e.key === "0" ? 9 : Number(e.key) - 1;
+          const reason = MISMATCH_REASONS[idx];
           if (reason) dispatch({ type: "TOGGLE_REASON", reason });
           return true;
         }
@@ -322,6 +329,18 @@ export function ReviewScreen() {
                 {t("actions.confirm")}
               </Button>
             )}
+            {hasPrediction && (
+              <Button
+                variant="outline"
+                onClick={(e) => {
+                  e.currentTarget.blur();
+                  dispatch({ type: "MARK_WRONG_VARIANT" });
+                }}
+              >
+                <IconRubberStamp className="size-4" />
+                {t("actions.wrongVariant")}
+              </Button>
+            )}
             <Button
               variant="outline"
               onClick={(e) => {
@@ -413,6 +432,9 @@ function FooterHints({
           ] as [string, string],
         ]
       : []),
+    ...(hasPrediction
+      ? [["V", t("shortcuts.wrongVariant")] as [string, string]]
+      : []),
     ["S", t("shortcuts.search")],
     ["X", t("shortcuts.unresolvable")],
     ["J / K", t("shortcuts.skip")],
@@ -437,6 +459,7 @@ function ShortcutHelp({ onClose }: { onClose: () => void }) {
   const rows: Array<[string, string]> = [
     ["Space / Enter", t("shortcuts.confirm")],
     ["1–6", t("shortcuts.pickAlternate")],
+    ["V", t("shortcuts.wrongVariant")],
     ["S or /", t("shortcuts.search")],
     ["X", t("shortcuts.unresolvable")],
     ["J / →", t("shortcuts.skipForward")],

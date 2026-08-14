@@ -12,13 +12,16 @@ import type { PlayingCard } from "./card.interface";
  * at the flip-retry logic, "ocr-misread" at the collector-number matcher.
  * Free text goes in the note, not here — the enum exists to aggregate.
  *
- * Order matters: the review screen maps these onto hotkeys 1–9.
+ * Order matters: the review screen maps these onto hotkeys 1–9, then 0.
  */
 export const MISMATCH_REASONS = [
   "wrong-card", // wrong pokemon entirely
   "same-pokemon-different-card", // right pokemon, wrong set or printing
   "same-art-different-set", // exact reprint confusion
   "same-card-wrong-type", // same pokemon printed in a different type
+  "wrong-variant", // right card, wrong stamp/edition/foil — often not even
+  // representable in the catalog (league promo stamps have no TCGdex entry),
+  // so it rides on a "correct" verdict rather than a correction
   "upside-down",
   "ocr-misread", // name/collector-number read wrong
   "image-quality", // blur / glare / off-center

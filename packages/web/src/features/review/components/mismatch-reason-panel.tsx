@@ -32,18 +32,20 @@ export function MismatchReasonPanel({
   noteInputRef,
 }: MismatchReasonPanelProps) {
   const { t } = useTranslation("review");
-  const needsReason = pending.kind === "corrected";
+  const needsReason = pending.kind !== "unresolvable";
   const canSubmit = !needsReason || pending.reasons.length > 0;
+  const title =
+    pending.kind === "corrected"
+      ? t("reason.titleCorrected")
+      : pending.kind === "variant"
+        ? t("reason.titleVariant")
+        : t("reason.titleUnresolvable");
 
   return (
     <div className="absolute inset-0 z-20 bg-background/80 backdrop-blur-sm flex items-center justify-center p-6">
       <div className="w-full max-w-md bg-card border rounded-xl shadow-lg p-5 flex flex-col gap-4">
         <div>
-          <h3 className="font-semibold">
-            {needsReason
-              ? t("reason.titleCorrected")
-              : t("reason.titleUnresolvable")}
-          </h3>
+          <h3 className="font-semibold">{title}</h3>
           {pending.cardName && (
             <p className="text-sm text-muted-foreground mt-0.5 truncate">
               {t("reason.pickingCard", { name: pending.cardName })}
@@ -76,7 +78,7 @@ export function MismatchReasonPanel({
                       : "border-border text-muted-foreground",
                   )}
                 >
-                  {i + 1}
+                  {i === 9 ? "0" : i + 1}
                 </kbd>
                 <span className="flex-1">{t(`reasons.${reason}`)}</span>
                 {selected && <IconCheck className="size-4 shrink-0" />}

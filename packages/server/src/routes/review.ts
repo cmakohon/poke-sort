@@ -318,13 +318,10 @@ export const VerdictSchema = z
         message: `Not allowed when verdict is ${val.verdict}.`,
       });
     }
-    if (val.verdict === "correct" && val.mismatchReasons?.length) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["mismatchReasons"],
-        message: "A confirmed-correct scan has no mismatch to explain.",
-      });
-    }
+    // "correct" MAY carry reasons: the identity was right but something
+    // about the printing was not (wrong-variant — league stamps and the
+    // like often have no catalog entry to correct to). Identity-level eval
+    // still counts these as hits; the reasons flag the variant miss.
   });
 
 // POST /api/review/:guid/verdict

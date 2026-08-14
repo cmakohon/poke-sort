@@ -64,6 +64,28 @@ describe("review machine", () => {
       expect(r.state.pending).toEqual({ kind: "unresolvable", reasons: [] });
     });
 
+    it("marking wrong variant preselects the reason", () => {
+      const r = transition(
+        INITIAL_REVIEW_STATE,
+        { type: "MARK_WRONG_VARIANT" },
+        HAS_PREDICTION,
+      );
+      expect(r.state.phase).toBe("reason");
+      expect(r.state.pending).toEqual({
+        kind: "variant",
+        reasons: ["wrong-variant"],
+      });
+    });
+
+    it("refuses wrong variant without a prediction", () => {
+      const r = transition(
+        INITIAL_REVIEW_STATE,
+        { type: "MARK_WRONG_VARIANT" },
+        NO_PREDICTION,
+      );
+      expect(r.state).toEqual(INITIAL_REVIEW_STATE);
+    });
+
     it("ignores reason-phase events", () => {
       const r = transition(
         INITIAL_REVIEW_STATE,
@@ -200,6 +222,29 @@ describe("review machine", () => {
         verdict: "unresolvable",
         mismatchReasons: ["not-a-card"],
       });
+    });
+
+    it("submits a variant verdict as correct-with-reasons", () => {
+      const variant: ReviewMachineState = {
+        phase: "reason",
+        pending: { kind: "variant", reasons: ["wrong-variant"] },
+      };
+      const r = transition(variant, { type: "SUBMIT" }, HAS_PREDICTION);
+      expect(r.save).toEqual({
+        verdict: "correct",
+        mismatchReasons: ["wrong-variant"],
+      });
+      expect(r.state).toEqual(INITIAL_REVIEW_STATE);
+    });
+
+    it("refuses a variant submit with every reason toggled off", () => {
+      const variant: ReviewMachineState = {
+        phase: "reason",
+        pending: { kind: "variant", reasons: [] },
+      };
+      const r = transition(variant, { type: "SUBMIT" }, HAS_PREDICTION);
+      expect(r.save).toBeUndefined();
+      expect(r.state).toEqual(variant);
     });
 
     it("escape discards the pending verdict", () => {

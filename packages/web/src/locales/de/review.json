@@ -32,6 +32,7 @@
   },
   "actions": {
     "confirm": "Korrekt",
+    "wrongVariant": "Falsche Variante",
     "search": "Suchen",
     "unresolvable": "Nicht auflösbar",
     "prev": "Vorherige Karte",
@@ -42,6 +43,7 @@
     "same-pokemon-different-card": "Richtiges Pokémon, falsches Set/Druck",
     "same-art-different-set": "Gleiches Artwork, anderes Set",
     "same-card-wrong-type": "Gleiches Pokémon, falscher Typ",
+    "wrong-variant": "Richtige Karte, falsche Variante (Stempel/Edition/Foil)",
     "upside-down": "Karte war auf dem Kopf",
     "ocr-misread": "OCR hat Name/Nummer falsch gelesen",
     "image-quality": "Schlechtes Bild (Unschärfe / Blendung)",
@@ -50,6 +52,7 @@
   },
   "reason": {
     "titleCorrected": "Warum lag der Sortierer falsch?",
+    "titleVariant": "Richtige Karte — was stimmt am Druck nicht?",
     "titleUnresolvable": "Warum nicht auflösbar? (optional)",
     "pickingCard": "Korrigieren zu: {{name}}",
     "notePlaceholder": "Optionale Notiz (N)…",
@@ -64,6 +67,7 @@
   "shortcuts": {
     "title": "Tastenkürzel",
     "confirm": "Als korrekt bestätigen",
+    "wrongVariant": "Richtige Karte, falsche Variante",
     "pickAlternate": "Eine Alternative wählen",
     "search": "Katalog durchsuchen",
     "unresolvable": "Als nicht auflösbar markieren",

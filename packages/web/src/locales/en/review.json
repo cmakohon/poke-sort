@@ -32,6 +32,7 @@
   },
   "actions": {
     "confirm": "Correct",
+    "wrongVariant": "Wrong variant",
     "search": "Search",
     "unresolvable": "Unresolvable",
     "prev": "Previous card",
@@ -42,6 +43,7 @@
     "same-pokemon-different-card": "Right Pokémon, wrong set/printing",
     "same-art-different-set": "Same art, different set",
     "same-card-wrong-type": "Same Pokémon, wrong type",
+    "wrong-variant": "Right card, wrong variant (stamp/edition/foil)",
     "upside-down": "Card was upside down",
     "ocr-misread": "OCR misread name/number",
     "image-quality": "Bad image (blur / glare)",
@@ -50,6 +52,7 @@
   },
   "reason": {
     "titleCorrected": "Why did the sorter get it wrong?",
+    "titleVariant": "Right card — what's off about the printing?",
     "titleUnresolvable": "Why is it unresolvable? (optional)",
     "pickingCard": "Correcting to: {{name}}",
     "notePlaceholder": "Optional note (N)…",
@@ -64,6 +67,7 @@
   "shortcuts": {
     "title": "Keyboard shortcuts",
     "confirm": "Confirm correct",
+    "wrongVariant": "Right card, wrong variant",
     "pickAlternate": "Pick an alternate match",
     "search": "Search catalog",
     "unresolvable": "Mark unresolvable",

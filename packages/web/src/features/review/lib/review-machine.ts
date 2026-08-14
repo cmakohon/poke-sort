@@ -12,9 +12,15 @@ import type { MismatchReason, ReviewVerdict } from "@poke-sort/shared";
 
 export type ReviewPhase = "focus" | "reason" | "search";
 
-/** A wrong-verdict in progress: the truth is chosen, the reasons are not. */
+/**
+ * A verdict in progress, waiting on reasons. "variant" means the identity
+ * was right but the printing was wrong (stamp/edition/foil) — it saves as
+ * verdict "correct" carrying reasons, because identity-level eval must not
+ * count it as a miss and the true variant often has no catalog entry to
+ * correct to.
+ */
 export interface PendingVerdict {
-  kind: "corrected" | "unresolvable";
+  kind: "corrected" | "unresolvable" | "variant";
   /** Truth card; set only for corrected. */
   cardId?: string;
   cardName?: string;
@@ -38,6 +44,7 @@ export type ReviewMachineEvent =
   | { type: "OPEN_SEARCH" }
   | { type: "SEARCH_SELECT"; cardId: string; cardName?: string }
   | { type: "MARK_UNRESOLVABLE" }
+  | { type: "MARK_WRONG_VARIANT" }
   | { type: "TOGGLE_REASON"; reason: MismatchReason }
   | { type: "SUBMIT" }
   | { type: "CANCEL" };
@@ -91,6 +98,15 @@ export function transition(
               pending: { kind: "unresolvable", reasons: [] },
             },
           };
+        case "MARK_WRONG_VARIANT":
+          // Only meaningful against a prediction whose identity is right.
+          if (!ctx.hasPrediction) return { state };
+          return {
+            state: {
+              phase: "reason",
+              pending: { kind: "variant", reasons: ["wrong-variant"] },
+            },
+          };
         default:
           return { state };
       }
@@ -140,6 +156,14 @@ export function transition(
                 correctedCardId: pending.cardId,
                 mismatchReasons: pending.reasons,
               },
+            };
+          }
+          if (pending.kind === "variant") {
+            // Identity confirmed; the reasons describe the printing problem.
+            if (pending.reasons.length === 0) return { state };
+            return {
+              state: INITIAL_REVIEW_STATE,
+              save: { verdict: "correct", mismatchReasons: pending.reasons },
             };
           }
           return {
