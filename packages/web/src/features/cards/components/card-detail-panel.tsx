@@ -195,8 +195,12 @@ export function CardDetailPanel({
   const cardNumber = selectedCard ? formatCardNumber(selectedCard) : "";
 
   return (
-    <div className="flex h-full">
-      <div className="sticky top-0 p-2 shrink-0 flex flex-col gap-2">
+    // The panel owns its own scrolling. It used to inherit the route pane's,
+    // which scrolled the nav rail and the left border away with the content —
+    // `sticky` on the rail could not help, because the scroll container it
+    // would have stuck within was outside the panel entirely.
+    <div className="flex flex-1 min-h-0 overflow-hidden">
+      <div className="p-2 shrink-0 flex flex-col gap-2">
         <Button
           size="icon"
           variant="ghost"
@@ -227,7 +231,9 @@ export function CardDetailPanel({
           </Button>
         </ButtonGroup>
       </div>
-      <div className="flex-1 flex flex-col min-w-0 border-l">
+      {/* The scroller: the rail and the border beside it stay put, and the
+          sticky header now has a scroll container to stick within. */}
+      <div className="flex-1 flex flex-col min-w-0 border-l overflow-y-auto">
         <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-2xl border-b px-4 py-3 flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline gap-2">
