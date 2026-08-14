@@ -143,7 +143,8 @@
     "sentToBin": "beim Scan in Fach {{bin}}",
     "rawData": "Rohdaten der Karte",
     "heldForReview": "Zur Prüfung zurückgehalten: Der Scanner war nicht sicher genug, um automatisch zu sortieren — die Karte ging ins Auffangfach.",
-    "heldForReviewWithNumbers": "Zur Prüfung zurückgehalten (Score {{score}}, Marge {{margin}}): nicht sicher genug zum automatischen Sortieren — die Karte ging ins Auffangfach."
+    "heldForReviewWithNumbers": "Zur Prüfung zurückgehalten (Score {{score}}, Marge {{margin}}): nicht sicher genug zum automatischen Sortieren — die Karte ging ins Auffangfach.",
+    "showDuplicates": "Oben bereits angezeigt ({{count}})"
   },
   "sessionBar": {
     "staged_one": "{{count}} Karte vorgemerkt",
@@ -166,5 +167,24 @@
       "description": "Die Karten werden aus dieser Sitzung entfernt und gelangen nie in eine Sammlung. Die zugehörigen Scan-Diagnosedaten bleiben erhalten, der Prüfbildschirm ist also nicht betroffen.",
       "confirm": "Sitzung verwerfen"
     }
+  },
+  "pricing": {
+    "title": "Preise",
+    "low": "Niedrig",
+    "mid": "Mittel",
+    "high": "Hoch",
+    "unavailable": "Keine Preisdaten für diese Karte",
+    "otherPrintings": "Weitere Druckvarianten",
+    "printing": {
+      "normal": "Normal",
+      "holofoil": "Holofoil",
+      "reverse-holofoil": "Reverse Holo"
+    },
+    "detected": "erkannt",
+    "asOf": "Stand {{date}}",
+    "cardmarket": "Cardmarket",
+    "trend": "Trend {{value}}",
+    "avg30": "30-Tage-Ø {{value}}",
+    "viewOnTcgplayer": "Bei TCGplayer ansehen"
   }
 }

@@ -1,6 +1,6 @@
 import { rarityColor } from "@/features/cards/lib/rarity-color";
 import { formatCardNumber } from "@/features/cards/lib/format-card-number";
-import { formatUsd } from "@/features/scanner/components/scan-stats";
+import { CardPricingPanel } from "@/features/cards/components/card-pricing-panel";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Label } from "@/components/ui/label";
@@ -9,7 +9,11 @@ import { BinLocationDiagram } from "@/features/bins/components/bin-location-diag
 import { CardMetadataPanel } from "@/features/cards/components/card-metadata-panel";
 import { CardSearchPicker } from "@/features/cards/components/card-search-picker";
 import { cn } from "@/lib/utils";
-import type { PlayingCard, PlayingCardWithDistance } from "@poke-sort/shared";
+import type {
+  FieldMeta,
+  PlayingCard,
+  PlayingCardWithDistance,
+} from "@poke-sort/shared";
 import {
   IconCheck,
   IconChevronDown,
@@ -21,6 +25,26 @@ import {
 } from "@tabler/icons-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+
+/**
+ * Fields the column above already renders verbatim, so the sorting table can
+ * fold them away instead of repeating them.
+ *
+ * Keyed on field id, not label: labels are translated, and a game whose ids
+ * differ simply matches nothing and shows everything — the safe direction to
+ * fail. `category` and `stage` stay visible deliberately: the type line above
+ * is a derived string, and the diagnostic table is where the raw values belong.
+ */
+const FIELDS_SHOWN_IN_DETAIL = [
+  "name",
+  "rarity",
+  "hp",
+  "set_name",
+  "collector_number",
+  "price_usd",
+  "illustrator",
+  "text",
+] as const;
 
 interface CardDetailPanelProps {
   scanId?: string;
@@ -56,6 +80,11 @@ interface CardDetailPanelProps {
    * whenever you are looking at a different one.
    */
   searchCollectionGuid?: string;
+  /**
+   * The game's field definitions. Passed in rather than read from the active
+   * game, so a collection of a different game shows its own field set.
+   */
+  fieldDefinitions?: FieldMeta[];
 }
 
 export function CardDetailPanel({
@@ -80,6 +109,7 @@ export function CardDetailPanel({
   onAdd,
   onToggleFoil,
   searchCollectionGuid,
+  fieldDefinitions,
 }: CardDetailPanelProps) {
   const { t } = useTranslation("cards");
   const [editing, setEditing] = useState(false);
@@ -191,7 +221,9 @@ export function CardDetailPanel({
             )}
           </div>
         </div>
-        <div className="p-6 flex flex-col gap-5">
+        {/* Its own @container: the columns below should respond to the width
+            of this panel, not of the route that happens to host it. */}
+        <div className="p-6 flex flex-col gap-5 @container">
           {currentCard && !editing ? (
             <>
               {hasMultipleCandidates && (
@@ -263,7 +295,10 @@ export function CardDetailPanel({
                   <div className="border-t" />
                 </div>
               )}
-              <div className="flex gap-6">
+              {/* Wrapping flex rather than a grid: the image column is absent
+                  whenever there are multiple candidates, and a fixed grid track
+                  would leave a hole where it used to be. */}
+              <div className="flex flex-col @2xl:flex-row @2xl:flex-wrap gap-6 items-start">
                 {!hasMultipleCandidates && (
                   <div className="shrink-0 flex flex-col gap-3 items-center">
                     <div className="w-44 aspect-[2.5/3.5] rounded-lg overflow-hidden border shadow-sm">
@@ -291,7 +326,7 @@ export function CardDetailPanel({
                 )}
 
                 {selectedCard && (
-                  <div className="flex flex-col gap-3 min-w-0 flex-1">
+                  <div className="flex flex-col gap-3 min-w-0 flex-1 @2xl:basis-[22rem]">
                     {selectedCard.text && (
                       <p className="text-sm whitespace-pre-line leading-relaxed">
                         {selectedCard.text}
@@ -330,11 +365,6 @@ export function CardDetailPanel({
                         </div>
                       </div>
                     )}
-                    {selectedCard.price != null && (
-                      <p className="text-xs text-muted-foreground">
-                        {formatUsd(selectedCard.price)}
-                      </p>
-                    )}
                     {selectedCard.artist && (
                       <p className="text-xs text-muted-foreground">
                         {t("cardDetailPanel.artBy", { artist: selectedCard.artist })}
@@ -351,16 +381,28 @@ export function CardDetailPanel({
                         <IconExternalLink className="h-3.5 w-3.5" />
                       </a>
                     )}
-                    <CardMetadataPanel
-                      card={selectedCard}
-                      assignedBin={binNumber}
-                      needsReview={needsReview}
-                      scanScore={scanScore}
-                      scanMargin={scanMargin}
-                    />
                   </div>
                 )}
+                {selectedCard && (
+                  <CardPricingPanel
+                    card={selectedCard}
+                    className="w-full @5xl:w-80 @5xl:shrink-0 @5xl:basis-auto"
+                  />
+                )}
               </div>
+              {/* Outside the row on purpose: the sorting table is wide, and
+                  squeezing it into the details column wrapped every value. */}
+              {selectedCard && (
+                <CardMetadataPanel
+                  card={selectedCard}
+                  assignedBin={binNumber}
+                  needsReview={needsReview}
+                  scanScore={scanScore}
+                  scanMargin={scanMargin}
+                  fieldDefinitions={fieldDefinitions}
+                  duplicateFields={FIELDS_SHOWN_IN_DETAIL}
+                />
+              )}
               <Label className="flex items-center gap-2 w-fit">
                 <Switch
                   checked={isFoil}

@@ -233,6 +233,7 @@ export function CardCollectionView({
         scanScore={openEntry.score}
         scanMargin={openEntry.margin}
         searchCollectionGuid={searchCollectionGuid}
+        fieldDefinitions={fieldDefinitions}
         onCorrect={onCorrectCard}
         onAdd={onAddCard}
         onToggleFoil={onToggleFoil}
