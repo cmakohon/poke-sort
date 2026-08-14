@@ -8,6 +8,7 @@ export * from "./interfaces/machine-events.interface";
 export * from "./interfaces/module-configs.interface";
 export * from "./interfaces/notification-settings.interface";
 export * from "./interfaces/result.interface";
+export * from "./interfaces/review.interface";
 export * from "./interfaces/scanner.interface";
 export * from "./interfaces/sort-bins.interface";
 

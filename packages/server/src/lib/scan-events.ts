@@ -1,4 +1,8 @@
-import type { IdentifyResult } from "@poke-sort/shared";
+import type {
+  IdentifyResult,
+  MismatchReason,
+  ReviewVerdict,
+} from "@poke-sort/shared";
 import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { scanEvents } from "../db/schema";
@@ -84,4 +88,33 @@ export async function recordCorrection(
     .update(scanEvents)
     .set({ correctedCardId, correctedAt: new Date() })
     .where(eq(scanEvents.guid, scanEventGuid));
+}
+
+/**
+ * The review screen's write path — deliberately last-write-wins, unlike
+ * recordCorrection's first-correction rule. A reviewer re-judging a row is
+ * the newest information about it, and the original prediction is safe in
+ * the candidates jsonb no matter how many times the verdict changes. A
+ * correct/unresolvable verdict clears corrected_card_id so a row never
+ * claims both "confirmed right" and "here is the true card".
+ */
+export async function recordReviewVerdict(params: {
+  scanEventGuid: string;
+  verdict: ReviewVerdict;
+  correctedCardId?: string;
+  mismatchReason?: MismatchReason;
+  note?: string;
+}): Promise<void> {
+  const corrected = params.verdict === "corrected";
+  await db
+    .update(scanEvents)
+    .set({
+      reviewedAt: new Date(),
+      reviewVerdict: params.verdict,
+      mismatchReason: params.mismatchReason ?? null,
+      reviewNote: params.note || null,
+      correctedCardId: corrected ? params.correctedCardId : null,
+      correctedAt: corrected ? new Date() : null,
+    })
+    .where(eq(scanEvents.guid, params.scanEventGuid));
 }

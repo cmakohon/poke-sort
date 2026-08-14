@@ -366,6 +366,14 @@ export const scanEvents = pgTable(
     correctedCardId: text("corrected_card_id"),
     // timestamptz for the same interval-query reason as machine_events.ts.
     correctedAt: timestamp("corrected_at", { withTimezone: true }),
+    // Human review state. reviewed_at IS NULL means unreviewed; the verdict is
+    // correct | corrected | unresolvable. corrected_card_id above stays the
+    // truth pointer for 'corrected' — 'correct' records that candidates[0]
+    // was right, which is eval data a correction alone can't express.
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    reviewVerdict: text("review_verdict"),
+    mismatchReason: text("mismatch_reason"),
+    reviewNote: text("review_note"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -374,6 +382,7 @@ export const scanEvents = pgTable(
     unique("scan_events_guid_idx").on(table.guid),
     index("scan_events_created_idx").on(table.createdAt),
     index("scan_events_tier_idx").on(table.tier),
+    index("scan_events_reviewed_idx").on(table.reviewedAt),
   ],
 );
 

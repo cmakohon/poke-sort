@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import {
+  resolveAdapterForGame,
   resolveCardSearch,
   resolveGameKeyAndLang,
 } from "../lib/card-search/resolve";
@@ -107,12 +108,26 @@ router.post("/", requireAuth, requireOrg, async (c) => {
 // Dispatches to whichever game's card API backs the given collection -
 // see lib/card-search/resolve.ts. Every game is
 // registered explicitly there; there is no implicit default game.
-router.get("/search", requireAuth, async (c) => {
-  const query = c.req.query("q") ?? "";
+//
+// ?gameKey= is the fallback for callers with no collection to name: the
+// review screen searches against scan_events rows, which record the game
+// but may have been captured with no collection active.
+async function resolveSearchContext(c: {
+  get(key: "jwtClaims"): string;
+  req: { query(name: string): string | undefined };
+}) {
   const resolved = await resolveCardSearch(
     c.get("jwtClaims"),
     c.req.query("collectionGuid"),
   );
+  if (resolved) return resolved;
+  const gameKey = c.req.query("gameKey");
+  return gameKey ? resolveAdapterForGame(gameKey) : null;
+}
+
+router.get("/search", requireAuth, async (c) => {
+  const query = c.req.query("q") ?? "";
+  const resolved = await resolveSearchContext(c);
   if (!resolved) {
     return c.json(
       { success: false, message: "No game configured for this collection." },
@@ -124,10 +139,7 @@ router.get("/search", requireAuth, async (c) => {
 });
 
 router.get("/search/:id", requireAuth, async (c) => {
-  const resolved = await resolveCardSearch(
-    c.get("jwtClaims"),
-    c.req.query("collectionGuid"),
-  );
+  const resolved = await resolveSearchContext(c);
   if (!resolved) {
     return c.json(
       { success: false, message: "No game configured for this collection." },

@@ -71,6 +71,13 @@
       "when": 1786500360000,
       "tag": "0009_observability",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786500420000,
+      "tag": "0010_review_verdicts",
+      "breakpoints": true
     }
   ]
 }

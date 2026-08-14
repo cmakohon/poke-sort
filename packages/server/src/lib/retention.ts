@@ -11,8 +11,9 @@ import { deleteCaptures } from "./captures";
  * costs real disk (~150 KB per scan against a few KB of row). So: serial
  * telemetry keeps two weeks, scan diagnostics keep six months, and accepted
  * scans lose their image (not their numbers) after a month. Rows a human
- * corrected are exempt from deletion entirely — they are labelled eval data,
- * the most expensive thing here to regenerate.
+ * reviewed — confirmed-correct included, not just corrections — are exempt
+ * from deletion entirely: they are labelled eval data, the most expensive
+ * thing here to regenerate.
  *
  * Best-effort by design: the caller must treat a pruning failure as a warning,
  * never a boot failure.
@@ -38,6 +39,7 @@ export async function pruneObservability(): Promise<void> {
         and(
           lt(scanEvents.createdAt, daysAgo(SCAN_EVENT_DAYS)),
           isNull(scanEvents.correctedCardId),
+          isNull(scanEvents.reviewedAt),
         ),
       )
       .returning({ capturePath: scanEvents.capturePath });
@@ -50,6 +52,7 @@ export async function pruneObservability(): Promise<void> {
       eq(scanEvents.tier, "accept"),
       lt(scanEvents.createdAt, daysAgo(ACCEPT_CAPTURE_DAYS)),
       isNull(scanEvents.correctedCardId),
+      isNull(scanEvents.reviewedAt),
       sql`${scanEvents.capturePath} IS NOT NULL`,
     );
     const imageExpired = await db
