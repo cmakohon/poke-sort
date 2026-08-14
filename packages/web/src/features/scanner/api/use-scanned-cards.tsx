@@ -54,6 +54,11 @@ const ScannedCardsContext = createContext<ScannedCardsContextValue | null>(
   null,
 );
 
+/** The server's own words for a failed close, or null if it gave none. */
+function failureReason(err: unknown): string | null {
+  return err instanceof Error && err.message ? err.message : null;
+}
+
 export function ScannedCardsProvider({
   children,
 }: {
@@ -700,10 +705,6 @@ export function ScannedCardsProvider({
   // Both of these report whether the run actually closed. The caller needs to
   // know: dismissing the dialog on a failed save or discard tells the operator
   // the cards were dealt with when they are still staged on the server.
-  //
-  // The failure arrives as a rejection, not as `success: false` — apiPost
-  // throws on any non-2xx and every failure path on these two endpoints is a
-  // 409, so a `!result.success` check alone never runs.
   const saveSession = useCallback(
     async (collectionGuid: string): Promise<boolean> => {
       const open = sessionRef.current;
@@ -723,7 +724,11 @@ export function ScannedCardsProvider({
       } catch (err) {
         console.error("Failed to save scan session:", err);
         toast.error(t("scannedCards.saveSessionFailed.title"), {
-          description: t("scannedCards.saveSessionFailed.description"),
+          description: t("scannedCards.saveSessionFailed.description", {
+            reason:
+              failureReason(err) ?? t("scannedCards.saveSessionFailed.noReason"),
+          }),
+          duration: FAULT_TOAST_DURATION_MS,
         });
         return false;
       } finally {
@@ -748,7 +753,11 @@ export function ScannedCardsProvider({
     } catch (err) {
       console.error("Failed to discard scan session:", err);
       toast.error(t("scannedCards.discardSessionFailed.title"), {
-        description: t("scannedCards.discardSessionFailed.description"),
+        description: t("scannedCards.discardSessionFailed.description", {
+          reason:
+            failureReason(err) ?? t("scannedCards.discardSessionFailed.noReason"),
+        }),
+        duration: FAULT_TOAST_DURATION_MS,
       });
       return false;
     } finally {

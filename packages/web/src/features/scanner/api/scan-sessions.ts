@@ -48,6 +48,21 @@ export async function retargetScanSession(
   });
 }
 
+/**
+ * POST that keeps the server's explanation instead of throwing it away.
+ *
+ * `apiPost` rejects with `API error: <status>` and drops the body; these routes
+ * name the cause in it ("Session is closed.", "Collection not found.").
+ */
+async function postForResult<T>(path: string, body?: unknown): Promise<Result<T>> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  return (await res.json()) as Result<T>;
+}
+
 export async function addSessionCard(
   guid: string,
   record: ScannedCard,
@@ -59,6 +74,8 @@ export async function addSessionCard(
   });
   // 423 (someone else is scanning) and 409 (the run was closed under us) both
   // carry a body the caller needs in order to roll the optimistic add back.
+  // Not postForResult: the caller reads any non-success envelope as one of
+  // those two races and drops the card, so other statuses must reject.
   if (res.ok || res.status === 423 || res.status === 409) return res.json();
   throw new Error(`API error: ${res.status}`);
 }
@@ -67,7 +84,7 @@ export async function commitScanSession(
   guid: string,
   collectionGuid: string,
 ): Promise<Result<CommitScanSessionResponse>> {
-  return apiPost<Result<CommitScanSessionResponse>>(
+  return postForResult<CommitScanSessionResponse>(
     `/api/scan-sessions/${guid}/commit`,
     { collectionGuid },
   );
@@ -76,7 +93,7 @@ export async function commitScanSession(
 export async function discardScanSession(
   guid: string,
 ): Promise<Result<{ discardedCount: number }>> {
-  return apiPost<Result<{ discardedCount: number }>>(
+  return postForResult<{ discardedCount: number }>(
     `/api/scan-sessions/${guid}/discard`,
   );
 }
