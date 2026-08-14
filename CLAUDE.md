@@ -12,6 +12,40 @@ is running.** A second opener corrupts the WAL. Close the app first, or go
 through the running server's HTTP API instead — that is what the debug
 endpoints below are for.
 
+Corruption is silent: both processes appear healthy for as long as one holds
+the database in memory, and the failure surfaces only on the **next cold
+start**, as `PANIC: could not locate a valid checkpoint record`. So "it still
+works" is not evidence that nothing was damaged.
+
+### Before starting anything, check who has it
+
+```
+POKE_SORT_DATA_DIR=./.poke-sort-catalog pnpm --filter @poke-sort/server db:status
+```
+
+Exit 0 means free; non-zero means occupied (or unverifiable) — either way, do
+not start a second process. `packages/server/src/db/index.ts` runs the same
+check at boot and refuses rather than corrupting, but do not rely on that alone:
+it only protects processes running current code, and an app launched from an
+older build will still open the directory with no lock file and no complaint.
+
+**`pgrep`/`pkill` patterns are not a verification.** A pattern that matches
+nothing looks identical to a process that stopped, and using the same wrong
+pattern to check the kill makes it confirm its own failure — that is how the
+first corruption happened. The kernel's answer is the only one that counts:
+
+```
+lsof +D packages/server/.poke-sort-catalog/db
+```
+
+Note that **lsof exits 1 even when it does find holders**, so check its output,
+not its exit code.
+
+### If it does get corrupted
+
+`pg_resetwal -f <dataDir>/db` (Homebrew Postgres, major version matching
+`PG_VERSION`) has recovered it fully both times. Copy the directory first.
+
 ## Diagnosing issues: query the running app
 
 The server writes its port to `<dataDir>/server.port` on boot (dev data dir:
