@@ -67,5 +67,11 @@
     "renameFailed": "Sammlung konnte nicht umbenannt werden",
     "deleteFailed": "Sammlung konnte nicht gelöscht werden",
     "emptyFailed": "Sammlung konnte nicht geleert werden"
+  },
+  "detail": {
+    "backToCollections": "Zurück zu den Sammlungen",
+    "emptyTitle": "Keine Karten in dieser Sammlung",
+    "emptyDescription": "Scanne eine Sitzung und speichere sie hier, um diese Sammlung zu füllen.",
+    "goScan": "Zum Scanner"
   }
 }

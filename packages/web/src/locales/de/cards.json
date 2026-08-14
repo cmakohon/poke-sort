@@ -60,7 +60,11 @@
     "deleteCardsTitle_one": "{{count}} Karte löschen?",
     "deleteCardsTitle_other": "{{count}} Karten löschen?",
     "deleteCardsDescription_one": "Dadurch wird die ausgewählte Karte dauerhaft aus deiner Sammlung entfernt. Diese Aktion kann nicht rückgängig gemacht werden.",
-    "deleteCardsDescription_other": "Dadurch werden die ausgewählten Karten dauerhaft aus deiner Sammlung entfernt. Diese Aktion kann nicht rückgängig gemacht werden."
+    "deleteCardsDescription_other": "Dadurch werden die ausgewählten Karten dauerhaft aus deiner Sammlung entfernt. Diese Aktion kann nicht rückgängig gemacht werden.",
+    "sessionExplainer": "Scans bleiben in dieser Sitzung, bis du sie speicherst. Früher gespeicherte Karten liegen in deiner Sammlung.",
+    "viewCollection": "{{name}} ansehen",
+    "deleteCardsDescriptionSession_one": "Damit wird die ausgewählte Karte aus dieser Scan-Sitzung entfernt. Sie wurde nie zu einer Sammlung hinzugefügt. Das kann nicht rückgängig gemacht werden.",
+    "deleteCardsDescriptionSession_other": "Damit werden die ausgewählten Karten aus dieser Scan-Sitzung entfernt. Sie wurden nie zu einer Sammlung hinzugefügt. Das kann nicht rückgängig gemacht werden."
   },
   "cardSelectDialog": {
     "defaultTitle": "Karte auswählen",
@@ -89,13 +93,13 @@
     "sortDescDefault": "Hoch-Niedrig",
     "deselectAll": "Alle abwählen",
     "selectAll": "Alle auswählen",
-    "sessionSummaryExport": "Sitzungsübersicht & Export",
-    "deleteScannedCardsTitle": "Alle gescannten Karten löschen?",
+    "sessionSummaryExport": "Sitzungsübersicht & CSV-Export",
+    "deleteScannedCardsTitle": "Alle Karten in dieser Sammlung löschen?",
     "deleteScannedCardsDescription": "Dadurch werden alle Karten in dieser Sammlung dauerhaft gelöscht. Die Sammlung selbst bleibt erhalten. Dies kann nicht rückgängig gemacht werden.",
     "cancel": "Abbrechen",
     "clearing": "Wird gelöscht…",
     "clearAll": "Alle löschen",
-    "clearAllCardsTitle": "Alle Karten löschen"
+    "clearAllCardsTitle": "Alle Karten in dieser Sammlung löschen"
   },
   "scannedCardItem": {
     "multipleMatchesTooltip": "Mehrere ähnliche Treffer — zum Überprüfen tippen",
@@ -113,7 +117,7 @@
     "downloaded": "Exportiert"
   },
   "sessionSummaryDialog": {
-    "title": "Sitzungsübersicht",
+    "title": "Sitzungsübersicht & CSV-Export",
     "totalCards": "Karten gesamt",
     "unique": "Einzigartig",
     "totalValue": "Gesamtwert",
@@ -125,7 +129,7 @@
     "topSets": "Top-Editionen",
     "includePreviouslyDownloaded": "Bereits heruntergeladene einschließen",
     "close": "Schließen",
-    "download": "Herunterladen ({{count}})"
+    "download": "CSV herunterladen ({{count}})"
   },
   "metadata": {
     "title": "Sortierdaten",
@@ -140,5 +144,27 @@
     "rawData": "Rohdaten der Karte",
     "heldForReview": "Zur Prüfung zurückgehalten: Der Scanner war nicht sicher genug, um automatisch zu sortieren — die Karte ging ins Auffangfach.",
     "heldForReviewWithNumbers": "Zur Prüfung zurückgehalten (Score {{score}}, Marge {{margin}}): nicht sicher genug zum automatischen Sortieren — die Karte ging ins Auffangfach."
+  },
+  "sessionBar": {
+    "staged_one": "{{count}} Karte vorgemerkt",
+    "staged_other": "{{count}} Karten vorgemerkt",
+    "started": "gestartet {{time}} am {{date}}",
+    "save": "In Sammlung speichern",
+    "discard": "Verwerfen",
+    "saveDialog": {
+      "title": "Diese Scan-Sitzung speichern",
+      "description_one": "{{count}} gescannte Karte zu einer Sammlung hinzufügen.",
+      "description_other": "{{count}} gescannte Karten zu einer Sammlung hinzufügen.",
+      "selectPlaceholder": "Sammlung auswählen",
+      "gameMismatch": "Diese Karten wurden als {{identified}} erkannt. {{destination}} verwendet ein anderes Spiel oder eine andere Sprache, und es wird nichts neu erkannt.",
+      "cancel": "Abbrechen",
+      "confirm": "In Sammlung speichern"
+    },
+    "discardDialog": {
+      "title_one": "{{count}} gescannte Karte verwerfen?",
+      "title_other": "{{count}} gescannte Karten verwerfen?",
+      "description": "Die Karten werden aus dieser Sitzung entfernt und gelangen nie in eine Sammlung. Die zugehörigen Scan-Diagnosedaten bleiben erhalten, der Prüfbildschirm ist also nicht betroffen.",
+      "confirm": "Sitzung verwerfen"
+    }
   }
 }

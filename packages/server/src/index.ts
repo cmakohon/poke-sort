@@ -24,6 +24,7 @@ import { moduleConfigsRouter } from "./routes/module-configs";
 import { notificationsRouter } from "./routes/notifications";
 import { orgSettingsRouter } from "./routes/org-settings";
 import { reviewRouter } from "./routes/review";
+import { scanSessionsRouter } from "./routes/scan-sessions";
 
 /**
  * Present only when Electron runs this file inside a `utilityProcess`; the
@@ -68,6 +69,7 @@ app.route("/api/org-settings", orgSettingsRouter);
 app.route("/api/admin", adminRouter);
 app.route("/api/machine-events", machineEventsRouter);
 app.route("/api/review", reviewRouter);
+app.route("/api/scan-sessions", scanSessionsRouter);
 app.route("/api/debug", debugRouter);
 
 // An unmatched /api path must 404 as JSON. Without this the SPA fallback below

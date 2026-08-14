@@ -73,6 +73,18 @@
     "routingFailedReview": {
       "title": "Weiterleitung fehlgeschlagen",
       "description": "Der Sortierer hat beim Senden einer Karte zum Prüf-Fach (Fach {{binNumber}}) nicht geantwortet."
+    },
+    "saveSessionFailed": {
+      "title": "Scan-Sitzung konnte nicht gespeichert werden",
+      "description": "Die Karten sind weiterhin vorgemerkt — bitte erneut versuchen."
+    },
+    "discardSessionFailed": {
+      "title": "Scan-Sitzung konnte nicht verworfen werden",
+      "description": "Die Karten sind weiterhin vorgemerkt — bitte erneut versuchen."
+    },
+    "sessionClosedMidScan": {
+      "title": "Diese Scan-Sitzung wurde bereits geschlossen",
+      "description": "Die Sitzung wurde gespeichert oder verworfen, während diese Karte gescannt wurde; die Karte wurde daher nicht übernommen. Sie wurde trotzdem in ihr Fach sortiert."
     }
   },
   "cardScanner": {

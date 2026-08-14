@@ -1,21 +1,12 @@
-import { DeleteDialog } from "@/components/delete-dialog";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useBinConfigs } from "@/features/bins/api/use-bin-configs";
-import { useCardFilterSort } from "@/features/cards/api/use-card-filter-sort";
-import {
-  EMPTY_CARD_FILTERS,
-  useCardFilters,
-} from "@/features/cards/api/use-card-filters";
-import { CardDetailPanel } from "@/features/cards/components/card-detail-panel";
-import { CardToolbar } from "@/features/cards/components/card-toolbar";
-import { ScannedCardItem } from "@/features/cards/components/scanned-card-item";
-import { SessionSummaryDialog } from "@/features/cards/components/session-summary-dialog";
+import { useCardFilters } from "@/features/cards/api/use-card-filters";
+import { CardCollectionView } from "@/features/cards/components/card-collection-view";
 import { getCollectionViewers } from "@/features/collections/api/collections";
 import { useCollectionLocks } from "@/features/collections/api/use-collection-locks";
 import { useCollections } from "@/features/collections/api/use-collections";
@@ -23,41 +14,38 @@ import { useScannedCards } from "@/features/scanner/api/use-scanned-cards";
 import { useScannerIsland } from "@/features/scanner/api/use-scanner-island";
 import { ScannerControls } from "@/features/scanner/components/scanner-controls";
 import { ScannerDebug } from "@/features/scanner/components/scanner-debug";
-import { computeStats } from "@/features/scanner/lib/compute-stats";
-
-import {
-  IconAlbum,
-  IconArrowBarToDown,
-  IconBolt,
-  IconChevronLeft,
-  IconChevronRight,
-} from "@tabler/icons-react";
+import { SessionBar } from "@/features/scanner/components/session-bar";
+import { IconAlbum, IconArrowBarToDown, IconBolt } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
-const PAGE_SIZE = 96;
-
+/**
+ * The scan screen's card list — this run's staged cards.
+ *
+ * It used to be the active collection's entire contents, because every scan
+ * was written straight into that collection. The grid itself now lives in
+ * CardCollectionView, shared with the collection detail screen; what is left
+ * here is the scanner wiring: controls, feed buttons, and the session bar that
+ * ends the run.
+ */
 export function CardGrid() {
   const { t } = useTranslation("cards");
-  const {
-    activeCollection,
-    emptyCollection,
-    isLoading: collectionsLoading,
-  } = useCollections();
+  const { activeCollection, isLoading: collectionsLoading } = useCollections();
   const {
     cards,
+    session,
     removeCard,
     removeCards,
-    clearCards,
+    correctCard,
+    toggleFoil,
     markDownloaded,
+    addCard,
     isLoading,
     elapsedMs,
     autoFeed,
     setAutoFeed,
   } = useScannedCards();
-  const [summaryOpen, setSummaryOpen] = useState(false);
   const scanner = useScannerIsland();
   const { locks, currentUserId } = useCollectionLocks();
   const isScanningActive = !!(
@@ -70,456 +58,152 @@ export function CardGrid() {
     refetchInterval: 5000,
   });
   const viewers = viewersRaw?.filter((v) => v.userId !== currentUserId);
-  const { filters, setFilters } = useCardFilters();
+  const cardFilters = useCardFilters();
   const { fieldDefinitions } = useBinConfigs();
-  const {
-    filteredAndSorted,
-    searchQuery,
-    setSearchQuery,
-    sortKey,
-    setSortKey,
-    sortableFields,
-    activeFilterCount,
-  } = useCardFilterSort(cards, fieldDefinitions, { filters, setFilters });
-  const stats = useMemo(() => computeStats(cards), [cards]);
-
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [openScanId, setOpenScanId] = useState<string | null>(null);
-  const [page, setPage] = useState(0);
-
-  const pageCount = Math.max(
-    1,
-    Math.ceil(filteredAndSorted.length / PAGE_SIZE),
-  );
-  const clampedPage = Math.min(page, pageCount - 1);
-  const pagedCards = filteredAndSorted.slice(
-    clampedPage * PAGE_SIZE,
-    (clampedPage + 1) * PAGE_SIZE,
-  );
-
-  useEffect(() => {
-    setPage(0);
-  }, [searchQuery, filters, sortKey, activeCollection?.guid]);
-
-  const openIndex = openScanId
-    ? filteredAndSorted.findIndex((c) => c.scanId === openScanId)
-    : -1;
-  const openEntry = openIndex >= 0 ? filteredAndSorted[openIndex] : null;
-
-  const toggleSelect = useCallback((scanId: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(scanId)) next.delete(scanId);
-      else next.add(scanId);
-      return next;
-    });
-  }, []);
-
-  const allSelected =
-    filteredAndSorted.length > 0 &&
-    filteredAndSorted.every((card) => selectedIds.has(card.scanId));
-
-  const toggleSelectAll = useCallback(() => {
-    setSelectedIds((prev) => {
-      const allCurrentlySelected =
-        filteredAndSorted.length > 0 &&
-        filteredAndSorted.every((card) => prev.has(card.scanId));
-      return allCurrentlySelected
-        ? new Set()
-        : new Set(filteredAndSorted.map((card) => card.scanId));
-    });
-  }, [filteredAndSorted]);
-
-  const handleBulkDelete = useCallback(() => {
-    removeCards(Array.from(selectedIds));
-    setSelectedIds(new Set());
-  }, [removeCards, selectedIds]);
-
-  // Empties the active collection's cards; the collection itself survives.
-  // The server delete goes through emptyCollection alone (awaited, so a
-  // failure surfaces before anything disappears locally); clearCards then
-  // only resets local state — passing skipServer avoids a second concurrent
-  // DELETE against the same endpoint.
-  const handleClearSession = useCallback(async () => {
-    if (activeCollection) {
-      await emptyCollection(activeCollection.guid);
-      clearCards({ skipServer: true });
-    } else {
-      clearCards();
-    }
-  }, [activeCollection, emptyCollection, clearCards]);
-
-  if (isLoading) {
-    return (
-      <>
-        <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-2xl p-2 border-b">
-          <div className="flex flex-row gap-2 items-center w-full">
-            <Skeleton className="h-9 flex-1 rounded-md" />
-            <Skeleton className="h-9 w-full sm:w-64 rounded-md shrink-0" />
-            <Skeleton className="size-9 rounded-md shrink-0" />
-            <Skeleton className="size-9 rounded-md shrink-0" />
-            <Skeleton className="size-9 rounded-md shrink-0" />
-          </div>
-        </div>
-        <div className="p-2 flex-1">
-          <div className="grid grid-cols-3 @md:grid-cols-4 @4xl:grid-cols-6 gap-2">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <div key={i} className="rounded-lg p-1 bg-muted border">
-                <Skeleton className="aspect-[2.5/3.5] rounded-lg" />
-                <div className="flex flex-row justify-between items-center px-1 pb-1">
-                  <div className="flex flex-row items-center gap-2">
-                    <Skeleton className="size-3 rounded-full shrink-0" />
-                    <Skeleton className="h-3 w-8 rounded" />
-                    <Skeleton className="h-3 w-6 rounded" />
-                  </div>
-                  <Skeleton className="h-3 w-8 rounded" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </>
-    );
-  }
 
   if (!collectionsLoading && !activeCollection) {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
         <IconAlbum className="size-10" />
         <div className="text-center">
-          <p className="text-sm font-medium">{t("cardGrid.noCollectionSelected")}</p>
-          <p className="text-xs">
-            {t("cardGrid.createOrSelectCollection")}
+          <p className="text-sm font-medium">
+            {t("cardGrid.noCollectionSelected")}
           </p>
+          <p className="text-xs">{t("cardGrid.createOrSelectCollection")}</p>
         </div>
         <Button
           variant="outline"
           size="sm"
-          render={<Link to="/collections">{t("cardGrid.manageCollections")}</Link>}
+          render={
+            <Link to="/collections">{t("cardGrid.manageCollections")}</Link>
+          }
         ></Button>
       </div>
     );
   }
 
-  if (cards.length === 0) {
-    return (
-      <>
-        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground flex-1">
-          <p className="text-sm font-medium">{t("cardGrid.noCardsScanned")}</p>
-          <p className="text-xs">{t("cardGrid.scanToGetStarted")}</p>
-        </div>
-        {scanner?.isCameraActive && (
-          <div className="sticky bottom-0 z-10 bg-background/80 backdrop-blur-2xl p-2 border-t">
-            <div className="flex flex-row gap-2 items-center w-full">
-              <ScannerControls
-                status={scanner.status}
-                onForceAddDuplicate={scanner.handleForceAddDuplicate}
-                onForceScan={scanner.handleForceScan}
-                onSkipDuplicate={scanner.handleSkipDuplicate}
-                onPause={scanner.handlePause}
-                onResume={scanner.handleResume}
-              />
-              {scanner.isConnected && (
-                <>
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <Button
-                          onClick={scanner.handleFeed}
-                          disabled={!scanner.isReady || scanner.isFeeding}
-                        >
-                          {scanner.isFeeding ? t("cardGrid.feeding") : t("cardGrid.feed")}
-                        </Button>
-                      }
-                    />
-                    <TooltipContent>
-                      {t("cardGrid.feedTooltip")}
-                    </TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <Button
-                          variant={autoFeed ? "default" : "outline"}
-                          size="icon"
-                          onClick={() => setAutoFeed(!autoFeed)}
-                        >
-                          <IconBolt />
-                        </Button>
-                      }
-                    />
-                    <TooltipContent>
-                      {autoFeed
-                        ? t("cardGrid.autoFeedOnTooltip")
-                        : t("cardGrid.autoFeedOffTooltip")}
-                    </TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={scanner.handleClearDevice}
-                          disabled={
-                            !scanner.isReady || scanner.isClearingDevice
-                          }
-                        >
-                          <IconArrowBarToDown />
-                        </Button>
-                      }
-                    />
-                    <TooltipContent>
-                      {t("cardGrid.clearDeviceTooltip")}
-                    </TooltipContent>
-                  </Tooltip>
-                </>
-              )}
-              <ScannerDebug />
-            </div>
-          </div>
-        )}
-      </>
-    );
-  }
-
-  if (openEntry) {
-    return (
-      <CardDetailPanel
-        scanId={openEntry.scanId}
-        currentCard={openEntry.card}
-        alternativeMatches={openEntry.alternativeMatches}
-        capturedImageUrl={openEntry.capturedImageUrl}
-        isFoil={openEntry.isFoil}
-        binNumber={openEntry.binNumber}
-        needsReview={openEntry.needsReview}
-        scanScore={openEntry.score}
-        scanMargin={openEntry.margin}
-        onClose={() => setOpenScanId(null)}
-        onRemove={() => {
-          removeCard(openEntry.scanId);
-          setOpenScanId(null);
-        }}
-        onPrev={() =>
-          setOpenScanId(filteredAndSorted[openIndex - 1]?.scanId ?? null)
-        }
-        onNext={() =>
-          setOpenScanId(filteredAndSorted[openIndex + 1]?.scanId ?? null)
-        }
-        hasPrev={openIndex > 0}
-        hasNext={openIndex < filteredAndSorted.length - 1}
-        currentIndex={openIndex}
-        total={filteredAndSorted.length}
-      />
-    );
-  }
-
-  return (
+  const scannerControls = scanner?.isCameraActive ? (
     <>
-      <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-2xl p-2 border-b">
-        <CardToolbar
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          sortKey={sortKey}
-          onSortChange={setSortKey}
-          sortableFields={sortableFields}
-          onExport={() => setSummaryOpen(true)}
-          collectionName={activeCollection?.name}
-          onClearAll={handleClearSession}
-          hasCards={filteredAndSorted.length > 0}
-          activeFilters={filters}
-          onFiltersChange={setFilters}
-          activeFilterCount={activeFilterCount}
-          watchers={viewers}
-          allSelected={allSelected}
-          onToggleSelectAll={toggleSelectAll}
-          availableRarities={stats?.rarities}
-          availableTypes={stats?.types}
-          availableSets={stats?.sets}
-        />
-      </div>
-      {filteredAndSorted.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground flex-1">
-          <div className="text-center">
-            <p className="text-sm font-medium">
-              {t("cardGrid.noCardsMatchFilters")}
-            </p>
-            <p className="text-xs">
-              {t("cardGrid.tryAdjusting")}
-            </p>
-          </div>
+      <ScannerControls
+        status={scanner.status}
+        onForceAddDuplicate={scanner.handleForceAddDuplicate}
+        onForceScan={scanner.handleForceScan}
+        onSkipDuplicate={scanner.handleSkipDuplicate}
+        onPause={scanner.handlePause}
+        onResume={scanner.handleResume}
+      />
+      {scanner.isConnected && (
+        <>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  onClick={scanner.handleFeed}
+                  disabled={!scanner.isReady || scanner.isFeeding}
+                >
+                  {scanner.isFeeding ? t("cardGrid.feeding") : t("cardGrid.feed")}
+                </Button>
+              }
+            />
+            <TooltipContent>{t("cardGrid.feedTooltip")}</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant={autoFeed ? "default" : "outline"}
+                  size="icon"
+                  onClick={() => setAutoFeed(!autoFeed)}
+                >
+                  <IconBolt />
+                </Button>
+              }
+            />
+            <TooltipContent>
+              {autoFeed
+                ? t("cardGrid.autoFeedOnTooltip")
+                : t("cardGrid.autoFeedOffTooltip")}
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={scanner.handleClearDevice}
+                  disabled={!scanner.isReady || scanner.isClearingDevice}
+                >
+                  <IconArrowBarToDown />
+                </Button>
+              }
+            />
+            <TooltipContent>{t("cardGrid.clearDeviceTooltip")}</TooltipContent>
+          </Tooltip>
+        </>
+      )}
+      <ScannerDebug />
+    </>
+  ) : null;
+
+  // The bar stays up after the camera is closed, and for a run with nothing
+  // staged: a finished run still has to be saved or discarded, and an emptied
+  // one still has to be closed.
+  const footerSlot =
+    scannerControls || session ? (
+      <>
+        {scannerControls}
+        <div className="flex-1" />
+        <SessionBar />
+      </>
+    ) : null;
+
+  // The scan screen used to show the active collection's whole history, so
+  // after the move to sessions it looks alarmingly empty on first launch. Say
+  // where those cards went.
+  const emptyState = (
+    <div className="flex flex-col items-center justify-center py-16 gap-2 text-muted-foreground flex-1">
+      <p className="text-sm font-medium">{t("cardGrid.noCardsScanned")}</p>
+      <p className="text-xs">{t("cardGrid.scanToGetStarted")}</p>
+      {activeCollection && (
+        <>
+          <p className="text-xs max-w-sm text-center pt-2">
+            {t("cardGrid.sessionExplainer")}
+          </p>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => {
-              setFilters(EMPTY_CARD_FILTERS);
-              setSearchQuery("");
-            }}
-          >
-            {t("cardGrid.clearFilters")}
-          </Button>
-        </div>
+            render={
+              <Link to={`/collections/${activeCollection.guid}`}>
+                {t("cardGrid.viewCollection", { name: activeCollection.name })}
+              </Link>
+            }
+          />
+        </>
       )}
-      <div className="p-2 flex-1">
-        <div className="grid grid-cols-3 @md:grid-cols-4 @4xl:grid-cols-6 gap-2">
-          {pagedCards.map((card) => (
-            <ScannedCardItem
-              key={card.scanId}
-              card={card.card}
-              onOpen={() => setOpenScanId(card.scanId)}
-              binNumber={card.binNumber}
-              isSelected={selectedIds.has(card.scanId)}
-              onToggleSelect={() => toggleSelect(card.scanId)}
-              hasAlternatives={!!card.alternativeMatches?.length}
-              isFoil={card.isFoil}
-              isDownloaded={card.isDownloaded}
-              wasCorrected={card.wasCorrected}
-              needsReview={card.needsReview}
-              reviewVerdict={card.reviewVerdict}
-            />
-          ))}
-        </div>
-        {pageCount > 1 && (
-          <div className="flex items-center justify-center gap-3 pt-4">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              disabled={clampedPage === 0}
-            >
-              <IconChevronLeft />
-            </Button>
-            <span className="text-sm text-muted-foreground">
-              {t("cardGrid.pageOf", { page: clampedPage + 1, total: pageCount })}
-            </span>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
-              disabled={clampedPage === pageCount - 1}
-            >
-              <IconChevronRight />
-            </Button>
-          </div>
-        )}
-      </div>
+    </div>
+  );
 
-      {(scanner?.isCameraActive || selectedIds.size > 0) && (
-        <div className="sticky bottom-0 z-20 bg-background/80 backdrop-blur-2xl p-2 border-t">
-          <div className="flex flex-row gap-2 items-center w-full">
-            {scanner?.isCameraActive && (
-              <>
-                <ScannerControls
-                  status={scanner.status}
-                  onForceAddDuplicate={scanner.handleForceAddDuplicate}
-                  onForceScan={scanner.handleForceScan}
-                  onSkipDuplicate={scanner.handleSkipDuplicate}
-                  onPause={scanner.handlePause}
-                  onResume={scanner.handleResume}
-                />
-                {scanner.isConnected && (
-                  <>
-                    <Tooltip>
-                      <TooltipTrigger
-                        render={
-                          <Button
-                            onClick={scanner.handleFeed}
-                            disabled={!scanner.isReady || scanner.isFeeding}
-                          >
-                            {scanner.isFeeding ? t("cardGrid.feeding") : t("cardGrid.feed")}
-                          </Button>
-                        }
-                      />
-                      <TooltipContent>
-                        {t("cardGrid.feedTooltip")}
-                      </TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger
-                        render={
-                          <Button
-                            variant={autoFeed ? "default" : "outline"}
-                            size="icon"
-                            onClick={() => setAutoFeed(!autoFeed)}
-                          >
-                            <IconBolt />
-                          </Button>
-                        }
-                      />
-                      <TooltipContent>
-                        {autoFeed
-                          ? t("cardGrid.autoFeedOnTooltip")
-                          : t("cardGrid.autoFeedOffTooltip")}
-                      </TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger
-                        render={
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={scanner.handleClearDevice}
-                            disabled={
-                              !scanner.isReady || scanner.isClearingDevice
-                            }
-                          >
-                            <IconArrowBarToDown />
-                          </Button>
-                        }
-                      />
-                      <TooltipContent>
-                        {t("cardGrid.clearDeviceTooltip")}
-                      </TooltipContent>
-                    </Tooltip>
-                  </>
-                )}
-                <ScannerDebug />
-              </>
-            )}
-            {selectedIds.size > 0 && (
-              <>
-                {scanner?.isCameraActive && (
-                  <div className="w-px h-5 bg-border mx-1 shrink-0" />
-                )}
-                <span className="text-sm text-muted-foreground">
-                  {t("cardGrid.cardsSelected", { count: selectedIds.size })}
-                </span>
-                <Button
-                  variant="ghost"
-                  onClick={() => setSelectedIds(new Set())}
-                >
-                  {t("cardGrid.clear")}
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={() => setConfirmOpen(true)}
-                >
-                  {t("cardGrid.delete")}
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      <SessionSummaryDialog
-        open={summaryOpen}
-        onOpenChange={setSummaryOpen}
-        cards={cards}
-        elapsedMs={elapsedMs}
-        collectionName={activeCollection?.name ?? "collection"}
-        onMarkDownloaded={markDownloaded}
-      />
-
-      <DeleteDialog
-        open={confirmOpen}
-        onOpenChange={setConfirmOpen}
-        title={t("cardGrid.deleteCardsTitle", { count: selectedIds.size })}
-        description={t("cardGrid.deleteCardsDescription", { count: selectedIds.size })}
-        confirm={{ type: "keyword" }}
-        onConfirm={handleBulkDelete}
-      />
-    </>
+  return (
+    <CardCollectionView
+      cards={cards}
+      fieldDefinitions={fieldDefinitions}
+      isLoading={isLoading}
+      emptyState={emptyState}
+      collectionName={activeCollection?.name}
+      searchCollectionGuid={activeCollection?.guid}
+      externalFilters={cardFilters}
+      elapsedMs={elapsedMs}
+      resetPageKey={session?.guid}
+      onRemoveCard={removeCard}
+      onRemoveCards={removeCards}
+      onCorrectCard={correctCard}
+      onToggleFoil={toggleFoil}
+      onMarkDownloaded={markDownloaded}
+      onAddCard={addCard}
+      toolbarWatchers={viewers}
+      deleteScope="session"
+      footerSlot={footerSlot}
+    />
   );
 }

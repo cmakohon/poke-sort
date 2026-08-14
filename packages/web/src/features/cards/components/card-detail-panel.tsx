@@ -8,8 +8,6 @@ import { Switch } from "@/components/ui/switch";
 import { BinLocationDiagram } from "@/features/bins/components/bin-location-diagram";
 import { CardMetadataPanel } from "@/features/cards/components/card-metadata-panel";
 import { CardSearchPicker } from "@/features/cards/components/card-search-picker";
-import { useCollections } from "@/features/collections/api/use-collections";
-import { useScannedCards } from "@/features/scanner/api/use-scanned-cards";
 import { cn } from "@/lib/utils";
 import type { PlayingCard, PlayingCardWithDistance } from "@poke-sort/shared";
 import {
@@ -42,6 +40,22 @@ interface CardDetailPanelProps {
   hasNext?: boolean;
   currentIndex?: number;
   total?: number;
+  /**
+   * Mutations are passed in rather than pulled from the scanner context, so
+   * this panel can edit a card in any collection. It used to call
+   * useScannedCards() directly, which meant every write landed on whichever
+   * collection happened to be active.
+   */
+  onCorrect?: (scanId: string, card: PlayingCard) => void;
+  /** Manual add, when the panel is opened without a scanId. Scan screen only. */
+  onAdd?: (card: PlayingCardWithDistance) => void;
+  onToggleFoil?: (scanId: string, isFoil: boolean) => void;
+  /**
+   * Which collection's game and language the catalog search should use.
+   * Without it the picker resolves the *active* collection, which is wrong
+   * whenever you are looking at a different one.
+   */
+  searchCollectionGuid?: string;
 }
 
 export function CardDetailPanel({
@@ -62,15 +76,16 @@ export function CardDetailPanel({
   hasNext,
   currentIndex,
   total,
+  onCorrect,
+  onAdd,
+  onToggleFoil,
+  searchCollectionGuid,
 }: CardDetailPanelProps) {
   const { t } = useTranslation("cards");
   const [editing, setEditing] = useState(false);
   const [candidates, setCandidates] = useState<PlayingCardWithDistance[]>([]);
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
   const prevScanIdRef = useRef<string | undefined>(undefined);
-
-  const { addCard, correctCard, toggleFoil } = useScannedCards();
-  const { activeCollection } = useCollections();
 
   useEffect(() => {
     if (!currentCard) return;
@@ -103,19 +118,19 @@ export function CardDetailPanel({
 
   const handleSelect = useCallback(
     (card: PlayingCard) => {
-      if (scanId) correctCard(scanId, card);
-      else addCard({ ...card, distance: 0 });
+      if (scanId) onCorrect?.(scanId, card);
+      else onAdd?.({ ...card, distance: 0 });
       onClose();
     },
-    [scanId, addCard, correctCard, onClose],
+    [scanId, onAdd, onCorrect, onClose],
   );
 
   const handleSelectCandidate = useCallback(
     (card: PlayingCardWithDistance) => {
       setSelectedId(card.id);
-      if (scanId) correctCard(scanId, card);
+      if (scanId) onCorrect?.(scanId, card);
     },
-    [scanId, correctCard],
+    [scanId, onCorrect],
   );
 
   const selectedCard =
@@ -350,9 +365,9 @@ export function CardDetailPanel({
                 <Switch
                   checked={isFoil}
                   onCheckedChange={(checked) => {
-                    if (scanId) toggleFoil(scanId, checked);
+                    if (scanId) onToggleFoil?.(scanId, checked);
                   }}
-                  disabled={!scanId}
+                  disabled={!scanId || !onToggleFoil}
                 />
                 {t("cardDetailPanel.foil")}
               </Label>
@@ -388,7 +403,7 @@ export function CardDetailPanel({
               )}
               <CardSearchPicker
                 onSelect={handleSelect}
-                collectionGuid={activeCollection?.guid}
+                collectionGuid={searchCollectionGuid}
                 initialQuery={selectedCard?.name ?? ""}
               />
               <Button variant="outline" onClick={() => setEditing(false)}>

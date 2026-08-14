@@ -96,7 +96,14 @@ export interface ReviewVerdictRequest {
 export interface ReviewCardSync {
   /** collection_cards.guid — the client's scanId. */
   scanId: string;
+  /**
+   * Where the card lives *now*, not where the scan was aimed. Null while the
+   * card is still staged on an open scan session; the client uses this pair to
+   * decide which cache to patch.
+   */
   collectionGuid: string | null;
+  /** True when the linked card is still staged on an open scan session. */
+  isStaged: boolean;
   /** Present when the verdict changed the card (correction or revert). */
   card?: PlayingCardWithDistance;
   needsReview: boolean;

@@ -169,7 +169,12 @@ export default function CollectionsPage() {
               className="flex items-center gap-3 px-4 py-3"
             >
               {isActive && <IconCheck className="size-4 text-primary" />}
-              <div className="flex-1 min-w-0">
+              {/* The row is the way into the collection. Note this is not the
+                  grid button beside it — that goes to /sorts, deliberately. */}
+              <Link
+                to={`/collections/${collection.guid}`}
+                className="flex-1 min-w-0 rounded-sm hover:underline focus-visible:outline-2 focus-visible:outline-offset-2"
+              >
                 <p className="text-sm font-medium truncate">
                   {collection.name}
                 </p>
@@ -178,7 +183,7 @@ export default function CollectionsPage() {
                   {collection.game ? collection.game.name : t("page.noGame")} ·{" "}
                   {new Date(collection.createdAt).toLocaleDateString()}
                 </p>
-              </div>
+              </Link>
 
               <ButtonGroup className="shrink-0">
                 {!isActive && (

@@ -21,6 +21,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { FAULT_TOAST_DURATION_MS } from "@/lib/toast";
 
 export function CardScanner({ className, compact }: CardScannerProps) {
   const { t } = useTranslation("scanner");
@@ -122,7 +123,7 @@ export function CardScanner({ className, compact }: CardScannerProps) {
               bin: raw.bin,
             })
           : t("cardScanner.jamDetected.description", { module: raw.module }),
-        duration: Infinity,
+        duration: FAULT_TOAST_DURATION_MS,
         dismissible: true,
       });
       void reportSerialEvent({ command: "jam", sent: true, response: raw });
@@ -164,7 +165,7 @@ export function CardScanner({ className, compact }: CardScannerProps) {
           handlePause();
           toast.error(t("cardScanner.feederEmpty.title"), {
             description: t("cardScanner.feederEmpty.description"),
-            duration: Infinity,
+            duration: FAULT_TOAST_DURATION_MS,
             dismissible: true,
           });
           void reportSerialEvent({
@@ -175,7 +176,7 @@ export function CardScanner({ className, compact }: CardScannerProps) {
         } else if (parsed.error) {
           toast.error(t("cardScanner.feederError.title"), {
             description: String(parsed.error),
-            duration: Infinity,
+            duration: FAULT_TOAST_DURATION_MS,
             dismissible: true,
           });
           void reportSerialEvent({

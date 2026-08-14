@@ -4,6 +4,7 @@ import {
   type PlayingCardWithDistance,
   type ReviewCardSync,
   type ScanOutcome,
+  type ScanSession,
   type ScannedCard,
   evaluateCardBin,
   getCatchAllBin,
@@ -11,10 +12,9 @@ import {
 } from "@poke-sort/shared";
 
 import { useBinConfigs } from "@/features/bins/api/use-bin-configs";
+import { buildCorrection } from "@/features/cards/lib/apply-correction";
+import { mergeReviewSync } from "@/features/cards/lib/apply-review-sync";
 import {
-  addCollectionCard,
-  clearCollectionCards,
-  loadCollectionCards,
   markCollectionCardsDownloaded,
   releaseScanLock,
   removeCollectionCard,
@@ -22,6 +22,14 @@ import {
   setCollectionCardFoil,
   updateCollectionCard,
 } from "@/features/collections/api/collections";
+import {
+  addSessionCard,
+  commitScanSession,
+  discardScanSession,
+  getOpenScanSession,
+  openScanSession,
+  retargetScanSession,
+} from "@/features/scanner/api/scan-sessions";
 import { useCollectionLocks } from "@/features/collections/api/use-collection-locks";
 import { useCollections } from "@/features/collections/api/use-collections";
 import { reportSerialEvent } from "@/features/notifications/api/notification-settings";
@@ -29,6 +37,7 @@ import { useScanTimer } from "@/features/scanner/api/use-scan-timer";
 import { useSerial } from "@/features/scanner/api/use-serial";
 import type { ScannedCardsContextValue } from "@/features/scanner/types";
 import { generateScanId } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   createContext,
   useCallback,
@@ -39,6 +48,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { FAULT_TOAST_DURATION_MS } from "@/lib/toast";
 
 const ScannedCardsContext = createContext<ScannedCardsContextValue | null>(
   null,
@@ -51,6 +61,15 @@ export function ScannedCardsProvider({
 }) {
   const { t } = useTranslation("scanner");
   const [cards, setCards] = useState<ScannedCard[]>([]);
+  // The open run. Staged cards belong to it, not to a collection, until the
+  // operator saves.
+  const [session, setSession] = useState<ScanSession | null>(null);
+  const sessionRef = useRef<ScanSession | null>(null);
+  sessionRef.current = session;
+  const [isClosingSession, setIsClosingSession] = useState(false);
+  // Guards concurrent opens: several scans can land before the first POST
+  // resolves, and all of them must await the same session.
+  const openingRef = useRef<Promise<ScanSession | null> | null>(null);
   // correctCard needs the pre-correction record to preserve what the pipeline
   // originally predicted, and runs from a stable callback.
   const cardsRef = useRef<ScannedCard[]>(cards);
@@ -58,7 +77,8 @@ export function ScannedCardsProvider({
   const [isLoading, setIsLoading] = useState(true);
   const { configs: binConfigs, fieldDefinitions } = useBinConfigs();
   const { sendBin, request, isConnected, isReady } = useSerial();
-  const { activeCollection } = useCollections();
+  const { activeCollection, activateCollection } = useCollections();
+  const queryClient = useQueryClient();
 
   const { locks, currentUserId } = useCollectionLocks();
   const locksRef = useRef(locks);
@@ -136,20 +156,7 @@ export function ScannedCardsProvider({
   // from another (non-active) collection simply matches nothing.
   const applyReviewSync = useCallback((sync: ReviewCardSync) => {
     setCards((prev) =>
-      prev.map((c) =>
-        c.scanId === sync.scanId
-          ? {
-              ...c,
-              ...(sync.card ? { card: sync.card } : {}),
-              needsReview: sync.needsReview,
-              wasCorrected: sync.wasCorrected,
-              originalCardId: sync.originalCardId ?? undefined,
-              originalDistance: sync.originalDistance ?? undefined,
-              originalScore: sync.originalScore ?? undefined,
-              reviewVerdict: sync.reviewVerdict,
-            }
-          : c,
-      ),
+      prev.map((c) => (c.scanId === sync.scanId ? mergeReviewSync(c, sync) : c)),
     );
   }, []);
 
@@ -192,7 +199,7 @@ export function ScannedCardsProvider({
         pauseHookRef.current?.();
         toast.error(t("scannedCards.feederEmpty.title"), {
           description: t("scannedCards.feederEmpty.description"),
-          duration: Infinity,
+          duration: FAULT_TOAST_DURATION_MS,
           dismissible: true,
         });
         void reportSerialEvent({
@@ -205,7 +212,7 @@ export function ScannedCardsProvider({
         setAutoFeedState(false);
         toast.error(t("scannedCards.feederError.title"), {
           description: String(parsed.error),
-          duration: Infinity,
+          duration: FAULT_TOAST_DURATION_MS,
           dismissible: true,
         });
         void reportSerialEvent({
@@ -226,11 +233,23 @@ export function ScannedCardsProvider({
     }
   }, [t]);
 
+  // Switching collections re-points the open run rather than reloading the
+  // list: the staged cards belong to the run, not to whichever collection is
+  // selected, so they must survive the switch. Only the game/lang context and
+  // the default save destination move.
   useEffect(() => {
     const prev = prevCollectionGuidRef.current;
     const next = activeCollection?.guid;
     if (prev && prev !== next) {
       releaseScanLock(prev).catch(() => {});
+      const open = sessionRef.current;
+      if (open && next && open.targetCollectionGuid !== next) {
+        retargetScanSession(open.guid, next)
+          .then((r) => {
+            if (r.success && r.data) setSession(r.data);
+          })
+          .catch((err) => console.error("Failed to retarget session:", err));
+      }
     }
     prevCollectionGuidRef.current = next;
     activeCollectionRef.current = activeCollection;
@@ -243,23 +262,27 @@ export function ScannedCardsProvider({
     };
   }, []);
 
+  // Resume, once on mount. An interrupted run is server-side state, so a
+  // reload or an app restart picks it back up instead of losing the cards.
   useEffect(() => {
-    if (!activeCollection) {
-      setCards([]);
-      setIsLoading(false);
-      return;
-    }
-
     let cancelled = false;
-    setCards([]);
     setIsLoading(true);
 
-    loadCollectionCards(activeCollection.guid)
-      .then((r) => {
-        if (!cancelled) setCards(r.data ?? []);
+    getOpenScanSession()
+      .then((open) => {
+        if (cancelled || !open) return;
+        setSession(open.session);
+        setCards(open.cards);
+        // Snap the switcher to the run's target so the bin rules, the game and
+        // the identify language all follow the run being resumed rather than
+        // whatever was last selected on this device.
+        const target = open.session.targetCollectionGuid;
+        if (target && target !== activeCollectionRef.current?.guid) {
+          void activateCollection(target);
+        }
       })
       .catch((err) => {
-        if (!cancelled) console.error("Failed to load collection cards:", err);
+        if (!cancelled) console.error("Failed to resume scan session:", err);
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
@@ -268,7 +291,62 @@ export function ScannedCardsProvider({
     return () => {
       cancelled = true;
     };
-  }, [activeCollection?.guid]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /**
+   * The run a scan belongs to, opening one on the first scan.
+   *
+   * Concurrent callers share a single in-flight request: autofeed can fire
+   * several scans before the first open resolves, and each must stage against
+   * the same session rather than racing to create its own.
+   */
+  const ensureSession = useCallback(async (): Promise<ScanSession | null> => {
+    const targetGuid = activeCollectionRef.current?.guid;
+
+    const open = sessionRef.current;
+    if (open) {
+      // A run whose target collection was deleted mid-scan survives, but it
+      // cannot identify anything until it is pointed somewhere. Re-aim it at
+      // whatever is selected now rather than making the operator find a
+      // "repair" button.
+      if (!open.targetCollectionGuid && targetGuid) {
+        const r = await retargetScanSession(open.guid, targetGuid).catch(
+          (err) => {
+            console.error("Failed to retarget session:", err);
+            return null;
+          },
+        );
+        if (r?.success && r.data) {
+          setSession(r.data);
+          sessionRef.current = r.data;
+          return r.data;
+        }
+        return null;
+      }
+      return open;
+    }
+    if (openingRef.current) return openingRef.current;
+
+    if (!targetGuid) return null;
+
+    const pending = openScanSession(targetGuid)
+      .then((r) => {
+        if (!r.success || !r.data) return null;
+        setSession(r.data.session);
+        sessionRef.current = r.data.session;
+        return r.data.session;
+      })
+      .catch((err) => {
+        console.error("Failed to open scan session:", err);
+        return null;
+      })
+      .finally(() => {
+        openingRef.current = null;
+      });
+
+    openingRef.current = pending;
+    return pending;
+  }, []);
 
   const addCard = useCallback(
     (
@@ -330,14 +408,39 @@ export function ScannedCardsProvider({
 
       setCards((prev) => [record, ...prev]);
       setTimerTrigger(record.scannedAt);
-      addCollectionCard(collection.guid, record)
-        .then((result) => {
-          if (!result.success) {
+      // Staged against the run, not written to the collection: nothing lands
+      // in a collection until the operator saves.
+      ensureSession()
+        .then((open) => {
+          if (!open) {
             setCards((prev) => prev.filter((c) => c.scanId !== record.scanId));
-            toast.error(t("scannedCards.collectionLocked.title"), {
-              description: t("scannedCards.collectionLocked.description"),
+            toast.error(t("scannedCards.noCollectionSelected.title"), {
+              description: t("scannedCards.noCollectionSelected.description"),
             });
+            return null;
           }
+          return addSessionCard(open.guid, record);
+        })
+        .then((result) => {
+          if (!result || result.success) return;
+          setCards((prev) => prev.filter((c) => c.scanId !== record.scanId));
+          // Two different failures reach here. A 423 means someone else holds
+          // the collection; a 409 means the run was saved or discarded while
+          // this scan was in flight — the race the in-transaction re-check
+          // exists for. Diagnosing the second as the first sends the operator
+          // looking for another user who isn't there, for a card the machine
+          // has already routed into a bin.
+          const closed = result.message === "session_closed";
+          toast.error(
+            closed
+              ? t("scannedCards.sessionClosedMidScan.title")
+              : t("scannedCards.collectionLocked.title"),
+            {
+              description: closed
+                ? t("scannedCards.sessionClosedMidScan.description")
+                : t("scannedCards.collectionLocked.description"),
+            },
+          );
         })
         .catch((err) => console.error("Failed to persist card:", err));
 
@@ -368,7 +471,7 @@ export function ScannedCardsProvider({
           if (res.empty) {
             toast.error(t("scannedCards.feederEmpty.title"), {
               description: t("scannedCards.feederEmpty.description"),
-              duration: Infinity,
+              duration: FAULT_TOAST_DURATION_MS,
               dismissible: true,
             });
             void reportSerialEvent({
@@ -386,7 +489,7 @@ export function ScannedCardsProvider({
           if (res.error) {
             toast.error(t("scannedCards.sorterError.title"), {
               description: String(res.error),
-              duration: Infinity,
+              duration: FAULT_TOAST_DURATION_MS,
               dismissible: true,
             });
             void reportSerialEvent({
@@ -406,7 +509,7 @@ export function ScannedCardsProvider({
         });
       }
     },
-    [triggerAutoFeed, t],
+    [triggerAutoFeed, ensureSession, t],
   );
 
   // Routes a card the app is NOT recording to a fixed bin: nothing was
@@ -442,7 +545,7 @@ export function ScannedCardsProvider({
         if (res.empty) {
           toast.error(t("scannedCards.feederEmpty.title"), {
             description: t("scannedCards.feederEmpty.description"),
-            duration: Infinity,
+            duration: FAULT_TOAST_DURATION_MS,
             dismissible: true,
           });
           void reportSerialEvent({
@@ -459,7 +562,7 @@ export function ScannedCardsProvider({
         if (res.error) {
           toast.error(t("scannedCards.sorterError.title"), {
             description: String(res.error),
-            duration: Infinity,
+            duration: FAULT_TOAST_DURATION_MS,
             dismissible: true,
           });
           void reportSerialEvent({
@@ -521,26 +624,13 @@ export function ScannedCardsProvider({
 
   const correctCard = useCallback((scanId: string, card: PlayingCard) => {
     const collection = activeCollectionRef.current;
-    const corrected: PlayingCardWithDistance = { ...card, distance: 0 };
-    const matchedBin = evaluateCardBin(
-      corrected,
+    const previous = cardsRef.current.find((entry) => entry.scanId === scanId);
+    const { corrected, binNumber, provenance } = buildCorrection(
+      previous,
+      card,
       binConfigsRef.current,
       fieldDefinitionsRef.current,
     );
-
-    // Capture what the pipeline had originally decided before overwriting it.
-    // Each correction is a labelled example of a wrong identification — the
-    // cheapest eval data there is, and it used to be destroyed here (the row
-    // was overwritten and distance reset to 0, erasing the evidence).
-    const previous = cardsRef.current.find((entry) => entry.scanId === scanId);
-    const provenance = previous?.wasCorrected
-      ? {} // already recorded; don't overwrite with the last correction
-      : {
-          originalCardId: previous?.card.id,
-          originalDistance: previous?.card.distance,
-          originalScore: previous?.score,
-          wasCorrected: true,
-        };
 
     setCards((prev) =>
       prev.map((entry) =>
@@ -549,18 +639,20 @@ export function ScannedCardsProvider({
               ...entry,
               ...provenance,
               card: corrected,
-              binNumber: matchedBin?.binNumber,
+              binNumber,
               needsReview: undefined,
             }
           : entry,
       ),
     );
+    // The server keys on scanId + orgId; the collection guid is only the SSE
+    // channel, so this works the same for a staged card as for a saved one.
     if (collection) {
       updateCollectionCard(
         collection.guid,
         scanId,
         corrected,
-        matchedBin?.binNumber,
+        binNumber,
         provenance,
       ).catch((err) => console.error("Failed to update card:", err));
     }
@@ -596,24 +688,79 @@ export function ScannedCardsProvider({
     }
   }, []);
 
-  const clearCards = useCallback((opts?: { skipServer?: boolean }) => {
-    const collection = activeCollectionRef.current;
+  /** Local reset shared by both ways a run ends. */
+  const resetSessionState = useCallback(() => {
     setCards([]);
+    setSession(null);
+    sessionRef.current = null;
     setTimerTrigger(undefined);
     setTimerResetSignal((s) => s + 1);
-    // skipServer: the caller already cleared the server (e.g. via
-    // emptyCollection) — don't issue a second DELETE.
-    if (collection && !opts?.skipServer) {
-      clearCollectionCards(collection.guid).catch((err) =>
-        console.error("Failed to clear cards:", err),
-      );
-    }
   }, []);
+
+  // Both of these report whether the run actually closed. The caller needs to
+  // know: dismissing the dialog on a failed save or discard tells the operator
+  // the cards were dealt with when they are still staged on the server.
+  //
+  // The failure arrives as a rejection, not as `success: false` — apiPost
+  // throws on any non-2xx and every failure path on these two endpoints is a
+  // 409, so a `!result.success` check alone never runs.
+  const saveSession = useCallback(
+    async (collectionGuid: string): Promise<boolean> => {
+      const open = sessionRef.current;
+      if (!open) return false;
+      setIsClosingSession(true);
+      try {
+        const result = await commitScanSession(open.guid, collectionGuid);
+        if (!result.success) throw new Error(result.message ?? "commit failed");
+        resetSessionState();
+        // Card counts moved between collections, and the destination's card
+        // list is now stale.
+        void queryClient.invalidateQueries({ queryKey: ["collections"] });
+        void queryClient.invalidateQueries({
+          queryKey: ["collection-cards", collectionGuid],
+        });
+        return true;
+      } catch (err) {
+        console.error("Failed to save scan session:", err);
+        toast.error(t("scannedCards.saveSessionFailed.title"), {
+          description: t("scannedCards.saveSessionFailed.description"),
+        });
+        return false;
+      } finally {
+        setIsClosingSession(false);
+      }
+    },
+    [queryClient, resetSessionState, t],
+  );
+
+  const discardSession = useCallback(async (): Promise<boolean> => {
+    const open = sessionRef.current;
+    if (!open) {
+      resetSessionState();
+      return true;
+    }
+    setIsClosingSession(true);
+    try {
+      const result = await discardScanSession(open.guid);
+      if (!result.success) throw new Error(result.message ?? "discard failed");
+      resetSessionState();
+      return true;
+    } catch (err) {
+      console.error("Failed to discard scan session:", err);
+      toast.error(t("scannedCards.discardSessionFailed.title"), {
+        description: t("scannedCards.discardSessionFailed.description"),
+      });
+      return false;
+    } finally {
+      setIsClosingSession(false);
+    }
+  }, [resetSessionState, t]);
 
   return (
     <ScannedCardsContext
       value={{
         cards,
+        session,
         isLoading,
         autoFeed,
         elapsedMs,
@@ -629,7 +776,9 @@ export function ScannedCardsProvider({
         correctCard,
         toggleFoil,
         markDownloaded,
-        clearCards,
+        saveSession,
+        discardSession,
+        isClosingSession,
         applyReviewSync,
       }}
     >

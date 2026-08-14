@@ -422,6 +422,9 @@ router.post("/:guid/verdict", requireAuth, requireOrg, async (c) => {
         originalCardId: true,
         originalDistance: true,
         originalScore: true,
+        // Where the card lives now. NULL means it is still staged on an open
+        // scan session; the client patches a different cache in that case.
+        collectionId: true,
       },
     });
     if (existing) {
@@ -483,9 +486,20 @@ router.post("/:guid/verdict", requireAuth, requireOrg, async (c) => {
         .set(updates)
         .where(eq(collectionCards.id, existing.id));
       propagated = true;
+      // Where the card lives *now*, which is not row.collectionGuid — that is
+      // scan_events.collection_guid, the collection the run was aimed at when
+      // the scan happened. A staged card has no collection yet, and a saved
+      // one may have been committed somewhere else entirely.
+      const owner = existing.collectionId
+        ? await db.query.collections.findFirst({
+            where: (t, { eq }) => eq(t.id, existing.collectionId!),
+            columns: { guid: true },
+          })
+        : null;
       updatedCard = {
         scanId: existing.guid ?? "",
-        collectionGuid: row.collectionGuid ?? null,
+        collectionGuid: owner?.guid ?? null,
+        isStaged: existing.collectionId == null,
         card: updates.card as PlayingCardWithDistance | undefined,
         needsReview: updates.needsReview ?? false,
         wasCorrected: updates.wasCorrected ?? existing.wasCorrected,

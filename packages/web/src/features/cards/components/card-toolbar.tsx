@@ -30,6 +30,28 @@ function sortLabels(
     : [t("cardToolbar.sortAscDefault"), t("cardToolbar.sortDescDefault")];
 }
 
+/**
+ * The trigger's label for the current sort key.
+ *
+ * Base UI's SelectValue renders the raw value unless it is given children, and
+ * the value here is a composite like "collectorNumber-asc". Split on the LAST
+ * dash, matching splitSortKey in use-card-filter-sort.ts — field names can
+ * contain dashes, the direction suffix cannot.
+ */
+export function sortValueLabel(
+  sortKey: string | null,
+  sortableFields: FieldMeta[],
+  t: TFunction<"cards">,
+): string | undefined {
+  if (!sortKey) return undefined;
+  if (sortKey === "scan-desc") return t("cardToolbar.scanOrder");
+  const i = sortKey.lastIndexOf("-");
+  const field = sortableFields.find((f) => f.field === sortKey.slice(0, i));
+  if (!field) return undefined;
+  const [asc, desc] = sortLabels(field.type, t);
+  return `${field.label} (${sortKey.slice(i + 1) === "asc" ? asc : desc})`;
+}
+
 export function CardToolbar({
   searchQuery,
   onSearchChange,
@@ -57,11 +79,14 @@ export function CardToolbar({
     setIsClearing(true);
     try {
       await onClearAll?.();
+      setClearAllDialogOpen(false);
     } catch (error) {
+      // Stay open on failure. Dismissing used to happen in a finally, so a
+      // clear that failed server-side still looked like it had worked — for a
+      // destructive action, on a list that only reverts on the next refetch.
       console.error("Failed to clear cards:", error);
     } finally {
       setIsClearing(false);
-      setClearAllDialogOpen(false);
     }
   };
 
@@ -76,7 +101,9 @@ export function CardToolbar({
       />
       <Select value={sortKey} onValueChange={onSortChange}>
         <SelectTrigger className="w-full sm:w-64">
-          <SelectValue placeholder={t("cardToolbar.sortPlaceholder")} />
+          <SelectValue placeholder={t("cardToolbar.sortPlaceholder")}>
+            {sortValueLabel(sortKey, sortableFields, t)}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="scan-desc">{t("cardToolbar.scanOrder")}</SelectItem>

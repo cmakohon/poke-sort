@@ -22,6 +22,7 @@ import { act, cleanup, render, screen } from "@testing-library/react";
 import { useTheme } from "next-themes";
 import { useEffect } from "react";
 import { toast } from "sonner";
+import { FAULT_TOAST_DURATION_MS } from "@/lib/toast";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 /** Calls setTheme once on mount, the way the theme toggle does on click. */
@@ -172,5 +173,26 @@ describe("AppShell providers", () => {
     });
 
     expect(screen.getByText("trigger")).toBeDefined();
+  });
+  it("gives every toast a close button and a finite lifetime", async () => {
+    // Machine faults (jam, empty feeder, sorter error) used to be
+    // `duration: Infinity` with no close button, so a stale fault notice sat
+    // in the corner for the rest of the session with no way to clear it.
+    await act(async () => {
+      render(
+        <AppShell>
+          <span />
+        </AppShell>,
+      );
+    });
+    await act(async () => {
+      toast.error("jam detected", { duration: FAULT_TOAST_DURATION_MS });
+    });
+    await screen.findByText("jam detected");
+
+    expect(
+      document.querySelector("[data-sonner-toast] [data-close-button]"),
+    ).not.toBeNull();
+    expect(Number.isFinite(FAULT_TOAST_DURATION_MS)).toBe(true);
   });
 });

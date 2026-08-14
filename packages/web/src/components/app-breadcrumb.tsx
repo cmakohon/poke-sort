@@ -29,6 +29,15 @@ function useBreadcrumbs(): Crumb[] {
     ];
   }
 
+  const collectionMatch = pathname.match(/^\/collections\/([^/]+)$/);
+  if (collectionMatch) {
+    const collection = collections.find((c) => c.guid === collectionMatch[1]);
+    return [
+      { label: t("nav.collections"), to: "/collections" },
+      { label: collection?.name ?? "…" },
+    ];
+  }
+
   return [];
 }
 
