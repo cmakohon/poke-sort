@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { migrate } from "drizzle-orm/pglite/migrator";
@@ -32,10 +31,12 @@ export async function migrateDatabase(): Promise<void> {
  * `column ... does not exist`, pointing at the route rather than at the
  * migration that never ran.
  *
- * A warning rather than a throw: the check is derived from how the migrator
- * hashes files, so a change on that side should not stop a working machine from
- * booting. The message carries the fix — raise the entry's `when` above every
- * other branch's.
+ * Identity is the journal timestamp, which the migrator records as `created_at`
+ * and compares against — not the file hash. Matching on the hash (as this used
+ * to) reports any migration edited after it ran as never applied, forever, and
+ * editing the prose comment is enough to trigger it.
+ *
+ * A warning rather than a throw: it should not stop a working machine booting.
  */
 async function reportSkippedMigrations(): Promise<void> {
   try {
@@ -43,22 +44,18 @@ async function reportSkippedMigrations(): Promise<void> {
       readFileSync(path.join(MIGRATIONS_DIR, "meta", "_journal.json"), "utf-8"),
     ) as { entries: { when: number; tag: string }[] };
 
-    const applied = await client.query<{ hash: string }>(
-      "select hash from drizzle.__drizzle_migrations",
+    const applied = await client.query<{ created_at: string | number }>(
+      "select created_at from drizzle.__drizzle_migrations",
     );
-    const seen = new Set(applied.rows.map((r) => r.hash));
+    // bigint comes back as a string from some drivers and a number from others.
+    const recorded = new Set(applied.rows.map((r) => Number(r.created_at)));
 
-    const skipped = journal.entries.filter((entry) => {
-      const sql = readFileSync(
-        path.join(MIGRATIONS_DIR, `${entry.tag}.sql`),
-        "utf-8",
-      );
-      return !seen.has(createHash("sha256").update(sql).digest("hex"));
-    });
+    const skipped = journal.entries.filter((entry) => !recorded.has(entry.when));
 
-    // Every entry looking unapplied means the hash no longer matches how the
-    // migrator computes it, not that the database is 8 migrations behind.
-    if (skipped.length === 0 || skipped.length === journal.entries.length) return;
+    // Every entry unapplied on a database that has rows means the migrator
+    // stopped recording `created_at` as the journal's `when`, not that the
+    // schema is seventeen migrations behind.
+    if (skipped.length === journal.entries.length && recorded.size > 0) return;
 
     for (const entry of skipped) {
       console.error(
