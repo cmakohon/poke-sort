@@ -63,6 +63,8 @@ async function toScanSession(tx: Transaction, row: SessionRow): Promise<ScanSess
     guid: row.guid!,
     targetCollectionGuid: target?.guid ?? null,
     targetCollectionName: target?.name ?? null,
+    identifiedGameKey: row.identifiedGameKey,
+    identifiedLang: row.identifiedLang,
     startedAt: row.startedAt.toISOString(),
     closedAt: row.closedAt?.toISOString() ?? null,
     outcome: (row.outcome as ScanSession["outcome"]) ?? null,
@@ -231,7 +233,7 @@ router.post("/:guid/cards", requireAuth, requireOrg, async (c) => {
   const target = session.targetCollectionId
     ? await db.query.collections.findFirst({
         where: (t, { eq: e }) => e(t.id, session.targetCollectionId!),
-        columns: { guid: true, name: true, gameId: true },
+        columns: { guid: true, name: true, gameId: true, lang: true },
       })
     : null;
   if (!target?.guid) {
@@ -241,6 +243,22 @@ router.post("/:guid/cards", requireAuth, requireOrg, async (c) => {
     );
   }
   const targetGuid = target.guid;
+
+  // Freeze what this run is being read against, once. The target can be
+  // re-pointed later; these cannot, which is what lets the save dialog tell a
+  // real game/language mismatch from a target that simply moved.
+  if (!session.identifiedGameKey && target.gameId) {
+    const game = await db.query.games.findFirst({
+      where: (t, { eq: e }) => e(t.id, target.gameId!),
+      columns: { key: true },
+    });
+    if (game) {
+      await db
+        .update(scanSessions)
+        .set({ identifiedGameKey: game.key, identifiedLang: target.lang })
+        .where(eq(scanSessions.id, session.id));
+    }
+  }
 
   const displayName = await getUserDisplayName(userId);
   if (!acquireLock(targetGuid, userId, orgId, displayName)) {
@@ -340,20 +358,22 @@ router.post("/:guid/commit", requireAuth, requireOrg, async (c) => {
   const parsed = await parseBody(c, CommitSchema);
   if (!parsed.ok) return parsed.response;
   try {
-    const { result, targetGuid } = await authQuery(c.get("jwtClaims"), async (tx) => {
+    const { result, targetGuid, destGuid, scanIds } = await authQuery(
+      c.get("jwtClaims"),
+      async (tx) => {
+      const fail = (message: string) => ({
+        result: { success: false as const, message },
+        targetGuid: null,
+        destGuid: null,
+        scanIds: [] as string[],
+      });
       const session = await tx.query.scanSessions.findFirst({
         where: (t, { and: a, eq: e }) => a(e(t.guid, guid), e(t.orgId, orgId)),
       });
-      if (!session) {
-        return { result: { success: false as const, message: "Session not found." }, targetGuid: null };
-      }
-      if (session.closedAt) {
-        return { result: { success: false as const, message: "Session is closed." }, targetGuid: null };
-      }
+      if (!session) return fail("Session not found.");
+      if (session.closedAt) return fail("Session is closed.");
       const dest = await findCollection(tx, parsed.data.collectionGuid, orgId);
-      if (!dest) {
-        return { result: { success: false as const, message: "Collection not found." }, targetGuid: null };
-      }
+      if (!dest) return fail("Collection not found.");
       const previous = session.targetCollectionId
         ? await tx.query.collections.findFirst({
             where: (t, { eq: e }) => e(t.id, session.targetCollectionId!),
@@ -365,7 +385,7 @@ router.post("/:guid/commit", requireAuth, requireOrg, async (c) => {
         .update(collectionCards)
         .set({ collectionId: dest.id })
         .where(stagedCardsWhere(guid, orgId))
-        .returning({ id: collectionCards.id });
+        .returning({ id: collectionCards.id, guid: collectionCards.guid });
 
       await tx
         .update(collections)
@@ -381,9 +401,23 @@ router.post("/:guid/commit", requireAuth, requireOrg, async (c) => {
         collectionGuid: parsed.data.collectionGuid,
         movedCount: moved.length,
       };
-      return { result: { success: true as const, data }, targetGuid: previous?.guid ?? null };
+      return {
+        result: { success: true as const, data },
+        targetGuid: previous?.guid ?? null,
+        destGuid: parsed.data.collectionGuid,
+        scanIds: moved.map((r) => r.guid).filter((g): g is string => !!g),
+      };
     });
-    if (result.success && targetGuid) releaseLock(targetGuid, userId);
+    if (result.success && targetGuid) {
+      // The staged cards were broadcast on the target's channel as they were
+      // scanned, so a monitor watching it is still listing them. Saving
+      // elsewhere moves them out of that collection, and without this they sit
+      // there until the watcher happens to reconnect.
+      if (destGuid !== targetGuid && scanIds.length) {
+        emitToSession(targetGuid, "cards_removed", { scanIds });
+      }
+      releaseLock(targetGuid, userId);
+    }
     return c.json(result, result.success ? 200 : 409);
   } catch (err) {
     console.error(err);

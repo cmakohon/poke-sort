@@ -156,7 +156,7 @@
       "description_one": "Add {{count}} scanned card to a collection.",
       "description_other": "Add {{count}} scanned cards to a collection.",
       "selectPlaceholder": "Choose a collection",
-      "gameMismatch": "These cards were identified against {{target}}. {{destination}} uses a different game or language, and nothing is re-identified on the way in.",
+      "gameMismatch": "These cards were read as {{identified}}. {{destination}} uses a different game or language, and nothing is re-identified on the way in.",
       "cancel": "Cancel",
       "confirm": "Save to collection"
     },

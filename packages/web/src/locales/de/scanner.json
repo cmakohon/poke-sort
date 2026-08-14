@@ -81,6 +81,10 @@
     "discardSessionFailed": {
       "title": "Scan-Sitzung konnte nicht verworfen werden",
       "description": "Die Karten sind weiterhin vorgemerkt — bitte erneut versuchen."
+    },
+    "sessionClosedMidScan": {
+      "title": "Diese Scan-Sitzung wurde bereits geschlossen",
+      "description": "Die Sitzung wurde gespeichert oder verworfen, während diese Karte gescannt wurde; die Karte wurde daher nicht übernommen. Sie wurde trotzdem in ihr Fach sortiert."
     }
   },
   "cardScanner": {

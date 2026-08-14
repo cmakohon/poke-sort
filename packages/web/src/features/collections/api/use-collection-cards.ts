@@ -12,6 +12,8 @@ import {
 import type { FieldMeta, PlayingCard, ScannedCard } from "@poke-sort/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
+import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 
 /**
  * Editing a saved collection, outside the scanner.
@@ -22,6 +24,7 @@ import { useCallback } from "react";
  * the React Query cache rather than in the scanner context.
  */
 export function useCollectionCards(guid: string | undefined, fieldDefinitions: FieldMeta[]) {
+  const { t } = useTranslation("collections");
   const queryClient = useQueryClient();
   const { configs: binConfigs } = useBinConfigs();
   const queryKey = ["collection-cards", guid] as const;
@@ -123,11 +126,20 @@ export function useCollectionCards(guid: string | undefined, fieldDefinitions: F
 
   const emptyCollection = useCallback(async () => {
     if (!guid) return;
-    // Awaited so a failure surfaces before the list visibly empties.
-    await clearCollectionCards(guid);
+    try {
+      // Awaited so a failure surfaces before the list visibly empties.
+      await clearCollectionCards(guid);
+    } catch (err) {
+      // The scan screen used to reach this through a mutation whose onError
+      // toasted; calling the fetch directly dropped that, and CardToolbar
+      // catches into console.error — so a failed empty looked like a success.
+      console.error("Failed to empty collection:", err);
+      toast.error(t("errors.emptyFailed"));
+      throw err;
+    }
     queryClient.setQueryData<ScannedCard[]>(queryKey, []);
     void queryClient.invalidateQueries({ queryKey: ["collections"] });
-  }, [guid, queryClient]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [guid, queryClient, t]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return {
     cards,

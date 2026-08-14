@@ -146,10 +146,11 @@ export function CardGrid() {
     </>
   ) : null;
 
-  // The bar stays up after the camera is closed: a finished run still has to
-  // be saved or discarded.
+  // The bar stays up after the camera is closed, and for a run with nothing
+  // staged: a finished run still has to be saved or discarded, and an emptied
+  // one still has to be closed.
   const footerSlot =
-    scannerControls || (session && cards.length > 0) ? (
+    scannerControls || session ? (
       <>
         {scannerControls}
         <div className="flex-1" />

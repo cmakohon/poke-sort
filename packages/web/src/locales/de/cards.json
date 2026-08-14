@@ -156,7 +156,7 @@
       "description_one": "{{count}} gescannte Karte zu einer Sammlung hinzufügen.",
       "description_other": "{{count}} gescannte Karten zu einer Sammlung hinzufügen.",
       "selectPlaceholder": "Sammlung auswählen",
-      "gameMismatch": "Diese Karten wurden gegen {{target}} erkannt. {{destination}} verwendet ein anderes Spiel oder eine andere Sprache, und es wird nichts neu erkannt.",
+      "gameMismatch": "Diese Karten wurden als {{identified}} erkannt. {{destination}} verwendet ein anderes Spiel oder eine andere Sprache, und es wird nichts neu erkannt.",
       "cancel": "Abbrechen",
       "confirm": "In Sammlung speichern"
     },

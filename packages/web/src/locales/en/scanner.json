@@ -81,6 +81,10 @@
     "discardSessionFailed": {
       "title": "Could not discard the scan session",
       "description": "The cards are still staged — try again."
+    },
+    "sessionClosedMidScan": {
+      "title": "This scan session was already closed",
+      "description": "The run was saved or discarded while this card was being scanned, so the card was not kept. It has still been routed to its bin."
     }
   },
   "cardScanner": {
