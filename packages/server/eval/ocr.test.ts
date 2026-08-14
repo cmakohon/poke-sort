@@ -52,17 +52,39 @@ describe("parseCollectorNumber", () => {
     expect(parseCollectorNumber("1/400")?.setTotal).toBe(400);
   });
 
-  it("still handles promos with no denominator", () => {
-    expect(parseCollectorNumber("SVP 001")).toEqual({ collectorNumber: "1" });
+  // Every promo format the catalog actually prints, so tightening the
+  // fallbacks cannot silently drop one.
+  it.each([
+    ["SVP 001", "1"],
+    ["BW01", "1"],
+    ["BW10", "10"],
+    ["SWSH001", "1"],
+    ["HGSS01", "1"],
+    ["XY01", "1"],
+    ["DP01", "1"],
+    ["001", "1"],
+    ["010", "10"],
+  ])("still reads the printed promo form %s", (text, expected) => {
+    expect(parseCollectorNumber(text)?.collectorNumber).toBe(expected);
   });
 
-  it("falls back to a bare number", () => {
-    expect(parseCollectorNumber("no fraction 58 here")).toEqual({
-      collectorNumber: "58",
-    });
-  });
-
-  it("returns null when there is no number at all", () => {
-    expect(parseCollectorNumber("Creatures / GAME FREAK")).toBeNull();
+  /**
+   * The fallbacks fired 26 times across 93 labelled real captures and were
+   * correct 0 times — these are verbatim fragments they pulled out of the
+   * copyright line. A denominator-less number still scores half credit in
+   * collectorNumberMatch, so each one boosted an arbitrary same-numbered
+   * candidate.
+   */
+  it.each([
+    "Creatures / GAME FREAK",
+    "EO  2",
+    "UE 4",
+    "BIN 0",
+    "RAFT 4",
+    "VW 4",
+    "SI 1",
+    "BR 0",
+  ])("refuses to invent a number from noise: %j", (text) => {
+    expect(parseCollectorNumber(text)).toBeNull();
   });
 });
