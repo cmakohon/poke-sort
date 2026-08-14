@@ -15,10 +15,8 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { useBinConfigs } from "@/features/bins/api/use-bin-configs";
 import { exportToCsv } from "@/features/cards/lib/export-formats";
-import {
-  formatElapsed,
-  formatUsd,
-} from "@/features/scanner/components/scan-stats";
+import { formatElapsed } from "@/features/scanner/components/scan-stats";
+import { formatUsd } from "@/lib/format-currency";
 import { computeStats } from "@/features/scanner/lib/compute-stats";
 import type { ScannedCard } from "@poke-sort/shared";
 import { IconChevronDown, IconDownload } from "@tabler/icons-react";

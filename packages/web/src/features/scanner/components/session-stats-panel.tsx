@@ -1,5 +1,5 @@
 import { rarityColor } from "@/features/cards/lib/rarity-color";
-import { formatUsd } from "@/features/scanner/components/scan-stats";
+import { formatUsd } from "@/lib/format-currency";
 import type { ScanStats } from "@/features/scanner/lib/compute-stats";
 import { useTranslation } from "react-i18next";
 
