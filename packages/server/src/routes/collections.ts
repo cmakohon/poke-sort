@@ -5,7 +5,7 @@ import type {
   ScannedCard,
 } from "@poke-sort/shared";
 import { LOCAL_ORG_ID, LOCAL_USER_ID } from "@poke-sort/shared";
-import { and, count, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, isNull, or } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import { parseBody } from "../lib/validate";
@@ -95,6 +95,7 @@ import {
   deleteCaptures,
   saveCapture,
 } from "../lib/captures";
+import { CARD_COLUMNS, toScannedCard } from "../lib/collection-cards";
 import { buildCardScannedEmbed, sendDiscordNotification } from "../lib/discord";
 import {
   acquireLock,
@@ -156,53 +157,6 @@ function toCollection(row: {
       : null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
-  };
-}
-
-function toScannedCard(row: {
-  guid: string | null;
-  card: unknown;
-  scannedAt: Date;
-  capturedImagePath?: string | null;
-  capturedImageDataUrl?: string | null;
-  binNumber: number | null;
-  isFoil?: boolean | null;
-  isDownloaded?: boolean | null;
-  alternativeMatches?: unknown;
-  variant?: string | null;
-  needsReview?: boolean | null;
-  scanScore?: number | null;
-  scanMargin?: number | null;
-  originalCardId?: string | null;
-  originalDistance?: number | null;
-  originalScore?: number | null;
-  wasCorrected?: boolean | null;
-  reviewVerdict?: string | null;
-}): ScannedCard {
-  return {
-    scanId: row.guid!,
-    card: row.card as PlayingCardWithDistance,
-    scannedAt: row.scannedAt.getTime(),
-    binNumber: row.binNumber ?? undefined,
-    // Prefer the file; fall back to any legacy inline data URL.
-    capturedImageUrl:
-      captureUrl(row.capturedImagePath) ??
-      row.capturedImageDataUrl ??
-      undefined,
-    isFoil: row.isFoil ?? undefined,
-    isDownloaded: row.isDownloaded ?? undefined,
-    alternativeMatches:
-      (row.alternativeMatches as PlayingCardWithDistance[] | null) ?? undefined,
-    variant: row.variant ?? undefined,
-    needsReview: row.needsReview ?? undefined,
-    score: row.scanScore ?? undefined,
-    margin: row.scanMargin ?? undefined,
-    originalCardId: row.originalCardId ?? undefined,
-    originalDistance: row.originalDistance ?? undefined,
-    originalScore: row.originalScore ?? undefined,
-    wasCorrected: row.wasCorrected ?? undefined,
-    reviewVerdict:
-      (row.reviewVerdict as ScannedCard["reviewVerdict"]) ?? undefined,
   };
 }
 
@@ -523,26 +477,7 @@ router.get("/:guid/cards", requireAuth, requireOrg, async (c) => {
         return { success: false, message: "Collection not found." };
 
       const rows = await tx
-        .select({
-          guid: collectionCards.guid,
-          card: collectionCards.card,
-          scannedAt: collectionCards.scannedAt,
-          binNumber: collectionCards.binNumber,
-          capturedImagePath: collectionCards.capturedImagePath,
-          capturedImageDataUrl: collectionCards.capturedImageDataUrl,
-          isFoil: collectionCards.isFoil,
-          isDownloaded: collectionCards.isDownloaded,
-          alternativeMatches: collectionCards.alternativeMatches,
-          variant: collectionCards.variant,
-          needsReview: collectionCards.needsReview,
-          scanScore: collectionCards.scanScore,
-          scanMargin: collectionCards.scanMargin,
-          originalCardId: collectionCards.originalCardId,
-          originalDistance: collectionCards.originalDistance,
-          originalScore: collectionCards.originalScore,
-          wasCorrected: collectionCards.wasCorrected,
-          reviewVerdict: collectionCards.reviewVerdict,
-        })
+        .select(CARD_COLUMNS)
         .from(collectionCards)
         .where(eq(collectionCards.collectionId, collection.id))
         .orderBy(desc(collectionCards.scannedAt));
@@ -1023,28 +958,34 @@ router.get("/:guid/stream", async (c) => {
             })
           : null;
 
+        // A run in progress is staged, not committed, so the collection's own
+        // rows are only half the picture. Without the staged half a monitor
+        // connecting mid-run shows an empty screen until the next scan
+        // arrives over SSE.
+        const openSession = await tx.query.scanSessions.findFirst({
+          where: (t, { and: a, eq: e, isNull: n }) =>
+            a(
+              e(t.orgId, orgId),
+              e(t.targetCollectionId, collection.id),
+              n(t.closedAt),
+            ),
+          columns: { guid: true },
+        });
+
         const cardRows = await tx
-          .select({
-            guid: collectionCards.guid,
-            card: collectionCards.card,
-            scannedAt: collectionCards.scannedAt,
-            binNumber: collectionCards.binNumber,
-            capturedImagePath: collectionCards.capturedImagePath,
-          capturedImageDataUrl: collectionCards.capturedImageDataUrl,
-            isFoil: collectionCards.isFoil,
-            isDownloaded: collectionCards.isDownloaded,
-            alternativeMatches: collectionCards.alternativeMatches,
-            variant: collectionCards.variant,
-            needsReview: collectionCards.needsReview,
-            scanScore: collectionCards.scanScore,
-            scanMargin: collectionCards.scanMargin,
-            originalCardId: collectionCards.originalCardId,
-            originalDistance: collectionCards.originalDistance,
-            originalScore: collectionCards.originalScore,
-            wasCorrected: collectionCards.wasCorrected,
-          })
+          .select(CARD_COLUMNS)
           .from(collectionCards)
-          .where(eq(collectionCards.collectionId, collection.id))
+          .where(
+            openSession?.guid
+              ? or(
+                  eq(collectionCards.collectionId, collection.id),
+                  and(
+                    isNull(collectionCards.collectionId),
+                    eq(collectionCards.sessionGuid, openSession.guid),
+                  ),
+                )
+              : eq(collectionCards.collectionId, collection.id),
+          )
           .orderBy(desc(collectionCards.scannedAt));
 
         return {
