@@ -1,9 +1,11 @@
+import { mergeReviewSync } from "@/features/cards/lib/apply-review-sync";
 import { useScannedCards } from "@/features/scanner/api/use-scanned-cards";
 import { API_BASE } from "@/lib/api/client";
 import type {
   ReviewQueueItem,
   ReviewQueuePage,
   ReviewVerdictRequest,
+  ScannedCard,
 } from "@poke-sort/shared";
 import {
   useInfiniteQuery,
@@ -91,9 +93,26 @@ export function useSubmitVerdict() {
       body: ReviewVerdictRequest;
     }) => submitVerdict(guid, body),
     onSuccess: (result, { guid, body }) => {
-      // Keep the scanner screen's in-memory list in step with what the
-      // verdict just did to the collection card.
-      if (result.data?.updatedCard) applyReviewSync(result.data.updatedCard);
+      // Keep whichever list holds this card in step with what the verdict just
+      // did to it. A card is either staged on the open run (the scanner
+      // screen's in-memory list) or saved in a collection (a React Query
+      // cache) — the server says which, since the review queue itself is
+      // built from scan_events and knows nothing about either.
+      const sync = result.data?.updatedCard;
+      if (sync) {
+        applyReviewSync(sync);
+        if (!sync.isStaged && sync.collectionGuid) {
+          // A no-op when the detail screen was never opened, which is the
+          // common case; setQueryData on an absent key does nothing.
+          queryClient.setQueryData<ScannedCard[]>(
+            ["collection-cards", sync.collectionGuid],
+            (prev) =>
+              prev?.map((c) =>
+                c.scanId === sync.scanId ? mergeReviewSync(c, sync) : c,
+              ),
+          );
+        }
+      }
       // Patch the item in place rather than dropping it: the reviewer may
       // step back to it (z), and removing rows would shift every index the
       // screen is holding. A refetch naturally filters it out later.
