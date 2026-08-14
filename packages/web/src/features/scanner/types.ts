@@ -4,6 +4,7 @@ import type {
   PlayingCardWithDistance,
   ReviewCardSync,
   ScanOutcome,
+  ScanSession,
   ScannedCard,
   ScannerStatus,
 } from "@poke-sort/shared";
@@ -31,7 +32,14 @@ export interface CameraContextValue {
 }
 
 export interface ScannedCardsContextValue {
+  /**
+   * The current run's staged cards — not a collection's contents. Scanning
+   * used to write straight into the active collection, which made this list
+   * that collection's entire history and left no way to discard a test run.
+   */
   cards: ScannedCard[];
+  /** The open run, or null when none has started yet. */
+  session: ScanSession | null;
   isLoading: boolean;
   autoFeed: boolean;
   elapsedMs: number;
@@ -56,7 +64,15 @@ export interface ScannedCardsContextValue {
   correctCard: (scanId: string, card: PlayingCard) => void;
   toggleFoil: (scanId: string, isFoil: boolean) => void;
   markDownloaded: (scanIds: string[]) => void;
-  clearCards: (opts?: { skipServer?: boolean }) => void;
+  /** Commits the run's staged cards into a collection and closes the run. */
+  saveSession: (collectionGuid: string) => Promise<void>;
+  /**
+   * Throws the run away. The scan_events rows behind these scans survive, so
+   * the review screen keeps its training data for a discarded run.
+   */
+  discardSession: () => Promise<void>;
+  /** A save or discard is in flight; the session bar disables itself. */
+  isClosingSession: boolean;
   /**
    * Patches one card in place after a review-screen verdict propagated to
    * it server-side. The list only refetches on collection switch, so
