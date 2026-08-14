@@ -92,6 +92,13 @@
       "when": 1786500540000,
       "tag": "0012_card_review_state",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1786500600000,
+      "tag": "0013_scan_sessions",
+      "breakpoints": true
     }
   ]
 }

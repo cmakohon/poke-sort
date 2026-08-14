@@ -11,8 +11,10 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { relations } from "drizzle-orm/relations";
 
 const vector = customType<{ data: number[]; driverData: string }>({
@@ -199,14 +201,68 @@ export const collections = pgTable(
   ],
 );
 
+/**
+ * One run of the machine.
+ *
+ * Scanning used to insert straight into the active collection, so the scan
+ * screen showed that collection's entire history and a throwaway test run
+ * permanently polluted it. Cards now stage against a session and only acquire
+ * a collection_id when the user saves; discarding deletes them. scan_events is
+ * a separate table and is never touched by either path, so the diagnostics and
+ * review data survive a discard — that is why staging lives in the database
+ * rather than in client state.
+ *
+ * A session exists before its first card, because the target collection has to
+ * supply the game key and language to the identify pipeline up front. That is
+ * also why this is a table and not just a column on collection_cards.
+ */
+export const scanSessions = pgTable(
+  "scan_sessions",
+  {
+    id: serial().primaryKey(),
+    guid: uuid("guid").defaultRandom(),
+    orgId: text("org_id").notNull(),
+    // Where the run is aimed. SET NULL rather than CASCADE: deleting the
+    // target collection must not take a run's staged cards with it (the cards
+    // themselves are already immune — their collection_id is NULL, so the
+    // cascade misses them).
+    targetCollectionId: integer("target_collection_id").references(
+      () => collections.id,
+      { onDelete: "set null" },
+    ),
+    startedAt: timestamp("started_at").defaultNow().notNull(),
+    // NULL means open. Closing stamps the outcome; saved runs also record
+    // where they landed, which is not necessarily the target.
+    closedAt: timestamp("closed_at"),
+    outcome: text("outcome"), // 'saved' | 'discarded'
+    savedCollectionId: integer("saved_collection_id").references(
+      () => collections.id,
+      { onDelete: "set null" },
+    ),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    unique("scan_sessions_guid_idx").on(table.guid),
+    // At most one open session per org, enforced by the engine rather than by
+    // a check-then-insert in the route, which two concurrent scans both pass.
+    uniqueIndex("scan_sessions_one_open_idx")
+      .on(table.orgId)
+      .where(sql`${table.closedAt} is null`),
+  ],
+);
+
 export const collectionCards = pgTable(
   "collection_cards",
   {
     id: serial().primaryKey(),
     guid: uuid("guid").defaultRandom(),
-    collectionId: integer("collection_id")
-      .notNull()
-      .references(() => collections.id, { onDelete: "cascade" }),
+    // NULL means the card is staged on an open scan session and is not in any
+    // collection yet. INVARIANT: every query that means "cards in a
+    // collection" must constrain collection_id — an unconstrained query
+    // silently mixes staged cards into collection views.
+    collectionId: integer("collection_id").references(() => collections.id, {
+      onDelete: "cascade",
+    }),
     cardId: text("card_id").notNull(),
     card: jsonb("card").notNull(),
     scannedAt: timestamp("scanned_at").notNull(),
@@ -248,6 +304,10 @@ export const collectionCards = pgTable(
     // scores, OCR reading, candidate list) behind this row. Set at insert so
     // there is no window where the link is missing.
     scanEventGuid: text("scan_event_guid"),
+    // Which run staged this card. Set at insert and kept after the card is
+    // saved, so a collection card still records the run it came from. Commit
+    // and discard both key on it.
+    sessionGuid: text("session_guid"),
     orgId: text("org_id").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
@@ -257,6 +317,9 @@ export const collectionCards = pgTable(
     // detail view and verdict; without this it seq-scans the collection
     // on PGlite's main thread.
     index("collection_cards_scan_event_idx").on(table.scanEventGuid),
+    // Staged-card lookup on every scan-screen load, and the commit/discard
+    // predicate.
+    index("collection_cards_session_idx").on(table.sessionGuid),
   ],
 );
 
