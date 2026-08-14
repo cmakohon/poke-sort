@@ -40,6 +40,20 @@ export async function loadCollectionCards(guid: string): Promise<Result<ScannedC
   return apiGet<Result<ScannedCard[]>>(`/api/collections/${guid}/cards`);
 }
 
+/**
+ * The collection detail screen's card list. Returns every row — filtering,
+ * sorting and paging are client-side, the same way the scan grid has always
+ * worked. Server-side paging would only start to matter for very large
+ * collections, and PGlite runs on the main thread, so fewer round trips is
+ * the safer default.
+ */
+export const collectionCardsQueryOptions = (guid: string) =>
+  queryOptions({
+    queryKey: ["collection-cards", guid] as const,
+    queryFn: () => loadCollectionCards(guid).then((r) => r.data ?? []),
+    staleTime: 60_000,
+  });
+
 export async function addCollectionCard(
   guid: string,
   record: ScannedCard,

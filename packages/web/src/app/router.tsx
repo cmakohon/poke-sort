@@ -1,6 +1,7 @@
 import AdminPage from "@/app/routes/admin";
 import SortsPage from "@/app/routes/sorts";
 import CalibratePage from "@/app/routes/calibrate";
+import CollectionDetailPage from "@/app/routes/collection-detail";
 import CollectionsPage from "@/app/routes/collections";
 import ScannerPage from "@/app/routes/index";
 import AppLayout from "@/app/routes/layout";
@@ -46,6 +47,10 @@ export const router = createBrowserRouter([
             // removed so existing links and bookmarks still land somewhere.
             path: "/collections/:collectionGuid/bins",
             element: <Navigate to="/sorts" replace />,
+          },
+          {
+            path: "/collections/:collectionGuid",
+            element: <CollectionDetailPage />,
           },
           {
             path: "/review",
