@@ -1,12 +1,14 @@
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import {
+  RETENTION_MAX_DAYS,
   SCAN_COVERAGE_MAX,
   SCAN_COVERAGE_MIN,
   SCAN_OFFSET_LIMIT,
   SCAN_ROTATION_LIMIT,
 } from "@poke-sort/shared";
 import { z } from "zod";
+import { retentionFromRow } from "../lib/retention";
 import { parseBody } from "../lib/validate";
 import { authQuery } from "../db";
 import { orgSettings } from "../db/schema";
@@ -48,6 +50,21 @@ function toScanRegion(row?: {
   };
 }
 
+/**
+ * Retention is stored as four nullable columns but presented as one object,
+ * because the settings screen edits it as one thing. Resolving through the same
+ * helper the boot prune uses means the screen can never show a threshold the
+ * prune would not honour — the failure mode this endpoint exists to prevent.
+ */
+function toRetention(row?: {
+  retentionMachineEventDays?: number | null;
+  retentionScanEventDays?: number | null;
+  retentionAcceptCaptureDays?: number | null;
+  retentionConfigAuditDays?: number | null;
+}) {
+  return retentionFromRow(row);
+}
+
 router.get("/", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
   try {
@@ -68,6 +85,7 @@ router.get("/", requireAuth, requireOrg, async (c) => {
           // Default matches the old hardcoded constant, so an install that
           // never touched the setting behaves exactly as before.
           captureSettleDelayMs: row?.captureSettleDelayMs ?? 500,
+          retention: toRetention(row),
         },
       };
     });
@@ -95,6 +113,8 @@ const coverage = z.number().min(SCAN_COVERAGE_MIN).max(SCAN_COVERAGE_MAX);
 const offset = z.number().min(-SCAN_OFFSET_LIMIT).max(SCAN_OFFSET_LIMIT);
 /** Signed degrees, clockwise, about the region's own centre. */
 const rotation = z.number().min(-SCAN_ROTATION_LIMIT).max(SCAN_ROTATION_LIMIT);
+/** Whole days; 0 is meaningful here and means keep forever. */
+const retentionDays = z.number().int().min(0).max(RETENTION_MAX_DAYS).optional();
 
 export const OrgSettingsSchema = z
   .object({
@@ -120,8 +140,60 @@ export const OrgSettingsSchema = z
     // Bounded: the feeder cycle stalls for this long on every card, so five
     // seconds is already generous for a slow slide. Null restores the default.
     captureSettleDelayMs: z.number().int().min(0).max(5000).nullable().optional(),
+    // Whole days, 0 meaning keep forever. Partial so the UI can save one
+    // threshold without asserting the other three; null clears all four back
+    // to the shipped defaults.
+    retention: z
+      .object({
+        machineEventDays: retentionDays,
+        scanEventDays: retentionDays,
+        acceptCaptureDays: retentionDays,
+        configAuditDays: retentionDays,
+      })
+      .partial()
+      .strict()
+      .nullable()
+      .optional(),
   })
   .strict();
+
+type RetentionColumns = {
+  retentionMachineEventDays: number | null;
+  retentionScanEventDays: number | null;
+  retentionAcceptCaptureDays: number | null;
+  retentionConfigAuditDays: number | null;
+};
+
+function mergeRetention(
+  body: z.infer<typeof OrgSettingsSchema>,
+  existing?: Partial<RetentionColumns>,
+): RetentionColumns {
+  const stored: RetentionColumns = {
+    retentionMachineEventDays: existing?.retentionMachineEventDays ?? null,
+    retentionScanEventDays: existing?.retentionScanEventDays ?? null,
+    retentionAcceptCaptureDays: existing?.retentionAcceptCaptureDays ?? null,
+    retentionConfigAuditDays: existing?.retentionConfigAuditDays ?? null,
+  };
+  if (!("retention" in body)) return stored;
+  const patch = body.retention;
+  if (!patch) {
+    return {
+      retentionMachineEventDays: null,
+      retentionScanEventDays: null,
+      retentionAcceptCaptureDays: null,
+      retentionConfigAuditDays: null,
+    };
+  }
+  return {
+    retentionMachineEventDays:
+      patch.machineEventDays ?? stored.retentionMachineEventDays,
+    retentionScanEventDays: patch.scanEventDays ?? stored.retentionScanEventDays,
+    retentionAcceptCaptureDays:
+      patch.acceptCaptureDays ?? stored.retentionAcceptCaptureDays,
+    retentionConfigAuditDays:
+      patch.configAuditDays ?? stored.retentionConfigAuditDays,
+  };
+}
 
 router.put("/", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
@@ -183,6 +255,11 @@ router.put("/", requireAuth, requireOrg, async (c) => {
                 : (existing?.scanRotation ?? null)
               : null
             : (existing?.scanRotation ?? null),
+        // Three cases, and they mean different things: absent leaves the
+        // stored thresholds alone, null clears all four back to the shipped
+        // defaults, and an object overwrites only the keys it names — so
+        // saving one select cannot silently reset the others.
+        ...mergeRetention(body, existing),
       };
       await tx
         .insert(orgSettings)
@@ -202,6 +279,7 @@ router.put("/", requireAuth, requireOrg, async (c) => {
           discordNotifyOnScan: merged.discordNotifyOnScan,
           scanRegion: toScanRegion(merged),
           captureSettleDelayMs: merged.captureSettleDelayMs ?? 500,
+          retention: toRetention(merged),
         },
       };
     });

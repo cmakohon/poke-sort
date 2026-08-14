@@ -1,6 +1,7 @@
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Label } from "@/components/ui/label";
 import { PrimaryColorPicker } from "@/components/primary-color-picker";
+import { DataUsagePanel } from "@/features/data-usage/components/data-usage-panel";
 import { ScannerLayoutToggle } from "@/components/scanner-layout-toggle";
 import { DiscordWebhookSettings } from "@/features/notifications/components/discord-webhook-settings";
 import { SUPPORTED_LANGUAGES } from "@/lib/i18n";
@@ -52,6 +53,15 @@ export default function SettingsPage() {
           {t("notifications.heading")}
         </h2>
         <DiscordWebhookSettings />
+      </div>
+      <div className="rounded-lg border p-4 flex flex-col gap-4">
+        <div>
+          <h2 className="text-base font-semibold">{t("dataUsage.heading")}</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {t("dataUsage.description")}
+          </p>
+        </div>
+        <DataUsagePanel />
       </div>
     </div>
   );

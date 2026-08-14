@@ -16,6 +16,7 @@ import { calibrationRouter } from "./routes/calibration";
 import { cardRouter } from "./routes/card";
 import { capturesRouter } from "./routes/captures";
 import { collectionsRouter } from "./routes/collections";
+import { dataUsageRouter } from "./routes/data-usage";
 import { debugRouter } from "./routes/debug";
 import { feederRouter } from "./routes/feeder";
 import { gamesRouter } from "./routes/games";
@@ -70,6 +71,7 @@ app.route("/api/admin", adminRouter);
 app.route("/api/machine-events", machineEventsRouter);
 app.route("/api/review", reviewRouter);
 app.route("/api/scan-sessions", scanSessionsRouter);
+app.route("/api/data-usage", dataUsageRouter);
 app.route("/api/debug", debugRouter);
 
 // An unmatched /api path must 404 as JSON. Without this the SPA fallback below

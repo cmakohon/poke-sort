@@ -1,10 +1,10 @@
 import {
+  DEFAULT_ORG_SETTINGS,
   orgSettingsQueryOptions,
   saveOrgSettings,
   type OrgSettings,
 } from "@/features/settings/api/org-settings";
 import { useOrg } from "@/hooks/use-org";
-import { DEFAULT_SCAN_REGION } from "@poke-sort/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -34,13 +34,12 @@ export function useNotificationSettings() {
     onMutate: async (patch) => {
       await queryClient.cancelQueries({ queryKey: queryOpts.queryKey });
       const previous = queryClient.getQueryData(queryOpts.queryKey);
+      // Spread over DEFAULT_ORG_SETTINGS rather than enumerating fields: the
+      // old version listed every key by hand, so a setting added elsewhere
+      // silently vanished from the cache whenever a webhook was saved.
       queryClient.setQueryData(queryOpts.queryKey, (old: typeof data): typeof data => ({
-        primaryColor: old?.primaryColor ?? null,
-        scannerLayout: old?.scannerLayout ?? "horizontal",
-        scanRegion: old?.scanRegion ?? DEFAULT_SCAN_REGION,
-        captureSettleDelayMs: old?.captureSettleDelayMs ?? 500,
-        discordWebhookUrl: old?.discordWebhookUrl ?? null,
-        discordNotifyOnScan: old?.discordNotifyOnScan ?? false,
+        ...DEFAULT_ORG_SETTINGS,
+        ...old,
         ...patch,
       }));
       return { previous };
