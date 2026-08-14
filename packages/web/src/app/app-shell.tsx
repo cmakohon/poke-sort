@@ -21,7 +21,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       // `@custom-variant dark (&:is(.dark *))` and a `.dark { ... }` block,
       // and something has to put that class there.
       attribute="class"
-      defaultTheme="system"
+      // Light rather than "system": the sorter is used under room lighting
+      // beside a machine, and following whatever the OS happens to be set to
+      // is not a better guess than the one the app is designed around.
+      // enableSystem stays, so "System" is still a choice in the theme toggle
+      // — just not the default. A stored choice always wins over this.
+      defaultTheme="light"
       enableSystem
       // The app is one full-height shell; animating every colour on a theme
       // switch makes the whole window smear rather than change.
