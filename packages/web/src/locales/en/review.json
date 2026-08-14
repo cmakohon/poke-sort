@@ -1,0 +1,84 @@
+{
+  "title": "Review",
+  "queue": {
+    "unreviewed": "{{count}} to review",
+    "reviewedTotal": "{{count}} reviewed",
+    "tierReview": "held for review",
+    "tierNoMatch": "no match",
+    "showReviewed": "Show reviewed",
+    "refresh": "Refresh queue",
+    "progress": "{{current}} / {{total}}",
+    "allDone": "All caught up",
+    "allDoneHint": "Every loaded scan has been reviewed. Refresh to check for new ones.",
+    "empty": "Nothing to review",
+    "emptyHint": "Scan some cards and they will show up here."
+  },
+  "focus": {
+    "capture": "Scanned capture",
+    "capturePruned": "Capture image was pruned",
+    "predicted": "Sorter's pick",
+    "noPrediction": "No match found",
+    "score": "Score",
+    "margin": "Margin",
+    "ocr": "OCR",
+    "reviewedBadge": {
+      "correct": "Confirmed correct",
+      "corrected": "Corrected",
+      "unresolvable": "Unresolvable"
+    },
+    "alternates": "Closest other matches",
+    "noAlternates": "No other candidates for this scan.",
+    "linkedCard": "In collection"
+  },
+  "actions": {
+    "confirm": "Correct",
+    "wrongVariant": "Wrong variant",
+    "search": "Search",
+    "unresolvable": "Unresolvable",
+    "prev": "Previous card",
+    "next": "Next card"
+  },
+  "reasons": {
+    "wrong-card": "Wrong Pokémon entirely",
+    "same-pokemon-different-card": "Right Pokémon, wrong set/printing",
+    "same-art-different-set": "Same art, different set",
+    "same-card-wrong-type": "Same Pokémon, wrong type",
+    "wrong-variant": "Right card, wrong variant (stamp/edition/foil)",
+    "upside-down": "Card was upside down",
+    "ocr-misread": "OCR misread name/number",
+    "image-quality": "Bad image (blur / glare)",
+    "not-a-card": "Not a card / empty frame",
+    "other": "Other"
+  },
+  "reason": {
+    "titleCorrected": "Why did the sorter get it wrong?",
+    "titleVariant": "Right card — what's off about the printing?",
+    "titleUnresolvable": "Why is it unresolvable? (optional)",
+    "pickingCard": "Correcting to: {{name}}",
+    "notePlaceholder": "Optional note (N)…",
+    "submit": "Save (Enter)",
+    "submitSkip": "Save (Enter)",
+    "cancel": "Cancel (Esc)"
+  },
+  "search": {
+    "title": "Search for the correct card",
+    "hint": "Esc to cancel"
+  },
+  "shortcuts": {
+    "title": "Keyboard shortcuts",
+    "confirm": "Confirm correct",
+    "wrongVariant": "Right card, wrong variant",
+    "pickAlternate": "Pick an alternate match",
+    "search": "Search catalog",
+    "unresolvable": "Mark unresolvable",
+    "skip": "Skip",
+    "skipForward": "Skip forward",
+    "back": "Back to previous",
+    "rotate": "Rotate capture",
+    "toggleReviewed": "Toggle reviewed filter",
+    "help": "Shortcut help"
+  },
+  "toast": {
+    "saveFailed": "Failed to save the verdict — step back to retry that card."
+  }
+}

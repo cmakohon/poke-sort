@@ -103,6 +103,12 @@
     "matchTooltip": "Wie genau das gescannte Bild mit dieser Karte übereinstimmt, basierend auf visueller Ähnlichkeitssuche",
     "confirmed": "Bestätigt",
     "confirmedTooltip": "Du hast diese Karte selbst ausgewählt – daher gibt es keinen Trefferwert",
+    "reviewed": {
+      "correct": "Geprüft",
+      "corrected": "Korrigiert",
+      "unresolvable": "Unbekannt"
+    },
+    "reviewedTooltip": "Manuell auf dem Prüfbildschirm geprüft – dieses Urteil zählt mehr als die Scan-Konfidenz",
     "bin": "Fach {{number}}",
     "downloaded": "Exportiert"
   },

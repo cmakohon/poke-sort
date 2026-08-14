@@ -7,6 +7,7 @@ import AppLayout from "@/app/routes/layout";
 import MonitorPage from "@/app/routes/monitor";
 import MonitorSessionsPage from "@/app/routes/monitor-sessions";
 import NotFoundPage from "@/app/routes/not-found";
+import ReviewPage from "@/app/routes/review";
 import SettingsPage from "@/app/routes/settings";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
@@ -45,6 +46,10 @@ export const router = createBrowserRouter([
             // removed so existing links and bookmarks still land somewhere.
             path: "/collections/:collectionGuid/bins",
             element: <Navigate to="/sorts" replace />,
+          },
+          {
+            path: "/review",
+            element: <ReviewPage />,
           },
           {
             path: "/calibrate",

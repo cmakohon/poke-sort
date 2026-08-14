@@ -1,0 +1,84 @@
+{
+  "title": "Überprüfung",
+  "queue": {
+    "unreviewed": "{{count}} zu prüfen",
+    "reviewedTotal": "{{count}} geprüft",
+    "tierReview": "zur Prüfung",
+    "tierNoMatch": "kein Treffer",
+    "showReviewed": "Geprüfte anzeigen",
+    "refresh": "Warteschlange aktualisieren",
+    "progress": "{{current}} / {{total}}",
+    "allDone": "Alles erledigt",
+    "allDoneHint": "Alle geladenen Scans wurden geprüft. Aktualisieren, um neue zu laden.",
+    "empty": "Nichts zu prüfen",
+    "emptyHint": "Scanne Karten, dann erscheinen sie hier."
+  },
+  "focus": {
+    "capture": "Gescannte Aufnahme",
+    "capturePruned": "Aufnahme wurde bereinigt",
+    "predicted": "Auswahl des Sortierers",
+    "noPrediction": "Kein Treffer gefunden",
+    "score": "Punktzahl",
+    "margin": "Abstand",
+    "ocr": "OCR",
+    "reviewedBadge": {
+      "correct": "Bestätigt korrekt",
+      "corrected": "Korrigiert",
+      "unresolvable": "Nicht auflösbar"
+    },
+    "alternates": "Nächste Treffer",
+    "noAlternates": "Keine weiteren Kandidaten für diesen Scan.",
+    "linkedCard": "In Sammlung"
+  },
+  "actions": {
+    "confirm": "Korrekt",
+    "wrongVariant": "Falsche Variante",
+    "search": "Suchen",
+    "unresolvable": "Nicht auflösbar",
+    "prev": "Vorherige Karte",
+    "next": "Nächste Karte"
+  },
+  "reasons": {
+    "wrong-card": "Komplett falsches Pokémon",
+    "same-pokemon-different-card": "Richtiges Pokémon, falsches Set/Druck",
+    "same-art-different-set": "Gleiches Artwork, anderes Set",
+    "same-card-wrong-type": "Gleiches Pokémon, falscher Typ",
+    "wrong-variant": "Richtige Karte, falsche Variante (Stempel/Edition/Foil)",
+    "upside-down": "Karte war auf dem Kopf",
+    "ocr-misread": "OCR hat Name/Nummer falsch gelesen",
+    "image-quality": "Schlechtes Bild (Unschärfe / Blendung)",
+    "not-a-card": "Keine Karte / leerer Rahmen",
+    "other": "Sonstiges"
+  },
+  "reason": {
+    "titleCorrected": "Warum lag der Sortierer falsch?",
+    "titleVariant": "Richtige Karte — was stimmt am Druck nicht?",
+    "titleUnresolvable": "Warum nicht auflösbar? (optional)",
+    "pickingCard": "Korrigieren zu: {{name}}",
+    "notePlaceholder": "Optionale Notiz (N)…",
+    "submit": "Speichern (Enter)",
+    "submitSkip": "Speichern (Enter)",
+    "cancel": "Abbrechen (Esc)"
+  },
+  "search": {
+    "title": "Nach der richtigen Karte suchen",
+    "hint": "Esc zum Abbrechen"
+  },
+  "shortcuts": {
+    "title": "Tastenkürzel",
+    "confirm": "Als korrekt bestätigen",
+    "wrongVariant": "Richtige Karte, falsche Variante",
+    "pickAlternate": "Eine Alternative wählen",
+    "search": "Katalog durchsuchen",
+    "unresolvable": "Als nicht auflösbar markieren",
+    "skip": "Überspringen",
+    "skipForward": "Vorwärts überspringen",
+    "back": "Zurück zur vorherigen",
+    "rotate": "Aufnahme drehen",
+    "toggleReviewed": "Geprüfte ein-/ausblenden",
+    "help": "Kürzel-Hilfe"
+  },
+  "toast": {
+    "saveFailed": "Urteil konnte nicht gespeichert werden — geh zurück, um es erneut zu versuchen."
+  }
+}

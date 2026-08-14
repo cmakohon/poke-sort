@@ -14,6 +14,7 @@ function useBreadcrumbs(): Crumb[] {
   if (pathname === "/") return [{ label: t("nav.scanner") }];
   if (pathname === "/collections") return [{ label: t("nav.collections") }];
   if (pathname === "/sorts") return [{ label: t("nav.sorts") }];
+  if (pathname === "/review") return [{ label: t("nav.review") }];
   if (pathname === "/calibrate") return [{ label: t("nav.calibrate") }];
   if (pathname === "/settings") return [{ label: t("nav.settings") }];
   if (pathname === "/admin") return [{ label: t("nav.admin") }];

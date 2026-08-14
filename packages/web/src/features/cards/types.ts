@@ -61,4 +61,8 @@ export interface ScannedCardItemProps {
   isDownloaded?: boolean;
   /** A human picked this card (correction or manual add) — show Confirmed, not a match score. */
   wasCorrected?: boolean;
+  /** The pipeline held this scan for review; drives the amber ? marker. */
+  needsReview?: boolean;
+  /** Human verdict from the review screen — outranks every other badge. */
+  reviewVerdict?: "correct" | "corrected" | "unresolvable";
 }

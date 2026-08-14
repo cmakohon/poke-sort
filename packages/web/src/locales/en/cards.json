@@ -103,6 +103,12 @@
     "matchTooltip": "How closely the scanned image matches this card, based on visual similarity search",
     "confirmed": "Confirmed",
     "confirmedTooltip": "You picked this card yourself, so there's no match score",
+    "reviewed": {
+      "correct": "Reviewed",
+      "corrected": "Corrected",
+      "unresolvable": "Unknown"
+    },
+    "reviewedTooltip": "Manually reviewed on the review screen — this verdict outranks the scan confidence",
     "bin": "Bin {{number}}",
     "downloaded": "Exported"
   },

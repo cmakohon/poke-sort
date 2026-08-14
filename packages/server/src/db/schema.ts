@@ -239,6 +239,11 @@ export const collectionCards = pgTable(
     originalDistance: doublePrecision("original_distance"),
     originalScore: doublePrecision("original_score"),
     wasCorrected: boolean("was_corrected").notNull().default(false),
+    // Stamped when a human records a verdict for this card — on the review
+    // screen or via a scanner-screen correction. What the scan screen's
+    // "reviewed" badge reads; NULL means no human has judged this scan.
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    reviewVerdict: text("review_verdict"),
     // Points at scan_events.guid — the full identify diagnostics (per-signal
     // scores, OCR reading, candidate list) behind this row. Set at insert so
     // there is no window where the link is missing.
@@ -248,6 +253,10 @@ export const collectionCards = pgTable(
   },
   (table) => [
     unique("collection_cards_guid_idx").on(table.guid),
+    // The review screen resolves scan_event → collection card on every
+    // detail view and verdict; without this it seq-scans the collection
+    // on PGlite's main thread.
+    index("collection_cards_scan_event_idx").on(table.scanEventGuid),
   ],
 );
 
@@ -366,6 +375,17 @@ export const scanEvents = pgTable(
     correctedCardId: text("corrected_card_id"),
     // timestamptz for the same interval-query reason as machine_events.ts.
     correctedAt: timestamp("corrected_at", { withTimezone: true }),
+    // Human review state. reviewed_at IS NULL means unreviewed; the verdict is
+    // correct | corrected | unresolvable. corrected_card_id above stays the
+    // truth pointer for 'corrected' — 'correct' records that candidates[0]
+    // was right, which is eval data a correction alone can't express.
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    reviewVerdict: text("review_verdict"),
+    // jsonb array of MismatchReason strings — multi-select, because input
+    // problems (upside down, glare) and match problems (wrong set, wrong
+    // type) legitimately co-occur on one card.
+    mismatchReasons: jsonb("mismatch_reasons"),
+    reviewNote: text("review_note"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -374,6 +394,7 @@ export const scanEvents = pgTable(
     unique("scan_events_guid_idx").on(table.guid),
     index("scan_events_created_idx").on(table.createdAt),
     index("scan_events_tier_idx").on(table.tier),
+    index("scan_events_reviewed_idx").on(table.reviewedAt),
   ],
 );
 

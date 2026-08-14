@@ -177,6 +177,7 @@ function toScannedCard(row: {
   originalDistance?: number | null;
   originalScore?: number | null;
   wasCorrected?: boolean | null;
+  reviewVerdict?: string | null;
 }): ScannedCard {
   return {
     scanId: row.guid!,
@@ -200,6 +201,8 @@ function toScannedCard(row: {
     originalDistance: row.originalDistance ?? undefined,
     originalScore: row.originalScore ?? undefined,
     wasCorrected: row.wasCorrected ?? undefined,
+    reviewVerdict:
+      (row.reviewVerdict as ScannedCard["reviewVerdict"]) ?? undefined,
   };
 }
 
@@ -538,6 +541,7 @@ router.get("/:guid/cards", requireAuth, requireOrg, async (c) => {
           originalDistance: collectionCards.originalDistance,
           originalScore: collectionCards.originalScore,
           wasCorrected: collectionCards.wasCorrected,
+          reviewVerdict: collectionCards.reviewVerdict,
         })
         .from(collectionCards)
         .where(eq(collectionCards.collectionId, collection.id))
@@ -773,6 +777,11 @@ router.put("/:guid/cards/:scanId", requireAuth, requireOrg, async (c) => {
         updates.originalCardId = originalCardId ?? null;
         updates.originalDistance = originalDistance ?? null;
         updates.originalScore = originalScore ?? null;
+        // A scanner-screen correction is a human verdict too — stamp the
+        // card's review state so the reviewed badge and the review queue
+        // agree with the scan_events row recordCorrection writes.
+        updates.reviewedAt = new Date();
+        updates.reviewVerdict = "corrected";
       }
 
       await tx

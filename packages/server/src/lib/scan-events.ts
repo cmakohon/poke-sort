@@ -1,4 +1,8 @@
-import type { IdentifyResult } from "@poke-sort/shared";
+import type {
+  IdentifyResult,
+  MismatchReason,
+  ReviewVerdict,
+} from "@poke-sort/shared";
 import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { scanEvents } from "../db/schema";
@@ -75,6 +79,12 @@ export async function clearScanEventCapture(guid: string): Promise<void> {
  * Joins a human correction back to the diagnostics row: predicted-vs-actual,
  * the cheapest labelled eval data available. First correction wins, matching
  * the original_card_id provenance rule on collection_cards.
+ *
+ * A scanner-screen correction IS a human review, so it stamps the review
+ * state too (verdict "corrected", reason unknown). Otherwise the row would
+ * sit in the review queue as unreviewed, showing the wrong prediction as
+ * the pick — and a reflexive "confirm correct" there would erase the label
+ * this correction just created.
  */
 export async function recordCorrection(
   scanEventGuid: string,
@@ -82,6 +92,42 @@ export async function recordCorrection(
 ): Promise<void> {
   await db
     .update(scanEvents)
-    .set({ correctedCardId, correctedAt: new Date() })
+    .set({
+      correctedCardId,
+      correctedAt: new Date(),
+      reviewedAt: new Date(),
+      reviewVerdict: "corrected",
+    })
     .where(eq(scanEvents.guid, scanEventGuid));
+}
+
+/**
+ * The review screen's write path — deliberately last-write-wins, unlike
+ * recordCorrection's first-correction rule. A reviewer re-judging a row is
+ * the newest information about it, and the original prediction is safe in
+ * the candidates jsonb no matter how many times the verdict changes. A
+ * correct/unresolvable verdict clears corrected_card_id so a row never
+ * claims both "confirmed right" and "here is the true card".
+ */
+export async function recordReviewVerdict(params: {
+  scanEventGuid: string;
+  verdict: ReviewVerdict;
+  correctedCardId?: string;
+  mismatchReasons?: MismatchReason[];
+  note?: string;
+}): Promise<void> {
+  const corrected = params.verdict === "corrected";
+  await db
+    .update(scanEvents)
+    .set({
+      reviewedAt: new Date(),
+      reviewVerdict: params.verdict,
+      mismatchReasons: params.mismatchReasons?.length
+        ? params.mismatchReasons
+        : null,
+      reviewNote: params.note || null,
+      correctedCardId: corrected ? params.correctedCardId : null,
+      correctedAt: corrected ? new Date() : null,
+    })
+    .where(eq(scanEvents.guid, params.scanEventGuid));
 }

@@ -19,6 +19,7 @@ import {
   IconAlbum,
   IconCameraSpark,
   IconDatabaseCog,
+  IconEyeCheck,
   IconHeartRateMonitor,
   IconLayoutSidebarLeftCollapse,
   IconLayoutSidebarLeftExpand,
@@ -223,6 +224,12 @@ export function AppNav() {
       to: "/sorts",
       icon: <IconLayoutGrid size={20} />,
       label: t("nav.sorts"),
+      desktopOnly: true,
+    },
+    {
+      to: "/review",
+      icon: <IconEyeCheck size={20} />,
+      label: t("nav.review"),
       desktopOnly: true,
     },
     {

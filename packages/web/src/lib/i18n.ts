@@ -9,6 +9,7 @@ import collectionsDe from "@/locales/de/collections.json";
 import commonDe from "@/locales/de/common.json";
 import gamesDe from "@/locales/de/games.json";
 import notificationsDe from "@/locales/de/notifications.json";
+import reviewDe from "@/locales/de/review.json";
 import scannerDe from "@/locales/de/scanner.json";
 import settingsDe from "@/locales/de/settings.json";
 import adminEn from "@/locales/en/admin.json";
@@ -19,6 +20,7 @@ import collectionsEn from "@/locales/en/collections.json";
 import commonEn from "@/locales/en/common.json";
 import gamesEn from "@/locales/en/games.json";
 import notificationsEn from "@/locales/en/notifications.json";
+import reviewEn from "@/locales/en/review.json";
 import scannerEn from "@/locales/en/scanner.json";
 import settingsEn from "@/locales/en/settings.json";
 
@@ -42,6 +44,7 @@ const resources = {
     bins: binsEn,
     calibration: calibrationEn,
     cards: cardsEn,
+    review: reviewEn,
     notifications: notificationsEn,
     admin: adminEn,
     games: gamesEn,
@@ -54,6 +57,7 @@ const resources = {
     bins: binsDe,
     calibration: calibrationDe,
     cards: cardsDe,
+    review: reviewDe,
     notifications: notificationsDe,
     admin: adminDe,
     games: gamesDe,
