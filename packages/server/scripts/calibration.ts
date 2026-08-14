@@ -42,7 +42,8 @@ Set POKE_SORT_DATA_DIR to target a specific install, e.g.
 const FIELD_NOTES = {
   _README: [
     "Servo values are PCA9685 pulse counts (120-490), not degrees.",
-    "scanRegion values are fractions of the frame (0-1).",
+    "scanRegion coverage/offsets are fractions of the frame (0-1);",
+    "scanRegion rotation is degrees, clockwise, about the region's centre.",
     "Durations are milliseconds.",
     "Delete a section to leave it untouched on import.",
   ],

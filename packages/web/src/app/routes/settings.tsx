@@ -3,6 +3,7 @@ import { Label } from "@/components/ui/label";
 import { PrimaryColorPicker } from "@/components/primary-color-picker";
 import { ScannerLayoutToggle } from "@/components/scanner-layout-toggle";
 import { DiscordWebhookSettings } from "@/features/notifications/components/discord-webhook-settings";
+import { SUPPORTED_LANGUAGES } from "@/lib/i18n";
 import { useTranslation } from "react-i18next";
 
 export default function SettingsPage() {
@@ -31,15 +32,20 @@ export default function SettingsPage() {
           <p className="text-xs font-medium">{t("appearance.scannerLayout")}</p>
           <ScannerLayoutToggle />
         </div>
-        <div className="flex flex-col gap-1.5">
-          <Label
-            htmlFor="language-switcher"
-            className="text-xs font-medium w-fit"
-          >
-            {t("appearance.language")}
-          </Label>
-          <LanguageSwitcher />
-        </div>
+        {/* Hidden while English is the only locale: a picker with one entry
+            offers no choice. The row comes back on its own the moment a second
+            language is added to SUPPORTED_LANGUAGES. */}
+        {SUPPORTED_LANGUAGES.length > 1 && (
+          <div className="flex flex-col gap-1.5">
+            <Label
+              htmlFor="language-switcher"
+              className="text-xs font-medium w-fit"
+            >
+              {t("appearance.language")}
+            </Label>
+            <LanguageSwitcher />
+          </div>
+        )}
       </div>
       <div className="rounded-lg border p-4 flex flex-col gap-4">
         <h2 className="text-base font-semibold">

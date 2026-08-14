@@ -36,6 +36,13 @@ export const SERVO_PULSE_MAX = 490;
 export const SCAN_COVERAGE_MIN = 0.1;
 export const SCAN_COVERAGE_MAX = 1;
 export const SCAN_OFFSET_LIMIT = 0.45;
+/**
+ * Degrees either way. This corrects a camera mounted slightly off square, so
+ * the useful range is single digits; the limit is set well past that but short
+ * of the point where "rotated" would be better described as a different
+ * orientation — a 90° turn is the renderer's job, not the calibration's.
+ */
+export const SCAN_ROTATION_LIMIT = 45;
 
 export const DEFAULT_CALIBRATION: ServoCalibration = {
   bottomClosed: 400,

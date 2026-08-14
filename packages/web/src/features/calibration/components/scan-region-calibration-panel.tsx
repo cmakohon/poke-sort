@@ -9,10 +9,15 @@ import { useCameraContext } from "@/features/scanner/api/use-camera";
 import { getDefaultCardContour } from "@/features/scanner/lib/card-detection";
 import {
   DEFAULT_SCAN_REGION,
+  SCAN_ROTATION_LIMIT,
   type CardContour,
   type ScanRegion,
 } from "@poke-sort/shared";
-import { IconCameraSpark, IconRotate } from "@tabler/icons-react";
+import {
+  IconCameraSpark,
+  IconRotate,
+  IconRotateClockwise,
+} from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   useEffect,
@@ -27,6 +32,15 @@ function clampRegion(region: ScanRegion): ScanRegion {
     coverage: Math.min(1, Math.max(0.1, region.coverage)),
     offsetX: Math.min(0.45, Math.max(-0.45, region.offsetX)),
     offsetY: Math.min(0.45, Math.max(-0.45, region.offsetY)),
+    // Rounded to the tenth the database stores, so the number under the
+    // preview is the number that will be saved rather than a rendering of it.
+    rotation:
+      Math.round(
+        Math.min(
+          SCAN_ROTATION_LIMIT,
+          Math.max(-SCAN_ROTATION_LIMIT, region.rotation ?? 0),
+        ) * 10,
+      ) / 10,
   };
 }
 
@@ -38,6 +52,12 @@ function clampRegion(region: ScanRegion): ScanRegion {
 // fractions - getDefaultCardContour always runs against the unrotated
 // display canvas at capture time - so contour corners are re-projected into
 // portrait fractions here purely for drawing the box each render.
+//
+// Rotation is deliberately left out of the contour passed in and applied as a
+// CSS transform on the box instead. The 90° pre-rotation of the preview turns
+// every raw-frame angle by the same 90°, so the box's angle *relative to the
+// preview* is the stored rotation unchanged — and a CSS rotate turns the drag
+// handles with the box, which a re-derived bounding quad would not.
 function rawContourToPortraitBox(
   contour: CardContour,
   rawWidth: number,
@@ -77,6 +97,13 @@ type DragState =
       centerClientY: number;
       startDist: number;
       startCoverage: number;
+    }
+  | {
+      type: "rotate";
+      centerClientX: number;
+      centerClientY: number;
+      startPointerAngle: number;
+      startRotation: number;
     };
 
 export function ScanRegionCalibrationPanel() {
@@ -193,13 +220,34 @@ export function ScanRegionCalibrationPanel() {
 
   const box = videoSize
     ? rawContourToPortraitBox(
-        getDefaultCardContour(videoSize.width, videoSize.height, region),
+        getDefaultCardContour(videoSize.width, videoSize.height, {
+          ...region,
+          rotation: 0,
+        }),
         videoSize.width,
         videoSize.height,
       )
     : null;
 
   const dragStateRef = useRef<DragState | null>(null);
+
+  /**
+   * The box's centre in client coordinates.
+   *
+   * Both the resize and rotate drags measure from it, and neither can read it
+   * off the handle's own rect: the handles sit on a rotated element, so their
+   * position moves as the drag proceeds. The centre does not — rotation is
+   * about it, and resizing is symmetric around it.
+   */
+  const boxCenter = () => {
+    const frame = frameRef.current;
+    if (!frame || !box) return null;
+    const rect = frame.getBoundingClientRect();
+    return {
+      x: rect.left + (box.left + box.width / 2) * rect.width,
+      y: rect.top + (box.top + box.height / 2) * rect.height,
+    };
+  };
 
   const handleBoxPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -217,20 +265,29 @@ export function ScanRegionCalibrationPanel() {
     e.preventDefault();
     e.stopPropagation();
     e.currentTarget.setPointerCapture(e.pointerId);
-    const frame = frameRef.current;
-    if (!frame || !box) return;
-    const rect = frame.getBoundingClientRect();
-    const centerClientX = rect.left + (box.left + box.width / 2) * rect.width;
-    const centerClientY = rect.top + (box.top + box.height / 2) * rect.height;
+    const center = boxCenter();
+    if (!center) return;
     dragStateRef.current = {
       type: "resize",
-      centerClientX,
-      centerClientY,
-      startDist: Math.hypot(
-        e.clientX - centerClientX,
-        e.clientY - centerClientY,
-      ),
+      centerClientX: center.x,
+      centerClientY: center.y,
+      startDist: Math.hypot(e.clientX - center.x, e.clientY - center.y),
       startCoverage: regionRef.current.coverage,
+    };
+  };
+
+  const handleRotatePointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const center = boxCenter();
+    if (!center) return;
+    dragStateRef.current = {
+      type: "rotate",
+      centerClientX: center.x,
+      centerClientY: center.y,
+      startPointerAngle: Math.atan2(e.clientY - center.y, e.clientX - center.x),
+      startRotation: regionRef.current.rotation,
     };
   };
 
@@ -252,7 +309,7 @@ export function ScanRegionCalibrationPanel() {
           offsetY: drag.startOffsetY - dxFrac,
         }),
       );
-    } else {
+    } else if (drag.type === "resize") {
       const dist = Math.hypot(
         e.clientX - drag.centerClientX,
         e.clientY - drag.centerClientY,
@@ -265,12 +322,35 @@ export function ScanRegionCalibrationPanel() {
           }),
         );
       }
+    } else {
+      const pointerAngle = Math.atan2(
+        e.clientY - drag.centerClientY,
+        e.clientX - drag.centerClientX,
+      );
+      // The delta since the grab, not the pointer's absolute bearing: the
+      // handle is grabbed wherever the operator happened to click on it, and
+      // an absolute reading would snap the box to the cursor on contact.
+      const raw = ((pointerAngle - drag.startPointerAngle) * 180) / Math.PI;
+      // Folded into (-180, 180]. atan2 wraps at ±π, so a drag that crosses
+      // straight up reads as a 355° turn the other way without this.
+      const delta = ((((raw + 180) % 360) + 360) % 360) - 180;
+      setDraft(
+        clampRegion({
+          ...regionRef.current,
+          rotation: drag.startRotation + delta,
+        }),
+      );
     }
   };
 
   const handlePointerUp = () => {
     dragStateRef.current = null;
   };
+
+  const stepRotation = (delta: number) =>
+    setDraft(
+      clampRegion({ ...regionRef.current, rotation: region.rotation + delta }),
+    );
 
   const saveMutation = useMutation({
     mutationFn: (next: ScanRegion) => saveOrgSettings({ scanRegion: next }),
@@ -337,6 +417,7 @@ export function ScanRegionCalibrationPanel() {
                   top: `${box.top * 100}%`,
                   width: `${box.width * 100}%`,
                   height: `${box.height * 100}%`,
+                  transform: `rotate(${region.rotation}deg)`,
                 }}
                 onPointerDown={handleBoxPointerDown}
                 onPointerMove={handlePointerMove}
@@ -347,6 +428,16 @@ export function ScanRegionCalibrationPanel() {
                   className="absolute -right-2.5 -bottom-2.5 size-5 rounded-full bg-primary border-2 border-background cursor-nwse-resize touch-none"
                   onPointerDown={handleResizePointerDown}
                 />
+                <div
+                  className="absolute -top-2.5 left-1/2 -translate-x-1/2 size-5 rounded-full bg-primary border-2 border-background cursor-grab touch-none flex items-center justify-center"
+                  onPointerDown={handleRotatePointerDown}
+                  title={t("scanRegionCalibrationPanel.rotateHandle")}
+                >
+                  <IconRotateClockwise
+                    size={11}
+                    className="text-primary-foreground"
+                  />
+                </div>
               </div>
             )}
           </div>
@@ -357,6 +448,32 @@ export function ScanRegionCalibrationPanel() {
               </p>
             </div>
           )}
+        </div>
+
+        {/* Fine rotation, for the last fraction of a degree the drag handle
+            cannot hold steady. Saved with the region by the button below. */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => stepRotation(-0.5)}
+            aria-label={t("scanRegionCalibrationPanel.rotateLeft")}
+          >
+            −0.5°
+          </Button>
+          <span className="flex-1 text-center text-sm font-medium tabular-nums">
+            {t("scanRegionCalibrationPanel.degreeValue", {
+              value: region.rotation.toFixed(1),
+            })}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => stepRotation(0.5)}
+            aria-label={t("scanRegionCalibrationPanel.rotateRight")}
+          >
+            +0.5°
+          </Button>
         </div>
 
         <div className="flex items-center gap-2">
@@ -389,6 +506,7 @@ export function ScanRegionCalibrationPanel() {
               coverage: Math.round(savedRegion.coverage * 100),
               offsetX: Math.round(savedRegion.offsetX * 100),
               offsetY: Math.round(savedRegion.offsetY * 100),
+              rotation: (savedRegion.rotation ?? 0).toFixed(1),
             })}
           </p>
         )}

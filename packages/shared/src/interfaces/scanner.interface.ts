@@ -17,12 +17,20 @@ export interface ScanRegion {
   coverage: number; // 0-1
   offsetX: number; // -0.5 to 0.5
   offsetY: number; // -0.5 to 0.5
+  /**
+   * Degrees the capture window is turned about its own centre, clockwise in
+   * frame coordinates. A camera bolted a degree or two off square makes every
+   * card come out crooked, which no amount of moving or resizing an
+   * axis-aligned box can fix — so the box turns with it.
+   */
+  rotation: number;
 }
 
 export const DEFAULT_SCAN_REGION: ScanRegion = {
   coverage: 0.85,
   offsetX: 0,
   offsetY: 0,
+  rotation: 0,
 };
 
 export interface DetectionResult {

@@ -3,6 +3,7 @@ import {
   SCAN_COVERAGE_MAX,
   SCAN_COVERAGE_MIN,
   SCAN_OFFSET_LIMIT,
+  SCAN_ROTATION_LIMIT,
   SERVO_PULSE_MAX,
   SERVO_PULSE_MIN,
 } from "@poke-sort/shared";
@@ -26,13 +27,14 @@ import {
  * (catalog, embeddings, even collections) can be rebuilt from upstream or by
  * rescanning. This cannot, short of doing it again by hand.
  *
- * So it gets a file format: 29 numbers that survive a reinstall, a machine
+ * So it gets a file format: the numbers that survive a reinstall, a machine
  * move, or an experiment gone wrong.
  *
  * The shape deliberately mirrors the UI rather than the tables — pulse counts
- * per named servo, scan region as fractions — so a human filling one in from
- * another machine's calibration screen can see which field is which. The 1/100
- * integer storage of the scan region is a database detail and stays there.
+ * per named servo, scan region as fractions and whole degrees — so a human
+ * filling one in from another machine's calibration screen can see which field
+ * is which. The integer storage of the scan region (hundredths of a frame,
+ * tenths of a degree) is a database detail and stays there.
  */
 
 const servoPulse = z.number().int().min(SERVO_PULSE_MIN).max(SERVO_PULSE_MAX);
@@ -44,7 +46,18 @@ const durationMs = z.number().int().min(0).max(600_000);
 const coverage = z.number().min(SCAN_COVERAGE_MIN).max(SCAN_COVERAGE_MAX);
 /** Signed: the capture window moves either way from the centre of the frame. */
 const offset = z.number().min(-SCAN_OFFSET_LIMIT).max(SCAN_OFFSET_LIMIT);
+/** Signed degrees, clockwise, correcting a camera mounted off square. */
+const rotation = z.number().min(-SCAN_ROTATION_LIMIT).max(SCAN_ROTATION_LIMIT);
 
+/**
+ * Still version 1 after gaining `scanRegion.rotation`.
+ *
+ * It is optional, so every file written before it existed still imports — and
+ * bumping the version would have broken exactly those files, since the field
+ * is a literal, not a range. The cost is that a file written here fails
+ * `.strict()` on an older build; the alternative was orphaning the calibration
+ * files that already exist, which is the worse half of the trade.
+ */
 export const CALIBRATION_FORMAT_VERSION = 1;
 
 export const CalibrationDocumentSchema = z
@@ -80,7 +93,12 @@ export const CalibrationDocumentSchema = z
       .strict()
       .optional(),
     scanRegion: z
-      .object({ coverage, offsetX: offset, offsetY: offset })
+      .object({
+        coverage,
+        offsetX: offset,
+        offsetY: offset,
+        rotation: rotation.optional(),
+      })
       .strict()
       .nullable()
       .optional(),
@@ -177,6 +195,7 @@ async function buildDocument(
             coverage: settings.scanCoverage / 100,
             offsetX: settings.scanOffsetX / 100,
             offsetY: settings.scanOffsetY / 100,
+            rotation: (settings.scanRotation ?? 0) / 10,
           }
         : null,
     ...(settings?.captureSettleDelayMs != null
@@ -255,8 +274,17 @@ export async function importCalibration(
             scanCoverage: Math.round(doc.scanRegion.coverage * 100),
             scanOffsetX: Math.round(doc.scanRegion.offsetX * 100),
             scanOffsetY: Math.round(doc.scanRegion.offsetY * 100),
+            // A file predating rotation describes a square box, so absent
+            // means zero here — unlike a PUT, where absent means "unchanged".
+            // The document is the whole region, not a patch of one.
+            scanRotation: Math.round((doc.scanRegion.rotation ?? 0) * 10),
           }
-        : { scanCoverage: null, scanOffsetX: null, scanOffsetY: null };
+        : {
+            scanCoverage: null,
+            scanOffsetX: null,
+            scanOffsetY: null,
+            scanRotation: null,
+          };
 
       const existing = await tx.query.orgSettings.findFirst({
         where: eq(orgSettings.orgId, orgId),
