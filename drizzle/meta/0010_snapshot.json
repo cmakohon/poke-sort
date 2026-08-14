@@ -1,5 +1,5 @@
 {
-  "id": "8cbe2c38-9877-465e-8a01-e56de0acaa51",
+  "id": "e429dc85-b5a5-46a3-9710-81d0e5481795",
   "prevId": "45bf819d-4056-4408-82bd-4eae08368605",
   "version": "7",
   "dialect": "postgresql",
@@ -535,7 +535,23 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "collection_cards_scan_event_idx": {
+          "name": "collection_cards_scan_event_idx",
+          "columns": [
+            {
+              "expression": "scan_event_guid",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "collection_cards_collection_id_collections_id_fk": {
           "name": "collection_cards_collection_id_collections_id_fk",

@@ -79,6 +79,12 @@ export async function clearScanEventCapture(guid: string): Promise<void> {
  * Joins a human correction back to the diagnostics row: predicted-vs-actual,
  * the cheapest labelled eval data available. First correction wins, matching
  * the original_card_id provenance rule on collection_cards.
+ *
+ * A scanner-screen correction IS a human review, so it stamps the review
+ * state too (verdict "corrected", reason unknown). Otherwise the row would
+ * sit in the review queue as unreviewed, showing the wrong prediction as
+ * the pick — and a reflexive "confirm correct" there would erase the label
+ * this correction just created.
  */
 export async function recordCorrection(
   scanEventGuid: string,
@@ -86,7 +92,12 @@ export async function recordCorrection(
 ): Promise<void> {
   await db
     .update(scanEvents)
-    .set({ correctedCardId, correctedAt: new Date() })
+    .set({
+      correctedCardId,
+      correctedAt: new Date(),
+      reviewedAt: new Date(),
+      reviewVerdict: "corrected",
+    })
     .where(eq(scanEvents.guid, scanEventGuid));
 }
 

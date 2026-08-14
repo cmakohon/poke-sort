@@ -56,7 +56,7 @@
   "shortcuts": {
     "title": "Keyboard shortcuts",
     "confirm": "Confirm correct",
-    "pickAlternate": "Pick alternate 1–5",
+    "pickAlternate": "Pick an alternate match",
     "search": "Search catalog",
     "unresolvable": "Mark unresolvable",
     "skip": "Skip",

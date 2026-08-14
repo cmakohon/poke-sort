@@ -248,6 +248,10 @@ export const collectionCards = pgTable(
   },
   (table) => [
     unique("collection_cards_guid_idx").on(table.guid),
+    // The review screen resolves scan_event → collection card on every
+    // detail view and verdict; without this it seq-scans the collection
+    // on PGlite's main thread.
+    index("collection_cards_scan_event_idx").on(table.scanEventGuid),
   ],
 );
 

@@ -36,12 +36,6 @@ import { requireAuth, requireOrg, type AppEnv } from "../middleware/auth";
 const router = new Hono<AppEnv>();
 
 /** Worst-first: uncertain scans are where review effort pays most. */
-const TIER_RANK: Record<string, number> = {
-  review: 0,
-  "no-match": 1,
-  accept: 2,
-};
-
 const tierRank = sql<number>`case ${scanEvents.tier} when 'review' then 0 when 'no-match' then 1 else 2 end`;
 
 export interface ReviewCursor {
@@ -51,9 +45,19 @@ export interface ReviewCursor {
 }
 
 /**
+ * Postgres timestamptz text, e.g. "2026-08-14 05:30:00.123456+00".
+ * The cursor must carry the timestamp exactly as stored: a JS Date only
+ * keeps milliseconds, and a truncated microsecond value makes the strict
+ * keyset comparison re-include the page-boundary row on every page.
+ */
+const TIMESTAMPTZ_TEXT =
+  /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(\.\d{1,6})?([+-]\d{2}(:?\d{2})?|Z)?$/;
+
+/**
  * Keyset cursor, not offset: reviewed rows drop out of the default
  * unreviewed filter as the user works, which makes offsets skip items.
- * The triple mirrors the ORDER BY exactly.
+ * The triple mirrors the ORDER BY exactly, with rank and timestamp taken
+ * from the row the database returned — never recomputed on this side.
  */
 export function encodeReviewCursor(cursor: ReviewCursor): string {
   return Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url");
@@ -69,7 +73,7 @@ export function decodeReviewCursor(raw: string): ReviewCursor | null {
     if (
       typeof c.rank !== "number" ||
       typeof c.createdAt !== "string" ||
-      Number.isNaN(Date.parse(c.createdAt)) ||
+      !TIMESTAMPTZ_TEXT.test(c.createdAt) ||
       typeof c.id !== "number"
     ) {
       return null;
@@ -127,6 +131,10 @@ router.get("/queue", requireAuth, requireOrg, async (c) => {
   const rows = await db
     .select({
       id: scanEvents.id,
+      rank: tierRank,
+      // ::text keeps the full microsecond precision for the cursor; the
+      // Date object below is only for the client-facing ISO string.
+      createdAtText: sql<string>`${scanEvents.createdAt}::text`,
       guid: scanEvents.guid,
       tier: scanEvents.tier,
       gameKey: scanEvents.gameKey,
@@ -173,8 +181,8 @@ router.get("/queue", requireAuth, requireOrg, async (c) => {
   const nextCursor =
     hasMore && last
       ? encodeReviewCursor({
-          rank: TIER_RANK[last.tier] ?? 2,
-          createdAt: last.createdAt.toISOString(),
+          rank: Number(last.rank),
+          createdAt: last.createdAtText,
           id: last.id,
         })
       : null;
@@ -329,7 +337,7 @@ router.post("/:guid/verdict", requireAuth, requireOrg, async (c) => {
 
   const row = await db.query.scanEvents.findFirst({
     where: (t, { and, eq }) => and(eq(t.guid, guid), eq(t.orgId, orgId)),
-    columns: { guid: true, gameKey: true, candidates: true },
+    columns: { guid: true, gameKey: true, candidates: true, correctedCardId: true },
   });
   if (!row) {
     return c.json({ success: false, message: "Scan event not found." }, 404);
@@ -388,19 +396,31 @@ router.post("/:guid/verdict", requireAuth, requireOrg, async (c) => {
   // does not drift from the reviewed truth. Missing card is normal (no
   // collection active at scan time, card deleted since). bin_number is left
   // alone on purpose: it records where the card physically went.
+  //
+  // hadCorrection means a prior correction may have been propagated; a
+  // verdict that leaves the corrected state must also unwind the card, or
+  // the collection would keep the retracted answer forever.
+  const hadCorrection = row.correctedCardId != null;
   let propagated = false;
   try {
-    const existing = await db.query.collectionCards.findFirst({
-      where: (t, { and, eq }) =>
-        and(eq(t.scanEventGuid, guid), eq(t.orgId, orgId)),
-      columns: {
-        id: true,
-        cardId: true,
-        card: true,
-        wasCorrected: true,
-        scanScore: true,
-      },
-    });
+    // An unresolvable verdict on a never-corrected row touches nothing —
+    // skip the lookup entirely rather than scan for a card only to ignore it.
+    const needsLookup = verdict !== "unresolvable" || hadCorrection;
+    const existing = needsLookup
+      ? await db.query.collectionCards.findFirst({
+          where: (t, { and, eq }) =>
+            and(eq(t.scanEventGuid, guid), eq(t.orgId, orgId)),
+          columns: {
+            id: true,
+            cardId: true,
+            card: true,
+            wasCorrected: true,
+            scanScore: true,
+            originalCardId: true,
+            originalDistance: true,
+          },
+        })
+      : undefined;
     if (existing && verdict === "corrected" && truthCard) {
       const updates: Partial<typeof collectionCards.$inferInsert> = {
         card: { ...truthCard, distance: 0 },
@@ -423,12 +443,44 @@ router.post("/:guid/verdict", requireAuth, requireOrg, async (c) => {
         .set(updates)
         .where(eq(collectionCards.id, existing.id));
       propagated = true;
-    } else if (existing && verdict === "correct") {
-      await db
-        .update(collectionCards)
-        .set({ needsReview: false })
-        .where(eq(collectionCards.id, existing.id));
-      propagated = true;
+    } else if (existing && verdict !== "corrected") {
+      const updates: Partial<typeof collectionCards.$inferInsert> = {};
+      if (verdict === "correct") updates.needsReview = false;
+      // Leaving the corrected state: restore the pipeline's original pick
+      // and clear the provenance the correction wrote, so card and verdict
+      // tell the same story again. Unresolvable puts the card back under
+      // review — its identity is explicitly unknown now.
+      if (hadCorrection && existing.wasCorrected && existing.originalCardId) {
+        const resolved = await resolveAdapterForGame(row.gameKey);
+        const original = resolved
+          ? await resolved.adapter
+              .searchById(existing.originalCardId, resolved.baseUrl)
+              .catch(() => null)
+          : null;
+        if (original?.success && original.data) {
+          updates.card = {
+            ...original.data,
+            distance: existing.originalDistance ?? 0,
+          };
+          updates.cardId = existing.originalCardId;
+          updates.wasCorrected = false;
+          updates.originalCardId = null;
+          updates.originalDistance = null;
+          updates.originalScore = null;
+          if (verdict === "unresolvable") updates.needsReview = true;
+        } else {
+          console.warn(
+            `[review] could not rehydrate original card ${existing.originalCardId}; leaving collection card as-is`,
+          );
+        }
+      }
+      if (Object.keys(updates).length > 0) {
+        await db
+          .update(collectionCards)
+          .set(updates)
+          .where(eq(collectionCards.id, existing.id));
+        propagated = true;
+      }
     }
   } catch (err) {
     console.error("[review] collection card propagation failed:", err);

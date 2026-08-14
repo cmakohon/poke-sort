@@ -52,12 +52,13 @@ export function ReviewScreen() {
   );
 
   // A no-match scan has no accepted prediction: everything it saw becomes a
-  // numbered alternate and there is nothing for Space to confirm.
+  // numbered alternate (all six the server hydrated) and there is nothing
+  // for Space to confirm.
   const isNoMatch = current?.tier === "no-match";
   const predicted = !isNoMatch ? (detail?.candidates[0] ?? null) : null;
   const alternates = detail
     ? isNoMatch
-      ? detail.candidates.slice(0, 5)
+      ? detail.candidates.slice(0, 6)
       : detail.candidates.slice(1, 6)
     : [];
   const hasPrediction = predicted != null;
@@ -68,15 +69,29 @@ export function ReviewScreen() {
     );
   }, [index, items, prefetchDetails]);
 
+  // Depend on the individual fields, not the `queue` object (a new identity
+  // every render), and stop on a fetch error — otherwise a transient 500
+  // near the end of the list becomes an unbounded retry loop against the
+  // single-threaded PGlite server.
+  const { hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage } =
+    queue;
   useEffect(() => {
     if (
-      queue.hasNextPage &&
-      !queue.isFetchingNextPage &&
+      hasNextPage &&
+      !isFetchingNextPage &&
+      !isFetchNextPageError &&
       index >= items.length - PAGE_AHEAD
     ) {
-      void queue.fetchNextPage();
+      void fetchNextPage();
     }
-  }, [index, items.length, queue]);
+  }, [
+    index,
+    items.length,
+    hasNextPage,
+    isFetchingNextPage,
+    isFetchNextPageError,
+    fetchNextPage,
+  ]);
 
   const goTo = (next: number) => {
     setIndex(Math.max(0, Math.min(next, items.length)));
@@ -142,7 +157,7 @@ export function ReviewScreen() {
           dispatch({ type: "CONFIRM_CORRECT" });
           return true;
         }
-        if (/^[1-5]$/.test(e.key)) {
+        if (/^[1-9]$/.test(e.key)) {
           const alt = alternates[Number(e.key) - 1];
           if (alt) {
             dispatch({
@@ -281,7 +296,10 @@ export function ReviewScreen() {
               />
             )}
           </div>
-          <FooterHints hasPrediction={hasPrediction} />
+          <FooterHints
+            hasPrediction={hasPrediction}
+            altCount={alternates.length}
+          />
         </div>
       )}
 
@@ -328,13 +346,26 @@ export function ReviewScreen() {
   );
 }
 
-function FooterHints({ hasPrediction }: { hasPrediction: boolean }) {
+function FooterHints({
+  hasPrediction,
+  altCount,
+}: {
+  hasPrediction: boolean;
+  altCount: number;
+}) {
   const { t } = useTranslation("review");
   const hints: Array<[string, string]> = [
     ...(hasPrediction
       ? [["Space", t("shortcuts.confirm")] as [string, string]]
       : []),
-    ["1–5", t("shortcuts.pickAlternate")],
+    ...(altCount > 0
+      ? [
+          [
+            altCount === 1 ? "1" : `1–${altCount}`,
+            t("shortcuts.pickAlternate"),
+          ] as [string, string],
+        ]
+      : []),
     ["S", t("shortcuts.search")],
     ["X", t("shortcuts.unresolvable")],
     ["J / K", t("shortcuts.skip")],
@@ -358,7 +389,7 @@ function ShortcutHelp({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation("review");
   const rows: Array<[string, string]> = [
     ["Space / Enter", t("shortcuts.confirm")],
-    ["1–5", t("shortcuts.pickAlternate")],
+    ["1–6", t("shortcuts.pickAlternate")],
     ["S or /", t("shortcuts.search")],
     ["X", t("shortcuts.unresolvable")],
     ["J / →", t("shortcuts.skipForward")],
