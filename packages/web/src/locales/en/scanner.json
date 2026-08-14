@@ -76,11 +76,13 @@
     },
     "saveSessionFailed": {
       "title": "Could not save the scan session",
-      "description": "The cards are still staged — try again."
+      "description": "{{reason}} Your scanned cards are still staged, so nothing was lost.",
+      "noReason": "The server did not say why."
     },
     "discardSessionFailed": {
       "title": "Could not discard the scan session",
-      "description": "The cards are still staged — try again."
+      "description": "{{reason}} The cards are still staged.",
+      "noReason": "The server did not say why."
     },
     "sessionClosedMidScan": {
       "title": "This scan session was already closed",
