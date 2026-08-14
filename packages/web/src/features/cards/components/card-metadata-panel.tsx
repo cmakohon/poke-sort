@@ -129,7 +129,11 @@ export function CardMetadataPanel({
         {t("metadata.title")}
       </p>
 
-      <div className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] gap-x-4 gap-y-1 text-xs">
+      {/* Label/value pairs flow into 2 and then 3 columns as the panel widens.
+          At one column the list ran to twenty-odd rows against a mostly empty
+          right half. `contents` rows make each pair two grid cells, so the
+          pairs stay glued together as the column count changes. */}
+      <div className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] @2xl:grid-cols-[repeat(2,minmax(0,auto)_minmax(0,1fr))] @5xl:grid-cols-[repeat(3,minmax(0,auto)_minmax(0,1fr))] gap-x-4 gap-y-1 text-xs">
         {primaryRows.map((row) => (
           <MetadataRow key={row.label} {...row} emptyLabel={t("metadata.empty")} />
         ))}
@@ -186,7 +190,7 @@ export function CardMetadataPanel({
             {t("metadata.showDuplicates", { count: duplicateRows.length })}
           </button>
           {showDuplicates && (
-            <div className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] gap-x-4 gap-y-1 text-xs">
+            <div className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] @2xl:grid-cols-[repeat(2,minmax(0,auto)_minmax(0,1fr))] @5xl:grid-cols-[repeat(3,minmax(0,auto)_minmax(0,1fr))] gap-x-4 gap-y-1 text-xs">
               {duplicateRows.map((row) => (
                 <MetadataRow
                   key={row.label}

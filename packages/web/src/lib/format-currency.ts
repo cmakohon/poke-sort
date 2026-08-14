@@ -30,7 +30,3 @@ export function formatMoney(value: number, currency = "USD"): string {
 export function formatUsd(value: number): string {
   return formatMoney(value, "USD");
 }
-
-export function formatEur(value: number): string {
-  return formatMoney(value, "EUR");
-}

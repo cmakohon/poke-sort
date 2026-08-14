@@ -169,6 +169,7 @@ export function CardDetailPanel({
 
   const cardName = selectedCard?.name ?? t("cardDetailPanel.cardDetailsFallback");
   const typeLine = selectedCard?.typeLine ?? "";
+  const cardNumber = selectedCard ? formatCardNumber(selectedCard) : "";
 
   return (
     <div className="flex h-full">
@@ -204,21 +205,25 @@ export function CardDetailPanel({
         </ButtonGroup>
       </div>
       <div className="flex-1 flex flex-col min-w-0 border-l">
-        <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-2xl border-b p-2 flex items-start justify-between gap-2">
+        <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-2xl border-b px-4 py-3 flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline gap-2">
-              <h2 className="font-semibold text-base truncate">{cardName}</h2>
+              <h2 className="font-semibold font-heading text-2xl truncate">
+                {cardName}
+              </h2>
               {total != null && currentIndex != null && (
                 <span className="text-xs text-muted-foreground shrink-0">
                   {currentIndex + 1} / {total}
                 </span>
               )}
             </div>
-            {typeLine && (
-              <p className="text-sm text-muted-foreground truncate">
-                {typeLine}
-              </p>
-            )}
+            {/* The set is what identifies a printing, so it belongs in the
+                header rather than buried in a meta line halfway down. */}
+            <p className="text-sm text-muted-foreground truncate">
+              {[selectedCard?.setName, cardNumber, typeLine]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
           </div>
         </div>
         {/* Its own @container: the columns below should respond to the width
@@ -337,6 +342,8 @@ export function CardDetailPanel({
                         {selectedCard.hp} HP
                       </p>
                     )}
+                    {/* Set and number moved to the header; only the rarity is
+                        left, and it needs its colour swatch to mean anything. */}
                     <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                       <div
                         className="size-2 rounded-full shrink-0"
@@ -345,26 +352,7 @@ export function CardDetailPanel({
                         }}
                       />
                       <span className="capitalize">{selectedCard.rarity}</span>
-                      <span>·</span>
-                      <span>
-                        {[selectedCard.setName, formatCardNumber(selectedCard)]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </span>
                     </div>
-                    {binNumber != null && (
-                      <div className="flex flex-col gap-1.5">
-                        <p className="text-xs font-medium text-muted-foreground">
-                          {t("cardDetailPanel.binLocation")}
-                        </p>
-                        <div className="w-48 rounded-lg border">
-                          <BinLocationDiagram
-                            binNumber={binNumber}
-                            inverted={false}
-                          />
-                        </div>
-                      </div>
-                    )}
                     {selectedCard.artist && (
                       <p className="text-xs text-muted-foreground">
                         {t("cardDetailPanel.artBy", { artist: selectedCard.artist })}
@@ -402,6 +390,19 @@ export function CardDetailPanel({
                   fieldDefinitions={fieldDefinitions}
                   duplicateFields={FIELDS_SHOWN_IN_DETAIL}
                 />
+              )}
+              {/* Last: where the card physically went is a fact about one past
+                  sorting run, not about the card, so it should not sit above
+                  the card's own data. */}
+              {binNumber != null && (
+                <div className="flex flex-col gap-1.5 pt-2 border-t">
+                  <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+                    {t("cardDetailPanel.binLocation")}
+                  </p>
+                  <div className="w-48 rounded-lg border">
+                    <BinLocationDiagram binNumber={binNumber} inverted={false} />
+                  </div>
+                </div>
               )}
               <Label className="flex items-center gap-2 w-fit">
                 <Switch

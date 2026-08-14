@@ -35,6 +35,7 @@ const XY1_126: CardPricing = {
       midPrice: 0.25,
       highPrice: 17.34,
       marketPrice: 0.22,
+      directLowPrice: 0.12,
     },
     "reverse-holofoil": {
       productId: 89095,
@@ -122,11 +123,24 @@ describe("CardPricingPanel", () => {
     );
   });
 
-  it("falls back to the base cardmarket figures when the holo ones are null", () => {
+  it("headlines a holo-only card in USD", () => {
     render(<CardPricingPanel card={card({ pricing: BASE1_4, price: 845.87 })} />);
     expect(screen.getByText("$845.87")).toBeDefined();
-    // trend-holo is null on this card, so the base trend must show instead.
-    expect(screen.getByText(/Trend/)).toBeDefined();
+  });
+
+  // Cardmarket quotes EUR and there is no rate to convert with, so nothing
+  // here may render in another currency.
+  it("shows no currency other than USD", () => {
+    const { container } = render(
+      <CardPricingPanel card={card({ pricing: BASE1_4 })} />,
+    );
+    expect(container.textContent).not.toMatch(/[€£]/);
+  });
+
+  it("shows the direct-low price, the one you can actually buy at", () => {
+    render(<CardPricingPanel card={card()} />);
+    expect(screen.getByText("Direct low")).toBeDefined();
+    expect(screen.getByText("$0.12")).toBeDefined();
   });
 
   it("omits the other-printings block when there is only one", () => {
@@ -137,8 +151,20 @@ describe("CardPricingPanel", () => {
   // sv1-1, sv3pt5-6 and pgo-6 genuinely have no pricing key at all.
   it("keeps its shape when the card has no pricing", () => {
     render(<CardPricingPanel card={card({ pricing: undefined, raw: {} })} />);
-    expect(screen.getByText("No pricing data for this card")).toBeDefined();
+    expect(screen.getByText("No USD pricing for this card")).toBeDefined();
     expect(screen.queryByRole("link")).toBeNull();
+  });
+
+  // A few cards carry only Cardmarket's euro figures. Showing one beside the
+  // dollar prices everywhere else would invite reading it as dollars, and
+  // there is no exchange rate here to convert it with.
+  it("declines to headline a euro price when there is no USD one", () => {
+    const eurOnly: CardPricing = { cardmarket: { unit: "EUR", avg: 12.5 } };
+    const { container } = render(
+      <CardPricingPanel card={card({ pricing: eurOnly })} />,
+    );
+    expect(screen.getByText("No USD pricing for this card")).toBeDefined();
+    expect(container.textContent).not.toMatch(/12[.,]5/);
   });
 
   it("reads pricing off raw for cards saved before the field existed", () => {

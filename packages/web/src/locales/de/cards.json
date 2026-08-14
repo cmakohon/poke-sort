@@ -173,7 +173,7 @@
     "low": "Niedrig",
     "mid": "Mittel",
     "high": "Hoch",
-    "unavailable": "Keine Preisdaten für diese Karte",
+    "unavailable": "Keine USD-Preisdaten für diese Karte",
     "otherPrintings": "Weitere Druckvarianten",
     "printing": {
       "normal": "Normal",
@@ -182,9 +182,7 @@
     },
     "detected": "erkannt",
     "asOf": "Stand {{date}}",
-    "cardmarket": "Cardmarket",
-    "trend": "Trend {{value}}",
-    "avg30": "30-Tage-Ø {{value}}",
-    "viewOnTcgplayer": "Bei TCGplayer ansehen"
+    "viewOnTcgplayer": "Bei TCGplayer ansehen",
+    "directLow": "Direct-Tief"
   }
 }

@@ -44,8 +44,6 @@ export function CardPricingPanel({ card, className }: CardPricingPanelProps) {
 
   const tcg = pricing?.tcgplayer;
   const usd = tcg?.unit ?? "USD";
-  const market = pricing?.cardmarket;
-  const eur = market?.unit ?? "EUR";
 
   const printingName = (key: TcgPlayerPrintingKey) => t(`pricing.printing.${key}`);
 
@@ -73,28 +71,21 @@ export function CardPricingPanel({ card, className }: CardPricingPanelProps) {
     </div>
   );
 
-  // Plenty of cards carry no pricing at all. Keep the box so the surrounding
-  // three-column layout does not reflow when you page between cards.
-  if (!pricing || (!resolved && market?.avg == null)) {
+  // Plenty of cards carry no TCGplayer pricing. A handful carry only
+  // Cardmarket's, which is quoted in euros — deliberately not shown, because
+  // there is no exchange rate here to convert it with and a euro figure beside
+  // dollar ones invites being read as dollars. Keep the box either way so the
+  // three-column layout does not reflow when paging between cards.
+  if (!pricing || !resolved) {
     return shell(
       <p className="text-xs text-muted-foreground">{t("pricing.unavailable")}</p>,
     );
   }
 
-  const selected = resolved ? tcg?.[resolved.key] : undefined;
-  // Some cards are priced by CardMarket only; headline that rather than nothing.
-  const headlineValue = resolved ? selected?.marketPrice : market?.avg;
-  const headlineCurrency = resolved ? usd : eur;
+  const selected = tcg?.[resolved.key];
+  const headlineValue = selected?.marketPrice;
 
   const others = printings.filter((p) => p.key !== resolved?.key);
-
-  // The -holo fields are the right ones for a holo printing, but they are null
-  // on plenty of cards, so fall back to the base figures rather than showing
-  // nothing.
-  const isHolo =
-    resolved?.key === "holofoil" || resolved?.key === "reverse-holofoil";
-  const trend = (isHolo ? market?.["trend-holo"] : null) ?? market?.trend;
-  const avg30 = (isHolo ? market?.["avg30-holo"] : null) ?? market?.avg30;
 
   const productId =
     selected?.productId ?? printings.find((p) => p.price.productId)?.price.productId;
@@ -106,23 +97,24 @@ export function CardPricingPanel({ card, className }: CardPricingPanelProps) {
     <>
       <div className="flex items-baseline gap-2 flex-wrap">
         <span className="text-2xl font-semibold tabular-nums">
-          {money(headlineValue, headlineCurrency)}
+          {money(headlineValue, usd)}
         </span>
-        {resolved && (
-          <span className="text-xs text-muted-foreground">
-            {printingName(resolved.key)}
-            {resolved.detected && ` · ${t("pricing.detected")}`}
-          </span>
-        )}
+        <span className="text-xs text-muted-foreground">
+          {printingName(resolved.key)}
+          {resolved.detected && ` · ${t("pricing.detected")}`}
+        </span>
       </div>
 
       {selected && (
-        <div className="grid grid-cols-3 gap-2 text-xs tabular-nums">
+        <div className="grid grid-cols-2 gap-2 text-xs tabular-nums">
           {(
             [
               ["pricing.low", selected.lowPrice],
               ["pricing.mid", selected.midPrice],
               ["pricing.high", selected.highPrice],
+              // TCGplayer Direct: the cheapest copy you can actually buy right
+              // now, which is the number that matters when deciding to sell.
+              ["pricing.directLow", selected.directLowPrice],
             ] as const
           ).map(([key, value]) => (
             <div key={key} className="flex flex-col gap-0.5">
@@ -154,17 +146,6 @@ export function CardPricingPanel({ card, className }: CardPricingPanelProps) {
       {updated && (
         <p className="text-xs text-muted-foreground">
           {t("pricing.asOf", { date: updated })}
-        </p>
-      )}
-
-      {(trend != null || avg30 != null) && (
-        <p
-          className="text-xs text-muted-foreground"
-          title={asOf(market?.updated) ?? undefined}
-        >
-          {t("pricing.cardmarket")}
-          {trend != null && ` · ${t("pricing.trend", { value: money(trend, eur) })}`}
-          {avg30 != null && ` · ${t("pricing.avg30", { value: money(avg30, eur) })}`}
         </p>
       )}
 
