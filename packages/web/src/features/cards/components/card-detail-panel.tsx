@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { BinLocationDiagram } from "@/features/bins/components/bin-location-diagram";
 import { CardMetadataPanel } from "@/features/cards/components/card-metadata-panel";
 import { CardSearchPicker } from "@/features/cards/components/card-search-picker";
+import { ZoomableCardImage } from "@/features/cards/components/zoomable-card-image";
 import { cn } from "@/lib/utils";
 import type {
   FieldMeta,
@@ -145,6 +146,13 @@ export function CardDetailPanel({
   useEffect(() => {
     if (editing) return;
     const handler = (e: KeyboardEvent) => {
+      // These are document-level, so an open dialog would otherwise get its
+      // Escape twice: once closing the enlarged image, once closing the panel
+      // behind it. Arrows are just as wrong there — they would page to another
+      // card while its image is still on screen.
+      if (document.querySelector('[data-slot="dialog-content"][data-open]')) {
+        return;
+      }
       if (e.key === "ArrowLeft" && hasPrev) onPrev?.();
       if (e.key === "ArrowRight" && hasNext) onNext?.();
       if (e.key === "Escape") onClose();
@@ -321,32 +329,31 @@ export function CardDetailPanel({
               <div className="flex flex-col @2xl:flex-row @2xl:flex-wrap gap-6 items-start">
                 {!showCandidateStrip && (
                   <div className="shrink-0 flex flex-col gap-3 items-center">
-                    <div className="w-44 aspect-[2.5/3.5] rounded-lg overflow-hidden border shadow-sm">
-                      <img
-                        src={selectedCard?.image?.normal || ""}
-                        alt={selectedCard?.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
+                    <ZoomableCardImage
+                      src={selectedCard?.image?.normal || ""}
+                      alt={selectedCard?.name ?? cardName}
+                      className="w-44 aspect-[2.5/3.5] shadow-sm"
+                    />
                     {capturedImageUrl && (
                       <>
                         <p className="text-xs text-muted-foreground">
                           {t("cardDetailPanel.capturedScan")}
                         </p>
-                        <div className="w-44 aspect-[2.5/3.5] rounded-lg overflow-hidden border">
-                          <img
-                            src={capturedImageUrl}
-                            alt={t("cardDetailPanel.scannedAlt")}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
+                        <ZoomableCardImage
+                          src={capturedImageUrl}
+                          alt={t("cardDetailPanel.scannedAlt")}
+                          className="w-44 aspect-[2.5/3.5]"
+                        />
                       </>
                     )}
                   </div>
                 )}
 
                 {selectedCard && (
-                  <div className="flex flex-col gap-3 min-w-0 flex-1 @2xl:basis-[22rem]">
+                  // Its own @container so the sorting table below measures this
+                  // column rather than the whole panel, and picks a column count
+                  // that actually fits.
+                  <div className="flex flex-col gap-3 min-w-0 flex-1 @2xl:basis-[22rem] @container">
                     {selectedCard.text && (
                       <p className="text-sm whitespace-pre-line leading-relaxed">
                         {selectedCard.text}
@@ -384,6 +391,18 @@ export function CardDetailPanel({
                         <IconExternalLink className="h-3.5 w-3.5" />
                       </a>
                     )}
+                    {/* Stacked under the card's own facts rather than banished
+                        below the row: the card info alone left this column a
+                        third as tall as the two beside it. */}
+                    <CardMetadataPanel
+                      card={selectedCard}
+                      assignedBin={binNumber}
+                      needsReview={needsReview}
+                      scanScore={scanScore}
+                      scanMargin={scanMargin}
+                      fieldDefinitions={fieldDefinitions}
+                      duplicateFields={FIELDS_SHOWN_IN_DETAIL}
+                    />
                   </div>
                 )}
                 {selectedCard && (
@@ -393,19 +412,6 @@ export function CardDetailPanel({
                   />
                 )}
               </div>
-              {/* Outside the row on purpose: the sorting table is wide, and
-                  squeezing it into the details column wrapped every value. */}
-              {selectedCard && (
-                <CardMetadataPanel
-                  card={selectedCard}
-                  assignedBin={binNumber}
-                  needsReview={needsReview}
-                  scanScore={scanScore}
-                  scanMargin={scanMargin}
-                  fieldDefinitions={fieldDefinitions}
-                  duplicateFields={FIELDS_SHOWN_IN_DETAIL}
-                />
-              )}
               {/* Last: where the card physically went is a fact about one past
                   sorting run, not about the card, so it should not sit above
                   the card's own data. */}

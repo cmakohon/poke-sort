@@ -20,7 +20,8 @@
     "cancel": "Abbrechen",
     "binLocation": "Fachposition",
     "artBy": "Illustration von {{artist}}",
-    "viewSource": "Quelle ansehen"
+    "viewSource": "Quelle ansehen",
+    "enlargeImage": "{{name}} vergrößern"
   },
   "cardFilterPopover": {
     "type": "Typ",

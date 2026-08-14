@@ -20,7 +20,8 @@
     "cancel": "Cancel",
     "binLocation": "Bin location",
     "artBy": "Art by {{artist}}",
-    "viewSource": "View source"
+    "viewSource": "View source",
+    "enlargeImage": "Enlarge {{name}}"
   },
   "cardFilterPopover": {
     "type": "Type",
