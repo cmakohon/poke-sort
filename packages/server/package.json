@@ -15,7 +15,8 @@
     "eval:capture": "POKE_SORT_DATA_DIR=${POKE_SORT_DATA_DIR:-./.poke-sort-catalog} POKE_SORT_MODEL_DIR=${POKE_SORT_MODEL_DIR:-../../.models} tsx eval/capture-signals.ts",
     "eval:tune": "tsx eval/tune.ts",
     "test": "vitest run --exclude '**/accuracy.test.ts'",
-    "eval:hnsw": "POKE_SORT_DATA_DIR=${POKE_SORT_DATA_DIR:-./.poke-sort-catalog} POKE_SORT_MODEL_DIR=${POKE_SORT_MODEL_DIR:-../../.models} tsx eval/hnsw-recall.ts"
+    "eval:hnsw": "POKE_SORT_DATA_DIR=${POKE_SORT_DATA_DIR:-./.poke-sort-catalog} POKE_SORT_MODEL_DIR=${POKE_SORT_MODEL_DIR:-../../.models} tsx eval/hnsw-recall.ts",
+    "db:status": "tsx scripts/db-status.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "0.5.4",

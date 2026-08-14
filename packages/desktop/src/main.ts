@@ -4,6 +4,7 @@ import {
   app,
   BrowserWindow,
   ipcMain,
+  shell,
   utilityProcess,
   type UtilityProcess,
 } from "electron";
@@ -255,6 +256,23 @@ let allowedOrigin: string | null = null;
  * so `select-serial-port` never fired and requestPort() rejected with "No port
  * selected by the user" even with the Arduino plugged in and visible to macOS.
  */
+/**
+ * Whether a URL is safe to hand to the OS.
+ *
+ * openExternal launches whatever program is registered for the scheme, so the
+ * scheme is the whole security boundary: `file:` opens a file manager, and a
+ * custom scheme opens whatever claimed it. Restricting to the two web schemes
+ * means the worst a crafted link can do is open a browser tab.
+ */
+function isSafeExternalUrl(candidate: string): boolean {
+  try {
+    const { protocol } = new URL(candidate);
+    return protocol === "https:" || protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
 function isAllowedOrigin(candidate: string | undefined | null): boolean {
   if (!candidate || allowedOrigin === null) return false;
   try {
@@ -457,6 +475,20 @@ async function createWindow(): Promise<void> {
     mainWindow = null;
   });
 
+  // Every link the app renders points somewhere on the web — a card on
+  // TCGdex, a product on TCGplayer, the Discord docs. Electron's default for
+  // target="_blank" is a second BrowserWindow with no address bar, no back
+  // button and no way to bookmark or share what it is showing.
+  //
+  // NOT inside the permissionsWired guard below: that guard exists because
+  // wireSerialPermissions attaches session-level listeners that would stack.
+  // This one is per-webContents, and `closed` nulls mainWindow, so a reopened
+  // window needs its own or it goes back to spawning popups.
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (isSafeExternalUrl(url)) void shell.openExternal(url);
+    return { action: "deny" };
+  });
+
   // Paint before waiting on the server, so the app appears immediately.
   await win.loadURL(SPLASH);
   win.show();
@@ -478,6 +510,18 @@ async function createWindow(): Promise<void> {
   // served from — a mismatch here is the silent-failure mode. Updated on every
   // window because the server's port is ephemeral and changes across restarts.
   allowedOrigin = new URL(appUrl).origin;
+
+  // The same-window counterpart: a plain <a href> with no target replaces the
+  // app itself, stranding the user with no way back. Attached only now that
+  // allowedOrigin is set, so the splash data: URL and a stale origin from a
+  // previous window cannot be measured against the wrong value. SPA routing
+  // and HMR are same-origin and pass straight through; loadURL below does not
+  // fire this event.
+  win.webContents.on("will-navigate", (event, url) => {
+    if (isAllowedOrigin(url)) return;
+    event.preventDefault();
+    if (isSafeExternalUrl(url)) void shell.openExternal(url);
+  });
 
   // Wired once: these are session-level listeners and would otherwise stack up
   // each time the window was closed and reopened.

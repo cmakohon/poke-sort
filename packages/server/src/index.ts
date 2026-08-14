@@ -5,7 +5,7 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { DATA_DIR, HOST, PORT, SHUTDOWN_TIMEOUT_MS, STATIC_DIR } from "./config";
-import { client } from "./db";
+import { client, dataDirLock } from "./db";
 import { migrateDatabase } from "./db/migrate";
 import { seedDatabase } from "./db/seed";
 import { pruneObservability } from "./lib/retention";
@@ -177,6 +177,9 @@ function installShutdownHandlers(server: { close(cb?: (err?: Error) => void): vo
       rmSync(PORT_FILE, { force: true });
       await new Promise<void>((resolve) => server.close(() => resolve()));
       await client.close();
+      // After the close, so the directory is never advertised as free while
+      // this process still has it open.
+      dataDirLock.release();
       console.log("[server] Database closed cleanly.");
       clearTimeout(forceExit);
       process.exit(0);

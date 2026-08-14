@@ -8,7 +8,6 @@
     "multipleMatches": "Mehrere ähnliche Treffer - wähle die richtige Version aus:",
     "cardDetailsFallback": "Kartendetails",
     "capturedScan": "Aufgenommener Scan",
-    "foil": "Foil",
     "correctCard": "Karte korrigieren",
     "remove": "Entfernen",
     "searchForCorrectVersion": "Deine gescannte Karte - suche unten nach der richtigen Version",
@@ -20,7 +19,9 @@
     "cancel": "Abbrechen",
     "binLocation": "Fachposition",
     "artBy": "Illustration von {{artist}}",
-    "viewSource": "Quelle ansehen"
+    "viewSource": "Quelle ansehen",
+    "enlargeImage": "{{name}} vergrößern",
+    "reverseHolo": "Reverse Holo"
   },
   "cardFilterPopover": {
     "type": "Typ",
@@ -143,7 +144,8 @@
     "sentToBin": "beim Scan in Fach {{bin}}",
     "rawData": "Rohdaten der Karte",
     "heldForReview": "Zur Prüfung zurückgehalten: Der Scanner war nicht sicher genug, um automatisch zu sortieren — die Karte ging ins Auffangfach.",
-    "heldForReviewWithNumbers": "Zur Prüfung zurückgehalten (Score {{score}}, Marge {{margin}}): nicht sicher genug zum automatischen Sortieren — die Karte ging ins Auffangfach."
+    "heldForReviewWithNumbers": "Zur Prüfung zurückgehalten (Score {{score}}, Marge {{margin}}): nicht sicher genug zum automatischen Sortieren — die Karte ging ins Auffangfach.",
+    "showDuplicates": "Oben bereits angezeigt ({{count}})"
   },
   "sessionBar": {
     "staged_one": "{{count}} Karte vorgemerkt",
@@ -166,5 +168,22 @@
       "description": "Die Karten werden aus dieser Sitzung entfernt und gelangen nie in eine Sammlung. Die zugehörigen Scan-Diagnosedaten bleiben erhalten, der Prüfbildschirm ist also nicht betroffen.",
       "confirm": "Sitzung verwerfen"
     }
+  },
+  "pricing": {
+    "title": "Preise",
+    "low": "Niedrig",
+    "mid": "Mittel",
+    "high": "Hoch",
+    "unavailable": "Keine USD-Preisdaten für diese Karte",
+    "otherPrintings": "Weitere Druckvarianten",
+    "printing": {
+      "normal": "Normal",
+      "holofoil": "Holofoil",
+      "reverse-holofoil": "Reverse Holo"
+    },
+    "detected": "erkannt",
+    "asOf": "Stand {{date}}",
+    "viewOnTcgplayer": "Bei TCGplayer ansehen",
+    "directLow": "Direct-Tief"
   }
 }

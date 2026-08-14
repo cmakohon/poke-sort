@@ -3,18 +3,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useCardFilters } from "@/features/cards/api/use-card-filters";
 import { useScannedCards } from "@/features/scanner/api/use-scanned-cards";
 import { computeStats } from "@/features/scanner/lib/compute-stats";
+import { formatUsd } from "@/lib/format-currency";
 import { cn } from "@/lib/utils";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-
-const usdFormatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-});
-
-export function formatUsd(value: number): string {
-  return usdFormatter.format(value);
-}
 
 export function formatElapsed(ms: number): string {
   const s = Math.floor(ms / 1000);

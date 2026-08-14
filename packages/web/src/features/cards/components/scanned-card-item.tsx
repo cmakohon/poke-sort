@@ -1,6 +1,6 @@
 import { rarityColor } from "@/features/cards/lib/rarity-color";
 import { formatCardNumber } from "@/features/cards/lib/format-card-number";
-import { formatUsd } from "@/features/scanner/components/scan-stats";
+import { formatUsd } from "@/lib/format-currency";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {

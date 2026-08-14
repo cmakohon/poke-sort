@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import {
   evaluateCardBin,
   getCardValue,
+  type FieldMeta,
   type PlayingCardWithDistance,
 } from "@poke-sort/shared";
 import { IconChevronDown, IconChevronRight } from "@tabler/icons-react";
@@ -37,11 +38,48 @@ interface CardMetadataPanelProps {
   needsReview?: boolean;
   scanScore?: number;
   scanMargin?: number;
+  /**
+   * The game's fields. Optional with a fallback to the active game's, because
+   * the active game is right on the scan screen but wrong when browsing a
+   * collection of a different one.
+   */
+  fieldDefinitions?: FieldMeta[];
+  /**
+   * Fields the caller already renders elsewhere. They fold into a disclosure
+   * rather than disappearing — this panel's contract is that it shows the
+   * complete rule-engine view, and a field silently missing from it would make
+   * "why didn't my rule fire" harder, not easier.
+   */
+  duplicateFields?: readonly string[];
 }
 
 function formatValue(value: string | number | string[]): string {
   if (Array.isArray(value)) return value.length > 0 ? value.join(", ") : "";
   return String(value ?? "");
+}
+
+function MetadataRow({
+  label,
+  value,
+  emptyLabel,
+}: {
+  label: string;
+  value: string;
+  emptyLabel: string;
+}) {
+  return (
+    <div className="contents">
+      <span className="text-muted-foreground whitespace-nowrap">{label}</span>
+      <span
+        className={cn(
+          "min-w-0 break-words",
+          value === "" && "text-muted-foreground/50 italic",
+        )}
+      >
+        {value === "" ? emptyLabel : value}
+      </span>
+    </div>
+  );
 }
 
 export function CardMetadataPanel({
@@ -50,19 +88,30 @@ export function CardMetadataPanel({
   needsReview,
   scanScore,
   scanMargin,
+  fieldDefinitions: fieldDefinitionsProp,
+  duplicateFields,
 }: CardMetadataPanelProps) {
   const { t } = useTranslation("cards");
-  const { configs, fieldDefinitions } = useBinConfigs();
+  // `configs` still comes from the hook: a sort belongs to the machine, not to
+  // the collection being viewed.
+  const { configs, fieldDefinitions: activeFieldDefinitions } = useBinConfigs();
+  const fieldDefinitions = fieldDefinitionsProp ?? activeFieldDefinitions;
   const [showRaw, setShowRaw] = useState(false);
+  const [showDuplicates, setShowDuplicates] = useState(false);
 
-  const rows = useMemo(
-    () =>
-      fieldDefinitions.map((meta) => ({
+  const { primaryRows, duplicateRows } = useMemo(() => {
+    const duplicates = new Set(duplicateFields ?? []);
+    const primary: Array<{ label: string; value: string }> = [];
+    const dupes: Array<{ label: string; value: string }> = [];
+    for (const meta of fieldDefinitions) {
+      const row = {
         label: meta.label,
         value: formatValue(getCardValue(card, meta.field, fieldDefinitions)),
-      })),
-    [card, fieldDefinitions],
-  );
+      };
+      (duplicates.has(meta.field) ? dupes : primary).push(row);
+    }
+    return { primaryRows: primary, duplicateRows: dupes };
+  }, [card, fieldDefinitions, duplicateFields]);
 
   const ruleBin = useMemo(
     () => evaluateCardBin(card, configs, fieldDefinitions),
@@ -80,30 +129,16 @@ export function CardMetadataPanel({
         {t("metadata.title")}
       </p>
 
-      <div className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] gap-x-4 gap-y-1 text-xs">
-        {rows.map((row) => (
-          <div key={row.label} className="contents">
-            <span className="text-muted-foreground whitespace-nowrap">
-              {row.label}
-            </span>
-            <span
-              className={cn(
-                "min-w-0 break-words",
-                row.value === "" && "text-muted-foreground/50 italic",
-              )}
-            >
-              {row.value === "" ? t("metadata.empty") : row.value}
-            </span>
-          </div>
+      {/* Label/value pairs flow into 2 and then 3 columns as the panel widens.
+          At one column the list ran to twenty-odd rows against a mostly empty
+          right half. `contents` rows make each pair two grid cells, so the
+          pairs stay glued together as the column count changes. */}
+      <div className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] @2xl:grid-cols-[repeat(2,minmax(0,auto)_minmax(0,1fr))] @5xl:grid-cols-[repeat(3,minmax(0,auto)_minmax(0,1fr))] gap-x-4 gap-y-1 text-xs">
+        {primaryRows.map((row) => (
+          <MetadataRow key={row.label} {...row} emptyLabel={t("metadata.empty")} />
         ))}
-        <div className="contents">
-          <span className="text-muted-foreground whitespace-nowrap">
-            {t("metadata.variant")}
-          </span>
-          <span className={cn(!card.variant && "text-muted-foreground/50 italic")}>
-            {card.variant ?? t("metadata.empty")}
-          </span>
-        </div>
+        {/* No hardcoded Variant row: POKEMON_FIELD_DEFINITIONS already carries
+            a `variant` field resolving the same value, so it was printed twice. */}
         {card.distance != null && (
           <div className="contents">
             <span className="text-muted-foreground whitespace-nowrap">
@@ -138,6 +173,34 @@ export function CardMetadataPanel({
               })
             : t("metadata.heldForReview")}
         </p>
+      )}
+
+      {duplicateRows.length > 0 && (
+        <>
+          <button
+            type="button"
+            onClick={() => setShowDuplicates((v) => !v)}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors w-fit"
+          >
+            {showDuplicates ? (
+              <IconChevronDown className="size-3.5" />
+            ) : (
+              <IconChevronRight className="size-3.5" />
+            )}
+            {t("metadata.showDuplicates", { count: duplicateRows.length })}
+          </button>
+          {showDuplicates && (
+            <div className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] @2xl:grid-cols-[repeat(2,minmax(0,auto)_minmax(0,1fr))] @5xl:grid-cols-[repeat(3,minmax(0,auto)_minmax(0,1fr))] gap-x-4 gap-y-1 text-xs">
+              {duplicateRows.map((row) => (
+                <MetadataRow
+                  key={row.label}
+                  {...row}
+                  emptyLabel={t("metadata.empty")}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       <button

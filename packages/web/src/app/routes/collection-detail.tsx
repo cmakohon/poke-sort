@@ -75,6 +75,10 @@ export default function CollectionDetailPage() {
           isLoading={isLoading}
           collectionName={collection?.name}
           searchCollectionGuid={collectionGuid}
+          // A filed card has already been matched. The other candidates the
+          // scan considered are still reachable through "Correct card", which
+          // opens a catalog search seeded with the card's name.
+          showCandidates={false}
           // Deliberately NOT the app-wide CardFilters context: filtering a
           // collection here must not change what the scan screen shows.
           resetPageKey={collectionGuid}

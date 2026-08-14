@@ -97,6 +97,10 @@ describe("AppShell providers", () => {
     // What the sonner wrapper reads. If this is "system", sonner falls back to
     // its own media query and can style a toast against a differently-themed
     // page — the unreadable-toast bug.
+    //
+    // Asserted as "not system" rather than as a specific colour: the colour is
+    // the default's business and moved once already, but sonner receiving the
+    // literal string is the failure this guards, whatever the default is.
     setPrefersDark(true);
     await act(async () => {
       render(
@@ -106,7 +110,25 @@ describe("AppShell providers", () => {
       );
     });
 
-    expect(screen.getByTestId("resolved").textContent).toBe("dark");
+    const resolved = screen.getByTestId("resolved").textContent;
+    expect(resolved).not.toBe("system");
+    expect(["light", "dark"]).toContain(resolved);
+  });
+
+  it("defaults to light even when the OS prefers dark", async () => {
+    // The app is used under room lighting beside the machine; the OS setting
+    // is not a better guess. beforeEach clears localStorage, so this is the
+    // fresh-install path — a stored choice would (correctly) win over it.
+    setPrefersDark(true);
+    await act(async () => {
+      render(
+        <AppShell>
+          <span />
+        </AppShell>,
+      );
+    });
+
+    expect(document.documentElement.classList.contains("dark")).toBe(false);
   });
 
   it("themes the toaster from the app, not from the OS", async () => {
