@@ -139,22 +139,53 @@ const ESCALATION: ReadOptions[] = [
   { scale: 4, threshold: 100, negate: true },
 ];
 
+/**
+ * Largest plausible printed denominator. The catalog's biggest set is 307, so
+ * this leaves headroom while still rejecting the three-digit garbage OCR reads
+ * out of the copyright line ("901", "716", "710") and the dropped-digit "000".
+ */
+const MAX_SET_TOTAL = 400;
+
 /** "58/102" -> {58, 102}; also accepts "058/102" and spaced variants. */
 export function parseCollectorNumber(
   text: string,
 ): { collectorNumber: string; setTotal?: number } | null {
   const fraction = /(\d{1,3})\s*\/\s*(\d{1,3})/.exec(text);
   if (fraction) {
-    return {
-      collectorNumber: fraction[1].replace(/^0+(?=\d)/, ""),
-      setTotal: Number(fraction[2]),
-    };
+    const total = Number(fraction[2]);
+    // An impossible denominator means the "fraction" is noise that happened to
+    // straddle a slash, so the numerator beside it is not trustworthy either.
+    // Reporting setTotal anyway did real damage: it is the flag that says "a
+    // full number was read", so it both overwrote a better collectorNumber and
+    // suppressed the escalation retry that exists to recover one. Returning it
+    // without a setTotal keeps the weak reading as a fallback while letting
+    // escalation run. Same plausibility guard parseHp already applies.
+    if (total >= 1 && total <= MAX_SET_TOTAL) {
+      return {
+        collectorNumber: fraction[1].replace(/^0+(?=\d)/, ""),
+        setTotal: total,
+      };
+    }
+    return { collectorNumber: fraction[1].replace(/^0+(?=\d)/, "") };
   }
-  // SV-era promos: "SVP 001", "GG01". No denominator is printed.
-  const promo = /\b([A-Z]{2,4})\s*[- ]?\s*(\d{1,3})\b/.exec(text.toUpperCase());
+  // Below here there is no denominator to corroborate the reading, so both
+  // patterns are deliberately narrow.
+  //
+  // They used to be wide enough to match almost any noise: across 93 labelled
+  // real captures they fired 26 times and were correct 0 times, pulling
+  // fragments like "EO 2", "BIN 0" and "RAFT 4" out of the copyright line. A
+  // number with no denominator still scores half credit in
+  // collectorNumberMatch, so each one handed an arbitrary same-numbered
+  // candidate a boost it had not earned.
+  //
+  // Every promo the catalog actually prints has 2+ digits — BW01, SWSH001,
+  // HGSS01, XY01 — and the bare form (svp's "001") is always zero-padded.
+  // Requiring that costs nothing real and drops the wrong readings from 34 to
+  // 14 without losing a single correct one.
+  const promo = /\b([A-Z]{2,4})\s*[- ]?\s*(\d{2,3})\b/.exec(text.toUpperCase());
   if (promo) return { collectorNumber: promo[2].replace(/^0+(?=\d)/, "") };
 
-  const bare = /\b(\d{1,3})\b/.exec(text);
+  const bare = /\b(0\d{1,2})\b/.exec(text);
   return bare ? { collectorNumber: bare[1].replace(/^0+(?=\d)/, "") } : null;
 }
 
