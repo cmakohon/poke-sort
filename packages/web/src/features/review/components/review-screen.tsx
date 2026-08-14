@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { CardSearchPicker } from "@/features/cards/components/card-search-picker";
 import {
   useReviewDetail,
@@ -18,7 +19,13 @@ import {
 } from "@/features/review/lib/review-machine";
 import { useReviewHotkeys } from "@/features/review/lib/use-review-hotkeys";
 import { MISMATCH_REASONS } from "@poke-sort/shared";
-import { IconChecklist, IconLoader2 } from "@tabler/icons-react";
+import {
+  IconCheck,
+  IconChecklist,
+  IconHelpCircle,
+  IconLoader2,
+  IconSearch,
+} from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -108,7 +115,7 @@ export function ReviewScreen() {
         body: {
           verdict: save.verdict,
           correctedCardId: save.correctedCardId,
-          mismatchReason: save.mismatchReason,
+          mismatchReasons: save.mismatchReasons,
           note: note.trim() || undefined,
         },
       },
@@ -200,9 +207,9 @@ export function ReviewScreen() {
       }
 
       case "reason": {
-        if (/^[1-8]$/.test(e.key)) {
+        if (/^[1-9]$/.test(e.key)) {
           const reason = MISMATCH_REASONS[Number(e.key) - 1];
-          if (reason) dispatch({ type: "SELECT_REASON", reason });
+          if (reason) dispatch({ type: "TOGGLE_REASON", reason });
           return true;
         }
         if (e.key === "n") {
@@ -244,6 +251,10 @@ export function ReviewScreen() {
         stats={stats}
         position={index}
         totalLoaded={items.length}
+        onPrev={() => goTo(index - 1)}
+        onNext={() => goTo(index + 1)}
+        canPrev={index > 0}
+        canNext={index < items.length}
         hasMore={queue.hasNextPage ?? false}
         showReviewed={showReviewed}
         onToggleReviewed={toggleReviewed}
@@ -296,6 +307,42 @@ export function ReviewScreen() {
               />
             )}
           </div>
+          {/* Every keyboard verdict as a visible button too. blur() before
+              dispatching so the clicked button does not keep focus and
+              swallow the next hotkey press. */}
+          <div className="flex items-center gap-2 pt-1 flex-wrap">
+            {hasPrediction && (
+              <Button
+                onClick={(e) => {
+                  e.currentTarget.blur();
+                  dispatch({ type: "CONFIRM_CORRECT" });
+                }}
+              >
+                <IconCheck className="size-4" />
+                {t("actions.confirm")}
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              onClick={(e) => {
+                e.currentTarget.blur();
+                dispatch({ type: "OPEN_SEARCH" });
+              }}
+            >
+              <IconSearch className="size-4" />
+              {t("actions.search")}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={(e) => {
+                e.currentTarget.blur();
+                dispatch({ type: "MARK_UNRESOLVABLE" });
+              }}
+            >
+              <IconHelpCircle className="size-4" />
+              {t("actions.unresolvable")}
+            </Button>
+          </div>
           <FooterHints
             hasPrediction={hasPrediction}
             altCount={alternates.length}
@@ -308,7 +355,7 @@ export function ReviewScreen() {
           pending={machine.pending}
           note={note}
           onNoteChange={setNote}
-          onSelectReason={(reason) => dispatch({ type: "SELECT_REASON", reason })}
+          onToggleReason={(reason) => dispatch({ type: "TOGGLE_REASON", reason })}
           onSubmit={() => dispatch({ type: "SUBMIT" })}
           onCancel={() => dispatch({ type: "CANCEL" })}
           noteInputRef={noteInputRef}

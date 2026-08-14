@@ -30,8 +30,16 @@
     "noAlternates": "No other candidates for this scan.",
     "linkedCard": "In collection"
   },
+  "actions": {
+    "confirm": "Correct",
+    "search": "Search",
+    "unresolvable": "Unresolvable",
+    "prev": "Previous card",
+    "next": "Next card"
+  },
   "reasons": {
     "wrong-card": "Wrong Pokémon entirely",
+    "same-pokemon-different-card": "Right Pokémon, wrong set/printing",
     "same-art-different-set": "Same art, different set",
     "same-card-wrong-type": "Same Pokémon, wrong type",
     "upside-down": "Card was upside down",

@@ -113,7 +113,7 @@ export async function recordReviewVerdict(params: {
   scanEventGuid: string;
   verdict: ReviewVerdict;
   correctedCardId?: string;
-  mismatchReason?: MismatchReason;
+  mismatchReasons?: MismatchReason[];
   note?: string;
 }): Promise<void> {
   const corrected = params.verdict === "corrected";
@@ -122,7 +122,9 @@ export async function recordReviewVerdict(params: {
     .set({
       reviewedAt: new Date(),
       reviewVerdict: params.verdict,
-      mismatchReason: params.mismatchReason ?? null,
+      mismatchReasons: params.mismatchReasons?.length
+        ? params.mismatchReasons
+        : null,
       reviewNote: params.note || null,
       correctedCardId: corrected ? params.correctedCardId : null,
       correctedAt: corrected ? new Date() : null,

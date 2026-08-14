@@ -30,8 +30,16 @@
     "noAlternates": "Keine weiteren Kandidaten für diesen Scan.",
     "linkedCard": "In Sammlung"
   },
+  "actions": {
+    "confirm": "Korrekt",
+    "search": "Suchen",
+    "unresolvable": "Nicht auflösbar",
+    "prev": "Vorherige Karte",
+    "next": "Nächste Karte"
+  },
   "reasons": {
     "wrong-card": "Komplett falsches Pokémon",
+    "same-pokemon-different-card": "Richtiges Pokémon, falsches Set/Druck",
     "same-art-different-set": "Gleiches Artwork, anderes Set",
     "same-card-wrong-type": "Gleiches Pokémon, falscher Typ",
     "upside-down": "Karte war auf dem Kopf",

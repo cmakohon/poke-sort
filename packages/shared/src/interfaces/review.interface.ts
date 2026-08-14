@@ -4,15 +4,20 @@ import type { PlayingCard } from "./card.interface";
 /**
  * Why a prediction was wrong, from the human reviewer's point of view.
  *
- * One reason per card, chosen for what it tells threshold/weight tuning:
- * "same-art-different-set" points at the set-abbreviation signal,
- * "upside-down" at the flip-retry logic, "ocr-misread" at the collector
- * number matcher, and so on. Free text goes in the note, not here — the
- * whole point of the enum is that it aggregates.
+ * Multi-select, because the reasons span two independent facets — what was
+ * wrong with the input (upside down, glare) and what was wrong with the
+ * match (wrong set, wrong type) — and those legitimately co-occur. Each
+ * value points threshold/weight tuning somewhere specific:
+ * "same-art-different-set" at the set-abbreviation signal, "upside-down"
+ * at the flip-retry logic, "ocr-misread" at the collector-number matcher.
+ * Free text goes in the note, not here — the enum exists to aggregate.
+ *
+ * Order matters: the review screen maps these onto hotkeys 1–9.
  */
 export const MISMATCH_REASONS = [
   "wrong-card", // wrong pokemon entirely
-  "same-art-different-set", // reprint confusion
+  "same-pokemon-different-card", // right pokemon, wrong set or printing
+  "same-art-different-set", // exact reprint confusion
   "same-card-wrong-type", // same pokemon printed in a different type
   "upside-down",
   "ocr-misread", // name/collector-number read wrong
@@ -46,7 +51,7 @@ export interface ReviewQueueItem {
   createdAt: string;
   reviewedAt: string | null;
   reviewVerdict: ReviewVerdict | null;
-  mismatchReason: MismatchReason | null;
+  mismatchReasons: MismatchReason[] | null;
   correctedCardId: string | null;
 }
 
@@ -74,8 +79,8 @@ export interface ReviewVerdictRequest {
   verdict: ReviewVerdict;
   /** Required when verdict is "corrected". */
   correctedCardId?: string;
-  /** Required when verdict is "corrected"; optional for "unresolvable". */
-  mismatchReason?: MismatchReason;
+  /** At least one required when verdict is "corrected"; optional for "unresolvable". */
+  mismatchReasons?: MismatchReason[];
   note?: string;
 }
 

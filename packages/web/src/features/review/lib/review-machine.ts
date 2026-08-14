@@ -12,13 +12,14 @@ import type { MismatchReason, ReviewVerdict } from "@poke-sort/shared";
 
 export type ReviewPhase = "focus" | "reason" | "search";
 
-/** A wrong-verdict in progress: the truth is chosen, the reason is not. */
+/** A wrong-verdict in progress: the truth is chosen, the reasons are not. */
 export interface PendingVerdict {
   kind: "corrected" | "unresolvable";
   /** Truth card; set only for corrected. */
   cardId?: string;
   cardName?: string;
-  reason?: MismatchReason;
+  /** Multi-select: input problems and match problems can co-occur. */
+  reasons: MismatchReason[];
 }
 
 export interface ReviewMachineState {
@@ -37,7 +38,7 @@ export type ReviewMachineEvent =
   | { type: "OPEN_SEARCH" }
   | { type: "SEARCH_SELECT"; cardId: string; cardName?: string }
   | { type: "MARK_UNRESOLVABLE" }
-  | { type: "SELECT_REASON"; reason: MismatchReason }
+  | { type: "TOGGLE_REASON"; reason: MismatchReason }
   | { type: "SUBMIT" }
   | { type: "CANCEL" };
 
@@ -49,7 +50,7 @@ export interface ReviewMachineContext {
 export interface SaveCommand {
   verdict: ReviewVerdict;
   correctedCardId?: string;
-  mismatchReason?: MismatchReason;
+  mismatchReasons?: MismatchReason[];
 }
 
 export interface TransitionResult {
@@ -77,6 +78,7 @@ export function transition(
                 kind: "corrected",
                 cardId: event.cardId,
                 cardName: event.cardName,
+                reasons: [],
               },
             },
           };
@@ -84,7 +86,10 @@ export function transition(
           return { state: { phase: "search", pending: null } };
         case "MARK_UNRESOLVABLE":
           return {
-            state: { phase: "reason", pending: { kind: "unresolvable" } },
+            state: {
+              phase: "reason",
+              pending: { kind: "unresolvable", reasons: [] },
+            },
           };
         default:
           return { state };
@@ -100,6 +105,7 @@ export function transition(
                 kind: "corrected",
                 cardId: event.cardId,
                 cardName: event.cardName,
+                reasons: [],
               },
             },
           };
@@ -113,20 +119,26 @@ export function transition(
       const pending = state.pending;
       if (!pending) return { state: INITIAL_REVIEW_STATE };
       switch (event.type) {
-        case "SELECT_REASON":
+        case "TOGGLE_REASON": {
+          const reasons = pending.reasons.includes(event.reason)
+            ? pending.reasons.filter((r) => r !== event.reason)
+            : [...pending.reasons, event.reason];
           return {
-            state: { phase: "reason", pending: { ...pending, reason: event.reason } },
+            state: { phase: "reason", pending: { ...pending, reasons } },
           };
+        }
         case "SUBMIT":
           if (pending.kind === "corrected") {
             // The server requires both; refuse to commit half a correction.
-            if (!pending.cardId || !pending.reason) return { state };
+            if (!pending.cardId || pending.reasons.length === 0) {
+              return { state };
+            }
             return {
               state: INITIAL_REVIEW_STATE,
               save: {
                 verdict: "corrected",
                 correctedCardId: pending.cardId,
-                mismatchReason: pending.reason,
+                mismatchReasons: pending.reasons,
               },
             };
           }
@@ -134,7 +146,8 @@ export function transition(
             state: INITIAL_REVIEW_STATE,
             save: {
               verdict: "unresolvable",
-              mismatchReason: pending.reason,
+              mismatchReasons:
+                pending.reasons.length > 0 ? pending.reasons : undefined,
             },
           };
         case "CANCEL":

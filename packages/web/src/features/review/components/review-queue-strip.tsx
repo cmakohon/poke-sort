@@ -3,7 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import type { ReviewStats } from "@poke-sort/shared";
-import { IconKeyboard, IconRefresh } from "@tabler/icons-react";
+import {
+  IconChevronLeft,
+  IconChevronRight,
+  IconKeyboard,
+  IconRefresh,
+} from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
 
 interface ReviewQueueStripProps {
@@ -15,6 +20,10 @@ interface ReviewQueueStripProps {
   onToggleReviewed: () => void;
   onRefresh: () => void;
   onToggleHelp: () => void;
+  onPrev: () => void;
+  onNext: () => void;
+  canPrev: boolean;
+  canNext: boolean;
 }
 
 /** Compact header: queue counts, position, filters, shortcut help. */
@@ -27,6 +36,10 @@ export function ReviewQueueStrip({
   onToggleReviewed,
   onRefresh,
   onToggleHelp,
+  onPrev,
+  onNext,
+  canPrev,
+  canNext,
 }: ReviewQueueStripProps) {
   const { t } = useTranslation("review");
   const unreviewedTotal = stats
@@ -66,12 +79,40 @@ export function ReviewQueueStrip({
       )}
       <div className="flex-1" />
       {totalLoaded > 0 && (
-        <span className="text-xs text-muted-foreground tabular-nums">
-          {t("queue.progress", {
-            current: Math.min(position + 1, totalLoaded),
-            total: `${totalLoaded}${hasMore ? "+" : ""}`,
-          })}
-        </span>
+        <div className="flex items-center gap-1">
+          <Button
+            size="icon"
+            variant="ghost"
+            className="size-7"
+            disabled={!canPrev}
+            onClick={(e) => {
+              e.currentTarget.blur();
+              onPrev();
+            }}
+            aria-label={t("actions.prev")}
+          >
+            <IconChevronLeft className="size-4" />
+          </Button>
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {t("queue.progress", {
+              current: Math.min(position + 1, totalLoaded),
+              total: `${totalLoaded}${hasMore ? "+" : ""}`,
+            })}
+          </span>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="size-7"
+            disabled={!canNext}
+            onClick={(e) => {
+              e.currentTarget.blur();
+              onNext();
+            }}
+            aria-label={t("actions.next")}
+          >
+            <IconChevronRight className="size-4" />
+          </Button>
+        </div>
       )}
       <Label className="flex items-center gap-2 text-xs font-normal text-muted-foreground">
         <Switch checked={showReviewed} onCheckedChange={onToggleReviewed} />

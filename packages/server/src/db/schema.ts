@@ -376,7 +376,10 @@ export const scanEvents = pgTable(
     // was right, which is eval data a correction alone can't express.
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
     reviewVerdict: text("review_verdict"),
-    mismatchReason: text("mismatch_reason"),
+    // jsonb array of MismatchReason strings — multi-select, because input
+    // problems (upside down, glare) and match problems (wrong set, wrong
+    // type) legitimately co-occur on one card.
+    mismatchReasons: jsonb("mismatch_reasons"),
     reviewNote: text("review_note"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()

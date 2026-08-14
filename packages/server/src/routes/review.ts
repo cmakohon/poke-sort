@@ -148,7 +148,7 @@ router.get("/queue", requireAuth, requireOrg, async (c) => {
       createdAt: scanEvents.createdAt,
       reviewedAt: scanEvents.reviewedAt,
       reviewVerdict: scanEvents.reviewVerdict,
-      mismatchReason: scanEvents.mismatchReason,
+      mismatchReasons: scanEvents.mismatchReasons,
       correctedCardId: scanEvents.correctedCardId,
     })
     .from(scanEvents)
@@ -174,7 +174,7 @@ router.get("/queue", requireAuth, requireOrg, async (c) => {
     createdAt: row.createdAt.toISOString(),
     reviewedAt: row.reviewedAt?.toISOString() ?? null,
     reviewVerdict: row.reviewVerdict as ReviewVerdict | null,
-    mismatchReason: row.mismatchReason as MismatchReason | null,
+    mismatchReasons: row.mismatchReasons as MismatchReason[] | null,
     correctedCardId: row.correctedCardId,
   }));
 
@@ -277,7 +277,7 @@ router.get("/:guid", requireAuth, requireOrg, async (c) => {
     createdAt: row.createdAt.toISOString(),
     reviewedAt: row.reviewedAt?.toISOString() ?? null,
     reviewVerdict: row.reviewVerdict as ReviewVerdict | null,
-    mismatchReason: row.mismatchReason as MismatchReason | null,
+    mismatchReasons: row.mismatchReasons as MismatchReason[] | null,
     correctedCardId: row.correctedCardId,
     ocr: (row.ocr as OcrReading | null) ?? null,
     candidates,
@@ -291,7 +291,7 @@ export const VerdictSchema = z
   .object({
     verdict: z.enum(["correct", "corrected", "unresolvable"]),
     correctedCardId: z.string().min(1).optional(),
-    mismatchReason: z.enum(MISMATCH_REASONS).optional(),
+    mismatchReasons: z.array(z.enum(MISMATCH_REASONS)).max(MISMATCH_REASONS.length).optional(),
     note: z.string().trim().max(2000).optional(),
   })
   .strict()
@@ -304,11 +304,11 @@ export const VerdictSchema = z
           message: "Required when verdict is corrected.",
         });
       }
-      if (!val.mismatchReason) {
+      if (!val.mismatchReasons?.length) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          path: ["mismatchReason"],
-          message: "Required when verdict is corrected.",
+          path: ["mismatchReasons"],
+          message: "At least one reason is required when verdict is corrected.",
         });
       }
     } else if (val.correctedCardId) {
@@ -318,10 +318,10 @@ export const VerdictSchema = z
         message: `Not allowed when verdict is ${val.verdict}.`,
       });
     }
-    if (val.verdict === "correct" && val.mismatchReason) {
+    if (val.verdict === "correct" && val.mismatchReasons?.length) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["mismatchReason"],
+        path: ["mismatchReasons"],
         message: "A confirmed-correct scan has no mismatch to explain.",
       });
     }
@@ -333,7 +333,7 @@ router.post("/:guid/verdict", requireAuth, requireOrg, async (c) => {
   const guid = c.req.param("guid");
   const parsed = await parseBody(c, VerdictSchema);
   if (!parsed.ok) return parsed.response;
-  const { verdict, correctedCardId, mismatchReason, note } = parsed.data;
+  const { verdict, correctedCardId, mismatchReasons, note } = parsed.data;
 
   const row = await db.query.scanEvents.findFirst({
     where: (t, { and, eq }) => and(eq(t.guid, guid), eq(t.orgId, orgId)),
@@ -384,7 +384,7 @@ router.post("/:guid/verdict", requireAuth, requireOrg, async (c) => {
       scanEventGuid: guid,
       verdict,
       correctedCardId,
-      mismatchReason,
+      mismatchReasons,
       note,
     });
   } catch (err) {

@@ -41,6 +41,7 @@ describe("review machine", () => {
       expect(r.state.pending).toMatchObject({
         kind: "corrected",
         cardId: "swsh1-1",
+        reasons: [],
       });
     });
 
@@ -60,13 +61,13 @@ describe("review machine", () => {
         NO_PREDICTION,
       );
       expect(r.state.phase).toBe("reason");
-      expect(r.state.pending).toEqual({ kind: "unresolvable" });
+      expect(r.state.pending).toEqual({ kind: "unresolvable", reasons: [] });
     });
 
     it("ignores reason-phase events", () => {
       const r = transition(
         INITIAL_REVIEW_STATE,
-        { type: "SELECT_REASON", reason: "upside-down" },
+        { type: "TOGGLE_REASON", reason: "upside-down" },
         HAS_PREDICTION,
       );
       expect(r.state).toEqual(INITIAL_REVIEW_STATE);
@@ -109,22 +110,53 @@ describe("review machine", () => {
   describe("reason", () => {
     const corrected: ReviewMachineState = {
       phase: "reason",
-      pending: { kind: "corrected", cardId: "base1-4" },
+      pending: { kind: "corrected", cardId: "base1-4", reasons: [] },
     };
     const unresolvable: ReviewMachineState = {
       phase: "reason",
-      pending: { kind: "unresolvable" },
+      pending: { kind: "unresolvable", reasons: [] },
     };
 
-    it("selects a reason and stays for the note / submit", () => {
+    it("toggles a reason on and stays for the note / submit", () => {
       const r = transition(
         corrected,
-        { type: "SELECT_REASON", reason: "same-art-different-set" },
+        { type: "TOGGLE_REASON", reason: "same-art-different-set" },
         HAS_PREDICTION,
       );
       expect(r.state.phase).toBe("reason");
-      expect(r.state.pending?.reason).toBe("same-art-different-set");
+      expect(r.state.pending?.reasons).toEqual(["same-art-different-set"]);
       expect(r.save).toBeUndefined();
+    });
+
+    it("toggles a reason back off", () => {
+      const on = transition(
+        corrected,
+        { type: "TOGGLE_REASON", reason: "upside-down" },
+        HAS_PREDICTION,
+      ).state;
+      const off = transition(
+        on,
+        { type: "TOGGLE_REASON", reason: "upside-down" },
+        HAS_PREDICTION,
+      );
+      expect(off.state.pending?.reasons).toEqual([]);
+    });
+
+    it("accumulates multiple reasons", () => {
+      const one = transition(
+        corrected,
+        { type: "TOGGLE_REASON", reason: "upside-down" },
+        HAS_PREDICTION,
+      ).state;
+      const two = transition(
+        one,
+        { type: "TOGGLE_REASON", reason: "same-pokemon-different-card" },
+        HAS_PREDICTION,
+      );
+      expect(two.state.pending?.reasons).toEqual([
+        "upside-down",
+        "same-pokemon-different-card",
+      ]);
     });
 
     it("refuses to submit a correction without a reason", () => {
@@ -133,17 +165,17 @@ describe("review machine", () => {
       expect(r.state).toEqual(corrected);
     });
 
-    it("submits a correction once truth and reason are set", () => {
+    it("submits a correction once truth and reasons are set", () => {
       const withReason = transition(
         corrected,
-        { type: "SELECT_REASON", reason: "upside-down" },
+        { type: "TOGGLE_REASON", reason: "upside-down" },
         HAS_PREDICTION,
       ).state;
       const r = transition(withReason, { type: "SUBMIT" }, HAS_PREDICTION);
       expect(r.save).toEqual({
         verdict: "corrected",
         correctedCardId: "base1-4",
-        mismatchReason: "upside-down",
+        mismatchReasons: ["upside-down"],
       });
       expect(r.state).toEqual(INITIAL_REVIEW_STATE);
     });
@@ -152,21 +184,21 @@ describe("review machine", () => {
       const r = transition(unresolvable, { type: "SUBMIT" }, NO_PREDICTION);
       expect(r.save).toEqual({
         verdict: "unresolvable",
-        mismatchReason: undefined,
+        mismatchReasons: undefined,
       });
       expect(r.state).toEqual(INITIAL_REVIEW_STATE);
     });
 
-    it("submits unresolvable with an optional reason", () => {
+    it("submits unresolvable with optional reasons", () => {
       const withReason = transition(
         unresolvable,
-        { type: "SELECT_REASON", reason: "not-a-card" },
+        { type: "TOGGLE_REASON", reason: "not-a-card" },
         NO_PREDICTION,
       ).state;
       const r = transition(withReason, { type: "SUBMIT" }, NO_PREDICTION);
       expect(r.save).toEqual({
         verdict: "unresolvable",
-        mismatchReason: "not-a-card",
+        mismatchReasons: ["not-a-card"],
       });
     });
 

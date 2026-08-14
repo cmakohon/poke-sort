@@ -98,7 +98,9 @@ export function useSubmitVerdict() {
               ...item,
               reviewedAt: new Date().toISOString(),
               reviewVerdict: body.verdict,
-              mismatchReason: body.mismatchReason ?? null,
+              mismatchReasons: body.mismatchReasons?.length
+                ? body.mismatchReasons
+                : null,
               correctedCardId:
                 body.verdict === "corrected"
                   ? (body.correctedCardId ?? null)
