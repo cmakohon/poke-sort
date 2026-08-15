@@ -8,7 +8,8 @@
     "lint": "turbo lint",
     "release:patch": "node scripts/release.mjs patch",
     "release:minor": "node scripts/release.mjs minor",
-    "release:major": "node scripts/release.mjs major"
+    "release:major": "node scripts/release.mjs major",
+    "release:tag": "node scripts/release.mjs tag"
   },
   "devDependencies": {
     "turbo": "^2.5.4"

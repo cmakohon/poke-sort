@@ -15,9 +15,10 @@ application it all runs on. If you find this useful, the credit belongs upstream
 please star the original and take a look at the
 [hardware design](https://makerworld.com/en/models/3066180-tcg-card-sorting-machine#profileId-3451252).
 
-This fork exists because the machine on my desk sorts Pokémon, and mault was
-built as a hosted multi-tenant web app spanning several games. Rather than
-maintain a general tool badly, this fork narrows the scope hard and specialises.
+This fork exists because the machine on my desk sorts Pokémon, and mault is
+built as a hosted multi-tenant web app spanning several games. That reach is the
+right shape for the project it is; this one trades it for depth in a single
+game, running entirely on one desk. Different goals, same foundation.
 
 ### What this fork changed
 
@@ -37,6 +38,28 @@ Magic-shaped but repurposed for Pokémon were renamed to say what they now hold:
 `scryfall_id` column → `card_id`.
 
 Upstream remains the place to go for the hardware. This fork ships only the app.
+
+## Project status
+
+**v1.1.0 is the first tagged release** — the first build anyone can download and
+install rather than clone and run. It packages the SPA, the Hono server and
+~100 MB of SigLIP weights into one double-clickable app that works offline.
+
+What is proven, and what is not:
+
+| | |
+| --- | --- |
+| **macOS (Apple Silicon)** | Install path verified from the published DMG: mounts, installs, clears Gatekeeper, launches, and imports the catalog. The only platform with real hardware behind it. |
+| **Windows / Linux** | Build in CI and produce installers. Neither has been run — treat them as untested. |
+| **macOS (Intel)** | Not built. The runner is arm64 and the bundle is single-arch. |
+| **Code signing** | Ad-hoc, no Apple Developer ID, so first launch needs the [Gatekeeper workaround](#install). Not notarized. |
+| **Updates** | Notify-only — the app checks for a newer release and opens the release page. Nothing self-installs. |
+| **Card catalog** | 21,714 Pokémon cards, published as a downloadable pack and imported on first run. |
+
+The sorter itself — scanning, fused identification, rule-based binning, review,
+calibration, remote monitoring — is in day-to-day use on the machine this was
+built for. In-flight work is tracked in the [working plan](#working-plan), not
+here.
 
 ## Install
 
@@ -268,25 +291,50 @@ build machine's checkout.
 
 ### Releasing
 
-```bash
-pnpm release:patch    # or release:minor / release:major
-```
-
-Bumps all five `package.json`s together, writes a `CHANGELOG.md` entry from the
-commits since the last `v*` tag, commits, tags `vX.Y.Z` and pushes. All five must
-move in lockstep: `packages/web/vite.config.ts` reads the *root* version into
-`__APP_VERSION__` for the footer, while electron-builder reads
-`packages/desktop` to stamp the installer.
-
-Pushing the tag triggers `.github/workflows/release.yml`, which packages on
-macOS, Windows and Linux in parallel, then collects the artifacts in a single
-job and opens a **draft** release. Drafting is deliberate — smoke-test the
-installers first, and the in-app update check reads `/releases/latest`, which
-ignores drafts. Publish with:
+Two phases, because `dev` takes changes by pull request only.
 
 ```bash
-gh release edit vX.Y.Z --draft=false --latest
+pnpm release:minor    # or release:patch / release:major
 ```
+
+Cuts `release/vX.Y.Z` from `origin/dev`, bumps all five `package.json`s, writes
+a `CHANGELOG.md` entry from the commits since the last `v*` tag, and opens a PR.
+It tags nothing. All five versions must move in lockstep:
+`packages/web/vite.config.ts` reads the *root* version into `__APP_VERSION__`
+for the footer, while electron-builder reads `packages/desktop` to stamp the
+installer.
+
+Merge that PR, then:
+
+```bash
+git checkout dev && git pull
+pnpm release:tag
+```
+
+which tags the merge commit and pushes **only** the tag. The phases are separate
+because the workflow checks out the tag, so the tag has to point at the commit
+that actually carries the new version — and under a squash merge that commit
+does not exist until GitHub creates it. (`release:tag` refuses if you are not on
+`dev`, if `dev` is behind the remote, if the tag exists, or if the changelog has
+no entry for the current version — that last one catches running it before the
+PR merged.)
+
+Add `--dry-run` to the first phase to see the plan without writing, branching or
+opening anything.
+
+The tag triggers `.github/workflows/release.yml`, which packages on macOS,
+Windows and Linux in parallel, then collects the artifacts in a single job and
+opens a **draft** release. Drafting is deliberate — smoke-test the installers
+first, and the in-app update check reads `/releases/latest`, which ignores
+drafts. Publish with:
+
+```bash
+gh release edit vX.Y.Z -R cmakohon/poke-sort --draft=false --latest
+```
+
+The `-R` is not optional in a fresh shell: `gh` has no default repo configured
+here and fails with *"no default remote repository has been set"*. Set it once
+with `gh repo set-default cmakohon/poke-sort` if you would rather not pass it.
 
 There is no auto-updater. electron-updater hands macOS updates to Squirrel.Mac,
 which validates that the update's code signature matches the running app's; on
