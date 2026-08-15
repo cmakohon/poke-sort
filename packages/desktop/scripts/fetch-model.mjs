@@ -3,6 +3,13 @@
 //
 // Run under Node, not Electron: the two produce bit-identical embeddings (see
 // Phase 0 spike 2), but Node is ~26% faster and this is a build step.
+//
+// @huggingface/transformers is a devDependency of THIS package even though the
+// runtime user of it is the server. pnpm's isolated layout only exposes a
+// package's own dependencies, so without that entry this script resolves
+// against packages/desktop/node_modules, does not find it, and dies with
+// ERR_MODULE_NOT_FOUND — which is exactly how every release build failed the
+// first time the workflow ran.
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
