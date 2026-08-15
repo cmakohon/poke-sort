@@ -4,6 +4,7 @@ import type {
   ScannedCard,
 } from "@poke-sort/shared";
 import { getCardValue } from "@poke-sort/shared";
+import { downloadFile, fileDateSuffix } from "@/lib/download-file";
 
 function csvEscape(val: string): string {
   return val.includes(",") || val.includes('"')
@@ -32,16 +33,8 @@ function groupByCardIdAndFoil(
 }
 
 function downloadCsv(csv: string, filename: string) {
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+  downloadFile(csv, filename, "text/csv;charset=utf-8;");
 }
-
-const dateSuffix = () => new Date().toISOString().slice(0, 10);
 
 /**
  * The only export format.
@@ -70,5 +63,5 @@ export function exportToCsv(
     ],
   );
   const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-  downloadCsv(csv, `poke-sort-export-${dateSuffix()}-${collection}.csv`);
+  downloadCsv(csv, `poke-sort-export-${fileDateSuffix()}-${collection}.csv`);
 }

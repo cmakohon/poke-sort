@@ -22,6 +22,8 @@ interface FeederConfigContextValue {
   feederConfig: FeederCalibration;
   saveConfig: (calibration: FeederCalibration) => Promise<void>;
   previewSpeed: (value: number) => void;
+  /** Re-push the stored calibration to the sorter. Only call while connected. */
+  syncToDevice: () => Promise<void>;
 }
 
 const FeederConfigContext = createContext<FeederConfigContextValue | null>(null);
@@ -39,34 +41,41 @@ export function FeederConfigProvider({
   const { data: feederConfig = { ...DEFAULT_FEEDER_CALIBRATION } } =
     useQuery({ ...feederQueryOptions, enabled: !!activeOrg });
 
+  /**
+   * Re-push the stored feeder timings to the sorter — see the same callback in
+   * use-module-configs.tsx. An import rewrites the row without going through
+   * `saveConfig`, so it has to ask for this explicitly.
+   */
+  const syncToDevice = useCallback(async () => {
+    const fresh = await queryClient.fetchQuery(feederQueryOptions);
+    const { sent, response } = await request(
+      JSON.stringify({ setFeederConfig: fresh }),
+    );
+    if (!sent || !response) {
+      toast.error(t("useFeederConfig.toasts.notSynced"), {
+        description: t("useFeederConfig.toasts.noResponse"),
+      });
+      return;
+    }
+    try {
+      const parsed = JSON.parse(response);
+      if (parsed?.error) {
+        toast.error(t("useFeederConfig.toasts.notSynced"), {
+          description: String(parsed.error),
+        });
+      }
+    } catch {
+      toast.error(t("useFeederConfig.toasts.notSynced"), {
+        description: t("useFeederConfig.toasts.unexpectedResponse", {
+          response,
+        }),
+      });
+    }
+  }, [queryClient, request, t]);
+
   useEffect(() => {
-    return registerPreTestHook(async () => {
-      const fresh = await queryClient.fetchQuery(feederQueryOptions);
-      const { sent, response } = await request(
-        JSON.stringify({ setFeederConfig: fresh }),
-      );
-      if (!sent || !response) {
-        toast.error(t("useFeederConfig.toasts.notSynced"), {
-          description: t("useFeederConfig.toasts.noResponse"),
-        });
-        return;
-      }
-      try {
-        const parsed = JSON.parse(response);
-        if (parsed?.error) {
-          toast.error(t("useFeederConfig.toasts.notSynced"), {
-            description: String(parsed.error),
-          });
-        }
-      } catch {
-        toast.error(t("useFeederConfig.toasts.notSynced"), {
-          description: t("useFeederConfig.toasts.unexpectedResponse", {
-            response,
-          }),
-        });
-      }
-    });
-  }, [registerPreTestHook, queryClient, request, t]);
+    return registerPreTestHook(syncToDevice);
+  }, [registerPreTestHook, syncToDevice]);
 
   const saveConfigMutation = useMutation({
     mutationFn: (calibration: FeederCalibration) =>
@@ -107,7 +116,7 @@ export function FeederConfigProvider({
   );
 
   return (
-    <FeederConfigContext value={{ feederConfig, saveConfig, previewSpeed }}>
+    <FeederConfigContext value={{ feederConfig, saveConfig, previewSpeed, syncToDevice }}>
       {children}
     </FeederConfigContext>
   );

@@ -15,6 +15,7 @@ import {
 } from "@/features/calibration/api/module-configs";
 import { useCalibrationPage } from "@/features/calibration/api/use-calibration-page";
 import { BinRoutingControls } from "@/features/calibration/components/bin-routing-controls";
+import { CalibrationTransfer } from "@/features/calibration/components/calibration-transfer";
 import { FeederCalibrationPanel } from "@/features/calibration/components/feeder-calibration-panel";
 import { IrSensorPanel } from "@/features/calibration/components/ir-sensor-panel";
 import { LedControls } from "@/features/calibration/components/led-controls";
@@ -229,6 +230,11 @@ export default function CalibratePage() {
             {t("calibratePage.calibrateBeforeTest")}
           </span>
         )}
+        {/* Not gated on the USB link: moving a file between installs has
+            nothing to do with whether a sorter is plugged in. */}
+        <div className="ms-auto flex items-center gap-2">
+          <CalibrationTransfer />
+        </div>
       </div>
 
       <LedControls
