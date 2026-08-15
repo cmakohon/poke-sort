@@ -2,8 +2,10 @@ import { AppProviders } from "@/app/providers";
 import { AppNav } from "@/app/routes/nav";
 import { AppBreadcrumb } from "@/components/app-breadcrumb";
 import { EnvBanner } from "@/components/env-banner";
+import { RequireCatalogDialog } from "@/components/require-catalog-dialog";
 import { RequireCollectionDialog } from "@/components/require-collection-dialog";
 import { FooterDivider, StatusFooter } from "@/components/status-footer";
+import { UpdateNotice } from "@/components/update-notice";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { Outlet } from "react-router-dom";
 
@@ -13,6 +15,7 @@ export default function AppLayout() {
   return (
     <AppProviders>
       <RequireCollectionDialog />
+      <RequireCatalogDialog />
       {isMobile ? (
         <div className="h-dvh w-dvw overflow-hidden flex flex-col">
           <main className="flex-1 min-h-0 overflow-hidden flex flex-col">
@@ -39,6 +42,7 @@ export default function AppLayout() {
             <div className="ml-auto flex items-center gap-3 shrink-0">
               <StatusFooter />
               <FooterDivider />
+              <UpdateNotice />
               <div className="flex items-center gap-2">
                 <span className="text-muted-foreground">
                   v{__APP_VERSION__}

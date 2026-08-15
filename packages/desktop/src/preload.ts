@@ -9,6 +9,18 @@ import { contextBridge, ipcRenderer } from "electron";
  */
 contextBridge.exposeInMainWorld("pokeSort", {
   isDesktop: true,
+  updates: {
+    /** Null when up to date, offline, or running unpackaged. */
+    getAvailable: (): Promise<{ version: string; url: string } | null> =>
+      ipcRenderer.invoke("poke-sort:get-update-info"),
+    /**
+     * Goes through the main process rather than window.open: the shell owns
+     * which URLs may reach a browser, and the renderer should not be the thing
+     * deciding that.
+     */
+    openReleasePage: (url: string): Promise<void> =>
+      ipcRenderer.invoke("poke-sort:open-release-page", url),
+  },
   serial: {
     getPreferredPortId: (): Promise<string | null> =>
       ipcRenderer.invoke("poke-sort:get-preferred-serial-port"),

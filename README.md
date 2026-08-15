@@ -38,6 +38,32 @@ Magic-shaped but repurposed for Pokémon were renamed to say what they now hold:
 
 Upstream remains the place to go for the hardware. This fork ships only the app.
 
+## Install
+
+Download the newest installer from the
+[releases page](https://github.com/cmakohon/poke-sort/releases). The macOS build
+is **Apple Silicon only**.
+
+PokeSort is ad-hoc signed rather than signed with an Apple Developer ID, so
+macOS quarantines it and refuses the first launch with *"Apple could not verify
+PokeSort is free of malware"*. Open **System Settings → Privacy & Security**,
+find the PokeSort message and click **Open Anyway**. Right-click → Open has not
+worked since macOS 15. The equivalent from a terminal:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/PokeSort.app
+```
+
+Ad-hoc signing is not cosmetic — Apple Silicon refuses to run an entirely
+unsigned bundle, so `packages/desktop/scripts/adhoc-sign.mjs` signs the app
+during packaging. One consequence: the signature's identity is its cdhash, which
+changes with every build, so macOS asks for camera permission again after each
+update.
+
+On first launch the card catalog is empty and nothing can be identified. The app
+prompts for a one-time import of a prebuilt embedding pack (~66 MB) from the
+`catalog-v3` release; see [Catalog](#catalog).
+
 ## Working plan
 
 The local-first migration plan — phase write-ups, what shipped, what is still
@@ -94,7 +120,7 @@ packages/
 arduino/      Arduino sketch (arduino/main/main.ino)
 "3d model"/   Printable enclosure/module design (Fusion 360 + .3mf)
 drizzle/      Generated SQL migrations
-scripts/      Release/version-bump helpers
+scripts/      Release helper (version bump, changelog, tag)
 ```
 
 ## Getting started
@@ -214,18 +240,59 @@ that opens the same data directory.
 ## Desktop app
 
 ```bash
-pnpm --filter @poke-sort/desktop dev    # build everything and open the app
-pnpm --filter @poke-sort/desktop dist   # produce an installer in packages/desktop/release
+pnpm --filter @poke-sort/desktop dev         # build everything and open the app
+pnpm --filter @poke-sort/desktop fetch:model # SigLIP weights into .models (~100 MB)
+pnpm --filter @poke-sort/desktop icons       # regenerate build/ icons from icon/
+pnpm --filter @poke-sort/desktop dist        # installer in packages/desktop/release
 ```
 
-`dist` fetches the SigLIP weights into `.models` if absent (~100 MB) and bundles
-them, so a fresh install never needs the network to scan. It also runs
-`pnpm deploy` to flatten the server's dependency tree — a plain copy of pnpm's
-symlinked `node_modules` produces an app that cannot resolve its native modules —
+The SigLIP weights are bundled rather than downloaded, so a fresh install never
+needs the network to scan; `dist` fails with a pointed message if `.models` is
+missing. It runs `pnpm deploy` to flatten the server's dependency tree — a plain
+copy of pnpm's symlinked `node_modules` produces an app that cannot resolve its
+native modules —
 and then `scripts/prune-bundle.mjs`, which drops onnxruntime binaries for other
 platforms, the unused browser ONNX backend, source maps and type packages
-(~436 MB down to ~102 MB). The pruner assumes the build host matches the build
+(~490 MB down to ~155 MB). The pruner assumes the build host matches the build
 target; set `PRUNE_PLATFORM` / `PRUNE_ARCH` to cross-build.
+
+It finishes by deleting links that would not survive being copied into the app —
+ones whose target it just removed, and one `pnpm deploy` leaves pointing back at
+`packages/server` from inside the bundle. `bundle-server.mjs` then refuses to
+continue if any link still escapes the bundle. That check is not paranoia:
+electron-builder re-creates every symlink verbatim from `readlink()`, so such a
+link packages into an installer that builds, uploads and installs perfectly and
+then dies on the user's first `require()`. It also catches the Windows case,
+where pnpm uses junctions and `readlink()` returns an absolute path into the
+build machine's checkout.
+
+### Releasing
+
+```bash
+pnpm release:patch    # or release:minor / release:major
+```
+
+Bumps all five `package.json`s together, writes a `CHANGELOG.md` entry from the
+commits since the last `v*` tag, commits, tags `vX.Y.Z` and pushes. All five must
+move in lockstep: `packages/web/vite.config.ts` reads the *root* version into
+`__APP_VERSION__` for the footer, while electron-builder reads
+`packages/desktop` to stamp the installer.
+
+Pushing the tag triggers `.github/workflows/release.yml`, which packages on
+macOS, Windows and Linux in parallel, then collects the artifacts in a single
+job and opens a **draft** release. Drafting is deliberate — smoke-test the
+installers first, and the in-app update check reads `/releases/latest`, which
+ignores drafts. Publish with:
+
+```bash
+gh release edit vX.Y.Z --draft=false --latest
+```
+
+There is no auto-updater. electron-updater hands macOS updates to Squirrel.Mac,
+which validates that the update's code signature matches the running app's; on
+an ad-hoc signed build every update would fail after downloading. Instead the
+shell checks `/releases/latest` once per launch and offers to open the release
+page (`packages/desktop/src/update-check.ts`).
 
 Inside the app the Hono server runs in an Electron `utilityProcess` on a random
 loopback port and serves the SPA itself, so the API is same-origin. There is no
@@ -269,15 +336,34 @@ yet, so an existing install keeps its database, captures and imported catalog.
 
 ### Catalog
 
-Embedding all 23,444 Pokémon cards takes hours of CPU, so the maintainer builds
-an embedding pack once and ships it as a release asset:
+Embedding the whole Pokémon catalog takes hours of CPU, so the maintainer builds
+an embedding pack once and ships it as a release asset. The app downloads and
+imports it on first run, which takes a couple of minutes.
+
+The pack hangs off its own tag rather than `releases/latest`, because it changes
+only when the catalog or the embedding pipeline does — pinning it to `latest`
+would mean re-uploading 66 MB with every app release, and the first release that
+forgot would 404 every new install. Close the app first; PGlite allows one
+process per data directory:
 
 ```bash
-pnpm --filter @poke-sort/server export:pack -- pokemon en ./pokemon-en.pack.gz
+pnpm --filter @poke-sort/server export:pack pokemon en ./pokemon-en.pack.gz
+gh release create catalog-v3 ./pokemon-en.pack.gz --latest=false \
+  --title "Card catalog pack v3"
 ```
 
-Import it via `POST /api/admin/catalog/import-pack`. Falling back to a live
-catalog sync works but is slow and depends on the image CDN staying friendly.
+`--latest=false` matters: the in-app update check reads `/releases/latest`, and a
+data asset must not present itself as an app release.
+
+The tag tracks `PACK_VERSION` and `EMBEDDING_IDENTITY`, not the app version.
+`importPack` refuses a pack built by a different pipeline, so bumping
+`PREPROCESSING_VERSION` means cutting `catalog-v4` and updating
+`DEFAULT_TEMPLATE` in `packages/server/src/lib/pack/fetch-job.ts`.
+
+Import is `POST /api/admin/catalog/import` (`{gameKey, lang, url?}`), polled via
+`GET` on the same path; `url` may be a local path so a pack can be verified
+before publishing. Falling back to a live catalog sync works but is slow and
+depends on the image CDN staying friendly.
 
 ## Calibration
 

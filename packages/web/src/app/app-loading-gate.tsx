@@ -1,6 +1,6 @@
 import { useCollections } from "@/features/collections/api/use-collections";
 import { cn } from "@/lib/utils";
-import { IconLoader2, IconPigFilled } from "@tabler/icons-react";
+import { IconLoader2 } from "@tabler/icons-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -25,9 +25,11 @@ function AppLoadingScreen({
         className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-60 rounded-full bg-primary/50 blur-[60px]"
       />
       <div className="flex flex-col items-center gap-3 relative">
-        <span className="bg-primary grid size-10 shrink-0 place-items-center rounded-lg text-primary-foreground">
-          <IconPigFilled className="size-5" />
-        </span>
+        <img
+          src="/icon/Icon.png"
+          alt=""
+          className="size-10 shrink-0 rounded-lg"
+        />
         <div className="flex items-center gap-2 text-muted-foreground">
           <IconLoader2 size={14} className="animate-spin" />
           <span className="text-xs">{t("loadingGate.loadingVault")}</span>

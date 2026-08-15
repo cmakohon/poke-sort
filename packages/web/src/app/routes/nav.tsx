@@ -23,7 +23,6 @@ import {
   IconHeartRateMonitor,
   IconLayoutSidebarLeftCollapse,
   IconLayoutSidebarLeftExpand,
-  IconPigFilled,
   IconSettings,
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
@@ -287,9 +286,13 @@ export function AppNav() {
             expanded ? "h-8 mx-2" : "size-8 justify-center",
           )}
         >
-          <span className="bg-primary grid size-8 shrink-0 place-items-center rounded-lg text-primary-foreground">
-            <IconPigFilled className="size-4" />
-          </span>
+          {/* The app icon is its own rounded red tile, so it needs no swatch
+              behind it — unlike the glyph it replaced. */}
+          <img
+            src="/icon/Icon.png"
+            alt=""
+            className="size-8 shrink-0 rounded-lg"
+          />
           {expanded && (
             <span className="font-bold font-heading text-sm">PokeSort</span>
           )}

@@ -9,4 +9,7 @@ export default defineConfig({
   target: "node20",
   outExtension: () => ({ js: ".cjs" }),
   external: ["electron"],
+  // The splash and error pages are self-contained data: URLs, so the app icon
+  // they show has to be inlined rather than read from disk at runtime.
+  loader: { ".png": "dataurl" },
 });

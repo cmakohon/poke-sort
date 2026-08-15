@@ -7,6 +7,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build:
     name: Package ${{ matrix.os }}
@@ -29,30 +33,81 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Build server and web
-        run: pnpm build
-
       # ~100 MB of SigLIP weights, bundled rather than downloaded on first run:
-      # offline operation is the point of the app. Cached because it is the
-      # slowest step and the model is pinned.
+      # offline operation is the point of the app. Keyed per runner OS because
+      # the three legs run concurrently — on one shared key two of them lose the
+      # save race and log a failure on every release.
       - name: Cache SigLIP weights
         uses: actions/cache@v4
         with:
           path: .models
-          key: siglip-base-patch16-512-q8-v1
+          key: siglip-base-patch16-512-q8-v1-${{ runner.os }}
 
       - name: Fetch model weights
         run: node packages/desktop/scripts/fetch-model.mjs
 
+      # `dist` runs `pnpm -w run build` itself and passes --publish never.
+      #
+      # GH_TOKEN is deliberately absent. On a tag push electron-builder's publish
+      # policy defaults to "onTag", so a token in the environment would have all
+      # three matrix legs each create their own duplicate draft release, racing
+      # the single release job below.
       - name: Package
         run: pnpm --filter @poke-sort/desktop dist
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: softprops/action-gh-release@v2
+      - uses: actions/upload-artifact@v4
         with:
-          draft: true
-          files: |
+          name: installers-${{ matrix.os }}
+          if-no-files-found: error
+          retention-days: 7
+          path: |
             packages/desktop/release/*.dmg
             packages/desktop/release/*.exe
             packages/desktop/release/*.AppImage
+
+  release:
+    name: Draft release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      # One job, after all three have finished. action-gh-release is not
+      # idempotent under concurrency: run it in the matrix and the three legs
+      # create three releases for one tag.
+      #
+      # Left as a draft on purpose — the installers want a smoke test before
+      # anyone can download them, and the in-app update check keys off
+      # /releases/latest, which ignores drafts. Publish with:
+      #   gh release edit vX.Y.Z --draft=false --latest
+      - uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+          files: artifacts/*
+          body: |
+            ## Install
+
+            **macOS** — PokeSort is ad-hoc signed, not signed with an Apple
+            Developer ID, so macOS refuses the first launch. Open **System
+            Settings → Privacy & Security**, find the PokeSort message and click
+            **Open Anyway**. (Right-click → Open no longer works on macOS 15+.)
+            Or from a terminal:
+            `xattr -dr com.apple.quarantine /Applications/PokeSort.app`
+
+            The macOS build is **Apple Silicon only**.
+
+            **Windows** — SmartScreen will report an unknown publisher. Click
+            **More info → Run anyway**.
+
+            **Linux** — `chmod +x PokeSort-*.AppImage` and run it.
+
+            ---
+
+            On first launch the card catalog is empty. The app downloads a
+            prebuilt embedding pack (~66 MB) from the `catalog-v3` release —
+            embedding 21,714 cards locally would otherwise be hours of CPU.
