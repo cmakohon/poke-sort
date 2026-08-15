@@ -162,6 +162,29 @@
     "history": "History",
     "moduleCalibrationLabel": "Sorting arms",
     "feederHistoryTitle": "Feeder history",
-    "moduleHistoryTitle": "Sorting arm history"
+    "moduleHistoryTitle": "Sorting arm history",
+    "transfer": {
+      "export": "Export settings",
+      "import": "Import settings",
+      "exportFailed": "Couldn't export the calibration settings",
+      "notJson": "That file isn't valid JSON",
+      "notCalibrationFile": "That file isn't a calibration file",
+      "confirmTitle": "Import calibration settings",
+      "confirmDescription": "This replaces the settings below with the ones in the file. You can undo it from the History drawers afterwards.",
+      "nothingToApply": "This file has nothing in it to apply.",
+      "exportedAt": "Exported {{date}}",
+      "cancel": "Cancel",
+      "apply": "Import",
+      "applying": "Importing…",
+      "importFailed": "Couldn't import that file",
+      "parts": {
+        "modules_one": "{{count}} sorting arm",
+        "modules_other": "{{count}} sorting arms",
+        "feeder": "Feeder",
+        "scanRegion": "Scan area",
+        "scanRegionCleared": "Scan area (cleared back to the default)",
+        "captureDelay": "Capture delay ({{value}} ms)"
+      }
+    }
   }
 }

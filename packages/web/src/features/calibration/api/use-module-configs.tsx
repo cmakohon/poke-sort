@@ -38,49 +38,60 @@ export function ModuleConfigsProvider({
 
   const { data: configs = defaultConfigs() } = useQuery({ ...modulesQueryOptions, enabled: !!activeOrg });
 
-  useEffect(() => {
-    return registerPreTestHook(async () => {
-      const fresh = await queryClient.fetchQuery(modulesQueryOptions);
-      for (const config of fresh) {
-        const { sent, response } = await request(
-          JSON.stringify({
-            setConfig: { module: config.moduleNumber, ...config.calibration },
+  /**
+   * Re-push every module's stored calibration to the sorter.
+   *
+   * The firmware keeps calibration in RAM only, so anything that changes the
+   * stored values behind the per-module save mutation has to say so out loud:
+   * on connect and after a watchdog reboot (via the pre-test hook below), and
+   * after a calibration file is imported, which rewrites all three rows at once
+   * without going through `saveConfig`.
+   */
+  const syncToDevice = useCallback(async () => {
+    const fresh = await queryClient.fetchQuery(modulesQueryOptions);
+    for (const config of fresh) {
+      const { sent, response } = await request(
+        JSON.stringify({
+          setConfig: { module: config.moduleNumber, ...config.calibration },
+        }),
+      );
+      if (!sent || !response) {
+        toast.error(
+          t("useModuleConfigs.toasts.notSynced", {
+            module: config.moduleNumber,
           }),
+          { description: t("useModuleConfigs.toasts.noResponse") },
         );
-        if (!sent || !response) {
-          toast.error(
-            t("useModuleConfigs.toasts.notSynced", {
-              module: config.moduleNumber,
-            }),
-            { description: t("useModuleConfigs.toasts.noResponse") },
-          );
-          continue;
-        }
-        try {
-          const parsed = JSON.parse(response);
-          if (parsed?.error) {
-            toast.error(
-              t("useModuleConfigs.toasts.notSynced", {
-                module: config.moduleNumber,
-              }),
-              { description: String(parsed.error) },
-            );
-          }
-        } catch {
-          toast.error(
-            t("useModuleConfigs.toasts.notSynced", {
-              module: config.moduleNumber,
-            }),
-            {
-              description: t("useModuleConfigs.toasts.unexpectedResponse", {
-                response,
-              }),
-            },
-          );
-        }
+        continue;
       }
-    });
-  }, [registerPreTestHook, queryClient, request, t]);
+      try {
+        const parsed = JSON.parse(response);
+        if (parsed?.error) {
+          toast.error(
+            t("useModuleConfigs.toasts.notSynced", {
+              module: config.moduleNumber,
+            }),
+            { description: String(parsed.error) },
+          );
+        }
+      } catch {
+        toast.error(
+          t("useModuleConfigs.toasts.notSynced", {
+            module: config.moduleNumber,
+          }),
+          {
+            description: t("useModuleConfigs.toasts.unexpectedResponse", {
+              response,
+            }),
+          },
+        );
+      }
+    }
+  }, [queryClient, request, t]);
+
+  useEffect(() => {
+    return registerPreTestHook(syncToDevice);
+  }, [registerPreTestHook, syncToDevice]);
 
   const saveConfigMutation = useMutation({
     mutationFn: ({
@@ -142,7 +153,7 @@ export function ModuleConfigsProvider({
   );
 
   return (
-    <ModuleConfigsContext value={{ configs, saveConfig, moveServo }}>
+    <ModuleConfigsContext value={{ configs, saveConfig, moveServo, syncToDevice }}>
       {children}
     </ModuleConfigsContext>
   );
