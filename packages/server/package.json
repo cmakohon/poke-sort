@@ -9,6 +9,7 @@
     "db:socket": "pglite-server --db \"${POKE_SORT_DATA_DIR:-./.poke-sort}/db\" --port 5432",
     "db:studio": "drizzle-kit studio",
     "calibration": "tsx --env-file-if-exists ../../.env scripts/calibration.ts",
+    "build:set-index": "tsx --env-file-if-exists ../../.env scripts/build-set-index.ts",
     "export:pack": "tsx --env-file-if-exists ../../.env scripts/export-pack.ts",
     "eval:accuracy": "POKE_SORT_DATA_DIR=${POKE_SORT_DATA_DIR:-./.poke-sort-catalog} POKE_SORT_MODEL_DIR=${POKE_SORT_MODEL_DIR:-../../.models} vitest run eval/accuracy.test.ts --disableConsoleIntercept",
     "eval:build": "POKE_SORT_DATA_DIR=${POKE_SORT_DATA_DIR:-./.poke-sort-catalog} tsx eval/build-fixtures.ts",
