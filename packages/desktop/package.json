@@ -1,8 +1,8 @@
 {
   "name": "@poke-sort/desktop",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
-  "description": "PokeSort \u2014 Pok\u00e9mon card scanner and physical sorter",
+  "description": "PokeSort — Pokémon card scanner and physical sorter",
   "author": "Collin Makohon",
   "homepage": "https://github.com/cmakohon/poke-sort",
   "repository": {
