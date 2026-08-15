@@ -12,6 +12,19 @@
     "collapseSidebar": "Collapse sidebar",
     "expandSidebar": "Expand sidebar"
   },
+  "requireCatalog": {
+    "title": "Set up the card database",
+    "body": "This install has no card data yet, so nothing can be identified. Importing the prebuilt pack takes a couple of minutes; learning the cards locally would take hours.",
+    "action": "Card database",
+    "later": "Later"
+  },
+  "update": {
+    "available": "PokeSort {{version}} available",
+    "toastTitle": "PokeSort {{version}} is available",
+    "toastBody": "You are running {{current}}.",
+    "download": "Download",
+    "later": "Later"
+  },
   "statusFooter": {
     "camera": "Camera",
     "sorter": "Sorter",

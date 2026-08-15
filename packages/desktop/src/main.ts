@@ -14,6 +14,9 @@ import {
   savePreferredPort,
   type SerialPortIdentity,
 } from "./serial-prefs";
+import { buildMenu } from "./menu";
+import { errorPage, SPLASH } from "./splash";
+import { checkForUpdate } from "./update-check";
 
 /**
  * Must run before anything asks for `userData`, which is derived from it.
@@ -103,20 +106,6 @@ let serverProcess: UtilityProcess | null = null;
 let mainWindow: BrowserWindow | null = null;
 let serverStart: Promise<number> | null = null;
 let permissionsWired = false;
-
-/**
- * Shown while the server migrates, seeds and warms up — several seconds on a
- * first run. Without it the app is a bouncing dock icon and nothing else.
- */
-const SPLASH = `data:text/html,${encodeURIComponent(`
-<body style="margin:0;height:100vh;display:grid;place-items:center;background:#000;color:#888;
-             font:14px system-ui,-apple-system,sans-serif">Starting PokeSort…</body>`)}`;
-
-const errorPage = (message: string) => `data:text/html,${encodeURIComponent(`
-<body style="margin:0;height:100vh;display:grid;place-items:center;background:#000;color:#f87171;
-             font:14px system-ui,-apple-system,sans-serif;text-align:center;padding:2rem">
-  <div><p><strong>PokeSort could not start.</strong></p><pre style="color:#888;white-space:pre-wrap">${message}</pre></div>
-</body>`)}`;
 
 /**
  * The server is started at most once per app run. PGlite is single-process, so
@@ -546,6 +535,15 @@ ipcMain.handle(
   },
 );
 
+// An unpackaged run reports the Electron binary's version, not the app's, so
+// every dev session would look like it had an update waiting.
+ipcMain.handle("poke-sort:get-update-info", () =>
+  app.isPackaged ? checkForUpdate() : null,
+);
+ipcMain.handle("poke-sort:open-release-page", async (_e, url: string) => {
+  if (isSafeExternalUrl(url)) await shell.openExternal(url);
+});
+
 // Two copies of the app would open the same PGlite directory, which is not a
 // contention problem but a corruption one. Hand the second launch's focus to
 // the window that already exists instead.
@@ -560,6 +558,7 @@ if (!app.requestSingleInstanceLock()) {
 
   app.whenReady().then(() => {
     adoptLegacyDataDir();
+    buildMenu();
     void createWindow();
 
     app.on("activate", () => {

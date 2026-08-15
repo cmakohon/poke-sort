@@ -2,21 +2,30 @@
   "name": "@poke-sort/desktop",
   "version": "1.0.1",
   "private": true,
-  "description": "PokeSort \u2014 Pok\u00e9mon card scanner and physical sorter",
-  "author": "dishwasher-detergent",
+  "description": "PokeSort — Pokémon card scanner and physical sorter",
+  "author": "Collin Makohon",
+  "homepage": "https://github.com/cmakohon/poke-sort",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cmakohon/poke-sort.git"
+  },
+  "license": "MIT",
   "main": "dist/main.cjs",
   "scripts": {
     "build": "tsup",
     "dev": "pnpm -w run build && electron dist/main.cjs",
     "dev:catalog": "pnpm dev",
-    "bundle:server": "rm -rf .server-bundle && pnpm --filter @poke-sort/server deploy --prod .server-bundle && node scripts/prune-bundle.mjs",
-    "dist": "pnpm -w run build && pnpm bundle:server && electron-builder",
-    "dist:dir": "pnpm -w run build && pnpm bundle:server && electron-builder --dir"
+    "icons": "node scripts/generate-icons.mjs",
+    "fetch:model": "node scripts/fetch-model.mjs",
+    "bundle:server": "node scripts/bundle-server.mjs",
+    "dist": "pnpm -w run build && pnpm bundle:server && electron-builder --publish never",
+    "dist:dir": "pnpm -w run build && pnpm bundle:server && electron-builder --dir --publish never"
   },
   "devDependencies": {
     "@types/node": "^20",
     "electron": "^43.3.0",
     "electron-builder": "^25.1.8",
+    "sharp": "^0.34.5",
     "tsup": "^8.4.0",
     "typescript": "^5"
   }
