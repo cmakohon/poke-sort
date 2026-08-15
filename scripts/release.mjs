@@ -77,10 +77,15 @@ for (const file of MANIFESTS) {
 // Only app tags (vX.Y.Z) count as a previous release. Data assets get their own
 // tags — the card catalog ships as catalog-v3 — and are not releases of this app.
 const previous = git("tag", "--list", "v*", "--sort=-v:refname").split("\n")[0];
-const range = previous ? `${previous}..HEAD` : "HEAD";
-const subjects = git("log", range, "--no-merges", "--pretty=%s")
-  .split("\n")
-  .filter(Boolean);
+
+// With no previous tag every commit in the repo's history qualifies, which is
+// several hundred lines of nothing anyone will read. The first entry just says
+// so; GitHub's own generated notes cover the detail on the release itself.
+const subjects = previous
+  ? git("log", `${previous}..HEAD`, "--no-merges", "--pretty=%s")
+      .split("\n")
+      .filter(Boolean)
+  : ["First tagged release."];
 
 const today = new Date().toISOString().slice(0, 10);
 const entry = [
