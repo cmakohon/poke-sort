@@ -15,9 +15,10 @@ application it all runs on. If you find this useful, the credit belongs upstream
 please star the original and take a look at the
 [hardware design](https://makerworld.com/en/models/3066180-tcg-card-sorting-machine#profileId-3451252).
 
-This fork exists because the machine on my desk sorts Pokémon, and mault was
-built as a hosted multi-tenant web app spanning several games. Rather than
-maintain a general tool badly, this fork narrows the scope hard and specialises.
+This fork exists because the machine on my desk sorts Pokémon, and mault is
+built as a hosted multi-tenant web app spanning several games. That reach is the
+right shape for the project it is; this one trades it for depth in a single
+game, running entirely on one desk. Different goals, same foundation.
 
 ### What this fork changed
 
@@ -37,6 +38,28 @@ Magic-shaped but repurposed for Pokémon were renamed to say what they now hold:
 `scryfall_id` column → `card_id`.
 
 Upstream remains the place to go for the hardware. This fork ships only the app.
+
+## Project status
+
+**v1.1.0 is the first tagged release** — the first build anyone can download and
+install rather than clone and run. It packages the SPA, the Hono server and
+~100 MB of SigLIP weights into one double-clickable app that works offline.
+
+What is proven, and what is not:
+
+| | |
+| --- | --- |
+| **macOS (Apple Silicon)** | Install path verified from the published DMG: mounts, installs, clears Gatekeeper, launches, and imports the catalog. The only platform with real hardware behind it. |
+| **Windows / Linux** | Build in CI and produce installers. Neither has been run — treat them as untested. |
+| **macOS (Intel)** | Not built. The runner is arm64 and the bundle is single-arch. |
+| **Code signing** | Ad-hoc, no Apple Developer ID, so first launch needs the [Gatekeeper workaround](#install). Not notarized. |
+| **Updates** | Notify-only — the app checks for a newer release and opens the release page. Nothing self-installs. |
+| **Card catalog** | 21,714 Pokémon cards, published as a downloadable pack and imported on first run. |
+
+The sorter itself — scanning, fused identification, rule-based binning, review,
+calibration, remote monitoring — is in day-to-day use on the machine this was
+built for. In-flight work is tracked in the [working plan](#working-plan), not
+here.
 
 ## Install
 
