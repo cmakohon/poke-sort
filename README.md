@@ -268,25 +268,50 @@ build machine's checkout.
 
 ### Releasing
 
-```bash
-pnpm release:patch    # or release:minor / release:major
-```
-
-Bumps all five `package.json`s together, writes a `CHANGELOG.md` entry from the
-commits since the last `v*` tag, commits, tags `vX.Y.Z` and pushes. All five must
-move in lockstep: `packages/web/vite.config.ts` reads the *root* version into
-`__APP_VERSION__` for the footer, while electron-builder reads
-`packages/desktop` to stamp the installer.
-
-Pushing the tag triggers `.github/workflows/release.yml`, which packages on
-macOS, Windows and Linux in parallel, then collects the artifacts in a single
-job and opens a **draft** release. Drafting is deliberate — smoke-test the
-installers first, and the in-app update check reads `/releases/latest`, which
-ignores drafts. Publish with:
+Two phases, because `dev` takes changes by pull request only.
 
 ```bash
-gh release edit vX.Y.Z --draft=false --latest
+pnpm release:minor    # or release:patch / release:major
 ```
+
+Cuts `release/vX.Y.Z` from `origin/dev`, bumps all five `package.json`s, writes
+a `CHANGELOG.md` entry from the commits since the last `v*` tag, and opens a PR.
+It tags nothing. All five versions must move in lockstep:
+`packages/web/vite.config.ts` reads the *root* version into `__APP_VERSION__`
+for the footer, while electron-builder reads `packages/desktop` to stamp the
+installer.
+
+Merge that PR, then:
+
+```bash
+git checkout dev && git pull
+pnpm release:tag
+```
+
+which tags the merge commit and pushes **only** the tag. The phases are separate
+because the workflow checks out the tag, so the tag has to point at the commit
+that actually carries the new version — and under a squash merge that commit
+does not exist until GitHub creates it. (`release:tag` refuses if you are not on
+`dev`, if `dev` is behind the remote, if the tag exists, or if the changelog has
+no entry for the current version — that last one catches running it before the
+PR merged.)
+
+Add `--dry-run` to the first phase to see the plan without writing, branching or
+opening anything.
+
+The tag triggers `.github/workflows/release.yml`, which packages on macOS,
+Windows and Linux in parallel, then collects the artifacts in a single job and
+opens a **draft** release. Drafting is deliberate — smoke-test the installers
+first, and the in-app update check reads `/releases/latest`, which ignores
+drafts. Publish with:
+
+```bash
+gh release edit vX.Y.Z -R cmakohon/poke-sort --draft=false --latest
+```
+
+The `-R` is not optional in a fresh shell: `gh` has no default repo configured
+here and fails with *"no default remote repository has been set"*. Set it once
+with `gh repo set-default cmakohon/poke-sort` if you would rather not pass it.
 
 There is no auto-updater. electron-updater hands macOS updates to Squirrel.Mac,
 which validates that the update's code signature matches the running app's; on
