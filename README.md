@@ -365,6 +365,50 @@ Import is `POST /api/admin/catalog/import` (`{gameKey, lang, url?}`), polled via
 before publishing. Falling back to a live catalog sync works but is slow and
 depends on the image CDN staying friendly.
 
+#### When a new set releases
+
+The maintainer re-cuts the pack; everyone else re-imports it. The full sync is
+"multi-hour" only for an empty catalog — `sync-job.ts` loads the existing card
+ids first and skips them, so an established catalog only embeds the new set's
+few hundred cards.
+
+```bash
+# 1. Pull and embed only what is new. In the app: Card database -> Sync,
+#    or against the dev catalog directly. Close the app first.
+POKE_SORT_DATA_DIR=./.poke-sort-catalog pnpm --filter @poke-sort/server dev
+
+# 2. Refresh the series mapping. A card's embedded `set` object does not say
+#    which series it belongs to and the id cannot be relied on to imply it,
+#    so the mapping is fetched and committed.
+pnpm --filter @poke-sort/server build:set-index
+
+# 3. Re-export and replace the asset in place. Same tag: the tag tracks the
+#    embedding pipeline, not the card count, and nothing about a new set
+#    invalidates an existing pack's vectors.
+pnpm --filter @poke-sort/server export:pack pokemon en ./pokemon-en.pack.gz
+gh release upload catalog-v3 ./pokemon-en.pack.gz --clobber -R cmakohon/poke-sort
+```
+
+Commit the regenerated `packages/server/src/data/pokemon-set-index.json`.
+
+Users pick it up from **Card database** in the sidebar: the panel reads the live
+card count and its button says *Import* on an empty catalog and *Re-import* on a
+populated one, so the same control pulls the refreshed pack. No app update is
+needed — the pack URL is fixed, so an existing install downloads the new asset
+from the same address. A fresh install is prompted automatically; an established
+one is not, because there is no version stamped on an imported pack to compare
+against (see the note on `onConflictDoNothing` below).
+
+Cut a **new** tag (`catalog-v4`, and update `DEFAULT_TEMPLATE`) only when
+`PREPROCESSING_VERSION` or `EMBEDDING_IDENTITY` changes — that is the one thing
+that makes every published pack unimportable, and `importPack` will refuse the
+old one rather than corrupt anything.
+
+One limit worth knowing: `importPack` inserts with `onConflictDoNothing`, so a
+re-import **adds** cards it has not seen and never **updates** ones it has. New
+sets are all new rows, so this is the right trade — but a correction to an
+existing card's data will not propagate to installs that already have it.
+
 ## Calibration
 
 Servo positions, feeder timings and the camera's scan region describe one
