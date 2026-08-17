@@ -20,8 +20,6 @@
 //  - A cliff report around the chosen config: how far the thresholds sit from
 //    the first configuration that admits a false accept.
 import { readFile } from "node:fs/promises";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import type { OcrReading } from "@poke-sort/shared";
 import {
   collectorNumberMatch,
@@ -31,7 +29,7 @@ import {
 } from "../src/lib/identify/rerank";
 import { POKEMON_PROFILE } from "../src/lib/identify/profiles";
 
-const here = path.dirname(fileURLToPath(import.meta.url));
+import { SIGNALS_PATH } from "./eval-set";
 
 interface Capture {
   expectedId: string;
@@ -243,7 +241,7 @@ function mulberry(seed: number): () => number {
 
 async function main() {
   const { captures } = JSON.parse(
-    await readFile(path.join(here, "signals.json"), "utf-8"),
+    await readFile(SIGNALS_PATH, "utf-8"),
   ) as { captures: Capture[] };
   const preps = captures.map(prepare);
   console.log(`\n${preps.length} captures\n`);

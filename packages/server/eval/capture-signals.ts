@@ -14,7 +14,7 @@
 import { writeFile } from "node:fs/promises";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { FIXTURES_DIR, SIGNALS_PATH } from "./eval-set";
 import { db } from "../src/db";
 import { migrateDatabase } from "../src/db/migrate";
 import {
@@ -25,9 +25,8 @@ import { disposeOcr, readCard } from "../src/lib/identify/ocr";
 import { POKEMON_PROFILE } from "../src/lib/identify/profiles";
 import { vectorizeImageFromBuffer } from "../src/lib/vectorize";
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-const FIXTURES = path.join(here, "fixtures", "pokemon");
-const OUT = path.join(here, "signals.json");
+const FIXTURES = FIXTURES_DIR;
+const OUT = SIGNALS_PATH;
 
 async function main() {
   await migrateDatabase();
@@ -55,6 +54,9 @@ async function main() {
     captures.push({
       expectedId: fixture.id,
       setCode: fixture.setCode,
+      // Real-capture files are named by scan guid (truth ids repeat there),
+      // so consumers that reopen the image must use this rather than the id.
+      file: fixture.file,
       ocr,
       candidates: buildRerankInputs(rows, "pokemon"),
     });

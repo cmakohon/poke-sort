@@ -86,6 +86,14 @@ interface ReadOptions {
   scale?: number;
   threshold?: number;
   negate?: boolean;
+  /**
+   * Linear contrast stretch + sharpen instead of normalise. Won the
+   * real-capture collector-number sweep (eval/ocr-sweep.ts) over normalise:
+   * a webcam capture's footer is low-contrast but evenly lit, and normalise
+   * lets the holo texture set the levels. Collector-number reads only —
+   * name/HP bands were not measured under it.
+   */
+  contrast?: boolean;
 }
 
 async function readRegion(
@@ -101,14 +109,16 @@ async function readRegion(
   const cropHeight = Math.min(height - top, Math.round((region.y1 - region.y0) * height));
   if (cropWidth <= 0 || cropHeight <= 0) return "";
 
-  // Upscale, greyscale and normalise: card text is small in the frame and
+  // Upscale, greyscale and stretch: card text is small in the frame and
   // Tesseract is markedly better on a larger, high-contrast crop.
   let pipeline = image
     .clone()
     .extract({ left, top, width: cropWidth, height: cropHeight })
-    .resize({ width: cropWidth * (opts.scale ?? 3) })
-    .greyscale()
-    .normalise();
+    .resize({ width: cropWidth * (opts.scale ?? (opts.contrast ? 4 : 3)) })
+    .greyscale();
+  pipeline = opts.contrast
+    ? pipeline.linear(1.35, -35).sharpen()
+    : pipeline.normalise();
   if (opts.threshold != null) pipeline = pipeline.threshold(opts.threshold);
   if (opts.negate) pipeline = pipeline.negate();
 
@@ -232,7 +242,9 @@ export async function readCard(
   const [nameTexts, numberTexts, hpTexts] = await Promise.all([
     Promise.all(profile.name.map((r) => readRegion(image, width, height, r))),
     Promise.all(
-      profile.collectorNumber.map((r) => readRegion(image, width, height, r)),
+      profile.collectorNumber.map((r) =>
+        readRegion(image, width, height, r, { contrast: true }),
+      ),
     ),
     Promise.all(profile.hp.map((r) => readRegion(image, width, height, r))),
   ]);

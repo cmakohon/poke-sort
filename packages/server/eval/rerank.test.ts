@@ -82,6 +82,18 @@ describe("collectorNumberMatch", () => {
     ).toBe(1);
   });
 
+  it("no credit when the parsed set total contradicts the candidate", () => {
+    // Real Trapinch capture: 83/108 misread as "53/18". Half-crediting the
+    // agreeing numerator promoted the #53 printing of the same Pokémon over
+    // the true card.
+    expect(
+      collectorNumberMatch(
+        { collectorNumber: "53", setTotal: 18 },
+        candidate("53", 111),
+      ),
+    ).toBe(0);
+  });
+
   it("zero for a different card even when digits look similar", () => {
     expect(
       collectorNumberMatch(
