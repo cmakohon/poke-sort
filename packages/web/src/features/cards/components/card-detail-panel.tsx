@@ -9,6 +9,7 @@ import { BinLocationDiagram } from "@/features/bins/components/bin-location-diag
 import { CardMetadataPanel } from "@/features/cards/components/card-metadata-panel";
 import { CardSearchPicker } from "@/features/cards/components/card-search-picker";
 import { ZoomableCardImage } from "@/features/cards/components/zoomable-card-image";
+import { isDialogOpen } from "@/lib/dialog-open";
 import { cn } from "@/lib/utils";
 import type {
   FieldMeta,
@@ -150,9 +151,7 @@ export function CardDetailPanel({
       // Escape twice: once closing the enlarged image, once closing the panel
       // behind it. Arrows are just as wrong there — they would page to another
       // card while its image is still on screen.
-      if (document.querySelector('[data-slot="dialog-content"][data-open]')) {
-        return;
-      }
+      if (isDialogOpen()) return;
       if (e.key === "ArrowLeft" && hasPrev) onPrev?.();
       if (e.key === "ArrowRight" && hasNext) onNext?.();
       if (e.key === "Escape") onClose();

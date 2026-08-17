@@ -8,15 +8,16 @@ import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import { useCardFilterSort } from "@/features/cards/api/use-card-filter-sort";
 import { CardToolbar } from "@/features/cards/components/card-toolbar";
 import { ScannedCardItem } from "@/features/cards/components/scanned-card-item";
+import { CardImageDialog } from "@/features/cards/components/zoomable-card-image";
 import { useCollectionLocks } from "@/features/collections/api/use-collection-locks";
 import { useSessionMonitor } from "@/features/scanner/api/use-session-monitor";
 import { SessionErrorsPanel } from "@/features/scanner/components/session-errors-panel";
 import { SessionStatsPanel } from "@/features/scanner/components/session-stats-panel";
 import { computeStats } from "@/features/scanner/lib/compute-stats";
 import { useIsMobile } from "@/hooks/use-is-mobile";
-import { POKEMON_FIELD_DEFINITIONS } from "@poke-sort/shared";
+import { POKEMON_FIELD_DEFINITIONS, type PlayingCard } from "@poke-sort/shared";
 import { IconCards, IconLoader2, IconWifiOff } from "@tabler/icons-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 
@@ -30,6 +31,10 @@ function CardGrid({
   cardCount: number;
 }) {
   const { t } = useTranslation("scanner");
+  // Monitor is read-only — there is no detail panel to open here, so a tile
+  // opens the art full size instead. It used to be a button wired to a no-op,
+  // which looked clickable and did nothing.
+  const [zoomed, setZoomed] = useState<PlayingCard | null>(null);
   return (
     <>
       {status === "connecting" && cardCount === 0 && (
@@ -62,10 +67,16 @@ function CardGrid({
             key={card.scanId}
             card={card.card}
             binNumber={card.binNumber}
-            onOpen={() => {}}
+            onOpen={() => setZoomed(card.card)}
           />
         ))}
       </div>
+      <CardImageDialog
+        src={zoomed?.image?.normal || zoomed?.image?.small || ""}
+        alt={zoomed?.name ?? ""}
+        open={!!zoomed}
+        onOpenChange={(next) => !next && setZoomed(null)}
+      />
     </>
   );
 }

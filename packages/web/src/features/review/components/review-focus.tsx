@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCardNumber } from "@/features/cards/lib/format-card-number";
+import { ZoomableCardImage } from "@/features/cards/components/zoomable-card-image";
 import { captureImageUrl } from "@/features/review/api/use-review-queue";
 import { cn } from "@/lib/utils";
 import type { ReviewCandidate, ReviewDetail, ReviewQueueItem } from "@poke-sort/shared";
@@ -31,6 +32,8 @@ export function ReviewFocus({
 }: ReviewFocusProps) {
   const { t } = useTranslation("review");
   const captureUrl = captureImageUrl(item.capturePath);
+  const predictedImage =
+    predicted?.card?.image?.normal || predicted?.card?.image?.small || "";
   const ocr = detail?.ocr;
 
   return (
@@ -40,25 +43,25 @@ export function ReviewFocus({
         <p className="text-xs font-medium text-muted-foreground">
           {t("focus.capture")}
         </p>
-        <div className="w-56 aspect-[2.5/3.5] rounded-lg overflow-hidden border shadow-sm bg-muted">
-          {captureUrl ? (
-            <img
-              src={captureUrl}
-              alt={t("focus.capture")}
-              className={cn(
-                "w-full h-full object-cover transition-transform",
-                rotated && "rotate-180",
-              )}
-            />
-          ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted-foreground">
-              <IconPhotoOff className="size-6" />
-              <span className="text-xs text-center px-3">
-                {t("focus.capturePruned")}
-              </span>
-            </div>
-          )}
-        </div>
+        {captureUrl ? (
+          // The flip carries into the enlarged view too: pressing F is how an
+          // upside-down capture is read, and losing the rotation on zoom would
+          // undo that exactly when the operator wants a closer look.
+          <ZoomableCardImage
+            src={captureUrl}
+            alt={t("focus.capture")}
+            className="w-56 aspect-[2.5/3.5] shadow-sm bg-muted"
+            imgClassName={cn("transition-transform", rotated && "rotate-180")}
+            imageClassName={cn(rotated && "rotate-180")}
+          />
+        ) : (
+          <div className="w-56 aspect-[2.5/3.5] rounded-lg overflow-hidden border shadow-sm bg-muted flex flex-col items-center justify-center gap-2 text-muted-foreground">
+            <IconPhotoOff className="size-6" />
+            <span className="text-xs text-center px-3">
+              {t("focus.capturePruned")}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Sorter's pick */}
@@ -66,26 +69,28 @@ export function ReviewFocus({
         <p className="text-xs font-medium text-muted-foreground">
           {t("focus.predicted")}
         </p>
-        <div className="w-56 aspect-[2.5/3.5] rounded-lg overflow-hidden border shadow-sm bg-muted">
-          {detailLoading ? (
-            <Skeleton className="w-full h-full" />
-          ) : predicted?.card?.image?.normal || predicted?.card?.image?.small ? (
-            <img
-              src={predicted.card.image?.normal || predicted.card.image?.small || ""}
-              alt={predicted.card.name}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted-foreground">
-              <IconQuestionMark className="size-6" />
-              <span className="text-xs text-center px-3">
-                {predicted
-                  ? (predicted.name ?? predicted.id)
-                  : t("focus.noPrediction")}
-              </span>
-            </div>
-          )}
-        </div>
+        {predictedImage && !detailLoading ? (
+          <ZoomableCardImage
+            src={predictedImage}
+            alt={predicted?.card?.name ?? t("focus.predicted")}
+            className="w-56 aspect-[2.5/3.5] shadow-sm bg-muted"
+          />
+        ) : (
+          <div className="w-56 aspect-[2.5/3.5] rounded-lg overflow-hidden border shadow-sm bg-muted">
+            {detailLoading ? (
+              <Skeleton className="w-full h-full" />
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                <IconQuestionMark className="size-6" />
+                <span className="text-xs text-center px-3">
+                  {predicted
+                    ? (predicted.name ?? predicted.id)
+                    : t("focus.noPrediction")}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Scan metadata */}
