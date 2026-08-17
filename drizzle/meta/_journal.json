@@ -120,6 +120,13 @@
       "when": 1786500780000,
       "tag": "0016_retention_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1786500840000,
+      "tag": "0017_scan_corners",
+      "breakpoints": true
     }
   ]
 }

@@ -13,7 +13,7 @@ import {
 import {
   canvasToBlob,
   extractCardImage,
-  getDefaultCardContour,
+  resolveCardContour,
 } from "@/features/scanner/lib/card-detection";
 import type { ScannerEngineValue } from "@/features/scanner/types";
 import { FAULT_TOAST_DURATION_MS } from "@/lib/toast";
@@ -160,10 +160,12 @@ export function ScannerEngineProvider({
     orgSettingsQueryOptions(activeOrg?.id),
   );
 
-  const scanRegion =
-    orgSettingsData?.scanRegion ?? DEFAULT_SCAN_REGION;
+  const scanRegion = orgSettingsData?.scanRegion ?? DEFAULT_SCAN_REGION;
   const scanRegionRef = useRef(scanRegion);
   scanRegionRef.current = scanRegion;
+  const scanCorners = orgSettingsData?.scanCorners ?? null;
+  const scanCornersRef = useRef(scanCorners);
+  scanCornersRef.current = scanCorners;
 
   // Same ref pattern as the scan region: the settle timeout is armed inside a
   // callback, and a ref keeps a mid-session calibration change effective on
@@ -413,9 +415,10 @@ export function ScannerEngineProvider({
     setDuplicateCard(null);
     performCapture(
       false,
-      getDefaultCardContour(
+      resolveCardContour(
         video.videoWidth,
         video.videoHeight,
+        scanCornersRef.current,
         scanRegionRef.current,
       ),
     );
@@ -433,9 +436,10 @@ export function ScannerEngineProvider({
 
     isCapturingRef.current = true;
     updateStatus("searching");
-    const contour = getDefaultCardContour(
+    const contour = resolveCardContour(
       video.videoWidth,
       video.videoHeight,
+      scanCornersRef.current,
       scanRegionRef.current,
     );
     settleTimeoutRef.current = setTimeout(() => {
@@ -644,6 +648,7 @@ export function ScannerEngineProvider({
         videoRef,
         videoSize,
         scanRegion,
+        scanCorners,
         handleForceScan,
         handleForceAddDuplicate,
         handleSkipDuplicate,

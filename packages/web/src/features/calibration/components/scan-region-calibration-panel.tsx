@@ -6,18 +6,15 @@ import {
 } from "@/features/settings/api/org-settings";
 import { useOrg } from "@/hooks/use-org";
 import { useCameraContext } from "@/features/scanner/api/use-camera";
-import { getDefaultCardContour } from "@/features/scanner/lib/card-detection";
+import { cornersFromScanRegion } from "@/features/scanner/lib/card-detection";
 import {
   DEFAULT_SCAN_REGION,
-  SCAN_ROTATION_LIMIT,
-  type CardContour,
-  type ScanRegion,
+  SCAN_CORNER_KEYS,
+  type Point,
+  type ScanCornerKey,
+  type ScanCorners,
 } from "@poke-sort/shared";
-import {
-  IconCameraSpark,
-  IconRotate,
-  IconRotateClockwise,
-} from "@tabler/icons-react";
+import { IconCameraSpark, IconRotate } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   useEffect,
@@ -27,84 +24,29 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 
-function clampRegion(region: ScanRegion): ScanRegion {
+const clamp01 = (n: number) => (n < 0 ? 0 : n > 1 ? 1 : n);
+
+function clampCorners(corners: ScanCorners): ScanCorners {
+  const clamp = (p: Point) => ({ x: clamp01(p.x), y: clamp01(p.y) });
   return {
-    coverage: Math.min(1, Math.max(0.1, region.coverage)),
-    offsetX: Math.min(0.45, Math.max(-0.45, region.offsetX)),
-    offsetY: Math.min(0.45, Math.max(-0.45, region.offsetY)),
-    // Rounded to the tenth the database stores, so the number under the
-    // preview is the number that will be saved rather than a rendering of it.
-    rotation:
-      Math.round(
-        Math.min(
-          SCAN_ROTATION_LIMIT,
-          Math.max(-SCAN_ROTATION_LIMIT, region.rotation ?? 0),
-        ) * 10,
-      ) / 10,
+    topLeft: clamp(corners.topLeft),
+    topRight: clamp(corners.topRight),
+    bottomRight: clamp(corners.bottomRight),
+    bottomLeft: clamp(corners.bottomLeft),
   };
 }
 
-// The live preview draws the camera feed pre-rotated 90° CW into a portrait
-// canvas (same rotation extractCardImage applies when warping a captured
-// card - see card-detection.ts), so the box the user drags matches what
-// they see during real scanning without any CSS transform math. The scan
-// region itself is still stored/consumed in raw (landscape) frame
-// fractions - getDefaultCardContour always runs against the unrotated
-// display canvas at capture time - so contour corners are re-projected into
-// portrait fractions here purely for drawing the box each render.
-//
-// Rotation is deliberately left out of the contour passed in and applied as a
-// CSS transform on the box instead. The 90° pre-rotation of the preview turns
-// every raw-frame angle by the same 90°, so the box's angle *relative to the
-// preview* is the stored rotation unchanged — and a CSS rotate turns the drag
-// handles with the box, which a re-derived bounding quad would not.
-function rawContourToPortraitBox(
-  contour: CardContour,
-  rawWidth: number,
-  rawHeight: number,
-) {
-  const corners = [
-    contour.topLeft,
-    contour.topRight,
-    contour.bottomRight,
-    contour.bottomLeft,
-  ];
-  const portraitPoints = corners.map((p) => ({
-    x: 1 - p.y / rawHeight,
-    y: p.x / rawWidth,
-  }));
-  const xs = portraitPoints.map((p) => p.x);
-  const ys = portraitPoints.map((p) => p.y);
-  return {
-    left: Math.min(...xs),
-    top: Math.min(...ys),
-    width: Math.max(...xs) - Math.min(...xs),
-    height: Math.max(...ys) - Math.min(...ys),
-  };
-}
+// The preview draws the camera feed pre-rotated 90° CW into a portrait canvas,
+// so the operator sees the card upright and drags corners where they look.
+// Corners are stored in raw (landscape) frame fractions, because that is the
+// space the capture canvas is in, so the two spaces are converted here and
+// nowhere else. Raw -> preview is (1 - y, x); toRaw below is its inverse.
+const toPreview = (p: Point): Point => ({ x: 1 - p.y, y: p.x });
+const toRaw = (p: Point): Point => ({ x: p.y, y: 1 - p.x });
 
 type DragState =
-  | {
-      type: "move";
-      startClientX: number;
-      startClientY: number;
-      startOffsetX: number;
-      startOffsetY: number;
-    }
-  | {
-      type: "resize";
-      centerClientX: number;
-      centerClientY: number;
-      startDist: number;
-      startCoverage: number;
-    }
-  | {
-      type: "rotate";
-      centerClientX: number;
-      centerClientY: number;
-      startPointerAngle: number;
-      startRotation: number;
-    };
+  | { type: "corner"; corner: ScanCornerKey }
+  | { type: "move"; startPreviewX: number; startPreviewY: number; start: ScanCorners };
 
 export function ScanRegionCalibrationPanel() {
   const { t } = useTranslation("calibration");
@@ -112,12 +54,8 @@ export function ScanRegionCalibrationPanel() {
   const queryClient = useQueryClient();
   const queryOpts = orgSettingsQueryOptions(activeOrg?.id);
   const { data, isLoading } = useQuery(queryOpts);
-  const savedRegion = data?.scanRegion ?? DEFAULT_SCAN_REGION;
 
-  const [draft, setDraft] = useState<ScanRegion | null>(null);
-  const region = draft ?? savedRegion;
-  const regionRef = useRef(region);
-  regionRef.current = region;
+  const [draft, setDraft] = useState<ScanCorners | null>(null);
 
   const {
     stream,
@@ -218,142 +156,109 @@ export function ScanRegionCalibrationPanel() {
     };
   }, [stream]);
 
-  const box = videoSize
-    ? rawContourToPortraitBox(
-        getDefaultCardContour(videoSize.width, videoSize.height, {
-          ...region,
-          rotation: 0,
-        }),
-        videoSize.width,
-        videoSize.height,
-      )
-    : null;
+  // An install that has never opened this editor has no quad, so seed one from
+  // the legacy region — the same derivation capture uses — and the operator
+  // starts from exactly the box they had before rather than a blank frame.
+  // Needs the frame's aspect ratio, hence the wait for videoSize.
+  const seeded =
+    data?.scanCorners ??
+    (videoSize
+      ? cornersFromScanRegion(
+          videoSize.width,
+          videoSize.height,
+          data?.scanRegion ?? DEFAULT_SCAN_REGION,
+        )
+      : null);
+  const corners = draft ?? seeded;
+  const cornersRef = useRef(corners);
+  cornersRef.current = corners;
+
+  const previewCorners =
+    corners && SCAN_CORNER_KEYS.map((key) => toPreview(corners[key]));
 
   const dragStateRef = useRef<DragState | null>(null);
 
-  /**
-   * The box's centre in client coordinates.
-   *
-   * Both the resize and rotate drags measure from it, and neither can read it
-   * off the handle's own rect: the handles sit on a rotated element, so their
-   * position moves as the drag proceeds. The centre does not — rotation is
-   * about it, and resizing is symmetric around it.
-   */
-  const boxCenter = () => {
+  /** Pointer position as a 0-1 fraction of the preview, in preview space. */
+  const previewPoint = (e: ReactPointerEvent): Point | null => {
     const frame = frameRef.current;
-    if (!frame || !box) return null;
+    if (!frame) return null;
     const rect = frame.getBoundingClientRect();
     return {
-      x: rect.left + (box.left + box.width / 2) * rect.width,
-      y: rect.top + (box.top + box.height / 2) * rect.height,
+      x: (e.clientX - rect.left) / rect.width,
+      y: (e.clientY - rect.top) / rect.height,
     };
   };
 
-  const handleBoxPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+  const handleCornerPointerDown =
+    (corner: ScanCornerKey) => (e: ReactPointerEvent<Element>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.currentTarget.setPointerCapture(e.pointerId);
+      dragStateRef.current = { type: "corner", corner };
+    };
+
+  const handleQuadPointerDown = (e: ReactPointerEvent<Element>) => {
+    const at = previewPoint(e);
+    if (!at || !cornersRef.current) return;
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
     dragStateRef.current = {
       type: "move",
-      startClientX: e.clientX,
-      startClientY: e.clientY,
-      startOffsetX: regionRef.current.offsetX,
-      startOffsetY: regionRef.current.offsetY,
+      startPreviewX: at.x,
+      startPreviewY: at.y,
+      start: cornersRef.current,
     };
   };
 
-  const handleResizePointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    e.currentTarget.setPointerCapture(e.pointerId);
-    const center = boxCenter();
-    if (!center) return;
-    dragStateRef.current = {
-      type: "resize",
-      centerClientX: center.x,
-      centerClientY: center.y,
-      startDist: Math.hypot(e.clientX - center.x, e.clientY - center.y),
-      startCoverage: regionRef.current.coverage,
-    };
-  };
-
-  const handleRotatePointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    e.currentTarget.setPointerCapture(e.pointerId);
-    const center = boxCenter();
-    if (!center) return;
-    dragStateRef.current = {
-      type: "rotate",
-      centerClientX: center.x,
-      centerClientY: center.y,
-      startPointerAngle: Math.atan2(e.clientY - center.y, e.clientX - center.x),
-      startRotation: regionRef.current.rotation,
-    };
-  };
-
-  const handlePointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+  const handlePointerMove = (e: ReactPointerEvent<Element>) => {
     const drag = dragStateRef.current;
-    const frame = frameRef.current;
-    if (!drag || !frame) return;
+    const at = previewPoint(e);
+    if (!drag || !at || !cornersRef.current) return;
 
-    if (drag.type === "move") {
-      const rect = frame.getBoundingClientRect();
-      // Feed is drawn pre-rotated 90° CW, so a horizontal drag on screen
-      // maps to the raw frame's vertical axis and vice versa.
-      const dxFrac = (e.clientX - drag.startClientX) / rect.width;
-      const dyFrac = (e.clientY - drag.startClientY) / rect.height;
+    if (drag.type === "corner") {
+      // Straight to the pointer rather than by a delta: a corner handle is
+      // small and the operator is aiming it at a card corner they can see, so
+      // following the cursor exactly is what they expect.
       setDraft(
-        clampRegion({
-          ...regionRef.current,
-          offsetX: drag.startOffsetX + dyFrac,
-          offsetY: drag.startOffsetY - dxFrac,
-        }),
+        clampCorners({ ...cornersRef.current, [drag.corner]: toRaw(at) }),
       );
-    } else if (drag.type === "resize") {
-      const dist = Math.hypot(
-        e.clientX - drag.centerClientX,
-        e.clientY - drag.centerClientY,
-      );
-      if (drag.startDist > 0) {
-        setDraft(
-          clampRegion({
-            ...regionRef.current,
-            coverage: drag.startCoverage * (dist / drag.startDist),
-          }),
-        );
-      }
-    } else {
-      const pointerAngle = Math.atan2(
-        e.clientY - drag.centerClientY,
-        e.clientX - drag.centerClientX,
-      );
-      // The delta since the grab, not the pointer's absolute bearing: the
-      // handle is grabbed wherever the operator happened to click on it, and
-      // an absolute reading would snap the box to the cursor on contact.
-      const raw = ((pointerAngle - drag.startPointerAngle) * 180) / Math.PI;
-      // Folded into (-180, 180]. atan2 wraps at ±π, so a drag that crosses
-      // straight up reads as a 355° turn the other way without this.
-      const delta = ((((raw + 180) % 360) + 360) % 360) - 180;
-      setDraft(
-        clampRegion({
-          ...regionRef.current,
-          rotation: drag.startRotation + delta,
-        }),
-      );
+      return;
     }
+
+    // Whole-quad move. Translating in preview space and converting each corner
+    // back keeps the drag axis-aligned with what the operator sees; a raw-space
+    // delta would come out turned 90°.
+    const dx = at.x - drag.startPreviewX;
+    const dy = at.y - drag.startPreviewY;
+    const moved = SCAN_CORNER_KEYS.map((key) => {
+      const p = toPreview(drag.start[key]);
+      return { x: p.x + dx, y: p.y + dy };
+    });
+
+    // Pull the whole quad back off the edge rather than clamping corner by
+    // corner: an independent clamp would flatten the shape against the frame
+    // border, quietly undoing the alignment the operator just set.
+    const pullBack = (values: number[]) => {
+      const min = Math.min(...values);
+      if (min < 0) return -min;
+      const max = Math.max(...values);
+      return max > 1 ? 1 - max : 0;
+    };
+    const adjX = pullBack(moved.map((p) => p.x));
+    const adjY = pullBack(moved.map((p) => p.y));
+
+    const [topLeft, topRight, bottomRight, bottomLeft] = moved.map((p) =>
+      toRaw({ x: p.x + adjX, y: p.y + adjY }),
+    );
+    setDraft(clampCorners({ topLeft, topRight, bottomRight, bottomLeft }));
   };
 
   const handlePointerUp = () => {
     dragStateRef.current = null;
   };
 
-  const stepRotation = (delta: number) =>
-    setDraft(
-      clampRegion({ ...regionRef.current, rotation: region.rotation + delta }),
-    );
-
   const saveMutation = useMutation({
-    mutationFn: (next: ScanRegion) => saveOrgSettings({ scanRegion: next }),
+    mutationFn: (next: ScanCorners) => saveOrgSettings({ scanCorners: next }),
     onSuccess: (result) => {
       if (result.success && result.data) {
         queryClient.setQueryData(queryOpts.queryKey, result.data);
@@ -409,35 +314,54 @@ export function ScanRegionCalibrationPanel() {
               ref={canvasRef}
               className="absolute inset-0 w-full h-full"
             />
-            {box && (
+            {previewCorners && (
               <div
-                className="absolute rounded-2xl border-[6px] border-primary cursor-move touch-none select-none"
-                style={{
-                  left: `${box.left * 100}%`,
-                  top: `${box.top * 100}%`,
-                  width: `${box.width * 100}%`,
-                  height: `${box.height * 100}%`,
-                  transform: `rotate(${region.rotation}deg)`,
-                }}
-                onPointerDown={handleBoxPointerDown}
+                className="absolute inset-0 touch-none select-none"
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerUp}
                 onPointerCancel={handlePointerUp}
               >
-                <div
-                  className="absolute -right-2.5 -bottom-2.5 size-5 rounded-full bg-primary border-2 border-background cursor-nwse-resize touch-none"
-                  onPointerDown={handleResizePointerDown}
-                />
-                <div
-                  className="absolute -top-2.5 left-1/2 -translate-x-1/2 size-5 rounded-full bg-primary border-2 border-background cursor-grab touch-none flex items-center justify-center"
-                  onPointerDown={handleRotatePointerDown}
-                  title={t("scanRegionCalibrationPanel.rotateHandle")}
+                {/* The quad itself. Percentage-unit viewBox so the corner
+                    fractions are the coordinates, stretched to the frame with
+                    preserveAspectRatio="none"; non-scaling-stroke keeps the
+                    outline an even width despite that stretch. */}
+                <svg
+                  className="absolute inset-0 w-full h-full"
+                  viewBox="0 0 100 100"
+                  preserveAspectRatio="none"
+                  aria-hidden
                 >
-                  <IconRotateClockwise
-                    size={11}
-                    className="text-primary-foreground"
+                  <polygon
+                    points={previewCorners
+                      .map((p) => `${p.x * 100},${p.y * 100}`)
+                      .join(" ")}
+                    className="fill-primary/10 stroke-primary cursor-move"
+                    strokeWidth={4}
+                    vectorEffect="non-scaling-stroke"
+                    onPointerDown={handleQuadPointerDown}
                   />
-                </div>
+                </svg>
+                {/* Handles as elements rather than SVG circles: the viewBox
+                    above is deliberately non-uniform, which would squash a
+                    circle drawn inside it into an ellipse. */}
+                {SCAN_CORNER_KEYS.map((key, i) => (
+                  <button
+                    key={key}
+                    type="button"
+                    aria-label={t(`scanRegionCalibrationPanel.corner.${key}`)}
+                    className="absolute size-9 -translate-x-1/2 -translate-y-1/2 cursor-grab touch-none flex items-center justify-center"
+                    style={{
+                      left: `${previewCorners[i].x * 100}%`,
+                      top: `${previewCorners[i].y * 100}%`,
+                    }}
+                    onPointerDown={handleCornerPointerDown(key)}
+                  >
+                    {/* Hit area is the 36px button; the dot is 20px. A corner
+                        has to be placed on a card edge the operator can see,
+                        so the grab target is bigger than the mark. */}
+                    <span className="size-5 rounded-full bg-primary border-2 border-background" />
+                  </button>
+                ))}
               </div>
             )}
           </div>
@@ -450,37 +374,21 @@ export function ScanRegionCalibrationPanel() {
           )}
         </div>
 
-        {/* Fine rotation, for the last fraction of a degree the drag handle
-            cannot hold steady. Saved with the region by the button below. */}
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => stepRotation(-0.5)}
-            aria-label={t("scanRegionCalibrationPanel.rotateLeft")}
-          >
-            −0.5°
-          </Button>
-          <span className="flex-1 text-center text-sm font-medium tabular-nums">
-            {t("scanRegionCalibrationPanel.degreeValue", {
-              value: region.rotation.toFixed(1),
-            })}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => stepRotation(0.5)}
-            aria-label={t("scanRegionCalibrationPanel.rotateRight")}
-          >
-            +0.5°
-          </Button>
-        </div>
-
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="icon"
-            onClick={() => setDraft({ ...DEFAULT_SCAN_REGION })}
+            disabled={!videoSize}
+            onClick={() =>
+              videoSize &&
+              setDraft(
+                cornersFromScanRegion(
+                  videoSize.width,
+                  videoSize.height,
+                  DEFAULT_SCAN_REGION,
+                ),
+              )
+            }
             title={t("scanRegionCalibrationPanel.resetToDefault")}
           >
             <IconRotate size={14} />
@@ -490,7 +398,7 @@ export function ScanRegionCalibrationPanel() {
           </Button>
           <Button
             disabled={draft === null || saveMutation.isPending}
-            onClick={() => saveMutation.mutate(region)}
+            onClick={() => draft && saveMutation.mutate(draft)}
             className="flex-1"
           >
             {saveMutation.isPending
@@ -502,12 +410,14 @@ export function ScanRegionCalibrationPanel() {
           <Skeleton className="h-3 w-40 rounded" />
         ) : (
           <p className="text-xs text-muted-foreground">
-            {t("scanRegionCalibrationPanel.savedSummary", {
-              coverage: Math.round(savedRegion.coverage * 100),
-              offsetX: Math.round(savedRegion.offsetX * 100),
-              offsetY: Math.round(savedRegion.offsetY * 100),
-              rotation: (savedRegion.rotation ?? 0).toFixed(1),
-            })}
+            {data?.scanCorners
+              ? t("scanRegionCalibrationPanel.savedCornersSummary", {
+                  corners: SCAN_CORNER_KEYS.map((key) => {
+                    const p = toPreview(data.scanCorners![key]);
+                    return `${Math.round(p.x * 100)},${Math.round(p.y * 100)}`;
+                  }).join(" · "),
+                })
+              : t("scanRegionCalibrationPanel.savedNoCorners")}
           </p>
         )}
 

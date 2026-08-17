@@ -492,6 +492,15 @@ one transaction and records every change in the calibration history, so it can
 be reverted like a manual edit. Sections omitted from a file are left untouched
 rather than reset.
 
+The scan region is four corners (`scanCorners`), each an x/y fraction of the
+camera frame, labelled as the card sees them rather than as the frame does — the
+camera is mounted sideways. The camera also looks at the platform from an angle,
+so a card's outline in the frame is a trapezoid; free corners can follow that,
+and the capture is straightened with a perspective warp on the way out. The
+older `coverage`/`offset`/`rotation` rectangle is still read as a fallback, so
+an install that has never opened the corner editor, and every calibration file
+written before corners existed, keeps working unchanged.
+
 ## Hardware
 
 The full bill of materials, wiring diagrams, and assembly instructions are in the

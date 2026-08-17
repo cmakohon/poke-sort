@@ -10,7 +10,7 @@ import { useScannerEngine } from "@/features/scanner/api/use-scanner-engine";
 import { useSerial } from "@/features/scanner/api/use-serial";
 import {
   drawDetectionOverlay,
-  getDefaultCardContour,
+  resolveCardContour,
 } from "@/features/scanner/lib/card-detection";
 import { ScannerMenu } from "@/features/scanner/components/scanner-menu";
 import { SerialPortPicker } from "@/features/scanner/components/serial-port-picker";
@@ -55,6 +55,7 @@ export function CardScanner({ className, compact }: CardScannerProps) {
     videoRef,
     videoSize,
     scanRegion,
+    scanCorners,
     allowDuplicates,
     setAllowDuplicates,
     handleRetryError,
@@ -100,7 +101,7 @@ export function CardScanner({ className, compact }: CardScannerProps) {
       overlayCtx.clearRect(0, 0, width, height);
       drawDetectionOverlay(overlayCtx, {
         detected: true,
-        contour: getDefaultCardContour(width, height, scanRegion),
+        contour: resolveCardContour(width, height, scanCorners, scanRegion),
         confidence: 1,
       });
     }
@@ -120,6 +121,7 @@ export function CardScanner({ className, compact }: CardScannerProps) {
   }, [
     videoRef,
     videoSize,
+    scanCorners,
     scanRegion.coverage,
     scanRegion.offsetX,
     scanRegion.offsetY,

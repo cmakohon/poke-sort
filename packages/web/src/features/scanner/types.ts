@@ -4,6 +4,7 @@ import type {
   PlayingCardWithDistance,
   ReviewCardSync,
   ScanOutcome,
+  ScanCorners,
   ScanRegion,
   ScanSession,
   ScannedCard,
@@ -109,8 +110,13 @@ export interface ScannerEngineValue {
   videoRef: React.RefObject<HTMLVideoElement | null>;
   /** Raw frame dimensions, known once the stream is playing. */
   videoSize: { width: number; height: number } | null;
-  /** Resolved from org settings; the preview overlay outlines what capture crops to. */
+  /**
+   * Resolved from org settings; the preview overlay outlines what capture
+   * warps to. Corners win when present, and the legacy rectangle is the
+   * fallback — see resolveCardContour in lib/card-detection.ts.
+   */
   scanRegion: ScanRegion;
+  scanCorners: ScanCorners | null;
   handleForceScan: () => void;
   handleForceAddDuplicate: () => void;
   handleSkipDuplicate: () => void;

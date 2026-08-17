@@ -3,6 +3,7 @@ import {
   DEFAULT_RETENTION,
   DEFAULT_SCAN_REGION,
   type RetentionSettings,
+  type ScanCorners,
   type ScanRegion,
 } from "@poke-sort/shared";
 import { queryOptions } from "@tanstack/react-query";
@@ -12,7 +13,14 @@ export interface OrgSettings {
   scannerLayout: "horizontal" | "vertical";
   discordWebhookUrl: string | null;
   discordNotifyOnScan: boolean;
+  /** The legacy rectangle. Only consulted when scanCorners is null. */
   scanRegion: ScanRegion;
+  /**
+   * The four-corner scan region. Null on an install that has never opened the
+   * corner editor, in which case the client derives corners from scanRegion —
+   * see cornersFromScanRegion in features/scanner/lib/card-detection.ts.
+   */
+  scanCorners: ScanCorners | null;
   /** ms between the IR sensor confirming a card and the frame capture. */
   captureSettleDelayMs: number;
   /** How long the app keeps its own telemetry, in days. 0 means forever. */
@@ -35,6 +43,7 @@ export const DEFAULT_ORG_SETTINGS: OrgSettings = {
   discordWebhookUrl: null,
   discordNotifyOnScan: false,
   scanRegion: DEFAULT_SCAN_REGION,
+  scanCorners: null,
   captureSettleDelayMs: 500,
   retention: { ...DEFAULT_RETENTION },
 };

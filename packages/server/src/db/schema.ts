@@ -367,6 +367,15 @@ export const orgSettings = pgTable(
     // not as floats. Tenths rather than hundredths because this corrects a
     // mounting angle, and 0.1° is already finer than a camera bracket holds.
     scanRotation: integer("scan_rotation"),
+    // The scan region's four corners as fractions of the frame, superseding
+    // the four columns above. jsonb rather than eight more integer columns:
+    // the corners are only ever read and written as one shape, and splitting
+    // them would make a half-applied update representable.
+    //
+    // The legacy columns stay and keep their meaning. NULL here means an
+    // install that has never opened the corner editor, and the client derives
+    // the corners from coverage/offset/rotation so nothing changes for it.
+    scanCorners: jsonb("scan_corners"),
     // ms between the IR sensor confirming a card and the frame capture.
     // Nullable: absent means the client's default (500ms) applies.
     captureSettleDelayMs: integer("capture_settle_delay_ms"),

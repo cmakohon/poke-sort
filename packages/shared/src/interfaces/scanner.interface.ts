@@ -13,6 +13,14 @@ export interface CardContour {
   bottomLeft: Point;
 }
 
+/**
+ * The legacy scan region: a card-aspect rectangle, optionally turned.
+ *
+ * Superseded by ScanCorners below, but still the fallback for installs that
+ * have never opened the corner editor and for calibration files written before
+ * it existed. Nothing writes a ScanRegion any more; the client derives corners
+ * from one when no corners are stored.
+ */
 export interface ScanRegion {
   coverage: number; // 0-1
   offsetX: number; // -0.5 to 0.5
@@ -32,6 +40,38 @@ export const DEFAULT_SCAN_REGION: ScanRegion = {
   offsetY: 0,
   rotation: 0,
 };
+
+/**
+ * The scan region's four corners, each as a fraction (0-1) of the raw camera
+ * frame's width and height.
+ *
+ * The camera looks at the platform from an angle, so a card's outline in the
+ * frame is a trapezoid — a rigid rectangle can never sit on all four edges at
+ * once, and whichever compromise the operator picks bleeds either card edge or
+ * platform background into every capture. Four free corners can, and
+ * extractCardImage undoes the perspective on the way out.
+ *
+ * The labels are CARD-relative, not frame-relative: topLeft is the corner the
+ * operator sees at the top-left of an upright card in the calibration preview.
+ * The camera is mounted sideways, so that is not the frame's top-left. Carrying
+ * the card's own orientation in the labels is what lets the warp straighten and
+ * turn the capture in one step.
+ */
+export interface ScanCorners {
+  topLeft: Point;
+  topRight: Point;
+  bottomRight: Point;
+  bottomLeft: Point;
+}
+
+export const SCAN_CORNER_KEYS = [
+  "topLeft",
+  "topRight",
+  "bottomRight",
+  "bottomLeft",
+] as const satisfies readonly (keyof ScanCorners)[];
+
+export type ScanCornerKey = (typeof SCAN_CORNER_KEYS)[number];
 
 export interface DetectionResult {
   detected: boolean;
