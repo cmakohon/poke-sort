@@ -6,10 +6,12 @@ import {
 import { useCameraContext } from "@/features/scanner/api/use-camera";
 import { formatUsd } from "@/lib/format-currency";
 import { useScannedCards } from "@/features/scanner/api/use-scanned-cards";
+import { useScannerEngine } from "@/features/scanner/api/use-scanner-engine";
 import { useSerial } from "@/features/scanner/api/use-serial";
 import { useRole } from "@/hooks/use-role";
 import { createSyncEventSource } from "@/lib/api/admin";
 import type { SyncState } from "@poke-sort/shared";
+import { IconPlayerPauseFilled } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -169,6 +171,90 @@ function SyncStatusItem() {
   );
 }
 
+/**
+ * The run, from anywhere but the scan screen.
+ *
+ * A sort now survives navigation, so the operator can be on /review while the
+ * machine keeps feeding — which means the run needs to be visible, and
+ * stoppable, from wherever they happen to be. Resuming deliberately is not
+ * offered here: it wants eyes on the machine, so the label goes back to /.
+ */
+function SortStatusItem() {
+  const { t } = useTranslation("common");
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const { status, isCameraActive, handlePause } = useScannerEngine();
+  const { cards, session } = useScannedCards();
+
+  // The camera runs from app start on desktop, so its being on says nothing
+  // about whether a sort is happening. An open run does — plus the states a
+  // card can leave the scanner in before the first one has opened one.
+  const isRunning =
+    !!session ||
+    status === "scanning" ||
+    status === "searching" ||
+    status === "duplicate" ||
+    status === "no-match" ||
+    status === "error";
+
+  if (pathname === "/" || !isCameraActive || !isRunning) return null;
+
+  const { dot, label, tooltip } =
+    status === "error"
+      ? {
+          dot: "error" as const,
+          label: t("statusFooter.sortErrorLabel"),
+          tooltip: t("statusFooter.sortErrorTooltip"),
+        }
+      : status === "duplicate" || status === "no-match"
+        ? {
+            dot: "warning" as const,
+            label: t("statusFooter.sortAttentionLabel"),
+            tooltip: t("statusFooter.sortAttentionTooltip"),
+          }
+        : status === "paused"
+          ? {
+              dot: "muted" as const,
+              label: t("statusFooter.sortPausedLabel"),
+              tooltip: t("statusFooter.sortPausedTooltip"),
+            }
+          : {
+              dot: "success" as const,
+              label: t("statusFooter.sorting", { count: cards.length }),
+              tooltip: t("statusFooter.sortingTooltip"),
+            };
+
+  return (
+    <div className="flex items-center gap-1.5 min-w-0">
+      <Tooltip>
+        <TooltipTrigger
+          onClick={() => navigate("/")}
+          className="flex items-center gap-1.5 cursor-pointer hover:text-foreground transition-colors min-w-0"
+        >
+          <StatusDot variant={dot} />
+          <span className="text-xs text-muted-foreground tabular-nums shrink-0">
+            {label}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top">{tooltip}</TooltipContent>
+      </Tooltip>
+      {status !== "paused" && (
+        <Tooltip>
+          <TooltipTrigger
+            onClick={handlePause}
+            className="flex items-center justify-center size-4 rounded hover:bg-muted hover:text-foreground transition-colors shrink-0"
+          >
+            <IconPlayerPauseFilled size={10} />
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            {t("statusFooter.pauseSort")}
+          </TooltipContent>
+        </Tooltip>
+      )}
+    </div>
+  );
+}
+
 export function StatusFooter() {
   const { t } = useTranslation("common");
   const { status: cameraStatus } = useCameraContext();
@@ -218,6 +304,7 @@ export function StatusFooter() {
           dot={deviceDot}
           tooltip={deviceTooltip}
         />
+        <SortStatusItem />
         <SyncStatusItem />
       </div>
       {cards.length > 0 && (

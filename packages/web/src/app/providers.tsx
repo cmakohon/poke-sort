@@ -7,7 +7,7 @@ import { CollectionLocksProvider } from "@/features/collections/api/use-collecti
 import { CollectionsProvider } from "@/features/collections/api/use-collections";
 import { CameraProvider } from "@/features/scanner/api/use-camera";
 import { ScannedCardsProvider } from "@/features/scanner/api/use-scanned-cards";
-import { ScannerIslandProvider } from "@/features/scanner/api/use-scanner-island";
+import { ScannerEngineProvider } from "@/features/scanner/api/use-scanner-engine";
 import { SerialProvider } from "@/features/scanner/api/use-serial";
 import { DocumentTitleUpdater } from "@/features/scanner/components/document-title-updater";
 import { orgSettingsQueryOptions } from "@/features/settings/api/org-settings";
@@ -47,7 +47,6 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <OrgThemeApplier />
-      <ScannerIslandProvider>
       <CameraProvider>
         <SerialProvider>
           <CollectionsProvider>
@@ -56,10 +55,12 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
               <ModuleConfigsProvider>
                 <FeederConfigProvider>
                   <ScannedCardsProvider>
-                    <CardFiltersProvider>
-                      <AppLoadingGate>{children}</AppLoadingGate>
-                      <DocumentTitleUpdater />
-                    </CardFiltersProvider>
+                    <ScannerEngineProvider>
+                      <CardFiltersProvider>
+                        <AppLoadingGate>{children}</AppLoadingGate>
+                        <DocumentTitleUpdater />
+                      </CardFiltersProvider>
+                    </ScannerEngineProvider>
                   </ScannedCardsProvider>
                 </FeederConfigProvider>
               </ModuleConfigsProvider>
@@ -68,7 +69,6 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
           </CollectionsProvider>
         </SerialProvider>
       </CameraProvider>
-      </ScannerIslandProvider>
     </QueryClientProvider>
   );
 }

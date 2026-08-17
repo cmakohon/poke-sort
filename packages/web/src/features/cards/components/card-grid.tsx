@@ -11,7 +11,8 @@ import { getCollectionViewers } from "@/features/collections/api/collections";
 import { useCollectionLocks } from "@/features/collections/api/use-collection-locks";
 import { useCollections } from "@/features/collections/api/use-collections";
 import { useScannedCards } from "@/features/scanner/api/use-scanned-cards";
-import { useScannerIsland } from "@/features/scanner/api/use-scanner-island";
+import { useScannerEngine } from "@/features/scanner/api/use-scanner-engine";
+import { useSerial } from "@/features/scanner/api/use-serial";
 import { ScannerControls } from "@/features/scanner/components/scanner-controls";
 import { ScannerDebug } from "@/features/scanner/components/scanner-debug";
 import { SessionBar } from "@/features/scanner/components/session-bar";
@@ -46,7 +47,8 @@ export function CardGrid() {
     autoFeed,
     setAutoFeed,
   } = useScannedCards();
-  const scanner = useScannerIsland();
+  const scanner = useScannerEngine();
+  const { isConnected, isReady } = useSerial();
   const { locks, currentUserId } = useCollectionLocks();
   const isScanningActive = !!(
     activeCollection && locks[activeCollection.guid]?.userId === currentUserId
@@ -82,7 +84,7 @@ export function CardGrid() {
     );
   }
 
-  const scannerControls = scanner?.isCameraActive ? (
+  const scannerControls = scanner.isCameraActive ? (
     <>
       <ScannerControls
         status={scanner.status}
@@ -92,14 +94,14 @@ export function CardGrid() {
         onPause={scanner.handlePause}
         onResume={scanner.handleResume}
       />
-      {scanner.isConnected && (
+      {isConnected && (
         <>
           <Tooltip>
             <TooltipTrigger
               render={
                 <Button
                   onClick={scanner.handleFeed}
-                  disabled={!scanner.isReady || scanner.isFeeding}
+                  disabled={!isReady || scanner.isFeeding}
                 >
                   {scanner.isFeeding ? t("cardGrid.feeding") : t("cardGrid.feed")}
                 </Button>
@@ -132,7 +134,7 @@ export function CardGrid() {
                   variant="outline"
                   size="icon"
                   onClick={scanner.handleClearDevice}
-                  disabled={!scanner.isReady || scanner.isClearingDevice}
+                  disabled={!isReady || scanner.isClearingDevice}
                 >
                   <IconArrowBarToDown />
                 </Button>

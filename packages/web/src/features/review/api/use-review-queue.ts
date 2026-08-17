@@ -43,6 +43,11 @@ export function useReviewQueue(status: ReviewQueueStatus) {
       }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.nextCursor ?? undefined,
+    // A sort keeps running while the operator reviews, so cards land in this
+    // queue behind their back. Polling on the same cadence as the stats rather
+    // than invalidating per scan: PGlite runs on the main thread, and
+    // refetching every loaded page on each card would compete with the run.
+    refetchInterval: 30_000,
   });
 
   const items = useMemo(

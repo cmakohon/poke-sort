@@ -4,6 +4,7 @@ import type {
   PlayingCardWithDistance,
   ReviewCardSync,
   ScanOutcome,
+  ScanRegion,
   ScanSession,
   ScannedCard,
   ScannerStatus,
@@ -84,6 +85,41 @@ export interface ScannedCardsContextValue {
    * without this the scan screen keeps showing the pre-review card.
    */
   applyReviewSync: (sync: ReviewCardSync) => void;
+}
+
+/**
+ * The capture half of the sort ring, hoisted above the router.
+ *
+ * It used to live in the CardScanner route component, which meant navigating
+ * off the scan screen unmounted it: the feeder kept advancing cards that
+ * nothing captured, and the ring stopped without an error. Everything here is
+ * provider-owned so a run survives the operator wandering to /review.
+ */
+export interface ScannerEngineValue {
+  status: ScannerStatus;
+  errorMessage: string;
+  duplicateCard: PlayingCardWithDistance | null;
+  debugImageUrl: string | null;
+  allowDuplicates: boolean;
+  setAllowDuplicates: (value: boolean) => void;
+  isCameraActive: boolean;
+  isFeeding: boolean;
+  isClearingDevice: boolean;
+  /** The always-mounted hidden video both the preview and capture read from. */
+  videoRef: React.RefObject<HTMLVideoElement | null>;
+  /** Raw frame dimensions, known once the stream is playing. */
+  videoSize: { width: number; height: number } | null;
+  /** Resolved from org settings; the preview overlay outlines what capture crops to. */
+  scanRegion: ScanRegion;
+  handleForceScan: () => void;
+  handleForceAddDuplicate: () => void;
+  handleSkipDuplicate: () => void;
+  /** Operator pause — also clears autofeed, unlike the registered pause hook. */
+  handlePause: () => void;
+  handleResume: () => void;
+  handleRetryError: () => Promise<void>;
+  handleFeed: () => Promise<void>;
+  handleClearDevice: () => Promise<void>;
 }
 
 export type SerialMessageListener = (message: unknown) => void;
