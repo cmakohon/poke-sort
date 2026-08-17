@@ -1,5 +1,5 @@
 import type { CardPricing, PlayingCard, Result } from "@poke-sort/shared";
-import { QUERY_MIN_LENGTH, resolvePrintingKey } from "@poke-sort/shared";
+import { resolvePrintingKey } from "@poke-sort/shared";
 import type { CardSearchAdapter } from "../card-search/types";
 import { getSetInfo, releaseYear } from "../set-index";
 
@@ -185,57 +185,6 @@ async function fetchDetail(
   return (await response.json()) as PokemonCardDetail;
 }
 
-// Cap on how many brief search hits get enriched with a full detail fetch.
-// TCGdex's list endpoint only returns {id, localId, name, image} - the picker
-// UI needs set/rarity/collector number too, so each result needs its own
-// /cards/:id call. Keeping this modest bounds the fan-out on every keystroke.
-const MAX_ENRICHED_RESULTS = 30;
-
-export async function Search(
-  query: string,
-  baseUrl: string = POKEMON_DEFAULT_URL,
-): Promise<Result<PlayingCard[]>> {
-  if (!query || query.trim().length < QUERY_MIN_LENGTH) {
-    return {
-      message: `Your query must be greater than ${QUERY_MIN_LENGTH}`,
-      success: false,
-    };
-  }
-
-  const url = `${baseUrl}?name=${encodeURIComponent(query)}&pagination:itemsPerPage=${MAX_ENRICHED_RESULTS}`;
-  const response = await fetch(url, {
-    headers: POKEMON_HEADERS,
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-  });
-
-  if (!response.ok) {
-    return {
-      message: "Failed to fetch from the TCGdex Pokémon API.",
-      success: false,
-    };
-  }
-
-  const briefs = (await response.json()) as PokemonCardBrief[];
-  if (briefs.length === 0) {
-    return {
-      message: `No cards were found with the query: ${query}`,
-      success: false,
-    };
-  }
-
-  const details = await Promise.all(
-    briefs.map((b) => fetchDetail(b.id, baseUrl)),
-  );
-
-  return {
-    message: "Cards successfully retrieved.",
-    data: details
-      .filter((d): d is PokemonCardDetail => d !== null)
-      .map((card) => normalizePokemonCard(card)),
-    success: true,
-  };
-}
-
 export async function SearchById(
   id: string,
   baseUrl: string = POKEMON_DEFAULT_URL,
@@ -257,6 +206,5 @@ export async function SearchById(
 
 export const pokemonAdapter: CardSearchAdapter = {
   defaultUrl: POKEMON_DEFAULT_URL,
-  search: Search,
   searchById: SearchById,
 };

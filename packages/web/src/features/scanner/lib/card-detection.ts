@@ -3,6 +3,7 @@ import {
   DEFAULT_SCAN_REGION,
   type CardContour,
   type DetectionResult,
+  type ScanCorners,
   type ScanRegion,
 } from "@poke-sort/shared";
 
@@ -13,20 +14,17 @@ import {
  * platform, so a hardcoded region avoids the lighting/contrast failures of
  * contour detection (e.g. light-bordered cards against a light surface).
  *
+ * This is the LEGACY region shape - a rigid card-aspect rectangle, optionally
+ * turned. It survives as the seed for the corner editor and the fallback for
+ * installs that have never opened it; scanCornersToContour below is what
+ * capture actually uses once corners are saved.
+ *
  * Raw camera frames are landscape; the desktop scanning UI rotates the
  * canvas 90° via CSS for portrait viewing (see card-scanner.tsx), so the
- * card sits in the *raw* frame rotated - same assumption extractCardImage's
- * isLandscape branch below already relies on.
- *
- * `region` (coverage + offsetX/offsetY + rotation, the first three as
- * fractions of the frame) is calibrated per-org in the app's calibration
- * screen to match a given camera's field of view and mounting - see
- * features/calibration/components/scan-region-calibration-panel.tsx.
- *
- * With a non-zero rotation the returned quadrilateral is no longer
- * axis-aligned. It is still a rectangle - rotation is rigid, so the corners
- * stay square and the edges keep their lengths - which is what lets
- * extractCardImage below undo it with a rotation rather than a homography.
+ * card sits in the *raw* frame rotated. The corners returned here are
+ * therefore labelled frame-relative, not card-relative - `topLeft` is the
+ * top-left of the box in the raw frame, which on a sideways camera is one of
+ * the card's *side* corners. cornersFromScanRegion below relabels them.
  */
 export function getDefaultCardContour(
   width: number,
@@ -65,13 +63,156 @@ export function getDefaultCardContour(
 }
 
 /**
- * Extract the card region from a canvas, straightened to a fixed-size
- * portrait output. `contour` always comes from getDefaultCardContour above,
- * which only ever produces a rectangle - possibly turned, never skewed - so
- * this is a crop plus a rotation, not a general four-point perspective warp.
- * If a contour source that can return a skewed quadrilateral is ever
- * reintroduced (e.g. per-frame edge detection), this needs a real homography
- * again.
+ * Relabel a legacy ScanRegion's box as card-relative corners, normalised to
+ * fractions of the frame.
+ *
+ * The seed for the corner editor and the fallback for any install that has
+ * never opened it, so an upgrade starts from exactly the box it had before.
+ *
+ * The relabelling is the whole point. getDefaultCardContour names its corners
+ * frame-relative, and the camera is mounted sideways: the preview draws the
+ * feed turned 90° CW, mapping a raw point to (1 - rawY/H, rawX/W). Under that
+ * map the preview's top-left - the card's top-left, as the operator sees it -
+ * is the raw frame's *bottom*-left, and the rest follow round.
+ */
+export function cornersFromScanRegion(
+  width: number,
+  height: number,
+  region: ScanRegion = DEFAULT_SCAN_REGION,
+): ScanCorners {
+  const box = getDefaultCardContour(width, height, region);
+  const frac = (p: { x: number; y: number }) => ({
+    x: p.x / width,
+    y: p.y / height,
+  });
+  return {
+    topLeft: frac(box.bottomLeft),
+    topRight: frac(box.topLeft),
+    bottomRight: frac(box.topRight),
+    bottomLeft: frac(box.bottomRight),
+  };
+}
+
+/** Card-relative corner fractions back out to raw frame pixels. */
+export function scanCornersToContour(
+  corners: ScanCorners,
+  width: number,
+  height: number,
+): CardContour {
+  const px = (p: { x: number; y: number }) => ({
+    x: p.x * width,
+    y: p.y * height,
+  });
+  return {
+    topLeft: px(corners.topLeft),
+    topRight: px(corners.topRight),
+    bottomRight: px(corners.bottomRight),
+    bottomLeft: px(corners.bottomLeft),
+  };
+}
+
+/**
+ * The scan quad in raw frame pixels, from whichever of the two calibrations an
+ * install has. One place decides, so the live preview overlay and the capture
+ * can never disagree about where the region is.
+ */
+export function resolveCardContour(
+  width: number,
+  height: number,
+  corners: ScanCorners | null | undefined,
+  region: ScanRegion = DEFAULT_SCAN_REGION,
+): CardContour {
+  return scanCornersToContour(
+    corners ?? cornersFromScanRegion(width, height, region),
+    width,
+    height,
+  );
+}
+
+interface ProjectiveMap {
+  a: number;
+  b: number;
+  c: number;
+  d: number;
+  e: number;
+  f: number;
+  g: number;
+  h: number;
+}
+
+/**
+ * Heckbert's closed form for the projective map taking the unit square to an
+ * arbitrary quadrilateral: (u,v) -> ((au+bv+c)/(gu+hv+1), (du+ev+f)/(gu+hv+1)),
+ * with (u,v) running (0,0) -> topLeft, (1,0) -> topRight, (1,1) -> bottomRight,
+ * (0,1) -> bottomLeft.
+ *
+ * Closed form rather than an 8x8 solve: the source square's corners are known
+ * constants, which collapses the general system to these few lines.
+ */
+function unitSquareToQuad(quad: CardContour): ProjectiveMap {
+  const { x: x0, y: y0 } = quad.topLeft;
+  const { x: x1, y: y1 } = quad.topRight;
+  const { x: x2, y: y2 } = quad.bottomRight;
+  const { x: x3, y: y3 } = quad.bottomLeft;
+
+  const affine: ProjectiveMap = {
+    a: x1 - x0,
+    b: x3 - x0,
+    c: x0,
+    d: y1 - y0,
+    e: y3 - y0,
+    f: y0,
+    g: 0,
+    h: 0,
+  };
+
+  const dx3 = x0 - x1 + x2 - x3;
+  const dy3 = y0 - y1 + y2 - y3;
+  // A parallelogram closes on itself, so the projective terms are exactly zero
+  // and the affine reading above is the answer. Solving for them anyway would
+  // divide by a determinant that vanishes in the same case.
+  if (Math.abs(dx3) < 1e-9 && Math.abs(dy3) < 1e-9) return affine;
+
+  const dx1 = x1 - x2;
+  const dx2 = x3 - x2;
+  const dy1 = y1 - y2;
+  const dy2 = y3 - y2;
+  const den = dx1 * dy2 - dx2 * dy1;
+  // Degenerate quad - three corners collinear, or two dragged onto each other.
+  // Nothing sensible to warp, but the affine reading at least yields finite
+  // numbers instead of filling the capture with NaN.
+  if (Math.abs(den) < 1e-9) return affine;
+
+  const g = (dx3 * dy2 - dx2 * dy3) / den;
+  const h = (dx1 * dy3 - dx3 * dy1) / den;
+  return {
+    a: x1 - x0 + g * x1,
+    b: x3 - x0 + h * x3,
+    c: x0,
+    d: y1 - y0 + g * y1,
+    e: y3 - y0 + h * y3,
+    f: y0,
+    g,
+    h,
+  };
+}
+
+/**
+ * Extract the card region from a canvas, straightened to a fixed-size portrait
+ * output.
+ *
+ * `contour` is a general quadrilateral with CARD-relative corner labels, so
+ * this is a real perspective warp: the camera looks at the platform from an
+ * angle and a card's outline in the frame is a trapezoid, not a turned
+ * rectangle. Canvas 2D transforms are affine only and cannot express that, so
+ * the resampling is done per-pixel here.
+ *
+ * Because the corners carry the card's own orientation, the 90° turn the
+ * sideways-mounted camera imposes falls out of the same warp - there is no
+ * separate rotate-to-portrait pass.
+ *
+ * Cost is one pass over the 745x1043 output, tens of milliseconds, once per
+ * captured card behind the settle delay. Not a per-frame path.
  */
 export function extractCardImage(
   sourceCanvas: HTMLCanvasElement,
@@ -79,60 +220,107 @@ export function extractCardImage(
   outputWidth = 745,
 ): HTMLCanvasElement {
   const outputHeight = Math.round(outputWidth / CARD_ASPECT_RATIO);
+  const map = unitSquareToQuad(contour);
 
-  // Measured along the region's own edges rather than off the corners'
-  // coordinates: once the box can be turned, topRight.x - topLeft.x is the
-  // width of its shadow on the x axis, not the width of the box.
-  const edgeX = {
-    x: contour.topRight.x - contour.topLeft.x,
-    y: contour.topRight.y - contour.topLeft.y,
-  };
-  const boxW = Math.hypot(edgeX.x, edgeX.y);
-  const boxH = Math.hypot(
-    contour.bottomLeft.x - contour.topLeft.x,
-    contour.bottomLeft.y - contour.topLeft.y,
-  );
-  const angle = Math.atan2(edgeX.y, edgeX.x);
-  const cx = (contour.topLeft.x + contour.bottomRight.x) / 2;
-  const cy = (contour.topLeft.y + contour.bottomRight.y) / 2;
+  const corners = [
+    contour.topLeft,
+    contour.topRight,
+    contour.bottomRight,
+    contour.bottomLeft,
+  ];
+  // Only the quad's own neighbourhood is ever sampled, so read that rather
+  // than the whole frame - getImageData on 1080p copies 8MB, and the region is
+  // a fraction of it. One pixel of margin keeps every bilinear tap in bounds.
+  const sx = Math.max(0, Math.floor(Math.min(...corners.map((p) => p.x))) - 1);
+  const sy = Math.max(0, Math.floor(Math.min(...corners.map((p) => p.y))) - 1);
+  const sw =
+    Math.min(
+      sourceCanvas.width,
+      Math.ceil(Math.max(...corners.map((p) => p.x))) + 1,
+    ) - sx;
+  const sh =
+    Math.min(
+      sourceCanvas.height,
+      Math.ceil(Math.max(...corners.map((p) => p.y))) + 1,
+    ) - sy;
 
-  // If the card bounding box is wider than tall, it's landscape in the frame.
-  // Crop into a landscape canvas matching that ratio, then rotate 90° CW to
-  // portrait so extractArtRegion receives a correctly-oriented image and
-  // nothing gets squished.
-  const isLandscape = boxW > boxH;
-  const cropW = isLandscape ? outputHeight : outputWidth;
-  const cropH = isLandscape ? outputWidth : outputHeight;
+  const srcCtx = sourceCanvas.getContext("2d");
+  if (!srcCtx) throw new Error("Could not get canvas context");
+  const srcData = srcCtx.getImageData(sx, sy, sw, sh).data;
 
-  const cropCanvas = document.createElement("canvas");
-  cropCanvas.width = cropW;
-  cropCanvas.height = cropH;
-  const cropCtx = cropCanvas.getContext("2d");
-  if (!cropCtx) throw new Error("Could not get canvas context");
-  cropCtx.imageSmoothingQuality = "high";
-  // Read right to left: put the region's centre at the origin, turn the frame
-  // back by the region's own angle, scale the box to the output, then move the
-  // origin to the middle of the output. Everything outside the box falls
-  // outside the canvas and is clipped. At angle 0 this is exactly the crop
-  // this function used to do.
-  cropCtx.translate(cropW / 2, cropH / 2);
-  cropCtx.scale(cropW / boxW, cropH / boxH);
-  cropCtx.rotate(-angle);
-  cropCtx.translate(-cx, -cy);
-  cropCtx.drawImage(sourceCanvas, 0, 0);
-  cropCtx.setTransform(1, 0, 0, 1, 0, 0);
-
-  if (!isLandscape) return cropCanvas;
-
-  // Rotate the landscape crop 90° CW to produce a portrait canvas.
   const outputCanvas = document.createElement("canvas");
   outputCanvas.width = outputWidth;
   outputCanvas.height = outputHeight;
   const outCtx = outputCanvas.getContext("2d");
   if (!outCtx) throw new Error("Could not get canvas context");
-  outCtx.translate(outputWidth / 2, outputHeight / 2);
-  outCtx.rotate(Math.PI / 2);
-  outCtx.drawImage(cropCanvas, -cropW / 2, -cropH / 2);
+  const out = outCtx.createImageData(outputWidth, outputHeight);
+  const outData = out.data;
+
+  const du = 1 / outputWidth;
+  const stepX = map.a * du;
+  const stepY = map.d * du;
+  const stepW = map.g * du;
+  const maxX = sw - 1;
+  const maxY = sh - 1;
+  let o = 0;
+
+  for (let py = 0; py < outputHeight; py++) {
+    const v = (py + 0.5) / outputHeight;
+    // Step along the row instead of re-evaluating the map: with v fixed every
+    // term is linear in u, so one add each replaces three multiplies. The
+    // divide has to stay per-pixel - it is what makes the map projective.
+    let nx = map.a * du * 0.5 + map.b * v + map.c;
+    let ny = map.d * du * 0.5 + map.e * v + map.f;
+    let nw = map.g * du * 0.5 + map.h * v + 1;
+
+    for (
+      let px = 0;
+      px < outputWidth;
+      px++, nx += stepX, ny += stepY, nw += stepW, o += 4
+    ) {
+      const fx = nx / nw - sx;
+      const fy = ny / nw - sy;
+      // Clamp to the read window before interpolating, so a corner parked on
+      // the very edge of the frame samples the edge pixel rather than reading
+      // off the end of the buffer.
+      const cx = fx < 0 ? 0 : fx > maxX ? maxX : fx;
+      const cy = fy < 0 ? 0 : fy > maxY ? maxY : fy;
+      const x0 = cx | 0;
+      const y0 = cy | 0;
+      const x1 = x0 < maxX ? x0 + 1 : x0;
+      const y1 = y0 < maxY ? y0 + 1 : y0;
+      const tx = cx - x0;
+      const ty = cy - y0;
+
+      const w00 = (1 - tx) * (1 - ty);
+      const w10 = tx * (1 - ty);
+      const w01 = (1 - tx) * ty;
+      const w11 = tx * ty;
+      const i00 = (y0 * sw + x0) * 4;
+      const i10 = (y0 * sw + x1) * 4;
+      const i01 = (y1 * sw + x0) * 4;
+      const i11 = (y1 * sw + x1) * 4;
+
+      outData[o] =
+        srcData[i00] * w00 +
+        srcData[i10] * w10 +
+        srcData[i01] * w01 +
+        srcData[i11] * w11;
+      outData[o + 1] =
+        srcData[i00 + 1] * w00 +
+        srcData[i10 + 1] * w10 +
+        srcData[i01 + 1] * w01 +
+        srcData[i11 + 1] * w11;
+      outData[o + 2] =
+        srcData[i00 + 2] * w00 +
+        srcData[i10 + 2] * w10 +
+        srcData[i01 + 2] * w01 +
+        srcData[i11 + 2] * w11;
+      outData[o + 3] = 255;
+    }
+  }
+
+  outCtx.putImageData(out, 0, 0);
   return outputCanvas;
 }
 

@@ -78,11 +78,13 @@
     }
   },
   "scanRegionCalibrationPanel": {
-    "instructions": "Drag the box to move it, the corner handle to resize, or the top handle to turn it. Line it up with a card sitting at the camera (sorting arm 1).",
-    "rotateHandle": "Turn the scan area",
-    "rotateLeft": "Turn a half degree left",
-    "rotateRight": "Turn a half degree right",
-    "degreeValue": "{{value}}°",
+    "instructions": "Drag each corner onto a corner of a card sitting at the camera (sorting arm 1), or drag inside the shape to move all four. The photo is straightened to the shape you set.",
+    "corner": {
+      "topLeft": "Top-left corner",
+      "topRight": "Top-right corner",
+      "bottomRight": "Bottom-right corner",
+      "bottomLeft": "Bottom-left corner"
+    },
     "connecting": "Connecting…",
     "reconnectWebcam": "Reconnect camera",
     "connectWebcam": "Connect camera",
@@ -90,7 +92,8 @@
     "resetToDefault": "Reset to default",
     "saving": "Saving…",
     "saveScanRegion": "Save scan area",
-    "savedSummary": "Scan area saved · turned {{rotation}}°",
+    "savedCornersSummary": "Scan area saved · {{corners}}",
+    "savedNoCorners": "Scan area not set yet — showing the old rectangle. Drag a corner to start.",
     "settleDelayLabel": "Photo delay",
     "settleDelayHint": "How long to wait after the sensor sees a card before the photo is taken. Raise this if captures show the card still sliding.",
     "saveSettleDelay": "Save photo delay",
@@ -182,6 +185,7 @@
         "modules_other": "{{count}} sorting arms",
         "feeder": "Feeder",
         "scanRegion": "Scan area",
+        "scanCorners": "Scan area (four corners)",
         "scanRegionCleared": "Scan area (cleared back to the default)",
         "captureDelay": "Capture delay ({{value}} ms)"
       }

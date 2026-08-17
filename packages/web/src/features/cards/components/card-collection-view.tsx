@@ -38,6 +38,8 @@ export interface CardCollectionViewProps {
   collectionName?: string;
   /** Which collection's game/lang the catalog search should resolve. */
   searchCollectionGuid?: string;
+  /** The game to search when there is no collection to resolve one from. */
+  searchGameKey?: string;
   /**
    * Share filter state with the rest of the app. The scan screen passes the
    * app-wide CardFilters context so its stat chips can drive the grid; the
@@ -86,6 +88,7 @@ export function CardCollectionView({
   isLoading,
   collectionName,
   searchCollectionGuid,
+  searchGameKey,
   externalFilters,
   elapsedMs,
   resetPageKey,
@@ -239,6 +242,7 @@ export function CardCollectionView({
         scanScore={openEntry.score}
         scanMargin={openEntry.margin}
         searchCollectionGuid={searchCollectionGuid}
+        searchGameKey={searchGameKey}
         fieldDefinitions={fieldDefinitions}
         showCandidates={showCandidates}
         onCorrect={onCorrectCard}

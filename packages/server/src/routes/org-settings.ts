@@ -9,6 +9,7 @@ import {
 } from "@poke-sort/shared";
 import { z } from "zod";
 import { retentionFromRow } from "../lib/retention";
+import { ScanCornersSchema, parseScanCorners } from "../lib/scan-corners";
 import { parseBody } from "../lib/validate";
 import { authQuery } from "../db";
 import { orgSettings } from "../db/schema";
@@ -82,6 +83,7 @@ router.get("/", requireAuth, requireOrg, async (c) => {
           discordWebhookUrl: row?.discordWebhookUrl ?? null,
           discordNotifyOnScan: row?.discordNotifyOnScan ?? false,
           scanRegion: toScanRegion(row),
+          scanCorners: parseScanCorners(row?.scanCorners),
           // Default matches the old hardcoded constant, so an install that
           // never touched the setting behaves exactly as before.
           captureSettleDelayMs: row?.captureSettleDelayMs ?? 500,
@@ -137,6 +139,10 @@ export const OrgSettingsSchema = z
       .strict()
       .nullable()
       .optional(),
+    // Supersedes scanRegion. Null clears the quad and falls the client back to
+    // the legacy region, which is also what the calibration screen's reset
+    // button used to mean.
+    scanCorners: ScanCornersSchema.nullable().optional(),
     // Bounded: the feeder cycle stalls for this long on every card, so five
     // seconds is already generous for a slow slide. Null restores the default.
     captureSettleDelayMs: z.number().int().min(0).max(5000).nullable().optional(),
@@ -255,6 +261,10 @@ router.put("/", requireAuth, requireOrg, async (c) => {
                 : (existing?.scanRotation ?? null)
               : null
             : (existing?.scanRotation ?? null),
+        scanCorners:
+          "scanCorners" in body
+            ? (body.scanCorners ?? null)
+            : (existing?.scanCorners ?? null),
         // Three cases, and they mean different things: absent leaves the
         // stored thresholds alone, null clears all four back to the shipped
         // defaults, and an object overwrites only the keys it names — so
@@ -278,6 +288,7 @@ router.put("/", requireAuth, requireOrg, async (c) => {
           discordWebhookUrl: merged.discordWebhookUrl,
           discordNotifyOnScan: merged.discordNotifyOnScan,
           scanRegion: toScanRegion(merged),
+          scanCorners: parseScanCorners(merged.scanCorners),
           captureSettleDelayMs: merged.captureSettleDelayMs ?? 500,
           retention: toRetention(merged),
         },

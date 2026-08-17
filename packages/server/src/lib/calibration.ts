@@ -17,6 +17,7 @@ import {
   moduleConfigs,
   orgSettings,
 } from "../db/schema";
+import { ScanCornersSchema, parseScanCorners } from "./scan-corners";
 
 /**
  * Calibration as a portable document.
@@ -50,11 +51,11 @@ const offset = z.number().min(-SCAN_OFFSET_LIMIT).max(SCAN_OFFSET_LIMIT);
 const rotation = z.number().min(-SCAN_ROTATION_LIMIT).max(SCAN_ROTATION_LIMIT);
 
 /**
- * Still version 1 after gaining `scanRegion.rotation`.
+ * Still version 1 after gaining `scanRegion.rotation` and then `scanCorners`.
  *
- * It is optional, so every file written before it existed still imports — and
- * bumping the version would have broken exactly those files, since the field
- * is a literal, not a range. The cost is that a file written here fails
+ * They are optional, so every file written before they existed still imports —
+ * and bumping the version would have broken exactly those files, since the
+ * field is a literal, not a range. The cost is that a file written here fails
  * `.strict()` on an older build; the alternative was orphaning the calibration
  * files that already exist, which is the worse half of the trade.
  */
@@ -102,6 +103,13 @@ export const CalibrationDocumentSchema = z
       .strict()
       .nullable()
       .optional(),
+    /**
+     * The four-corner region that supersedes scanRegion above. Both are
+     * carried: a file exported here still applies on a build that only knows
+     * the rectangle, and the rectangle is still what an install falls back to
+     * when no corners are stored.
+     */
+    scanCorners: ScanCornersSchema.nullable().optional(),
     /** ms between the IR sensor confirming a card and the frame capture. */
     captureSettleDelayMs: z.number().int().min(0).max(5000).nullable().optional(),
   })
@@ -198,6 +206,7 @@ async function buildDocument(
             rotation: (settings.scanRotation ?? 0) / 10,
           }
         : null,
+    scanCorners: parseScanCorners(settings?.scanCorners),
     ...(settings?.captureSettleDelayMs != null
       ? { captureSettleDelayMs: settings.captureSettleDelayMs }
       : {}),
@@ -268,41 +277,50 @@ export async function importCalibration(
       }
     }
 
-    if (doc.scanRegion !== undefined) {
-      const region = doc.scanRegion
-        ? {
-            scanCoverage: Math.round(doc.scanRegion.coverage * 100),
-            scanOffsetX: Math.round(doc.scanRegion.offsetX * 100),
-            scanOffsetY: Math.round(doc.scanRegion.offsetY * 100),
-            // A file predating rotation describes a square box, so absent
-            // means zero here — unlike a PUT, where absent means "unchanged".
-            // The document is the whole region, not a patch of one.
-            scanRotation: Math.round((doc.scanRegion.rotation ?? 0) * 10),
-          }
-        : {
-            scanCoverage: null,
-            scanOffsetX: null,
-            scanOffsetY: null,
-            scanRotation: null,
-          };
+    if (doc.scanRegion !== undefined || doc.scanCorners !== undefined) {
+      const region =
+        doc.scanRegion !== undefined
+          ? doc.scanRegion
+            ? {
+                scanCoverage: Math.round(doc.scanRegion.coverage * 100),
+                scanOffsetX: Math.round(doc.scanRegion.offsetX * 100),
+                scanOffsetY: Math.round(doc.scanRegion.offsetY * 100),
+                // A file predating rotation describes a square box, so absent
+                // means zero here — unlike a PUT, where absent means
+                // "unchanged". The document is the whole region, not a patch.
+                scanRotation: Math.round((doc.scanRegion.rotation ?? 0) * 10),
+              }
+            : {
+                scanCoverage: null,
+                scanOffsetX: null,
+                scanOffsetY: null,
+                scanRotation: null,
+              }
+          : {};
 
+      // Absent corners clear the stored quad rather than leaving it, for the
+      // same reason absent rotation means zero above: a document describes a
+      // whole scan region. Importing a file exported before corners existed
+      // must land the rectangle that file describes, not that rectangle with
+      // this machine's leftover quad still overriding it.
+      const values = { ...region, scanCorners: doc.scanCorners ?? null };
       const existing = await tx.query.orgSettings.findFirst({
         where: eq(orgSettings.orgId, orgId),
       });
       if (existing) {
         await tx
           .update(orgSettings)
-          .set({ ...region, updatedAt: new Date() })
+          .set({ ...values, updatedAt: new Date() })
           .where(eq(orgSettings.orgId, orgId));
       } else {
-        await tx.insert(orgSettings).values({ ...region, orgId });
+        await tx.insert(orgSettings).values({ ...values, orgId });
       }
     }
 
     return {
       modules: doc.modules.length,
       feeder: !!doc.feeder,
-      scanRegion: doc.scanRegion !== undefined,
+      scanRegion: doc.scanRegion !== undefined || doc.scanCorners !== undefined,
     };
   });
 }

@@ -9,6 +9,7 @@ import { BinLocationDiagram } from "@/features/bins/components/bin-location-diag
 import { CardMetadataPanel } from "@/features/cards/components/card-metadata-panel";
 import { CardSearchPicker } from "@/features/cards/components/card-search-picker";
 import { ZoomableCardImage } from "@/features/cards/components/zoomable-card-image";
+import { isDialogOpen } from "@/lib/dialog-open";
 import { cn } from "@/lib/utils";
 import type {
   FieldMeta,
@@ -82,6 +83,12 @@ interface CardDetailPanelProps {
    */
   searchCollectionGuid?: string;
   /**
+   * The game to search when there is no collection to resolve one from.
+   * Without it, the picker 400s on the scan screen before a collection is
+   * chosen and renders the failure as "no cards found".
+   */
+  searchGameKey?: string;
+  /**
    * The game's field definitions. Passed in rather than read from the active
    * game, so a collection of a different game shows its own field set.
    */
@@ -116,6 +123,7 @@ export function CardDetailPanel({
   onAdd,
   onToggleFoil,
   searchCollectionGuid,
+  searchGameKey,
   fieldDefinitions,
   showCandidates = true,
 }: CardDetailPanelProps) {
@@ -150,9 +158,7 @@ export function CardDetailPanel({
       // Escape twice: once closing the enlarged image, once closing the panel
       // behind it. Arrows are just as wrong there — they would page to another
       // card while its image is still on screen.
-      if (document.querySelector('[data-slot="dialog-content"][data-open]')) {
-        return;
-      }
+      if (isDialogOpen()) return;
       if (e.key === "ArrowLeft" && hasPrev) onPrev?.();
       if (e.key === "ArrowRight" && hasNext) onNext?.();
       if (e.key === "Escape") onClose();
@@ -489,6 +495,7 @@ export function CardDetailPanel({
               <CardSearchPicker
                 onSelect={handleSelect}
                 collectionGuid={searchCollectionGuid}
+                gameKey={searchGameKey}
                 initialQuery={selectedCard?.name ?? ""}
               />
               <Button variant="outline" onClick={() => setEditing(false)}>

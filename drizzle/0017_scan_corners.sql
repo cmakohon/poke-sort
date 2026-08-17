@@ -1,0 +1,17 @@
+-- The scan region's four corners, as fractions of the raw camera frame.
+--
+-- The camera looks at the platform from an angle, so a card's outline in the
+-- frame is a trapezoid. The coverage/offset/rotation columns can only describe
+-- a rigid rectangle, which can never sit on all four card edges at once — every
+-- capture carried either a clipped edge or a strip of platform background into
+-- both the embedding and the saved image.
+--
+-- jsonb rather than eight more integer columns: the corners are read and
+-- written as one shape, and separate columns would make a half-applied update
+-- representable.
+--
+-- Nullable, and the legacy columns are left in place. NULL means an install
+-- that has never opened the corner editor; the client derives the corners from
+-- coverage/offset/rotation in that case, so an upgrade changes nothing until
+-- the operator saves a quad.
+ALTER TABLE "org_settings" ADD COLUMN IF NOT EXISTS "scan_corners" jsonb;

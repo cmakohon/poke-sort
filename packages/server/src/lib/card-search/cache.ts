@@ -51,15 +51,10 @@ class TtlCache<T> {
 }
 
 export function withCache(adapter: CardSearchAdapter): CardSearchAdapter {
-  const searchCache = new TtlCache<PlayingCard[]>();
   const byIdCache = new TtlCache<PlayingCard>();
 
   return {
     ...adapter,
-    search(query, baseUrl) {
-      const key = `${baseUrl}::${query.trim().toLowerCase()}`;
-      return searchCache.getOrFetch(key, () => adapter.search(query, baseUrl));
-    },
     searchById(id, baseUrl) {
       const key = `${baseUrl}::${id}`;
       return byIdCache.getOrFetch(key, () => adapter.searchById(id, baseUrl));

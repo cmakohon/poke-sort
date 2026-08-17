@@ -2,7 +2,8 @@
 import "@/lib/i18n";
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { ZoomableCardImage } from "./zoomable-card-image";
+import { isDialogOpen } from "@/lib/dialog-open";
+import { CardImageDialog, ZoomableCardImage } from "./zoomable-card-image";
 
 afterEach(cleanup);
 
@@ -45,17 +46,53 @@ describe("ZoomableCardImage", () => {
    */
   it("marks the open dialog so the panel can stand down", () => {
     render(<ZoomableCardImage src={SRC} alt="Energy Switch" />);
-    expect(
-      document.querySelector('[data-slot="dialog-content"][data-open]'),
-    ).toBeNull();
+    expect(isDialogOpen()).toBe(false);
     openLightbox();
-    expect(
-      document.querySelector('[data-slot="dialog-content"][data-open]'),
-    ).not.toBeNull();
+    expect(isDialogOpen()).toBe(true);
+  });
+
+  /**
+   * The review screen flips an upside-down capture with F. Zooming in is
+   * exactly when that flip matters most, so it has to survive the enlarge.
+   */
+  it("carries a class through to the enlarged image", () => {
+    render(
+      <ZoomableCardImage
+        src={SRC}
+        alt="Energy Switch"
+        imgClassName="rotate-180"
+        imageClassName="rotate-180"
+      />,
+    );
+    openLightbox();
+    const images = screen.getAllByAltText("Energy Switch");
+    expect(images).toHaveLength(2);
+    for (const img of images) {
+      expect(img.className).toContain("rotate-180");
+    }
   });
 
   it("renders nothing without an image", () => {
     const { container } = render(<ZoomableCardImage src="" alt="Missing" />);
     expect(container.firstChild).toBeNull();
+  });
+});
+
+describe("CardImageDialog", () => {
+  /**
+   * The controlled half, for callers whose thumbnail is already a button doing
+   * something else — the monitor screen's tiles. Nesting the zoom button
+   * inside one of those would be invalid markup.
+   */
+  it("opens and closes from the caller's state", () => {
+    const { rerender } = render(
+      <CardImageDialog src={SRC} alt="Energy Switch" open={false} onOpenChange={() => {}} />,
+    );
+    expect(isDialogOpen()).toBe(false);
+    rerender(
+      <CardImageDialog src={SRC} alt="Energy Switch" open onOpenChange={() => {}} />,
+    );
+    expect(isDialogOpen()).toBe(true);
+    expect(screen.getByAltText("Energy Switch")).toBeDefined();
   });
 });

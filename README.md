@@ -457,6 +457,15 @@ re-import **adds** cards it has not seen and never **updates** ones it has. New
 sets are all new rows, so this is the right trade — but a correction to an
 existing card's data will not propagate to installs that already have it.
 
+The correction picker searches this catalog, not a remote API, so it is paged
+and offline and every printing is reachable — `GET /api/cards/search` takes
+`q`, `setCode` and `page`, and returns the total and a per-set breakdown of the
+whole match rather than of the page. The one thing it cannot find is a set
+released since the last import; that set is not identifiable either, so it
+could not have been mis-scanned in the first place. Cards are still looked up
+by id upstream (`GET /api/cards/search/:id`), which is what live price refresh
+needs.
+
 ## Calibration
 
 Servo positions, feeder timings and the camera's scan region describe one
@@ -491,6 +500,15 @@ a file always describes what the hardware will actually do. An import runs in
 one transaction and records every change in the calibration history, so it can
 be reverted like a manual edit. Sections omitted from a file are left untouched
 rather than reset.
+
+The scan region is four corners (`scanCorners`), each an x/y fraction of the
+camera frame, labelled as the card sees them rather than as the frame does — the
+camera is mounted sideways. The camera also looks at the platform from an angle,
+so a card's outline in the frame is a trapezoid; free corners can follow that,
+and the capture is straightened with a perspective warp on the way out. The
+older `coverage`/`offset`/`rotation` rectangle is still read as a fallback, so
+an install that has never opened the corner editor, and every calibration file
+written before corners existed, keeps working unchanged.
 
 ## Hardware
 

@@ -7,6 +7,9 @@ import type {
 import { sql } from "drizzle-orm";
 import sharp from "sharp";
 import { db } from "../../db";
+import { hydrateCatalogCard, type CatalogCardRow } from "../catalog-card";
+// Directly, not through hydrateCatalogCard: the winner is rebuilt with a
+// detected variant, which that helper deliberately knows nothing about.
 import {
   normalizePokemonCard,
   type PokemonCardDetail,
@@ -28,60 +31,14 @@ import {
 } from "./profiles";
 import { decideTier, rerank, type RerankInput } from "./rerank";
 
-interface CandidateRow extends Record<string, unknown> {
-  card_id: string;
+interface CandidateRow extends CatalogCardRow {
   distance: number;
-  name: string;
-  collector_number: string | null;
   set_total: number | null;
-  set_code: string;
-  card_data: unknown;
 }
 
-/**
- * Rebuilds the client-facing card from the stored upstream object.
- *
- * Reuses the same normalizers the search endpoints use, so `card.raw` keeps the
- * shape the bin rule engine resolves its paths against. Cards synced before the
- * card_data column existed simply have no stored object; they still rank, they
- * just arrive unhydrated.
- */
-function hydrate(
-  gameKey: string,
-  data: unknown,
-  fallback?: CandidateRow,
-): PlayingCard | null {
-  if (!data || typeof data !== "object") {
-    // Degrade to what the indexed columns hold rather than returning null: the
-    // client drops candidates it cannot render, so a missing detail would make
-    // the right card vanish from the list entirely.
-    return fallback ? minimalCard(fallback) : null;
-  }
-  try {
-    if (gameKey === "pokemon") {
-      return normalizePokemonCard(data as PokemonCardDetail);
-    }
-  } catch {
-    // A malformed stored object should not take the whole scan down.
-    return fallback ? minimalCard(fallback) : null;
-  }
-  return fallback ? minimalCard(fallback) : null;
-}
-
-/** Enough of a card to display and to sort on, built from the columns alone. */
-function minimalCard(row: CandidateRow): PlayingCard {
-  return {
-    id: row.card_id,
-    name: row.name,
-    image: null,
-    set: row.card_id.split("-")[0] ?? "",
-    setName: "",
-    collectorNumber: row.collector_number ?? "",
-    rarity: "",
-    typeLine: "",
-    types: [],
-    price: null,
-  };
+/** A row's card, or null when the id is not among the rows at all. */
+function hydrate(gameKey: string, row: CandidateRow | undefined) {
+  return row ? hydrateCatalogCard(gameKey, row) : null;
 }
 
 /** The candidate set's printed code, from the local set index. */
@@ -168,7 +125,7 @@ function withoutProfile(
     id: row.card_id,
     distance: row.distance,
     score: Math.max(0, 1 - row.distance / LEGACY_CUTOFF),
-    card: hydrate(gameKey, row.card_data, row),
+    card: hydrate(gameKey, row),
   }));
   return {
     tier: candidates.length > 0 ? "accept" : "no-match",
@@ -214,7 +171,7 @@ async function withProfile(
 
   const candidates: IdentifyCandidate[] = ranked.map((c) => ({
     ...c,
-    card: hydrate(gameKey, byId.get(c.id)?.card_data, byId.get(c.id)),
+    card: hydrate(gameKey, byId.get(c.id)),
   }));
 
   // Only the winner gets a fresh price — it is the only one whose price can

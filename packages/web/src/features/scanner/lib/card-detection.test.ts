@@ -34,9 +34,9 @@ describe("getDefaultCardContour rotation", () => {
       rotation: 0,
     });
     expect(explicitZero).toEqual(square);
-    // Zero rotation must stay axis-aligned: the crop path treats the contour
-    // as a plain rectangle in that case, and a hair of rounding here would
-    // resample every capture for nothing.
+    // Zero rotation must stay axis-aligned: this is the box an unconfigured
+    // install starts from, and a hair of rounding would seed the editor with a
+    // quad that is already very slightly crooked.
     expect(square.topLeft.y).toBe(square.topRight.y);
     expect(square.topLeft.x).toBe(square.bottomLeft.x);
   });
@@ -59,9 +59,9 @@ describe("getDefaultCardContour rotation", () => {
       offsetY: -0.06,
       rotation: -12.5,
     });
-    // Rigid: same edge lengths, and still square at the corners. This is what
-    // lets extractCardImage undo the turn with a rotation instead of a
-    // homography.
+    // Rigid: same edge lengths, and still square at the corners. This is the
+    // legacy seed path, and a seed that arrives already skewed would hand the
+    // operator a quad to un-bend before they can start.
     expect(edge(turned.topLeft, turned.topRight)).toBeCloseTo(
       edge(square.topLeft, square.topRight),
       6,

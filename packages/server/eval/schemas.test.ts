@@ -137,6 +137,37 @@ describe("calibration bounds", () => {
     expect(OrgSettingsSchema.safeParse({ scanRegion: turned(-90) }).success).toBe(false);
   });
 
+  it("accepts a four-corner scan region, and rejects one off the frame", () => {
+    const quad = {
+      topLeft: { x: 0.08, y: 0.21 },
+      topRight: { x: 0.91, y: 0.16 },
+      bottomRight: { x: 0.94, y: 0.84 },
+      bottomLeft: { x: 0.06, y: 0.79 },
+    };
+    accepts(OrgSettingsSchema, { scanCorners: quad });
+    accepts(CalibrationDocumentSchema, { version: 1, ...REAL_MACHINE, scanCorners: quad });
+    // Corners are unsigned fractions of the frame, unlike the region's signed
+    // offsets — a corner outside the image has nothing to sample.
+    expect(
+      OrgSettingsSchema.safeParse({
+        scanCorners: { ...quad, topLeft: { x: -0.01, y: 0.21 } },
+      }).success,
+    ).toBe(false);
+    // All four are required: three corners do not describe a quadrilateral.
+    expect(
+      OrgSettingsSchema.safeParse({
+        scanCorners: { topLeft: quad.topLeft, topRight: quad.topRight, bottomRight: quad.bottomRight },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("still accepts a document written before corners existed", () => {
+    // Same trade as rotation above: scanCorners is optional so that every file
+    // already on disk — including calibration/collin-machine.json — imports.
+    accepts(CalibrationDocumentSchema, { version: 1, ...REAL_MACHINE });
+    accepts(OrgSettingsSchema, { scanRegion: REAL_MACHINE.scanRegion });
+  });
+
 });
 
 describe("game and bin bounds", () => {

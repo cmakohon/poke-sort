@@ -1,3 +1,4 @@
+import { isDialogOpen } from "@/lib/dialog-open";
 import { useEffect, useRef } from "react";
 
 /**
@@ -9,6 +10,11 @@ import { useEffect, useRef } from "react";
  * user meant to press the control. Escape is the one exception — it must
  * work from inside the search input and the note field, otherwise there is
  * no keyboard way out.
+ *
+ * An open dialog silences everything, Escape included. Enlarging a capture
+ * puts one over the whole screen, and a verdict key pressed there would answer
+ * a card the operator can no longer see — Escape worst of all, since it would
+ * both close the image and skip the card in one press.
  *
  * Return true from the handler to preventDefault (Space scrolling the page,
  * `/` opening quick-find in some browsers).
@@ -24,6 +30,7 @@ export function useReviewHotkeys(
     if (!enabled) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (isDialogOpen()) return;
       const target = e.target as HTMLElement;
       const claimed =
         target.tagName === "INPUT" ||

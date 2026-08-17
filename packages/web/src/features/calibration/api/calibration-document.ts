@@ -2,6 +2,7 @@ import { API_BASE, apiGet } from "@/lib/api/client";
 import type {
   FeederCalibration,
   Result,
+  ScanCorners,
   ScanRegion,
   ServoCalibration,
 } from "@poke-sort/shared";
@@ -25,6 +26,8 @@ export interface CalibrationDocument {
   feeder?: FeederCalibration;
   /** Absent leaves the region alone; null clears it. `rotation` predates v1's last field. */
   scanRegion?: (Omit<ScanRegion, "rotation"> & { rotation?: number }) | null;
+  /** The four-corner region. Absent in files written before it existed. */
+  scanCorners?: ScanCorners | null;
   captureSettleDelayMs?: number | null;
 }
 

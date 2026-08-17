@@ -34,7 +34,10 @@ function useFileSummary(doc: Partial<CalibrationDocument> | null): string[] {
   if (doc.feeder) lines.push(t("calibratePage.transfer.parts.feeder"));
   // Absent means "leave alone", null means "clear" — the two read very
   // differently to someone about to apply the file, so they are not merged.
-  if (doc.scanRegion !== undefined)
+  // The corners win over the rectangle when a file carries both, so the line
+  // names whichever one will actually be in force after the import.
+  if (doc.scanCorners) lines.push(t("calibratePage.transfer.parts.scanCorners"));
+  else if (doc.scanRegion !== undefined)
     lines.push(
       doc.scanRegion
         ? t("calibratePage.transfer.parts.scanRegion")
