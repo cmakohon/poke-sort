@@ -457,6 +457,15 @@ re-import **adds** cards it has not seen and never **updates** ones it has. New
 sets are all new rows, so this is the right trade — but a correction to an
 existing card's data will not propagate to installs that already have it.
 
+The correction picker searches this catalog, not a remote API, so it is paged
+and offline and every printing is reachable — `GET /api/cards/search` takes
+`q`, `setCode` and `page`, and returns the total and a per-set breakdown of the
+whole match rather than of the page. The one thing it cannot find is a set
+released since the last import; that set is not identifiable either, so it
+could not have been mis-scanned in the first place. Cards are still looked up
+by id upstream (`GET /api/cards/search/:id`), which is what live price refresh
+needs.
+
 ## Calibration
 
 Servo positions, feeder timings and the camera's scan region describe one

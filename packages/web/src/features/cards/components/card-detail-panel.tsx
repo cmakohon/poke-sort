@@ -83,6 +83,12 @@ interface CardDetailPanelProps {
    */
   searchCollectionGuid?: string;
   /**
+   * The game to search when there is no collection to resolve one from.
+   * Without it, the picker 400s on the scan screen before a collection is
+   * chosen and renders the failure as "no cards found".
+   */
+  searchGameKey?: string;
+  /**
    * The game's field definitions. Passed in rather than read from the active
    * game, so a collection of a different game shows its own field set.
    */
@@ -117,6 +123,7 @@ export function CardDetailPanel({
   onAdd,
   onToggleFoil,
   searchCollectionGuid,
+  searchGameKey,
   fieldDefinitions,
   showCandidates = true,
 }: CardDetailPanelProps) {
@@ -488,6 +495,7 @@ export function CardDetailPanel({
               <CardSearchPicker
                 onSelect={handleSelect}
                 collectionGuid={searchCollectionGuid}
+                gameKey={searchGameKey}
                 initialQuery={selectedCard?.name ?? ""}
               />
               <Button variant="outline" onClick={() => setEditing(false)}>

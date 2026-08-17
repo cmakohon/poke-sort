@@ -127,6 +127,13 @@
       "when": 1786500840000,
       "tag": "0017_scan_corners",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1786500900000,
+      "tag": "0018_cards_name_trgm",
+      "breakpoints": true
     }
   ]
 }

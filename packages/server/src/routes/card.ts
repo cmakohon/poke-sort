@@ -1,5 +1,9 @@
 import { Hono } from "hono";
 import {
+  DEFAULT_CATALOG_LANG,
+  searchLocalCatalog,
+} from "../lib/card-search/local";
+import {
   resolveAdapterForGame,
   resolveCardSearch,
   resolveGameKeyAndLang,
@@ -125,17 +129,44 @@ async function resolveSearchContext(c: {
   return gameKey ? resolveAdapterForGame(gameKey) : null;
 }
 
+/**
+ * The game and language whose catalog rows to search.
+ *
+ * Same collection-then-?gameKey= resolution as the adapter lookup above, but
+ * search reads the local `cards` table rather than a game's remote API, so it
+ * needs the language too. A caller naming only a game gets the catalog's
+ * default language — the review screen searches against scan_events rows,
+ * which record the game but not the collection's language.
+ */
+async function resolveSearchCatalog(c: {
+  get(key: "jwtClaims"): string;
+  req: { query(name: string): string | undefined };
+}) {
+  const resolved = await resolveGameKeyAndLang(
+    c.get("jwtClaims"),
+    c.req.query("collectionGuid"),
+  );
+  if (resolved) return resolved;
+  const gameKey = c.req.query("gameKey");
+  return gameKey ? { gameKey, lang: DEFAULT_CATALOG_LANG } : null;
+}
+
 router.get("/search", requireAuth, async (c) => {
-  const query = c.req.query("q") ?? "";
-  const resolved = await resolveSearchContext(c);
+  const resolved = await resolveSearchCatalog(c);
   if (!resolved) {
     return c.json(
       { success: false, message: "No game configured for this collection." },
       400,
     );
   }
-  const result = await resolved.adapter.search(query, resolved.baseUrl);
-  return c.json(result);
+  const page = await searchLocalCatalog({
+    ...resolved,
+    query: c.req.query("q") ?? "",
+    setCode: c.req.query("setCode") || undefined,
+    page: Number(c.req.query("page") ?? 1),
+    limit: c.req.query("limit") ? Number(c.req.query("limit")) : undefined,
+  });
+  return c.json({ success: true, message: "Cards retrieved.", data: page });
 });
 
 router.get("/search/:id", requireAuth, async (c) => {

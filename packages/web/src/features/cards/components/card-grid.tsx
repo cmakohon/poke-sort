@@ -194,6 +194,7 @@ export function CardGrid() {
       emptyState={emptyState}
       collectionName={activeCollection?.name}
       searchCollectionGuid={activeCollection?.guid}
+      searchGameKey={activeCollection?.game?.key}
       externalFilters={cardFilters}
       elapsedMs={elapsedMs}
       resetPageKey={session?.guid}

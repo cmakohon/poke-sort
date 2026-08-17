@@ -75,6 +75,7 @@ export default function CollectionDetailPage() {
           isLoading={isLoading}
           collectionName={collection?.name}
           searchCollectionGuid={collectionGuid}
+          searchGameKey={collection?.game?.key}
           // A filed card has already been matched. The other candidates the
           // scan considered are still reachable through "Correct card", which
           // opens a catalog search seeded with the card's name.

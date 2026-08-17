@@ -62,6 +62,12 @@ export const cardImageVectors = pgTable(
     unique("cards_card_id_idx").on(table.cardId),
     index("cards_game_lang_idx").on(table.gameKey, table.lang),
     index("cards_collector_number_idx").on(table.collectorNumber),
+    // Trigram index for the correction search's ILIKE '%...%' on the name.
+    //
+    // Required, not an optimisation: PGlite runs on the main thread and cannot
+    // cancel a query, so a sequential scan of ~22k rows per debounced keystroke
+    // would stall the process mid-sort.
+    index("cards_name_trgm_idx").using("gin", table.name.op("gin_trgm_ops")),
     // Approximate nearest-neighbour index over the embeddings.
     //
     // Measured on the real 21,714-card catalog with degraded (low-quality)
