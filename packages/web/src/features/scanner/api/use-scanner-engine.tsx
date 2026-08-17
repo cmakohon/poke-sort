@@ -1,31 +1,42 @@
 import { searchByImage } from "@/features/cards/api/card";
 import { useCollections } from "@/features/collections/api/use-collections";
+import { reportSerialEvent } from "@/features/notifications/api/notification-settings";
 import { orgSettingsQueryOptions } from "@/features/settings/api/org-settings";
 import { useOrg } from "@/hooks/use-org";
 import { useCameraContext } from "@/features/scanner/api/use-camera";
+import { useScannedCards } from "@/features/scanner/api/use-scanned-cards";
+import { useSerial, useSerialMessage } from "@/features/scanner/api/use-serial";
 import {
   CARD_SETTLE_DELAY_MS,
   SCANNABLE_STATUSES,
 } from "@/features/scanner/constants";
 import {
   canvasToBlob,
-  drawDetectionOverlay,
   extractCardImage,
   getDefaultCardContour,
 } from "@/features/scanner/lib/card-detection";
+import type { ScannerEngineValue } from "@/features/scanner/types";
+import { FAULT_TOAST_DURATION_MS } from "@/lib/toast";
 import {
   DEFAULT_SCAN_REGION,
   type CardContour,
-  type CardScannerProps,
   type IdentifyTier,
   type PlayingCard,
   type PlayingCardWithDistance,
-  type ScanRegion,
+  type ScanOutcome,
   type ScannerStatus,
 } from "@poke-sort/shared";
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 
 // Singleton AudioContext - browsers cap concurrent contexts (~6).
 // Creating one per scan exhausts the limit quickly.
@@ -120,41 +131,37 @@ async function searchCardImage(
   };
 }
 
-export function useCardScanner({
-  onSearchResults,
-  onNoMatch,
-  onError,
-  rotated = true,
-  scanRegion: scanRegionProp,
-}: Omit<CardScannerProps, "className"> & {
-  rotated?: boolean;
-  scanRegion?: ScanRegion;
-} = {}) {
+const ScannerEngineContext = createContext<ScannerEngineValue | null>(null);
+
+export function ScannerEngineProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const { t } = useTranslation("scanner");
   const {
     stream,
     status: cameraStatus,
     errorMessage: cameraError,
-    zoom,
-    zoomRange,
-    cameras,
-    selectedCameraId,
-    setZoom,
-    selectCamera,
     retryCamera,
-    stopCamera,
   } = useCameraContext();
+  const { request } = useSerial();
+  const {
+    addCard,
+    sendCatchAllBin,
+    sendReviewBin,
+    setAutoFeed,
+    registerCardArrivedHook,
+    registerPauseHook,
+  } = useScannedCards();
   const { activeCollection } = useCollections();
   const { activeOrg } = useOrg();
   const { data: orgSettingsData } = useQuery(
     orgSettingsQueryOptions(activeOrg?.id),
   );
 
-  const rotatedRef = useRef(rotated);
-  rotatedRef.current = rotated;
-
   const scanRegion =
-    scanRegionProp ?? orgSettingsData?.scanRegion ?? DEFAULT_SCAN_REGION;
+    orgSettingsData?.scanRegion ?? DEFAULT_SCAN_REGION;
   const scanRegionRef = useRef(scanRegion);
   scanRegionRef.current = scanRegion;
 
@@ -170,16 +177,21 @@ export function useCardScanner({
   activeCollectionGuidRef.current = activeCollection?.guid;
 
   const videoRef = useRef<HTMLVideoElement>(null);
-  const displayCanvasRef = useRef<HTMLCanvasElement>(null);
-  const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
-  const rafRef = useRef<number>(0);
+  // Reused rather than allocated per card: a 1920x1080 buffer per scan adds up.
+  const captureCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const statusRef = useRef<ScannerStatus>("initializing");
   const lastScannedCardIdRef = useRef<string | null>(null);
   const isCapturingRef = useRef(false);
   const settleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const onSearchResultsRef = useRef(onSearchResults);
-  const onNoMatchRef = useRef(onNoMatch);
+  const onSearchResultsRef = useRef<
+    (
+      matches: PlayingCardWithDistance[],
+      capturedImageUrl?: string,
+      outcome?: ScanOutcome,
+    ) => void
+  >(() => {});
+  const onNoMatchRef = useRef<() => void>(() => {});
   const handleErrorRef = useRef<(msg: string) => void>(() => {});
 
   const [status, setStatus] = useState<ScannerStatus>("initializing");
@@ -189,6 +201,12 @@ export function useCardScanner({
   const [debugImageUrl, setDebugImageUrl] = useState<string | null>(null);
   const debugImageUrlRef = useRef<string | null>(null);
   const [allowDuplicates, setAllowDuplicates] = useState(true);
+  const [videoSize, setVideoSize] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
+  const [isFeeding, setIsFeeding] = useState(false);
+  const [isClearingDevice, setIsClearingDevice] = useState(false);
 
   const updateStatus = useCallback((newStatus: ScannerStatus) => {
     statusRef.current = newStatus;
@@ -199,18 +217,30 @@ export function useCardScanner({
     (msg: string) => {
       updateStatus("error");
       setErrorMessage(msg);
-      onError?.(msg);
     },
-    [onError, updateStatus],
+    [updateStatus],
   );
 
+  // cards[0] is the pipeline's answer, but it is only sorted automatically
+  // when the outcome says "accept". A "review" outcome still records the
+  // scan — so the identification can be corrected, and the correction kept
+  // as an eval example — while routing the card to the catch-all instead of
+  // acting on an identification the pipeline is not confident about.
   useEffect(() => {
-    onSearchResultsRef.current = onSearchResults;
-  }, [onSearchResults]);
+    onSearchResultsRef.current = (cards, capturedImageUrl, outcome) => {
+      if (cards.length > 0) {
+        addCard(cards[0], capturedImageUrl, cards.slice(1), outcome);
+      }
+    };
+  }, [addCard]);
 
+  // A card nothing could be read off is the review case by definition, so it
+  // goes to the review bin when the sort names one (the catch-all otherwise,
+  // which is where it always went). A skipped duplicate below still uses the
+  // catch-all — that one is a deliberate discard, not an uncertain read.
   useEffect(() => {
-    onNoMatchRef.current = onNoMatch;
-  }, [onNoMatch]);
+    onNoMatchRef.current = sendReviewBin;
+  }, [sendReviewBin]);
 
   useEffect(() => {
     handleErrorRef.current = handleError;
@@ -229,10 +259,34 @@ export function useCardScanner({
     // 'ready' is handled by the stream attachment effect below
   }, [cameraStatus, cameraError, updateStatus]);
 
+  /**
+   * The current frame, drawn straight off the video.
+   *
+   * Capture used to read the preview canvas the display RAF loop painted,
+   * which tied it to a component that only rendered on the scan screen. Going
+   * to the video directly also removes the dependency on RAF having painted
+   * recently.
+   */
+  const frameToCanvas = useCallback(
+    (video: HTMLVideoElement): HTMLCanvasElement => {
+      const canvas = (captureCanvasRef.current ??=
+        document.createElement("canvas"));
+      if (canvas.width !== video.videoWidth) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+      }
+      canvas.getContext("2d")?.drawImage(video, 0, 0);
+      return canvas;
+    },
+    [],
+  );
+
   const performCapture = useCallback(
     async (checkDuplicate: boolean, contour?: CardContour | null) => {
-      const canvas = displayCanvasRef.current;
-      if (!canvas) {
+      const video = videoRef.current;
+      // Below HAVE_CURRENT_DATA drawImage paints nothing, so there is no frame
+      // to identify — the same bail-out the display canvas used to need.
+      if (!video || video.readyState < video.HAVE_CURRENT_DATA) {
         isCapturingRef.current = false;
         updateStatus("scanning");
         return;
@@ -248,7 +302,7 @@ export function useCardScanner({
           scanEventId,
           debugImageUrl,
         } = await searchCardImage(
-          canvas,
+          frameToCanvas(video),
           contour,
           activeCollectionGuidRef.current,
         );
@@ -287,35 +341,13 @@ export function useCardScanner({
         isCapturingRef.current = false;
       }
     },
-    [updateStatus, allowDuplicates, t],
+    [updateStatus, allowDuplicates, frameToCanvas, t],
   );
 
-  // Draws the live camera feed to the display canvas every frame. Capture is
-  // no longer triggered from here - see `captureCard`, which fires off the
-  // module 1 IR sensor confirming a card has arrived (via the feeder command
-  // round trip), not from continuously polling the frame for a card shape.
-  const detectionLoop = useCallback(() => {
-    const video = videoRef.current;
-    const displayCanvas = displayCanvasRef.current;
-
-    if (!video || !displayCanvas) return;
-    if (video.readyState < video.HAVE_ENOUGH_DATA) {
-      rafRef.current = requestAnimationFrame(detectionLoop);
-      return;
-    }
-
-    const displayCtx = displayCanvas.getContext("2d");
-    if (!displayCtx) return;
-
-    displayCtx.drawImage(video, 0, 0);
-
-    rafRef.current = requestAnimationFrame(detectionLoop);
-  }, []);
-
-  // Attach stream to video/canvases and start the detection loop.
-  // Re-runs if the stream is replaced (e.g. after retryCamera).
-  // On unmount: cancels the RAF loop but does NOT stop the stream tracks -
-  // the CameraProvider owns the stream lifetime.
+  // Attach the stream and publish the frame size the preview lays itself out
+  // against. Re-runs if the stream is replaced (e.g. after retryCamera).
+  // Does NOT stop the stream tracks - the CameraProvider owns the stream
+  // lifetime.
   useEffect(() => {
     if (!stream) return;
 
@@ -331,49 +363,8 @@ export function useCardScanner({
         await video.play();
         if (cancelled) return;
 
-        const { videoWidth, videoHeight } = video;
-        for (const ref of [displayCanvasRef, overlayCanvasRef]) {
-          if (ref.current) {
-            ref.current.width = videoWidth;
-            ref.current.height = videoHeight;
-          }
-        }
-
-        const overlayCtx = overlayCanvasRef.current?.getContext("2d");
-        if (overlayCtx) {
-          overlayCtx.clearRect(0, 0, videoWidth, videoHeight);
-          drawDetectionOverlay(overlayCtx, {
-            detected: true,
-            contour: getDefaultCardContour(
-              videoWidth,
-              videoHeight,
-              scanRegionRef.current,
-            ),
-            confidence: 1,
-          });
-        }
-
-        const container = displayCanvasRef.current?.parentElement;
-        if (container) {
-          const cw = container.clientWidth;
-          const ch = container.clientHeight;
-          const scale = rotatedRef.current
-            ? Math.max(cw / videoHeight, ch / videoWidth)
-            : Math.max(cw / videoWidth, ch / videoHeight);
-          const cssW = Math.round(videoWidth * scale);
-          const cssH = Math.round(videoHeight * scale);
-          for (const ref of [displayCanvasRef, overlayCanvasRef]) {
-            if (ref.current) {
-              ref.current.style.width = `${cssW}px`;
-              ref.current.style.height = `${cssH}px`;
-              ref.current.style.left = `${(cw - cssW) / 2}px`;
-              ref.current.style.top = `${(ch - cssH) / 2}px`;
-            }
-          }
-        }
-
+        setVideoSize({ width: video.videoWidth, height: video.videoHeight });
         updateStatus("paused");
-        rafRef.current = requestAnimationFrame(detectionLoop);
       } catch (err) {
         if (!cancelled) {
           handleErrorRef.current(
@@ -385,8 +376,6 @@ export function useCardScanner({
 
     return () => {
       cancelled = true;
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = 0;
       if (settleTimeoutRef.current) {
         clearTimeout(settleTimeoutRef.current);
         settleTimeoutRef.current = null;
@@ -396,24 +385,6 @@ export function useCardScanner({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stream]);
-
-  useEffect(() => {
-    const canvas = displayCanvasRef.current;
-    const overlayCtx = overlayCanvasRef.current?.getContext("2d");
-    if (!canvas || !overlayCtx || !canvas.width || !canvas.height) return;
-    overlayCtx.clearRect(0, 0, canvas.width, canvas.height);
-    drawDetectionOverlay(overlayCtx, {
-      detected: true,
-      contour: getDefaultCardContour(canvas.width, canvas.height, scanRegion),
-      confidence: 1,
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    scanRegion.coverage,
-    scanRegion.offsetX,
-    scanRegion.offsetY,
-    scanRegion.rotation,
-  ]);
 
   const handleForceAddDuplicate = useCallback(() => {
     if (duplicateCard) {
@@ -434,15 +405,19 @@ export function useCardScanner({
     )
       return;
 
-    const canvas = displayCanvasRef.current;
-    if (!canvas) return;
+    const video = videoRef.current;
+    if (!video?.videoWidth) return;
 
     isCapturingRef.current = true;
     updateStatus("searching");
     setDuplicateCard(null);
     performCapture(
       false,
-      getDefaultCardContour(canvas.width, canvas.height, scanRegionRef.current),
+      getDefaultCardContour(
+        video.videoWidth,
+        video.videoHeight,
+        scanRegionRef.current,
+      ),
     );
   }, [updateStatus, performCapture]);
 
@@ -453,14 +428,14 @@ export function useCardScanner({
     )
       return;
 
-    const canvas = displayCanvasRef.current;
-    if (!canvas) return;
+    const video = videoRef.current;
+    if (!video?.videoWidth) return;
 
     isCapturingRef.current = true;
     updateStatus("searching");
     const contour = getDefaultCardContour(
-      canvas.width,
-      canvas.height,
+      video.videoWidth,
+      video.videoHeight,
       scanRegionRef.current,
     );
     settleTimeoutRef.current = setTimeout(() => {
@@ -468,11 +443,6 @@ export function useCardScanner({
       performCapture(true, contour);
     }, settleDelayRef.current);
   }, [updateStatus, performCapture]);
-
-  const handleSkipDuplicate = useCallback(() => {
-    setDuplicateCard(null);
-    updateStatus("scanning");
-  }, [updateStatus]);
 
   const handlePause = useCallback(() => {
     setDuplicateCard(null);
@@ -492,30 +462,209 @@ export function useCardScanner({
     }
   }, [retryCamera, t]);
 
-  return {
-    status,
-    errorMessage,
-    duplicateCard,
-    debugImageUrl,
-    videoRef,
-    displayCanvasRef,
-    overlayCanvasRef,
-    captureCard,
-    handleForceAddDuplicate,
-    handleForceScan,
-    handleSkipDuplicate,
-    handlePause,
-    handleResume,
-    handleRetryError,
-    handleStopCamera: stopCamera,
-    isCameraActive: cameraStatus === "ready",
-    zoom,
-    zoomRange,
-    cameras,
-    selectedCameraId,
-    setZoom,
-    selectCamera,
-    allowDuplicates,
-    setAllowDuplicates,
-  };
+  const handleSkipDuplicate = useCallback(() => {
+    sendCatchAllBin();
+    setDuplicateCard(null);
+    updateStatus("scanning");
+  }, [sendCatchAllBin, updateStatus]);
+
+  useSerialMessage((msg) => {
+    if (
+      typeof msg === "object" &&
+      msg !== null &&
+      "error" in msg &&
+      (msg as Record<string, unknown>).error === "jam"
+    ) {
+      const raw = msg as Record<string, unknown>;
+
+      if (
+        raw.module === 1 &&
+        raw.bin === undefined &&
+        SCANNABLE_STATUSES.includes(statusRef.current)
+      ) {
+        toast.info(t("cardScanner.jamAutoScan.title"), {
+          description: t("cardScanner.jamAutoScan.description"),
+        });
+        handleForceScan();
+        return;
+      }
+
+      handlePause();
+      toast.error(t("cardScanner.jamDetected.title"), {
+        description: raw.bin
+          ? t("cardScanner.jamDetected.descriptionWithBin", {
+              module: raw.module,
+              bin: raw.bin,
+            })
+          : t("cardScanner.jamDetected.description", { module: raw.module }),
+        duration: FAULT_TOAST_DURATION_MS,
+        dismissible: true,
+      });
+      void reportSerialEvent({ command: "jam", sent: true, response: raw });
+    }
+  });
+
+  const handleFeed = useCallback(async () => {
+    setIsFeeding(true);
+    try {
+      const { sent, response } = await request(
+        JSON.stringify({ feeder: true }),
+        10000,
+      );
+      if (!sent) {
+        toast.error(t("cardScanner.feedFailed.title"), {
+          description: t("cardScanner.feedFailed.description"),
+        });
+        void reportSerialEvent({
+          command: "feeder",
+          sent: false,
+          response: null,
+        });
+        return;
+      }
+      if (!response) {
+        toast.error(t("cardScanner.feedTimeout.title"), {
+          description: t("cardScanner.feedTimeout.description"),
+        });
+        void reportSerialEvent({
+          command: "feeder",
+          sent: true,
+          response: null,
+        });
+        return;
+      }
+      try {
+        const parsed = JSON.parse(response) as Record<string, unknown>;
+        if (parsed.empty) {
+          handlePause();
+          toast.error(t("cardScanner.feederEmpty.title"), {
+            description: t("cardScanner.feederEmpty.description"),
+            duration: FAULT_TOAST_DURATION_MS,
+            dismissible: true,
+          });
+          void reportSerialEvent({
+            command: "feeder",
+            sent: true,
+            response: parsed,
+          });
+        } else if (parsed.error) {
+          toast.error(t("cardScanner.feederError.title"), {
+            description: String(parsed.error),
+            duration: FAULT_TOAST_DURATION_MS,
+            dismissible: true,
+          });
+          void reportSerialEvent({
+            command: "feeder",
+            sent: true,
+            response: parsed,
+          });
+        } else {
+          // Feeder confirmed a card reached module 1 - capture it now.
+          captureCard();
+        }
+      } catch {
+        toast.error(t("cardScanner.feedError.title"), {
+          description: t("cardScanner.feedError.description"),
+        });
+        void reportSerialEvent({ command: "feeder", sent: true, response });
+      }
+    } finally {
+      setIsFeeding(false);
+    }
+  }, [request, captureCard, handlePause, t]);
+
+  const handleClearDevice = useCallback(async () => {
+    setIsClearingDevice(true);
+    try {
+      const { sent, response } = await request(
+        JSON.stringify({ clearDevice: true }),
+        10000,
+      );
+      if (!sent) {
+        toast.error(t("cardScanner.clearFailed.title"), {
+          description: t("cardScanner.clearFailed.description"),
+        });
+        return;
+      }
+      if (!response) {
+        toast.error(t("cardScanner.clearTimeout.title"), {
+          description: t("cardScanner.clearTimeout.description"),
+        });
+        return;
+      }
+      toast.success(t("cardScanner.deviceCleared.title"), {
+        description: t("cardScanner.deviceCleared.description"),
+      });
+    } finally {
+      setIsClearingDevice(false);
+    }
+  }, [request, t]);
+
+  // The bare pause, deliberately: the feeder-empty path clears autofeed itself
+  // before calling this, and a jam should not silently switch the run off.
+  useEffect(() => {
+    return registerPauseHook(handlePause);
+  }, [registerPauseHook, handlePause]);
+
+  useEffect(() => {
+    return registerCardArrivedHook(captureCard);
+  }, [registerCardArrivedHook, captureCard]);
+
+  const isCameraActive = cameraStatus === "ready";
+  const wasReadyRef = useRef(isCameraActive);
+  useEffect(() => {
+    if (!isCameraActive && wasReadyRef.current) {
+      handlePause();
+    }
+    if (isCameraActive && !wasReadyRef.current && statusRef.current === "paused") {
+      handleResume();
+    }
+    wasReadyRef.current = isCameraActive;
+  }, [isCameraActive, handlePause, handleResume]);
+
+  // Stopping the run is an operator decision, so it turns autofeed off too —
+  // unlike the pause hook above, which only parks the scanner.
+  const pauseRun = useCallback(() => {
+    setAutoFeed(false);
+    handlePause();
+  }, [setAutoFeed, handlePause]);
+
+  return (
+    <ScannerEngineContext
+      value={{
+        status,
+        errorMessage,
+        duplicateCard,
+        debugImageUrl,
+        allowDuplicates,
+        setAllowDuplicates,
+        isCameraActive,
+        isFeeding,
+        isClearingDevice,
+        videoRef,
+        videoSize,
+        scanRegion,
+        handleForceScan,
+        handleForceAddDuplicate,
+        handleSkipDuplicate,
+        handlePause: pauseRun,
+        handleResume,
+        handleRetryError,
+        handleFeed,
+        handleClearDevice,
+      }}
+    >
+      <video ref={videoRef} className="hidden" playsInline muted />
+      {children}
+    </ScannerEngineContext>
+  );
+}
+
+export function useScannerEngine() {
+  const ctx = useContext(ScannerEngineContext);
+  if (!ctx)
+    throw new Error(
+      "useScannerEngine must be used within a ScannerEngineProvider",
+    );
+  return ctx;
 }

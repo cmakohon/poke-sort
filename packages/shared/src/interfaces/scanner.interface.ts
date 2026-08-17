@@ -59,15 +59,11 @@ export interface ScanOutcome {
   scanEventId?: string;
 }
 
+/**
+ * Layout only: the scanner is a preview now, and what it finds goes straight to
+ * the engine provider rather than back out through callbacks on this component.
+ */
 export interface CardScannerProps {
-  onSearchResults?: (
-    matches: PlayingCardWithDistance[],
-    capturedImageUrl?: string,
-    outcome?: ScanOutcome,
-  ) => void;
-  onNoMatch?: () => void;
-  onManualAdd?: () => void;
-  onError?: (error: string) => void;
   className?: string;
   compact?: boolean;
 }

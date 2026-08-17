@@ -4,291 +4,128 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useBinConfigs } from "@/features/bins/api/use-bin-configs";
-import { reportSerialEvent } from "@/features/notifications/api/notification-settings";
-import { useCardScanner } from "@/features/scanner/api/use-card-scanner";
+import { useCameraContext } from "@/features/scanner/api/use-camera";
 import { useScannedCards } from "@/features/scanner/api/use-scanned-cards";
-import { useRegisterScannerIsland } from "@/features/scanner/api/use-scanner-island";
-import { useSerial, useSerialMessage } from "@/features/scanner/api/use-serial";
+import { useScannerEngine } from "@/features/scanner/api/use-scanner-engine";
+import { useSerial } from "@/features/scanner/api/use-serial";
+import {
+  drawDetectionOverlay,
+  getDefaultCardContour,
+} from "@/features/scanner/lib/card-detection";
 import { ScannerMenu } from "@/features/scanner/components/scanner-menu";
 import { SerialPortPicker } from "@/features/scanner/components/serial-port-picker";
 import { ScannerOverlay } from "@/features/scanner/components/scanner-overlay";
-import { SCANNABLE_STATUSES } from "@/features/scanner/constants";
 import { useRole } from "@/hooks/use-role";
 import { cn } from "@/lib/utils";
 import type { CardScannerProps } from "@poke-sort/shared";
 import { IconEye } from "@tabler/icons-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
-import { FAULT_TOAST_DURATION_MS } from "@/lib/toast";
 
+/**
+ * The scan screen's live preview.
+ *
+ * Purely a view: the capture loop, the feeder commands and the jam handling
+ * all live in ScannerEngineProvider, above the router, so a run keeps going
+ * when the operator navigates away from this screen. What is left here is the
+ * canvas the operator watches, which is worth stopping when nobody is looking.
+ */
 export function CardScanner({ className, compact }: CardScannerProps) {
   const { t } = useTranslation("scanner");
   const navigate = useNavigate();
   const { isAdmin } = useRole();
-  const {
-    addCard,
-    sendCatchAllBin,
-    sendReviewBin,
-    autoFeed,
-    setAutoFeed,
-    registerCardArrivedHook,
-    registerPauseHook,
-  } = useScannedCards();
-  const registerIsland = useRegisterScannerIsland();
-  const {
-    isConnected,
-    isReady,
-    connect,
-    disconnect,
-    sendTest,
-    request,
-  } = useSerial();
-  const [isFeeding, setIsFeeding] = useState(false);
-  const [isClearingDevice, setIsClearingDevice] = useState(false);
+  const { autoFeed, setAutoFeed } = useScannedCards();
+  const { isConnected, isReady, connect, disconnect, sendTest } = useSerial();
   const { hasCatchAll } = useBinConfigs();
   const {
-    status,
-    errorMessage,
-    isCameraActive,
-    debugImageUrl,
-    videoRef,
-    displayCanvasRef,
-    overlayCanvasRef,
-    captureCard,
-    handleForceAddDuplicate,
-    handleForceScan,
-    handleSkipDuplicate: handleSkipDuplicateFromScanner,
-    handlePause,
-    handleResume,
-    handleRetryError,
-    handleStopCamera,
     zoom,
     zoomRange,
     cameras,
     selectedCameraId,
     setZoom,
     selectCamera,
+    stopCamera,
+  } = useCameraContext();
+  const {
+    status,
+    errorMessage,
+    isCameraActive,
+    debugImageUrl,
+    videoRef,
+    videoSize,
+    scanRegion,
     allowDuplicates,
     setAllowDuplicates,
-  } = useCardScanner({
-    // cards[0] is the pipeline's answer, but it is only sorted automatically
-    // when the outcome says "accept". A "review" outcome still records the
-    // scan — so the identification can be corrected, and the correction kept
-    // as an eval example — while routing the card to the catch-all instead of
-    // acting on an identification the pipeline is not confident about.
-    onSearchResults: (cards, capturedImageUrl, outcome) => {
-      if (cards.length > 0) {
-        addCard(cards[0], capturedImageUrl, cards.slice(1), outcome);
+    handleRetryError,
+  } = useScannerEngine();
+
+  const displayCanvasRef = useRef<HTMLCanvasElement>(null);
+  const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Mirrors the engine's video onto the visible canvas, and outlines the region
+  // capture crops to. Torn down with the screen — the sort does not depend on
+  // it, so there is no reason to keep copying 1080p frames nobody is watching.
+  useEffect(() => {
+    const video = videoRef.current;
+    const display = displayCanvasRef.current;
+    const overlay = overlayCanvasRef.current;
+    if (!video || !videoSize || !display || !overlay) return;
+
+    const { width, height } = videoSize;
+    for (const canvas of [display, overlay]) {
+      canvas.width = width;
+      canvas.height = height;
+    }
+
+    // The camera is mounted sideways over the feeder, so the preview is always
+    // rotated 90° in CSS and the cover-fit maths swaps the axes to match.
+    const container = display.parentElement;
+    if (container) {
+      const cw = container.clientWidth;
+      const ch = container.clientHeight;
+      const scale = Math.max(cw / height, ch / width);
+      const cssW = Math.round(width * scale);
+      const cssH = Math.round(height * scale);
+      for (const canvas of [display, overlay]) {
+        canvas.style.width = `${cssW}px`;
+        canvas.style.height = `${cssH}px`;
+        canvas.style.left = `${(cw - cssW) / 2}px`;
+        canvas.style.top = `${(ch - cssH) / 2}px`;
       }
-    },
-    // A card nothing could be read off is the review case by definition, so it
-    // goes to the review bin when the sort names one (the catch-all otherwise,
-    // which is where it always went). A skipped duplicate below still uses the
-    // catch-all — that one is a deliberate discard, not an uncertain read.
-    onNoMatch: sendReviewBin,
-    // The camera is mounted sideways over the feeder, so the capture is always
-    // rotated. This was `!isMobile`, but the scanner only ever renders behind
-    // DesktopOnlyGuard, so the mobile side of that was unreachable.
-    rotated: true,
-  });
+    }
 
-  useSerialMessage((msg) => {
-    if (
-      typeof msg === "object" &&
-      msg !== null &&
-      "error" in msg &&
-      (msg as Record<string, unknown>).error === "jam"
-    ) {
-      const raw = msg as Record<string, unknown>;
-
-      if (
-        raw.module === 1 &&
-        raw.bin === undefined &&
-        SCANNABLE_STATUSES.includes(status)
-      ) {
-        toast.info(t("cardScanner.jamAutoScan.title"), {
-          description: t("cardScanner.jamAutoScan.description"),
-        });
-        handleForceScan();
-        return;
-      }
-
-      handlePause();
-      toast.error(t("cardScanner.jamDetected.title"), {
-        description: raw.bin
-          ? t("cardScanner.jamDetected.descriptionWithBin", {
-              module: raw.module,
-              bin: raw.bin,
-            })
-          : t("cardScanner.jamDetected.description", { module: raw.module }),
-        duration: FAULT_TOAST_DURATION_MS,
-        dismissible: true,
+    const overlayCtx = overlay.getContext("2d");
+    if (overlayCtx) {
+      overlayCtx.clearRect(0, 0, width, height);
+      drawDetectionOverlay(overlayCtx, {
+        detected: true,
+        contour: getDefaultCardContour(width, height, scanRegion),
+        confidence: 1,
       });
-      void reportSerialEvent({ command: "jam", sent: true, response: raw });
     }
-  });
 
-  const handleFeed = useCallback(async () => {
-    setIsFeeding(true);
-    try {
-      const { sent, response } = await request(
-        JSON.stringify({ feeder: true }),
-        10000,
-      );
-      if (!sent) {
-        toast.error(t("cardScanner.feedFailed.title"), {
-          description: t("cardScanner.feedFailed.description"),
-        });
-        void reportSerialEvent({
-          command: "feeder",
-          sent: false,
-          response: null,
-        });
-        return;
+    const displayCtx = display.getContext("2d");
+    let raf = 0;
+    const loop = () => {
+      if (displayCtx && video.readyState >= video.HAVE_ENOUGH_DATA) {
+        displayCtx.drawImage(video, 0, 0);
       }
-      if (!response) {
-        toast.error(t("cardScanner.feedTimeout.title"), {
-          description: t("cardScanner.feedTimeout.description"),
-        });
-        void reportSerialEvent({
-          command: "feeder",
-          sent: true,
-          response: null,
-        });
-        return;
-      }
-      try {
-        const parsed = JSON.parse(response) as Record<string, unknown>;
-        if (parsed.empty) {
-          handlePause();
-          toast.error(t("cardScanner.feederEmpty.title"), {
-            description: t("cardScanner.feederEmpty.description"),
-            duration: FAULT_TOAST_DURATION_MS,
-            dismissible: true,
-          });
-          void reportSerialEvent({
-            command: "feeder",
-            sent: true,
-            response: parsed,
-          });
-        } else if (parsed.error) {
-          toast.error(t("cardScanner.feederError.title"), {
-            description: String(parsed.error),
-            duration: FAULT_TOAST_DURATION_MS,
-            dismissible: true,
-          });
-          void reportSerialEvent({
-            command: "feeder",
-            sent: true,
-            response: parsed,
-          });
-        } else {
-          // Feeder confirmed a card reached module 1 - capture it now.
-          captureCard();
-        }
-      } catch {
-        toast.error(t("cardScanner.feedError.title"), {
-          description: t("cardScanner.feedError.description"),
-        });
-        void reportSerialEvent({ command: "feeder", sent: true, response });
-      }
-    } finally {
-      setIsFeeding(false);
-    }
-  }, [request, captureCard, handlePause, t]);
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
 
-  const handleClearDevice = useCallback(async () => {
-    setIsClearingDevice(true);
-    try {
-      const { sent, response } = await request(
-        JSON.stringify({ clearDevice: true }),
-        10000,
-      );
-      if (!sent) {
-        toast.error(t("cardScanner.clearFailed.title"), {
-          description: t("cardScanner.clearFailed.description"),
-        });
-        return;
-      }
-      if (!response) {
-        toast.error(t("cardScanner.clearTimeout.title"), {
-          description: t("cardScanner.clearTimeout.description"),
-        });
-        return;
-      }
-      toast.success(t("cardScanner.deviceCleared.title"), {
-        description: t("cardScanner.deviceCleared.description"),
-      });
-    } finally {
-      setIsClearingDevice(false);
-    }
-  }, [request, t]);
-
-  const handleSkipDuplicate = useCallback(() => {
-    sendCatchAllBin();
-    handleSkipDuplicateFromScanner();
-  }, [sendCatchAllBin, handleSkipDuplicateFromScanner]);
-
-  useEffect(() => {
-    return registerCardArrivedHook(captureCard);
-  }, [registerCardArrivedHook, captureCard]);
-
-  useEffect(() => {
-    return registerPauseHook(handlePause);
-  }, [registerPauseHook, handlePause]);
-
-  useEffect(() => {
-    registerIsland({
-      status,
-      isCameraActive,
-      isConnected,
-      isReady,
-      isFeeding,
-      isClearingDevice,
-      handleForceAddDuplicate,
-      handleForceScan,
-      handleSkipDuplicate,
-      handlePause: () => {
-        setAutoFeed(false);
-        handlePause();
-      },
-      handleResume,
-      handleFeed,
-      handleClearDevice,
-    });
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    status,
-    isCameraActive,
-    isConnected,
-    isReady,
-    isFeeding,
-    isClearingDevice,
-    handleForceAddDuplicate,
-    handleForceScan,
-    handleSkipDuplicate,
-    handlePause,
-    handleResume,
-    handleFeed,
-    handleClearDevice,
-    setAutoFeed,
-    registerIsland,
+    videoRef,
+    videoSize,
+    scanRegion.coverage,
+    scanRegion.offsetX,
+    scanRegion.offsetY,
+    scanRegion.rotation,
+    compact,
   ]);
-
-  useEffect(() => () => registerIsland(null), [registerIsland]);
-
-  const canScan = isCameraActive;
-  const wasReadyRef = useRef(canScan);
-  useEffect(() => {
-    if (!canScan && wasReadyRef.current) {
-      handlePause();
-    }
-    if (canScan && !wasReadyRef.current && status === "paused") {
-      handleResume();
-    }
-    wasReadyRef.current = canScan;
-  }, [canScan, handlePause, handleResume, status]);
 
   return (
     <div
@@ -303,7 +140,6 @@ export function CardScanner({ className, compact }: CardScannerProps) {
           !compact && "md:aspect-[2.5/3.5]",
         )}
       >
-        <video ref={videoRef} className="hidden" playsInline muted />
         <canvas
           ref={displayCanvasRef}
           className="absolute rotate-90"
@@ -349,7 +185,7 @@ export function CardScanner({ className, compact }: CardScannerProps) {
           cameras={cameras}
           selectedCameraId={selectedCameraId}
           onCameraConnect={handleRetryError}
-          onCameraDisconnect={handleStopCamera}
+          onCameraDisconnect={stopCamera}
           onCameraSelect={selectCamera}
           onZoomChange={setZoom}
           onScannerConnect={connect}

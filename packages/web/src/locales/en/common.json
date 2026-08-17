@@ -49,7 +49,17 @@
     "syncFailed": "Card recognition update failed — open Card database for details",
     "sync": "Card recognition",
     "cardTotal_one": "{{count}} card · {{value}}",
-    "cardTotal_other": "{{count}} cards · {{value}}"
+    "cardTotal_other": "{{count}} cards · {{value}}",
+    "sorting_one": "Sorting · {{count}} card",
+    "sorting_other": "Sorting · {{count}} cards",
+    "sortPausedLabel": "Sort paused",
+    "sortAttentionLabel": "Sort needs you",
+    "sortErrorLabel": "Sort error",
+    "sortingTooltip": "Sorting — click to open the scan screen",
+    "sortPausedTooltip": "The sort is paused — click to open the scan screen and resume",
+    "sortAttentionTooltip": "The sort is waiting on a decision — click to open the scan screen",
+    "sortErrorTooltip": "The sort hit an error — click to open the scan screen",
+    "pauseSort": "Pause the sort"
   },
   "theme": {
     "toggle": "Toggle theme",
