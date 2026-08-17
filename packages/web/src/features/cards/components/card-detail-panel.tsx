@@ -8,7 +8,10 @@ import { Switch } from "@/components/ui/switch";
 import { BinLocationDiagram } from "@/features/bins/components/bin-location-diagram";
 import { CardMetadataPanel } from "@/features/cards/components/card-metadata-panel";
 import { CardSearchPicker } from "@/features/cards/components/card-search-picker";
-import { ZoomableCardImage } from "@/features/cards/components/zoomable-card-image";
+import {
+  CardImageDialog,
+  ZoomableCardImage,
+} from "@/features/cards/components/zoomable-card-image";
 import { isDialogOpen } from "@/lib/dialog-open";
 import { cn } from "@/lib/utils";
 import type {
@@ -24,6 +27,7 @@ import {
   IconPencil,
   IconTrash,
   IconX,
+  IconZoomIn,
 } from "@tabler/icons-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -131,6 +135,8 @@ export function CardDetailPanel({
   const [editing, setEditing] = useState(false);
   const [candidates, setCandidates] = useState<PlayingCardWithDistance[]>([]);
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
+  const [zoomedCandidate, setZoomedCandidate] =
+    useState<PlayingCardWithDistance | null>(null);
   const prevScanIdRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
@@ -270,13 +276,11 @@ export function CardDetailPanel({
                 <div className="flex flex-col gap-3">
                   {capturedImageUrl ? (
                     <div className="flex items-center gap-4">
-                      <div className="w-40 aspect-[2.5/3.5] rounded-lg overflow-hidden border shadow-sm shrink-0">
-                        <img
-                          src={capturedImageUrl}
-                          alt={t("cardDetailPanel.scannedAlt")}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
+                      <ZoomableCardImage
+                        src={capturedImageUrl}
+                        alt={t("cardDetailPanel.scannedAlt")}
+                        className="w-40 aspect-[2.5/3.5] shadow-sm shrink-0"
+                      />
                       <p className="text-sm text-muted-foreground leading-snug">
                         {t("cardDetailPanel.selectCorrectVersion")}
                       </p>
@@ -289,49 +293,75 @@ export function CardDetailPanel({
                   <div className="flex gap-3 overflow-x-auto pb-1">
                     {candidates.map((c) => {
                       const isSelected = c.id === selectedId;
+                      // The tile itself is the select button, so the zoom
+                      // control is a positioned sibling — nesting it would be
+                      // invalid markup and would zoom on every selection.
                       return (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => handleSelectCandidate(c)}
-                          className="shrink-0 flex flex-col gap-1.5 items-center cursor-pointer group"
-                        >
-                          <div
-                            className={cn(
-                              "w-32 aspect-[2.5/3.5] rounded-lg overflow-hidden border-2 transition-all",
-                              isSelected
-                                ? "border-primary shadow-md"
-                                : "border-border group-hover:border-primary/60",
-                            )}
+                        <div key={c.id} className="relative shrink-0 group/zoom">
+                          <button
+                            type="button"
+                            onClick={() => handleSelectCandidate(c)}
+                            className="flex flex-col gap-1.5 items-center cursor-pointer group"
                           >
-                            <img
-                              src={c.image?.normal || c.image?.small || ""}
-                              alt={c.name}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                          <div className="flex items-center gap-1">
-                            {isSelected && (
-                              <IconCheck className="size-3 text-primary shrink-0" />
-                            )}
-                            <p
+                            <div
                               className={cn(
-                                "text-xs font-medium",
+                                "w-32 aspect-[2.5/3.5] rounded-lg overflow-hidden border-2 transition-all",
                                 isSelected
-                                  ? "text-primary"
-                                  : "text-muted-foreground",
+                                  ? "border-primary shadow-md"
+                                  : "border-border group-hover:border-primary/60",
                               )}
-                              title={`${c.setName || c.set} (${c.set.toUpperCase()})`}
                             >
-                              {[c.setName || c.set.toUpperCase(), formatCardNumber(c)]
-                                .filter(Boolean)
-                                .join(" · ")}
-                            </p>
-                          </div>
-                        </button>
+                              <img
+                                src={c.image?.normal || c.image?.small || ""}
+                                alt={c.name}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <div className="flex items-center gap-1">
+                              {isSelected && (
+                                <IconCheck className="size-3 text-primary shrink-0" />
+                              )}
+                              <p
+                                className={cn(
+                                  "text-xs font-medium",
+                                  isSelected
+                                    ? "text-primary"
+                                    : "text-muted-foreground",
+                                )}
+                                title={`${c.setName || c.set} (${c.set.toUpperCase()})`}
+                              >
+                                {[c.setName || c.set.toUpperCase(), formatCardNumber(c)]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                              </p>
+                            </div>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setZoomedCandidate(c)}
+                            aria-label={t("cardDetailPanel.enlargeImage", {
+                              name: c.name,
+                            })}
+                            className="absolute top-1.5 right-1.5 z-10 rounded-full bg-background/80 p-1.5 opacity-0 group-hover/zoom:opacity-100 focus-visible:opacity-100 transition-opacity cursor-zoom-in"
+                          >
+                            <IconZoomIn className="size-3.5" />
+                          </button>
+                        </div>
                       );
                     })}
                   </div>
+                  <CardImageDialog
+                    src={
+                      zoomedCandidate?.image?.normal ||
+                      zoomedCandidate?.image?.small ||
+                      ""
+                    }
+                    alt={zoomedCandidate?.name ?? ""}
+                    open={zoomedCandidate !== null}
+                    onOpenChange={(open) => {
+                      if (!open) setZoomedCandidate(null);
+                    }}
+                  />
                   <div className="border-t" />
                 </div>
               )}
@@ -480,13 +510,11 @@ export function CardDetailPanel({
             <>
               {capturedImageUrl && (
                 <div className="flex items-center gap-4">
-                  <div className="w-40 aspect-[2.5/3.5] rounded-lg overflow-hidden border shadow-sm shrink-0">
-                    <img
-                      src={capturedImageUrl}
-                      alt={t("cardDetailPanel.scannedAlt")}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
+                  <ZoomableCardImage
+                    src={capturedImageUrl}
+                    alt={t("cardDetailPanel.scannedAlt")}
+                    className="w-40 aspect-[2.5/3.5] shadow-sm shrink-0"
+                  />
                   <p className="text-sm text-muted-foreground leading-snug">
                     {t("cardDetailPanel.searchForCorrectVersion")}
                   </p>
