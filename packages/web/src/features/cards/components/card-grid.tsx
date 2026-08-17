@@ -16,7 +16,12 @@ import { useSerial } from "@/features/scanner/api/use-serial";
 import { ScannerControls } from "@/features/scanner/components/scanner-controls";
 import { ScannerDebug } from "@/features/scanner/components/scanner-debug";
 import { SessionBar } from "@/features/scanner/components/session-bar";
-import { IconAlbum, IconArrowBarToDown, IconBolt } from "@tabler/icons-react";
+import {
+  IconAlbum,
+  IconArrowBarToDown,
+  IconBolt,
+  IconSparkles,
+} from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
@@ -46,6 +51,8 @@ export function CardGrid() {
     elapsedMs,
     autoFeed,
     setAutoFeed,
+    reverseHolo,
+    setReverseHolo,
   } = useScannedCards();
   const scanner = useScannerEngine();
   const { isConnected, isReady } = useSerial();
@@ -144,6 +151,27 @@ export function CardGrid() {
           </Tooltip>
         </>
       )}
+      {/* Outside the isConnected block: scanning without the sorter attached
+          still saves cards, and their printing must still be settable. */}
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              variant={reverseHolo ? "default" : "outline"}
+              size="icon"
+              aria-label={t("cardGrid.reverseHoloToggle")}
+              onClick={() => setReverseHolo(!reverseHolo)}
+            >
+              <IconSparkles />
+            </Button>
+          }
+        />
+        <TooltipContent>
+          {reverseHolo
+            ? t("cardGrid.reverseHoloOnTooltip")
+            : t("cardGrid.reverseHoloOffTooltip")}
+        </TooltipContent>
+      </Tooltip>
       <ScannerDebug />
     </>
   ) : null;

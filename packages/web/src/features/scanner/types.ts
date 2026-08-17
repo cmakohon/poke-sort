@@ -44,9 +44,12 @@ export interface ScannedCardsContextValue {
   session: ScanSession | null;
   isLoading: boolean;
   autoFeed: boolean;
+  /** While on, every scan is saved and priced as a reverse holo. */
+  reverseHolo: boolean;
   elapsedMs: number;
   isTimerActive: boolean;
   setAutoFeed: (enabled: boolean) => void;
+  setReverseHolo: (enabled: boolean) => void;
   addCard: (
     card: PlayingCardWithDistance,
     capturedImageUrl?: string,
