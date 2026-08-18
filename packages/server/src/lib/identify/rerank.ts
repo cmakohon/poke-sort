@@ -154,6 +154,12 @@ export function collectorNumberMatch(
   ) {
     return 1;
   }
+  // A full fraction was read and its denominator names a different set: the
+  // numerator agreeing is then evidence AGAINST this candidate, not weak
+  // evidence for it. Half-crediting it promoted a same-numbered reprint over
+  // the true card on a real capture ("53/18" misread of 83/108 boosting the
+  // #53 printing) — and at looser gates that same mode produced false accepts.
+  if (ocr.setTotal != null && candidate.setTotal != null) return 0;
   return 0.5;
 }
 

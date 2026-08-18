@@ -12,14 +12,13 @@
 // classic/ex/dp fixture, plus a modern guard set to catch regressions.
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import sharp from "sharp";
 import { createWorker, type Worker } from "tesseract.js";
 import { parseCollectorNumber } from "../src/lib/identify/ocr";
 import type { OcrRegion } from "../src/lib/identify/profiles";
+import { EVAL_SET, FIXTURES_DIR, SIGNALS_PATH } from "./eval-set";
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-const FIXTURES = path.join(here, "fixtures", "pokemon");
+const FIXTURES = FIXTURES_DIR;
 
 type BandSet = { label: string; bands: OcrRegion[] };
 type Prep = { label: string; apply: (s: sharp.Sharp, w: number) => sharp.Sharp };
@@ -48,6 +47,31 @@ const BAND_SETS: BandSet[] = [
     bands: [
       { x0: 0.5, y0: 0.945, x1: 0.99, y1: 0.995 },
       { x0: 0.5, y0: 0.895, x1: 0.99, y1: 0.95 },
+      { x0: 0.02, y0: 0.9, x1: 0.5, y1: 0.97 },
+      { x0: 0.03, y0: 0.93, x1: 0.97, y1: 0.995 },
+    ],
+  },
+  {
+    // The production set with the left band tightened to just the number
+    // line: on real me-era captures the wide left crop drags in the Illus.
+    // line and the set-code icons, and a narrower crop upsamples the digits
+    // ~1.4x more for the same read.
+    label: "tight-left",
+    bands: [
+      { x0: 0.5, y0: 0.945, x1: 0.99, y1: 0.995 },
+      { x0: 0.5, y0: 0.895, x1: 0.99, y1: 0.95 },
+      { x0: 0.02, y0: 0.915, x1: 0.38, y1: 0.968 },
+      { x0: 0.03, y0: 0.93, x1: 0.97, y1: 0.995 },
+    ],
+  },
+  {
+    // Same tight bottom-left, kept alongside the original left band rather
+    // than replacing it, in case some era needs the taller crop.
+    label: "tight-left+wide-left",
+    bands: [
+      { x0: 0.5, y0: 0.945, x1: 0.99, y1: 0.995 },
+      { x0: 0.5, y0: 0.895, x1: 0.99, y1: 0.95 },
+      { x0: 0.02, y0: 0.915, x1: 0.38, y1: 0.968 },
       { x0: 0.02, y0: 0.9, x1: 0.5, y1: 0.97 },
       { x0: 0.03, y0: 0.93, x1: 0.97, y1: 0.995 },
     ],
@@ -154,11 +178,12 @@ async function score(
 
 async function main() {
   const { captures } = JSON.parse(
-    await readFile(path.join(here, "signals.json"), "utf-8"),
+    await readFile(SIGNALS_PATH, "utf-8"),
   ) as {
     captures: {
       expectedId: string;
       setCode: string;
+      file?: string;
       candidates: { id: string; setTotal: number | null }[];
     }[];
   };
@@ -172,7 +197,8 @@ async function main() {
     if (POCKET.test(c.expectedId)) continue; // digital-only; never physically scanned
     const self = c.candidates.find((x) => x.id === c.expectedId);
     const probe: Probe = {
-      file: `${c.expectedId}.jpg`,
+      // Older signal dumps predate the file field; renders are named by id.
+      file: c.file ?? `${c.expectedId}.jpg`,
       id: c.expectedId,
       expectNum: c.expectedId.split("-").pop()!.replace(/^0+(?=\d)/, ""),
       expectTotal: self?.setTotal ?? null,
@@ -182,7 +208,12 @@ async function main() {
     else modernGuard.push(probe);
   }
   // Every weak-era fixture, plus every 3rd modern one as a regression guard.
-  const sample = [...probes, ...modernGuard.filter((_, i) => i % 3 === 0)];
+  // Real-capture sets are small and every label was paid for at the review
+  // screen, so they run whole.
+  const sample =
+    EVAL_SET === "pokemon"
+      ? [...probes, ...modernGuard.filter((_, i) => i % 3 === 0)]
+      : [...probes, ...modernGuard];
   console.log(`${sample.length} probes (${probes.length} weak-era, ${sample.length - probes.length} modern guard)\n`);
 
   // Pass 1: bands under current prep/psm.

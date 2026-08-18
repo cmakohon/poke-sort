@@ -4,8 +4,9 @@ import {
   POKEMON_FIELD_DEFINITIONS,
   type PlayingCardWithDistance,
 } from "@poke-sort/shared";
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { isDialogOpen } from "@/lib/dialog-open";
 import { CardDetailPanel } from "./card-detail-panel";
 
 vi.mock("@/features/bins/api/use-bin-configs", () => ({
@@ -86,5 +87,39 @@ describe("CardDetailPanel candidate strip", () => {
   it("defaults to showing them, so the scan screen is unaffected", () => {
     renderPanel(undefined);
     expect(screen.getByText(/#111/)).toBeDefined();
+  });
+});
+
+/**
+ * The zoom affordances in the candidate-strip layout — the layout the scan
+ * screen almost always shows, which used to render every image as a plain
+ * <img> while only the settled no-strip layout could enlarge anything.
+ */
+describe("CardDetailPanel zoom in the candidate-strip layout", () => {
+  it("makes the captured scan enlargeable", () => {
+    renderPanel(true);
+    expect(
+      screen.getByRole("button", { name: /enlarge scanned/i }),
+    ).toBeDefined();
+  });
+
+  it("gives each candidate its own enlarge control beside the select button", () => {
+    renderPanel(true);
+    // One per candidate; separate from (not nested in) the select buttons.
+    expect(screen.getAllByRole("button", { name: /enlarge korrina/i })).toHaveLength(2);
+  });
+
+  it("opens the enlarged candidate in a dialog the panel's hotkeys stand down for", () => {
+    renderPanel(true);
+    const [enlargeFirst] = screen.getAllByRole("button", {
+      name: /enlarge korrina/i,
+    });
+    act(() => {
+      enlargeFirst.click();
+    });
+    // The dialog stamps the marker the panel's Escape handler checks, and
+    // shows the enlarged image on top of the strip's thumbnails.
+    expect(isDialogOpen()).toBe(true);
+    expect(screen.getAllByAltText("Korrina").length).toBeGreaterThan(2);
   });
 });

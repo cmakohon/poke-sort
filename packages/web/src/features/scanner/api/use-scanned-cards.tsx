@@ -34,6 +34,7 @@ import { useCollectionLocks } from "@/features/collections/api/use-collection-lo
 import { useCollections } from "@/features/collections/api/use-collections";
 import { reportSerialEvent } from "@/features/notifications/api/notification-settings";
 import { useScanTimer } from "@/features/scanner/api/use-scan-timer";
+import { repriceAsReverseHolo } from "@/features/scanner/lib/reverse-holo-pricing";
 import { useSerial } from "@/features/scanner/api/use-serial";
 import type { ScannedCardsContextValue } from "@/features/scanner/types";
 import { generateScanId } from "@/lib/utils";
@@ -108,6 +109,11 @@ export function ScannedCardsProvider({
   const prevCollectionGuidRef = useRef<string | undefined>(undefined);
   const [autoFeed, setAutoFeedState] = useState(true);
   const autoFeedRef = useRef(true);
+  // Sticky "the cards being fed are reverse holos" mode. Deliberately
+  // in-memory: a foil mode that silently survived into next week's session
+  // would mis-mark every card until someone noticed.
+  const [reverseHolo, setReverseHoloState] = useState(false);
+  const reverseHoloRef = useRef(false);
   const cardArrivedHookRef = useRef<(() => void) | null>(null);
   const pauseHookRef = useRef<(() => void) | null>(null);
   const [timerTrigger, setTimerTrigger] = useState<number | undefined>(
@@ -139,6 +145,11 @@ export function ScannedCardsProvider({
   const setAutoFeed = useCallback((enabled: boolean) => {
     autoFeedRef.current = enabled;
     setAutoFeedState(enabled);
+  }, []);
+
+  const setReverseHolo = useCallback((enabled: boolean) => {
+    reverseHoloRef.current = enabled;
+    setReverseHoloState(enabled);
   }, []);
 
   const registerCardArrivedHook = useCallback((fn: () => void) => {
@@ -378,6 +389,12 @@ export function ScannedCardsProvider({
 
       const needsReview = outcome?.tier === "review";
 
+      // In reverse-holo mode the card is re-priced before anything reads the
+      // price: the bin evaluation below physically routes on it, and the
+      // session POST stores this card object verbatim.
+      const isFoil = reverseHoloRef.current;
+      const effectiveCard = isFoil ? repriceAsReverseHolo(card) : card;
+
       // An uncertain card is set aside rather than routed to whichever bin its
       // (possibly wrong) identification implies. Setting a handful of cards
       // aside for a human beats confidently mis-sorting them, which is silent
@@ -388,7 +405,7 @@ export function ScannedCardsProvider({
       // mixed in with the cards no rule claimed. Keeping them apart is what
       // makes the review stack worth carrying to a desk.
       const ruleBin = evaluateCardBin(
-        card,
+        effectiveCard,
         binConfigsRef.current,
         fieldDefinitionsRef.current,
       );
@@ -398,7 +415,8 @@ export function ScannedCardsProvider({
 
       const record: ScannedCard = {
         scanId: generateScanId(),
-        card,
+        card: effectiveCard,
+        isFoil: isFoil || undefined,
         scannedAt: Date.now(),
         binNumber: matchedBin?.binNumber,
         capturedImageUrl,
@@ -772,9 +790,11 @@ export function ScannedCardsProvider({
         session,
         isLoading,
         autoFeed,
+        reverseHolo,
         elapsedMs,
         isTimerActive,
         setAutoFeed,
+        setReverseHolo,
         registerCardArrivedHook,
         registerPauseHook,
         addCard,

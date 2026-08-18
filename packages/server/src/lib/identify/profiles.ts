@@ -101,7 +101,14 @@ const POKEMON_OCR: OcrProfile = {
     { x0: 0.5, y0: 0.945, x1: 0.99, y1: 0.995 },
     // Mid right: early-ex, xy, bw, sm.
     { x0: 0.5, y0: 0.895, x1: 0.99, y1: 0.95 },
-    // Left: swsh moved the number bottom-left.
+    // Tight bottom-left: just the number line of the swsh/sv/me frames. The
+    // taller left band below drags the Illus. line and the set-code icons
+    // into the crop, and on the real-capture sweep the narrow crop nearly
+    // doubled the me-era hit rate (6/17 -> 11/17) by upsampling the digits
+    // harder for the same read.
+    { x0: 0.02, y0: 0.915, x1: 0.38, y1: 0.968 },
+    // Left: swsh moved the number bottom-left. Kept alongside the tight crop
+    // for the frames that print the number above its ceiling.
     { x0: 0.02, y0: 0.9, x1: 0.5, y1: 0.97 },
     // Wide: sv reads most reliably from a full-width strip. Edges trimmed so
     // the rotation border the capture adds cannot dominate normalisation.
@@ -129,8 +136,15 @@ export const POKEMON_PROFILE: IdentityProfile = {
   // of accept rate for it.
   //
   // The embedding carries half the mass because on these probes it is by far
-  // the most reliable signal. Revisit against real camera captures when they
-  // exist — glare and focus will cost the embedding more than they cost OCR.
+  // the most reliable signal.
+  //
+  // Re-validated against 165 labelled real captures (eval:build-real +
+  // EVAL_FIXTURES=pokemon-real): zero false accepts holds at this gate on
+  // both fixture sets. minMargin 0.04 looked clean on renders but admits a
+  // real false accept — a same-name reprint the sorter picked wrong at
+  // margin 0.044 in production — so 0.05 stands. The review pile is almost
+  // entirely reprint pairs the embedding cannot split; wins there come from
+  // reading the collector number, not from loosening the gate.
   weights: {
     embedding: 0.5,
     name: 0.1,

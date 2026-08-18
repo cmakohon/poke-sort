@@ -60,4 +60,4 @@ packages/server/eval/fixtures/
 *.traineddata
 
 # captured eval signals (regenerate with `pnpm eval:capture`)
-packages/server/eval/signals.json
+packages/server/eval/signals*.json
