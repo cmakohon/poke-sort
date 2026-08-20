@@ -41,13 +41,26 @@ function hydrate(gameKey: string, row: CandidateRow | undefined) {
   return row ? hydrateCatalogCard(gameKey, row) : null;
 }
 
+// Set codes are only printed on the card from Sword & Shield (2020-02) onward.
+// The set index carries an abbreviation for almost every set regardless — for
+// the 132 older ones it is a PTCGO code (dp6 "LA", pl2 "RR"...) that never
+// appears on the physical card, and matching those against the OCR'd bottom
+// band handed wrong reprints a signal the true card could not earn: 6 of the
+// 20 mis-identifications in the first 596 labelled production scans were
+// two-letter PTCGO codes false-matching OCR garble.
+const FIRST_PRINTED_SET_CODE = "2020-02";
+
 /** The candidate set's printed code, from the local set index. */
 function abbreviationOf(gameKey: string, row: CandidateRow): string | null {
   if (gameKey !== "pokemon") return null;
   const setId =
     ((row.card_data as { set?: { id?: string } } | null)?.set?.id) ??
     row.set_code;
-  return getSetInfo(setId)?.abbreviation ?? null;
+  const info = getSetInfo(setId);
+  if (!info?.releaseDate || info.releaseDate < FIRST_PRINTED_SET_CODE) {
+    return null;
+  }
+  return info.abbreviation ?? null;
 }
 
 function hpOf(gameKey: string, data: unknown): number | null {
