@@ -136,6 +136,11 @@ export type SerialMessageListener = (message: unknown) => void;
 export interface SerialContextValue {
   isConnected: boolean;
   isReady: boolean;
+  /**
+   * Bumped on every explicit Disconnect (never on a dropped stream), so
+   * consumers can void recovery state a deliberate disconnect invalidates.
+   */
+  userDisconnectCount: number;
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
   sendBin: (binNumber: number) => Promise<unknown | null>;

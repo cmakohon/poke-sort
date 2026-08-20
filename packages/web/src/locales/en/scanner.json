@@ -45,6 +45,10 @@
       "title": "One card sent to the catch-all",
       "description": "A card was mid-route when the sorter restarted, so it was dropped to the catch-all. Set it aside and re-run it."
     },
+    "resumeCheckFailed": {
+      "title": "Sorter recovered, but auto-feed stayed off",
+      "description": "Couldn't confirm the card path is clear. Check for a stuck card, then turn auto-feed back on."
+    },
     "autoFeedFailed": {
       "title": "Auto-feed failed",
       "description": "Couldn't send the feed command."

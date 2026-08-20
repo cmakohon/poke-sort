@@ -82,7 +82,8 @@ export function ScannedCardsProvider({
   cardsRef.current = cards;
   const [isLoading, setIsLoading] = useState(true);
   const { configs: binConfigs, fieldDefinitions } = useBinConfigs();
-  const { sendBin, request, isConnected, isReady } = useSerial();
+  const { sendBin, request, isConnected, isReady, userDisconnectCount } =
+    useSerial();
   const { activeCollection, activateCollection } = useCollections();
   const queryClient = useQueryClient();
 
@@ -266,17 +267,23 @@ export function ScannedCardsProvider({
   // the feeder first, so the command would route the NEXT card — which is
   // why a stranded card goes to the catch-all instead, announced so the
   // operator can re-run it.
+  //
+  // Every probe outcome short of a clean answer stays paused: "IR state
+  // unknown" is not "clear", and feeding into a card still resting
+  // mid-transport is the exact jam the probe exists to prevent.
   const recoverInterruptedSort = useCallback(async () => {
     const { request } = serialRef.current;
     try {
       const { response } = await request(JSON.stringify({ readIR: true }), 5000);
-      const parsed = response
-        ? (JSON.parse(response) as { ir?: unknown })
-        : null;
-      const stranded =
-        Array.isArray(parsed?.ir) && parsed.ir.some((present) => present);
-      if (stranded) {
-        await request(JSON.stringify({ clearDevice: true }), 10000);
+      if (!response) throw new Error("readIR got no response");
+      const parsed = JSON.parse(response) as { ir?: unknown };
+      if (!Array.isArray(parsed.ir)) throw new Error("readIR reply malformed");
+      if (parsed.ir.some((present) => present)) {
+        const cleared = await request(
+          JSON.stringify({ clearDevice: true }),
+          10000,
+        );
+        if (!cleared.response) throw new Error("clearDevice got no response");
         toast.info(t("scannedCards.strandedCardCleared.title"), {
           description: t("scannedCards.strandedCardCleared.description"),
           duration: FAULT_TOAST_DURATION_MS,
@@ -284,7 +291,13 @@ export function ScannedCardsProvider({
         });
       }
     } catch (err) {
-      console.warn("[ScannedCards] recovery IR check failed:", err);
+      console.warn("[ScannedCards] resume safety check failed:", err);
+      toast.error(t("scannedCards.resumeCheckFailed.title"), {
+        description: t("scannedCards.resumeCheckFailed.description"),
+        duration: FAULT_TOAST_DURATION_MS,
+        dismissible: true,
+      });
+      return;
     }
     autoFeedRef.current = true;
     setAutoFeedState(true);
@@ -301,6 +314,13 @@ export function ScannedCardsProvider({
       void recoverInterruptedSort();
     }
   }, [isReady, recoverInterruptedSort]);
+
+  // An explicit Disconnect ends the incident the flag describes. Without
+  // this, a pause caused by a command timeout would lie in wait across the
+  // disconnect and force-start the feeder on the next manual Connect.
+  useEffect(() => {
+    interruptedAutoFeedRef.current = false;
+  }, [userDisconnectCount]);
 
   // Switching collections re-points the open run rather than reloading the
   // list: the staged cards belong to the run, not to whichever collection is

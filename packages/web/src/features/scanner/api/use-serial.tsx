@@ -56,6 +56,7 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation("scanner");
   const [isConnected, setIsConnected] = useState(false);
   const [isReady, setIsReady] = useState(false);
+  const [userDisconnectCount, setUserDisconnectCount] = useState(0);
   // Mirror of isReady for the reboot listener, which must read it without
   // re-subscribing on every state change.
   const isReadyRef = useRef(false);
@@ -490,23 +491,33 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
         if (disconnectingRef.current) await disconnectingRef.current;
         if (!wantsConnectionRef.current || portRef.current) return;
 
-        // The exact board that dropped, else any physical USB device — the
-        // virtual ports macOS always exposes report no vendor id.
-        let port = candidate ?? null;
+        // Only the board that dropped. Opening "any physical USB device"
+        // here would latch a second attached device (dev board, debug
+        // adapter) the instant the resetting sorter vanishes from the list —
+        // and with the port slot occupied, the real sorter's return would go
+        // unnoticed. The any-device fallback exists solely for the
+        // connect-clicked-while-unplugged path, where no identity was ever
+        // recorded. Virtual ports report no vendor id and never qualify.
+        const last = lastPortInfoRef.current;
+        const matchesLast = (p: SerialPort) => {
+          const info = p.getInfo();
+          return (
+            last?.usbVendorId != null &&
+            info.usbVendorId === last.usbVendorId &&
+            info.usbProductId === last.usbProductId
+          );
+        };
+        let port =
+          candidate && (last?.usbVendorId == null || matchesLast(candidate))
+            ? candidate
+            : null;
         if (!port) {
           const ports = await navigator.serial.getPorts();
-          const last = lastPortInfoRef.current;
           port =
-            ports.find((p) => {
-              const info = p.getInfo();
-              return (
-                last?.usbVendorId != null &&
-                info.usbVendorId === last.usbVendorId &&
-                info.usbProductId === last.usbProductId
-              );
-            }) ??
-            ports.find((p) => p.getInfo().usbVendorId != null) ??
-            null;
+            ports.find(matchesLast) ??
+            (last?.usbVendorId == null
+              ? (ports.find((p) => p.getInfo().usbVendorId != null) ?? null)
+              : null);
         }
         if (port && (await openPort(port, { quiet: true }))) {
           cancelAutoReconnect();
@@ -553,29 +564,43 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
   }, [tryAutoReconnect, t]);
   beginAutoReconnectRef.current = beginAutoReconnect;
 
+  // A device appearing after the polling window closed must re-open it:
+  // otherwise one transient port.open failure on the event-driven attempt is
+  // a silent dead end — quiet mode suppresses the toast, and with the window
+  // at zero no retry ever gets scheduled.
+  const reArmAndReconnect = useCallback(
+    (candidate?: SerialPort) => {
+      if (!wantsConnectionRef.current || portRef.current) return;
+      reconnectUntilRef.current = Math.max(
+        reconnectUntilRef.current,
+        Date.now() + RECONNECT_WINDOW_MS,
+      );
+      void tryAutoReconnect(candidate);
+    },
+    [tryAutoReconnect],
+  );
+
   // A granted device (re)appearing is the definitive reconnect signal — it
   // carries the port object and fires the moment enumeration completes.
   useEffect(() => {
     if (!navigator.serial) return;
     const handleConnect = (event: Event) => {
-      if (!wantsConnectionRef.current || portRef.current) return;
-      void tryAutoReconnect(event.target as SerialPort);
+      reArmAndReconnect(event.target as SerialPort);
     };
     navigator.serial.addEventListener("connect", handleConnect);
     return () => {
       navigator.serial.removeEventListener("connect", handleConnect);
     };
-  }, [tryAutoReconnect]);
+  }, [reArmAndReconnect]);
 
   // Desktop belt-and-braces: the shell also announces device-set changes.
   useEffect(() => {
     const subscribe = portsChangedBridge();
     if (!subscribe) return;
     return subscribe(() => {
-      if (!wantsConnectionRef.current || portRef.current) return;
-      void tryAutoReconnect();
+      reArmAndReconnect();
     });
-  }, [tryAutoReconnect]);
+  }, [reArmAndReconnect]);
 
   useEffect(() => cancelAutoReconnect, [cancelAutoReconnect]);
 
@@ -665,10 +690,13 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
 
   // The menu's Disconnect, as opposed to the internal teardown: choosing to
   // disconnect also withdraws the standing wish to be connected, so a board
-  // that re-enumerates afterwards stays untouched.
+  // that re-enumerates afterwards stays untouched. The counter lets consumers
+  // distinguish this from a drop — pending recovery state (auto-feed resume)
+  // must not survive a deliberate disconnect into a later manual session.
   const userDisconnect = useCallback(async () => {
     wantsConnectionRef.current = false;
     cancelAutoReconnect();
+    setUserDisconnectCount((n) => n + 1);
     await disconnect();
   }, [disconnect, cancelAutoReconnect]);
 
@@ -705,6 +733,7 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
       value={{
         isConnected,
         isReady,
+        userDisconnectCount,
         connect,
         disconnect: userDisconnect,
         sendBin,

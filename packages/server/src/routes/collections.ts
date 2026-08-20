@@ -8,7 +8,7 @@ import {
   getCardPricing,
   LOCAL_ORG_ID,
   LOCAL_USER_ID,
-  resolvePrintingKey,
+  resolveMarketPrice,
 } from "@poke-sort/shared";
 import { and, count, desc, eq, isNull, or } from "drizzle-orm";
 import { Hono } from "hono";
@@ -716,10 +716,7 @@ router.put("/:guid/cards/:scanId", requireAuth, requireOrg, async (c) => {
       if (isFoil !== undefined && card === undefined) {
         const stored = existing.card as PlayingCardWithDistance | null;
         const pricing = stored ? getCardPricing(stored) : undefined;
-        const resolved = resolvePrintingKey(pricing, isFoil ? "reverse" : undefined);
-        const market = resolved
-          ? pricing?.tcgplayer?.[resolved.key]?.marketPrice
-          : null;
+        const market = resolveMarketPrice(pricing, isFoil ? "reverse" : undefined);
         // Leave the price alone when the printing has no price of its own —
         // better a stale number than a confidently wrong one.
         if (stored && market != null) {

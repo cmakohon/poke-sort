@@ -1,4 +1,5 @@
 import type { CorrectionProvenance } from "@/features/collections/api/collections";
+import { repriceAsReverseHolo } from "@/features/scanner/lib/reverse-holo-pricing";
 import {
   evaluateCardBin,
   type BinConfig,
@@ -33,7 +34,12 @@ export function buildCorrection(
   binConfigs: BinConfig[],
   fieldDefinitions: FieldMeta[],
 ): BuiltCorrection {
-  const corrected: PlayingCardWithDistance = { ...card, distance: 0 };
+  const base: PlayingCardWithDistance = { ...card, distance: 0 };
+  // A foil row stays foil through a correction, so its price must too: the
+  // replacement card arrives at its normal-printing price, and saving it
+  // as-is would quietly undo the reverse-holo reprice while isFoil still
+  // says otherwise — wrong total, wrong price-routed bin.
+  const corrected = previous?.isFoil ? repriceAsReverseHolo(base) : base;
   const matchedBin = evaluateCardBin(corrected, binConfigs, fieldDefinitions);
 
   const provenance: CorrectionProvenance = previous?.wasCorrected
