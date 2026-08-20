@@ -33,6 +33,19 @@ import { disposeOcr } from "../src/lib/identify/ocr";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURES = path.join(here, "fixtures", "pokemon");
 
+// This suite runs the render set only: its pass thresholds are calibrated to
+// renders (the real-capture set legitimately accepts less), and the real
+// manifest lacks the catalogSize field read below. Real-capture numbers come
+// from eval:capture + eval:tune. Failing fast beats silently measuring
+// renders while the operator believes they validated real captures.
+if (process.env.EVAL_FIXTURES && process.env.EVAL_FIXTURES !== "pokemon") {
+  throw new Error(
+    `eval:accuracy always runs fixtures/pokemon and ignores EVAL_FIXTURES ` +
+      `(got "${process.env.EVAL_FIXTURES}"). For that set use ` +
+      `EVAL_FIXTURES=${process.env.EVAL_FIXTURES} eval:capture + eval:tune.`,
+  );
+}
+
 interface Fixture {
   id: string;
   name: string;

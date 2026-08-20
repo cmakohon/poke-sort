@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { buildRerankInputs } from "../src/lib/identify";
 import { collectorNumberMatch } from "../src/lib/identify/rerank";
 
 /**
@@ -101,5 +102,37 @@ describe("collectorNumberMatch", () => {
         candidate("021", 94),
       ),
     ).toBe(0);
+  });
+});
+
+describe("buildRerankInputs set abbreviation", () => {
+  const row = (card_id: string, set_code: string) => ({
+    card_id,
+    name: "Test",
+    collector_number: "1",
+    set_code,
+    card_data: null,
+    distance: 0.1,
+    set_total: 100,
+  });
+
+  it("nulls the abbreviation for sets that never printed one", () => {
+    // pl2's index entry carries the PTCGO code "RR", which matched OCR garble
+    // like "ERATE REBRRRR" and outranked the true card in production scans.
+    const [pl2, dp6] = buildRerankInputs(
+      [row("pl2-63", "pl2"), row("dp6-109", "dp6")],
+      "pokemon",
+    );
+    expect(pl2.setAbbreviation).toBeNull();
+    expect(dp6.setAbbreviation).toBeNull();
+  });
+
+  it("keeps the printed code for Sword & Shield onward", () => {
+    const [swsh, me] = buildRerankInputs(
+      [row("swsh1-1", "swsh1"), row("me02-020", "me02")],
+      "pokemon",
+    );
+    expect(swsh.setAbbreviation).toBe("SSH");
+    expect(me.setAbbreviation).toBe("PFL");
   });
 });

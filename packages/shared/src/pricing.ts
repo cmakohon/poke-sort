@@ -104,6 +104,25 @@ export function resolvePrintingKey(
 }
 
 /**
+ * The market price for a card's variant, or null when no printing carries one.
+ *
+ * The resolve-then-index sequence had grown three private copies (server price
+ * normalisation, the server foil-toggle reprice, the client reverse-holo
+ * reprice) — enough that a fallback-semantics change could move the stored
+ * price without moving the bin the client routes on. One implementation, like
+ * the header comment above promises.
+ */
+export function resolveMarketPrice(
+  pricing: CardPricing | undefined,
+  variant?: string,
+): number | null {
+  const resolved = resolvePrintingKey(pricing, variant);
+  return resolved
+    ? (pricing?.tcgplayer?.[resolved.key]?.marketPrice ?? null)
+    : null;
+}
+
+/**
  * TCGdex ships no product URL, only an id. This path resolves without a slug.
  * Null rather than a guessed search URL — a link that lands on the wrong card
  * is worse than no link.

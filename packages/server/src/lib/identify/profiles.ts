@@ -138,13 +138,16 @@ export const POKEMON_PROFILE: IdentityProfile = {
   // The embedding carries half the mass because on these probes it is by far
   // the most reliable signal.
   //
-  // Re-validated against 165 labelled real captures (eval:build-real +
-  // EVAL_FIXTURES=pokemon-real): zero false accepts holds at this gate on
-  // both fixture sets. minMargin 0.04 looked clean on renders but admits a
-  // real false accept — a same-name reprint the sorter picked wrong at
-  // margin 0.044 in production — so 0.05 stands. The review pile is almost
-  // entirely reprint pairs the embedding cannot split; wins there come from
-  // reading the collector number, not from loosening the gate.
+  // Re-validated against 558 labelled real captures (eval:build-real +
+  // EVAL_FIXTURES=pokemon-real, 2026-08 review sessions): top-1 97.0%,
+  // 86.4% accept at zero false accepts — ahead of every config the sweep
+  // found once pre-SwSh PTCGO codes stopped feeding the abbreviation signal
+  // (see abbreviationOf). minMargin 0.04 looked clean on renders but admits
+  // real false accepts — one live at margin 0.044, and the 558-probe sweep
+  // shows FALSE=2 one margin notch down — so 0.05 stands. The remaining
+  // review pile is almost entirely reprint pairs the embedding cannot split;
+  // wins there come from reading the collector number, not from loosening
+  // the gate.
   weights: {
     embedding: 0.5,
     name: 0.1,

@@ -28,6 +28,21 @@ export type { SerialMessageListener } from "@/features/scanner/types";
 
 const SerialContext = createContext<SerialContextValue | null>(null);
 
+// The firmware's watchdog recovers a wedged board by resetting it, which
+// re-enumerates USB and kills the open stream. The board is back within a
+// couple of seconds; polling covers the window where the OS is still
+// re-enumerating, and the `connect` event covers anything later.
+const RECONNECT_POLL_MS = 1500;
+const RECONNECT_WINDOW_MS = 30_000;
+
+/** The desktop shell's nudge that the set of attached devices changed. */
+function portsChangedBridge(): ((listener: () => void) => () => void) | null {
+  const w = window as unknown as {
+    pokeSort?: { serial?: { onPortsChanged?: (l: () => void) => () => void } };
+  };
+  return w.pokeSort?.serial?.onPortsChanged ?? null;
+}
+
 /** The command key of a sent line ("bin", "servo", "test"…), for telemetry. */
 function commandOf(data: string): string | undefined {
   try {
@@ -41,6 +56,7 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation("scanner");
   const [isConnected, setIsConnected] = useState(false);
   const [isReady, setIsReady] = useState(false);
+  const [userDisconnectCount, setUserDisconnectCount] = useState(0);
   // Mirror of isReady for the reboot listener, which must read it without
   // re-subscribing on every state change.
   const isReadyRef = useRef(false);
@@ -53,6 +69,17 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
   const bufferRef = useRef("");
   const listenersRef = useRef(new Set<SerialMessageListener>());
   const disconnectingRef = useRef<Promise<void> | null>(null);
+  // True from the first Connect until the user explicitly disconnects. A
+  // dropped stream (watchdog reset, unplug) does not clear it — it is what
+  // authorises reconnecting without asking again.
+  const wantsConnectionRef = useRef(false);
+  const lastPortInfoRef = useRef<Partial<SerialPortInfo> | null>(null);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectUntilRef = useRef(0);
+  const reconnectingRef = useRef(false);
+  // Assigned after openPort exists — the stream-ended callback inside
+  // openPort needs it, and the two cannot reference each other directly.
+  const beginAutoReconnectRef = useRef<() => void>(() => {});
   const preTestHooksRef = useRef(new Set<() => Promise<void>>());
 
   const decoderRef = useRef(new TextDecoder());
@@ -324,7 +351,7 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const openPort = useCallback(
-    async (port: SerialPort): Promise<boolean> => {
+    async (port: SerialPort, opts?: { quiet?: boolean }): Promise<boolean> => {
       if (!port.readable || !port.writable) {
         try {
           await port.open({ baudRate: 9600 });
@@ -333,9 +360,13 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
             eventType: "port_open_failed",
             payload: { error: String(err) },
           });
-          toast.error(t("serial.connectionFailed.title"), {
-            description: t("serial.connectionFailed.description"),
-          });
+          // Auto-reconnect attempts retry within seconds; a toast per attempt
+          // would bury the one that matters when the retries give up.
+          if (!opts?.quiet) {
+            toast.error(t("serial.connectionFailed.title"), {
+              description: t("serial.connectionFailed.description"),
+            });
+          }
           void reportSerialEvent({
             command: "connect",
             sent: false,
@@ -346,6 +377,7 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
       }
 
       portRef.current = port;
+      lastPortInfoRef.current = port.getInfo();
       writableRef.current = port.writable;
 
       const reader = port.readable!.getReader();
@@ -362,6 +394,7 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
           console.warn("[Serial] Stream ended unexpectedly, disconnecting");
           log.record({ eventType: "stream_ended" });
           disconnect();
+          beginAutoReconnectRef.current();
         }
       });
 
@@ -386,6 +419,11 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
       await disconnectingRef.current;
     }
     if (portRef.current) return;
+
+    // From here on a dropped stream reconnects by itself; only an explicit
+    // Disconnect withdraws that. Set before requestPort so a Connect clicked
+    // with the sorter unplugged still arms the plug-it-in-later path.
+    wantsConnectionRef.current = true;
 
     let port: SerialPort;
     try {
@@ -420,6 +458,152 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
     await openPort(port);
   }, [openPort, t, log]);
 
+  // ── Auto-reconnect ─────────────────────────────────────────────────────────
+  //
+  // A watchdog reset (the firmware's recovery from a servo-brownout wedge)
+  // re-enumerates USB, which ends the stream exactly like an unplug. Before
+  // this existed the app then sat disconnected until someone clicked Connect —
+  // production gaps ranged from 5 seconds to 4 minutes of a stalled sorter.
+  //
+  // getPorts() rather than requestPort(): it needs no user gesture, and the
+  // desktop shell's device-permission handler grants every port for this
+  // origin, so a re-enumerated board shows up in it as soon as the OS is done.
+
+  const cancelAutoReconnect = useCallback(() => {
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
+    reconnectUntilRef.current = 0;
+  }, []);
+
+  const tryAutoReconnect = useCallback(
+    async (candidate?: SerialPort) => {
+      if (
+        !wantsConnectionRef.current ||
+        portRef.current ||
+        reconnectingRef.current
+      ) {
+        return;
+      }
+      reconnectingRef.current = true;
+      try {
+        if (disconnectingRef.current) await disconnectingRef.current;
+        if (!wantsConnectionRef.current || portRef.current) return;
+
+        // Only the board that dropped. Opening "any physical USB device"
+        // here would latch a second attached device (dev board, debug
+        // adapter) the instant the resetting sorter vanishes from the list —
+        // and with the port slot occupied, the real sorter's return would go
+        // unnoticed. The any-device fallback exists solely for the
+        // connect-clicked-while-unplugged path, where no identity was ever
+        // recorded. Virtual ports report no vendor id and never qualify.
+        const last = lastPortInfoRef.current;
+        const matchesLast = (p: SerialPort) => {
+          const info = p.getInfo();
+          return (
+            last?.usbVendorId != null &&
+            info.usbVendorId === last.usbVendorId &&
+            info.usbProductId === last.usbProductId
+          );
+        };
+        let port =
+          candidate && (last?.usbVendorId == null || matchesLast(candidate))
+            ? candidate
+            : null;
+        if (!port) {
+          const ports = await navigator.serial.getPorts();
+          port =
+            ports.find(matchesLast) ??
+            (last?.usbVendorId == null
+              ? (ports.find((p) => p.getInfo().usbVendorId != null) ?? null)
+              : null);
+        }
+        if (port && (await openPort(port, { quiet: true }))) {
+          cancelAutoReconnect();
+          return;
+        }
+      } finally {
+        reconnectingRef.current = false;
+      }
+
+      if (Date.now() >= reconnectUntilRef.current) {
+        // The polling window closed with nothing to show. The `connect`
+        // event and the shell's ports-changed nudge stay armed, so a device
+        // that appears later still reconnects — this is only the moment to
+        // tell the user it did not come back by itself.
+        if (reconnectUntilRef.current !== 0) {
+          reconnectUntilRef.current = 0;
+          log.record({
+            eventType: "connect_failed",
+            payload: { reason: "auto_reconnect_window_expired" },
+          });
+          toast.error(t("serial.reconnectFailed.title"), {
+            description: t("serial.reconnectFailed.description"),
+          });
+        }
+        return;
+      }
+      if (!reconnectTimerRef.current) {
+        reconnectTimerRef.current = setTimeout(() => {
+          reconnectTimerRef.current = null;
+          void tryAutoReconnect();
+        }, RECONNECT_POLL_MS);
+      }
+    },
+    [openPort, cancelAutoReconnect, t, log],
+  );
+
+  const beginAutoReconnect = useCallback(() => {
+    if (!wantsConnectionRef.current) return;
+    reconnectUntilRef.current = Date.now() + RECONNECT_WINDOW_MS;
+    toast.warning(t("serial.reconnecting.title"), {
+      description: t("serial.reconnecting.description"),
+    });
+    void tryAutoReconnect();
+  }, [tryAutoReconnect, t]);
+  beginAutoReconnectRef.current = beginAutoReconnect;
+
+  // A device appearing after the polling window closed must re-open it:
+  // otherwise one transient port.open failure on the event-driven attempt is
+  // a silent dead end — quiet mode suppresses the toast, and with the window
+  // at zero no retry ever gets scheduled.
+  const reArmAndReconnect = useCallback(
+    (candidate?: SerialPort) => {
+      if (!wantsConnectionRef.current || portRef.current) return;
+      reconnectUntilRef.current = Math.max(
+        reconnectUntilRef.current,
+        Date.now() + RECONNECT_WINDOW_MS,
+      );
+      void tryAutoReconnect(candidate);
+    },
+    [tryAutoReconnect],
+  );
+
+  // A granted device (re)appearing is the definitive reconnect signal — it
+  // carries the port object and fires the moment enumeration completes.
+  useEffect(() => {
+    if (!navigator.serial) return;
+    const handleConnect = (event: Event) => {
+      reArmAndReconnect(event.target as SerialPort);
+    };
+    navigator.serial.addEventListener("connect", handleConnect);
+    return () => {
+      navigator.serial.removeEventListener("connect", handleConnect);
+    };
+  }, [reArmAndReconnect]);
+
+  // Desktop belt-and-braces: the shell also announces device-set changes.
+  useEffect(() => {
+    const subscribe = portsChangedBridge();
+    if (!subscribe) return;
+    return subscribe(() => {
+      reArmAndReconnect();
+    });
+  }, [reArmAndReconnect]);
+
+  useEffect(() => cancelAutoReconnect, [cancelAutoReconnect]);
+
   // Detect physical USB unplug
   useEffect(() => {
     if (!navigator.serial) return;
@@ -428,6 +612,7 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
         console.warn("[Serial] Device unplugged");
         log.record({ eventType: "unplug" });
         disconnect();
+        beginAutoReconnectRef.current();
       }
     };
     navigator.serial.addEventListener("disconnect", handleDisconnect);
@@ -503,6 +688,18 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // The menu's Disconnect, as opposed to the internal teardown: choosing to
+  // disconnect also withdraws the standing wish to be connected, so a board
+  // that re-enumerates afterwards stays untouched. The counter lets consumers
+  // distinguish this from a drop — pending recovery state (auto-feed resume)
+  // must not survive a deliberate disconnect into a later manual session.
+  const userDisconnect = useCallback(async () => {
+    wantsConnectionRef.current = false;
+    cancelAutoReconnect();
+    setUserDisconnectCount((n) => n + 1);
+    await disconnect();
+  }, [disconnect, cancelAutoReconnect]);
+
   const binBusyRef = useRef(false);
 
   const sendBin = useCallback(
@@ -536,8 +733,9 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
       value={{
         isConnected,
         isReady,
+        userDisconnectCount,
         connect,
-        disconnect,
+        disconnect: userDisconnect,
         sendBin,
         sendTest,
         request,

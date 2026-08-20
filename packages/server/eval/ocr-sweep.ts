@@ -15,7 +15,7 @@ import path from "node:path";
 import sharp from "sharp";
 import { createWorker, type Worker } from "tesseract.js";
 import { parseCollectorNumber } from "../src/lib/identify/ocr";
-import type { OcrRegion } from "../src/lib/identify/profiles";
+import { POKEMON_PROFILE, type OcrRegion } from "../src/lib/identify/profiles";
 import { EVAL_SET, FIXTURES_DIR, SIGNALS_PATH } from "./eval-set";
 
 const FIXTURES = FIXTURES_DIR;
@@ -25,12 +25,12 @@ type Prep = { label: string; apply: (s: sharp.Sharp, w: number) => sharp.Sharp }
 
 const BAND_SETS: BandSet[] = [
   {
-    label: "current",
-    bands: [
-      { x0: 0.5, y0: 0.9, x1: 0.99, y1: 0.97 },
-      { x0: 0.02, y0: 0.9, x1: 0.5, y1: 0.97 },
-      { x0: 0.02, y0: 0.92, x1: 0.99, y1: 1.0 },
-    ],
+    // Whatever profiles.ts ships right now, by reference — a pasted copy
+    // went stale twice (a "current" that was two revisions old, and a
+    // variant that had silently become production), and a sweep judged
+    // against bands production no longer runs draws wrong conclusions.
+    label: "production",
+    bands: POKEMON_PROFILE.ocr!.collectorNumber,
   },
   {
     // The right band pushed down to where dp/base actually print the number.
@@ -61,18 +61,6 @@ const BAND_SETS: BandSet[] = [
       { x0: 0.5, y0: 0.945, x1: 0.99, y1: 0.995 },
       { x0: 0.5, y0: 0.895, x1: 0.99, y1: 0.95 },
       { x0: 0.02, y0: 0.915, x1: 0.38, y1: 0.968 },
-      { x0: 0.03, y0: 0.93, x1: 0.97, y1: 0.995 },
-    ],
-  },
-  {
-    // Same tight bottom-left, kept alongside the original left band rather
-    // than replacing it, in case some era needs the taller crop.
-    label: "tight-left+wide-left",
-    bands: [
-      { x0: 0.5, y0: 0.945, x1: 0.99, y1: 0.995 },
-      { x0: 0.5, y0: 0.895, x1: 0.99, y1: 0.95 },
-      { x0: 0.02, y0: 0.915, x1: 0.38, y1: 0.968 },
-      { x0: 0.02, y0: 0.9, x1: 0.5, y1: 0.97 },
       { x0: 0.03, y0: 0.93, x1: 0.97, y1: 0.995 },
     ],
   },

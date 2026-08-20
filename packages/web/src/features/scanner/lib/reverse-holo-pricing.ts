@@ -1,6 +1,6 @@
 import {
   getCardPricing,
-  resolvePrintingKey,
+  resolveMarketPrice,
   type PlayingCardWithDistance,
 } from "@poke-sort/shared";
 
@@ -16,11 +16,7 @@ import {
 export function repriceAsReverseHolo(
   card: PlayingCardWithDistance,
 ): PlayingCardWithDistance {
-  const pricing = getCardPricing(card);
-  const resolved = resolvePrintingKey(pricing, "reverse");
-  const market = resolved
-    ? pricing?.tcgplayer?.[resolved.key]?.marketPrice
-    : null;
+  const market = resolveMarketPrice(getCardPricing(card), "reverse");
   // Leave the price alone when the printing has no price of its own — better
   // a stale number than a confidently wrong one.
   return market != null ? { ...card, price: market } : card;

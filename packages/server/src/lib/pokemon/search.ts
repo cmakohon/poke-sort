@@ -1,5 +1,5 @@
 import type { CardPricing, PlayingCard, Result } from "@poke-sort/shared";
-import { resolvePrintingKey } from "@poke-sort/shared";
+import { resolveMarketPrice } from "@poke-sort/shared";
 import type { CardSearchAdapter } from "../card-search/types";
 import { getSetInfo, releaseYear } from "../set-index";
 
@@ -72,11 +72,9 @@ function assetUrl(image: string, quality: "low" | "high"): string {
 /**
  * The one number bin rules route on.
  *
- * Which printing it comes from is decided by resolvePrintingKey in shared, so
+ * Which printing it comes from is decided by resolveMarketPrice in shared, so
  * the detail panel can label the number without re-deriving the choice and
- * drifting from it. The keys this used to try — `reverseHolofoil`, `reverse`,
- * `firstEdition` — do not exist upstream; the real one is `reverse-holofoil`,
- * and there is no first-edition key at all.
+ * drifting from it.
  *
  * cardmarket.avg stays the last resort: a few cards carry it and nothing else.
  */
@@ -84,11 +82,7 @@ function resolvePrice(
   pricing: CardPricing | undefined,
   variant?: PokemonVariant,
 ): number | null {
-  const resolved = resolvePrintingKey(pricing, variant);
-  const market = resolved
-    ? pricing?.tcgplayer?.[resolved.key]?.marketPrice
-    : null;
-  return market ?? pricing?.cardmarket?.avg ?? null;
+  return resolveMarketPrice(pricing, variant) ?? pricing?.cardmarket?.avg ?? null;
 }
 
 export function normalizePokemonCard(
