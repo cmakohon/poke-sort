@@ -26,12 +26,25 @@
     "deviceRebooted": {
       "title": "Sorter restarted unexpectedly",
       "description": "Calibration was re-sent and the self-test is running again."
+    },
+    "reconnecting": {
+      "title": "Sorter connection lost",
+      "description": "Reconnecting automatically…"
+    },
+    "reconnectFailed": {
+      "title": "Couldn't reconnect to the sorter",
+      "description": "Check the USB cable, then click Connect."
     }
   },
   "sessionMonitor": {
     "connectionLost": "Lost connection to the sort."
   },
   "scannedCards": {
+    "sortResumed": "Sorter recovered — resuming",
+    "strandedCardCleared": {
+      "title": "One card sent to the catch-all",
+      "description": "A card was mid-route when the sorter restarted, so it was dropped to the catch-all. Set it aside and re-run it."
+    },
     "autoFeedFailed": {
       "title": "Auto-feed failed",
       "description": "Couldn't send the feed command."

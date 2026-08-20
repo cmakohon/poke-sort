@@ -109,6 +109,11 @@ export function ScannedCardsProvider({
   const prevCollectionGuidRef = useRef<string | undefined>(undefined);
   const [autoFeed, setAutoFeedState] = useState(true);
   const autoFeedRef = useRef(true);
+  // Set when auto-feed shut off because a command died with no response at
+  // all — the shape of a watchdog reset or an unplug, not of a fault the
+  // firmware reported (empty hopper, jam). The isReady rising edge after the
+  // serial layer reconnects uses it to hand back a running sorter.
+  const interruptedAutoFeedRef = useRef(false);
   // Sticky "the cards being fed are reverse holos" mode. Deliberately
   // in-memory: a foil mode that silently survived into next week's session
   // would mis-mark every card until someone noticed.
@@ -145,6 +150,8 @@ export function ScannedCardsProvider({
   const setAutoFeed = useCallback((enabled: boolean) => {
     autoFeedRef.current = enabled;
     setAutoFeedState(enabled);
+    // A deliberate toggle overrides any pending resume-after-reconnect.
+    interruptedAutoFeedRef.current = false;
   }, []);
 
   const setReverseHolo = useCallback((enabled: boolean) => {
@@ -182,6 +189,7 @@ export function ScannedCardsProvider({
       10000,
     );
     if (!sent) {
+      interruptedAutoFeedRef.current = autoFeedRef.current;
       autoFeedRef.current = false;
       setAutoFeedState(false);
       toast.error(t("scannedCards.autoFeedFailed.title"), {
@@ -195,6 +203,7 @@ export function ScannedCardsProvider({
       return;
     }
     if (!response) {
+      interruptedAutoFeedRef.current = autoFeedRef.current;
       autoFeedRef.current = false;
       setAutoFeedState(false);
       toast.error(t("scannedCards.autoFeedTimeout.title"), {
@@ -248,6 +257,50 @@ export function ScannedCardsProvider({
       void reportSerialEvent({ command: "auto-feed", sent: true, response });
     }
   }, [t]);
+
+  // Picks sorting back up after the serial layer has reconnected and the
+  // boot test passed (isReady rising edge) — the tail end of a watchdog
+  // reset. The interrupted card is the open question: the reboot returned
+  // every servo to neutral, so it may be resting at any module with the
+  // trapdoors closed. Its intended bin cannot be re-sent — routeCard() runs
+  // the feeder first, so the command would route the NEXT card — which is
+  // why a stranded card goes to the catch-all instead, announced so the
+  // operator can re-run it.
+  const recoverInterruptedSort = useCallback(async () => {
+    const { request } = serialRef.current;
+    try {
+      const { response } = await request(JSON.stringify({ readIR: true }), 5000);
+      const parsed = response
+        ? (JSON.parse(response) as { ir?: unknown })
+        : null;
+      const stranded =
+        Array.isArray(parsed?.ir) && parsed.ir.some((present) => present);
+      if (stranded) {
+        await request(JSON.stringify({ clearDevice: true }), 10000);
+        toast.info(t("scannedCards.strandedCardCleared.title"), {
+          description: t("scannedCards.strandedCardCleared.description"),
+          duration: FAULT_TOAST_DURATION_MS,
+          dismissible: true,
+        });
+      }
+    } catch (err) {
+      console.warn("[ScannedCards] recovery IR check failed:", err);
+    }
+    autoFeedRef.current = true;
+    setAutoFeedState(true);
+    toast.info(t("scannedCards.sortResumed"));
+    void triggerAutoFeed();
+  }, [triggerAutoFeed, t]);
+
+  const prevReadyRef = useRef(false);
+  useEffect(() => {
+    const wasReady = prevReadyRef.current;
+    prevReadyRef.current = isReady;
+    if (!wasReady && isReady && interruptedAutoFeedRef.current) {
+      interruptedAutoFeedRef.current = false;
+      void recoverInterruptedSort();
+    }
+  }, [isReady, recoverInterruptedSort]);
 
   // Switching collections re-points the open run rather than reloading the
   // list: the staged cards belong to the run, not to whichever collection is
@@ -486,6 +539,7 @@ export function ScannedCardsProvider({
               cardName: card.name,
               binNumber: matchedBin.binNumber,
             });
+            interruptedAutoFeedRef.current = autoFeedRef.current;
             autoFeedRef.current = false;
             setAutoFeedState(false);
             return;
@@ -560,6 +614,7 @@ export function ScannedCardsProvider({
             response: null,
             binNumber: bin.binNumber,
           });
+          interruptedAutoFeedRef.current = autoFeedRef.current;
           autoFeedRef.current = false;
           setAutoFeedState(false);
           return;
