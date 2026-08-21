@@ -86,7 +86,16 @@ export function FeederConfigProvider({
   }, [queryClient, request, t]);
 
   useEffect(() => {
-    return registerPreTestHook(syncToDevice);
+    // Reports success unconditionally, unlike the module-calibration hook. The
+    // boolean gates whether it is safe to stroke the arms, and feeder timings
+    // do not move them — so one garbled setFeederConfig reply must not leave
+    // the sorter permanently un-ready, which on the reboot path would also
+    // block the readIR/clearDevice recovery and strand a card in the
+    // mechanism. syncToDevice raises its own toast when the push fails.
+    return registerPreTestHook(async () => {
+      await syncToDevice();
+      return true;
+    });
   }, [registerPreTestHook, syncToDevice]);
 
   const saveConfigMutation = useMutation({

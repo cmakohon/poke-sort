@@ -62,12 +62,15 @@ export const cardImageVectors = pgTable(
     unique("cards_card_id_idx").on(table.cardId),
     index("cards_game_lang_idx").on(table.gameKey, table.lang),
     index("cards_collector_number_idx").on(table.collectorNumber),
-    // Trigram index for the correction search's ILIKE '%...%' on the name.
+    // The correction search's trigram index is NOT declared here. It indexes an
+    // expression — the folded name, see `folded` in lib/card-search/local.ts —
+    // which drizzle's schema builder cannot express, so it lives in
+    // drizzle/0020 alongside the DROP of the raw-column index it replaces.
+    // Re-declaring the old one here would have drizzle recreate a dead index.
     //
-    // Required, not an optimisation: PGlite runs on the main thread and cannot
-    // cancel a query, so a sequential scan of ~22k rows per debounced keystroke
-    // would stall the process mid-sort.
-    index("cards_name_trgm_idx").using("gin", table.name.op("gin_trgm_ops")),
+    // It is required, not an optimisation: PGlite runs on the main thread and
+    // cannot cancel a query, so a sequential scan of ~22k rows per debounced
+    // keystroke would stall the process mid-sort.
     // Approximate nearest-neighbour index over the embeddings.
     //
     // Measured on the real 21,714-card catalog with degraded (low-quality)

@@ -91,10 +91,17 @@ export async function markRouteFailed(
   scanId: string,
 ): Promise<void> {
   try {
-    await fetch(
+    const res = await fetch(
       `${API_BASE}/api/scan-sessions/${sessionGuid}/cards/${scanId}/route-failed`,
       { method: "POST" },
     );
+    // A 404 here means the flag missed the row it describes — worth a console
+    // trail, since the row is then silently still claiming a delivery.
+    if (!res.ok) {
+      console.warn(
+        `[ScanSessions] route-failed flag rejected (${res.status}) for ${scanId}`,
+      );
+    }
   } catch (err) {
     console.warn("[ScanSessions] could not flag route failure:", err);
   }

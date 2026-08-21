@@ -300,6 +300,30 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       if (reason === "reboot") {
+        // setConfig only rewrites the firmware's RAM; it moves nothing. The
+        // arms are still parked where setup()'s setAllNeutral() left them —
+        // the compiled defaults, pulse ~300 on every channel — and a
+        // calibrated bottom range that straddles 300 means the trapdoor is
+        // sitting half open. The self-test's trailing neutral used to be what
+        // incidentally corrected that, so skipping the test has to do it
+        // explicitly. One short move to the calibrated rest position, not a
+        // stroke: exactly what routeCard does at the end of every route.
+        const { sent, response } = await request(
+          JSON.stringify({ neutral: true }),
+        );
+        if (portRef.current !== port) return;
+        if (!sent || !response) {
+          // Arms at an unknown position with the link unhealthy. Staying
+          // un-ready keeps cards out of the machine until a reconnect.
+          log.record({
+            eventType: "boot_sync_failed",
+            payload: { step: "neutral" },
+          });
+          toast.error(t("serial.testSkipped.title"), {
+            description: t("serial.testSkipped.description"),
+          });
+          return;
+        }
         log.record({ eventType: "reboot_resync" });
         setIsReady(true);
         isReadyRef.current = true;
@@ -324,7 +348,7 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
         });
       }
     },
-    [sendTest, t, log],
+    [sendTest, request, t, log],
   );
 
   const disconnect = useCallback(() => {

@@ -99,16 +99,16 @@ export async function searchLocalCatalog(
     return { cards: [], total: 0, page, limit, sets: [] };
   }
 
-  // A query of pure punctuation folds to the empty string, which would make the
-  // LIKE below match the entire catalog rather than nothing.
-  if (!/[\p{L}\p{N}]/u.test(query)) {
-    return { cards: [], total: 0, page, limit, sets: [] };
-  }
-
   const name = folded(sql`name`);
   const needle = folded(sql`${query}`);
+  // A query that folds away to nothing — pure punctuation, or a script the
+  // folding does not keep, like katakana against a Japanese catalog — would
+  // otherwise leave LIKE '%' || '' || '%', matching every row for the game.
+  // Tested on the folded value rather than the raw one: a JS-side check would
+  // have to reimplement the folding to agree with it, and the two would drift.
   const where = sql`game_key = ${options.gameKey}
       AND lang = ${options.lang}
+      AND ${needle} <> ''
       AND ${name} LIKE '%' || ${needle} || '%'
       ${options.setCode ? sql`AND set_code = ${options.setCode}` : sql``}`;
 
