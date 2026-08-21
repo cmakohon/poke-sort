@@ -22,8 +22,11 @@ interface FeederConfigContextValue {
   feederConfig: FeederCalibration;
   saveConfig: (calibration: FeederCalibration) => Promise<void>;
   previewSpeed: (value: number) => void;
-  /** Re-push the stored calibration to the sorter. Only call while connected. */
-  syncToDevice: () => Promise<void>;
+  /**
+   * Re-push the stored calibration to the sorter. Only call while connected.
+   * Resolves false when the sorter did not confirm it.
+   */
+  syncToDevice: () => Promise<boolean>;
 }
 
 const FeederConfigContext = createContext<FeederConfigContextValue | null>(null);
@@ -47,7 +50,13 @@ export function FeederConfigProvider({
    * `saveConfig`, so it has to ask for this explicitly.
    */
   const syncToDevice = useCallback(async () => {
-    const fresh = await queryClient.fetchQuery(feederQueryOptions);
+    // staleTime: 0 overrides the shared options' Infinity — see the same
+    // override in use-module-configs.tsx for why a reconnect cannot be served
+    // from cache here.
+    const fresh = await queryClient.fetchQuery({
+      ...feederQueryOptions,
+      staleTime: 0,
+    });
     const { sent, response } = await request(
       JSON.stringify({ setFeederConfig: fresh }),
     );
@@ -55,7 +64,7 @@ export function FeederConfigProvider({
       toast.error(t("useFeederConfig.toasts.notSynced"), {
         description: t("useFeederConfig.toasts.noResponse"),
       });
-      return;
+      return false;
     }
     try {
       const parsed = JSON.parse(response);
@@ -63,6 +72,7 @@ export function FeederConfigProvider({
         toast.error(t("useFeederConfig.toasts.notSynced"), {
           description: String(parsed.error),
         });
+        return false;
       }
     } catch {
       toast.error(t("useFeederConfig.toasts.notSynced"), {
@@ -70,7 +80,9 @@ export function FeederConfigProvider({
           response,
         }),
       });
+      return false;
     }
+    return true;
   }, [queryClient, request, t]);
 
   useEffect(() => {

@@ -413,44 +413,46 @@ void handleCommand(char* json) {
   // every move starting or ending at neutral. Sweeping extreme-to-extreme over
   // an open trapdoor is a motion no routing path ever performs, and with real
   // calibration loaded it detached module 1's pusher arm on every boot.
+  //
+  // One module at a time, for the same reason. Driving all three in step put
+  // six servos into their longest strokes at the same instant — a current draw
+  // no routing path comes near, since routing only ever strokes the one module
+  // holding the card. That spike sags the servo rail far enough to trip the
+  // watchdog, and the reset lands mid-stroke: the board comes back up, re-runs
+  // setup(), and slams the half-travelled arms to the compiled defaults. With
+  // the app now reconnecting by itself, that became a loop that re-tested and
+  // re-slammed on every recovery.
   if (doc["test"].is<bool>() && doc["test"].as<bool>()) {
-    // Bottoms and paddles, with every pusher held at neutral
     for (int m = 1; m <= NUM_MODULES; m++) {
-      setServoPosition(getChannel(m, 0), moduleConfig[m - 1].bottomOpen);
-      setServoPosition(getChannel(m, 1), moduleConfig[m - 1].paddleOpen);
-    }
-    wdtDelay(DELAY_PUSH);
-    for (int m = 1; m <= NUM_MODULES; m++) {
-      setServoPosition(getChannel(m, 0), moduleConfig[m - 1].bottomClosed);
-      setServoPosition(getChannel(m, 1), moduleConfig[m - 1].paddleClosed);
-    }
-    wdtDelay(DELAY_PUSH);
+      ModuleConfig& c = moduleConfig[m - 1];
 
-    // Pushers, as a routing stroke: bottoms stay closed, paddles open,
-    // left → neutral → right → neutral
-    for (int m = 1; m <= NUM_MODULES; m++) {
-      setServoPosition(getChannel(m, 1), moduleConfig[m - 1].paddleOpen);
-    }
-    wdtDelay(DELAY_PADDLE);
-    for (int m = 1; m <= NUM_MODULES; m++) {
-      setServoPosition(getChannel(m, 2), moduleConfig[m - 1].pusherLeft);
-    }
-    wdtDelay(DELAY_PUSH);
-    for (int m = 1; m <= NUM_MODULES; m++) {
-      setServoPosition(getChannel(m, 2), moduleConfig[m - 1].pusherNeutral);
-    }
-    wdtDelay(DELAY_PUSH);
-    for (int m = 1; m <= NUM_MODULES; m++) {
-      setServoPosition(getChannel(m, 2), moduleConfig[m - 1].pusherRight);
-    }
-    wdtDelay(DELAY_PUSH);
-    for (int m = 1; m <= NUM_MODULES; m++) {
-      setServoPosition(getChannel(m, 2), moduleConfig[m - 1].pusherNeutral);
-    }
-    wdtDelay(DELAY_PUSH);
+      // Bottom and paddle, with this module's pusher held at neutral
+      setServoPosition(getChannel(m, 0), c.bottomOpen);
+      setServoPosition(getChannel(m, 1), c.paddleOpen);
+      wdtDelay(DELAY_PUSH);
+      setServoPosition(getChannel(m, 0), c.bottomClosed);
+      setServoPosition(getChannel(m, 1), c.paddleClosed);
+      wdtDelay(DELAY_PUSH);
 
-    // Reset all servos
-    setAllNeutral();
+      // Pusher, as a routing stroke: bottom stays closed, paddle opens,
+      // left → neutral → right → neutral
+      setServoPosition(getChannel(m, 1), c.paddleOpen);
+      wdtDelay(DELAY_PADDLE);
+      setServoPosition(getChannel(m, 2), c.pusherLeft);
+      wdtDelay(DELAY_PUSH);
+      setServoPosition(getChannel(m, 2), c.pusherNeutral);
+      wdtDelay(DELAY_PUSH);
+      setServoPosition(getChannel(m, 2), c.pusherRight);
+      wdtDelay(DELAY_PUSH);
+      setServoPosition(getChannel(m, 2), c.pusherNeutral);
+      wdtDelay(DELAY_PUSH);
+
+      // Back to rest before the next module draws anything
+      setModuleNeutral(m);
+      wdtDelay(200);
+    }
+
+    stopFeeder();
     delay(200);
 
     // Test feeder: spin briefly to verify motor movement (no card expected)

@@ -11,6 +11,14 @@ export interface ServoCalibration {
 export interface ModuleConfig {
   moduleNumber: 1 | 2 | 3;
   calibration: ServoCalibration;
+  /**
+   * False when the module has no saved row and `calibration` is
+   * DEFAULT_CALIBRATION standing in for one, so callers can tell a real
+   * calibration from a placeholder. The calibration screen needs the
+   * placeholder to have something to nudge from; the sorter must never be
+   * driven to it — see the note on DEFAULT_CALIBRATION below.
+   */
+  calibrated: boolean;
 }
 
 /**
@@ -44,6 +52,12 @@ export const SCAN_OFFSET_LIMIT = 0.45;
  */
 export const SCAN_ROTATION_LIMIT = 45;
 
+/**
+ * The starting point the calibration screen offers, NOT a safe set of positions
+ * to drive. It spans nearly the whole 120-490 pulse range, so a module whose
+ * linkage is calibrated for a narrower one is driven past its hard stop — that
+ * detaches servo arms. Only ever push a calibration with `calibrated: true`.
+ */
 export const DEFAULT_CALIBRATION: ServoCalibration = {
   bottomClosed: 400,
   bottomOpen: 150,

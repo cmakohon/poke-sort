@@ -23,6 +23,10 @@
       "title": "Sorter test failed",
       "description": "Connected but got no response. Try reconnecting."
     },
+    "testSkipped": {
+      "title": "Self-test skipped",
+      "description": "The sorter's calibration didn't fully load, so the arms weren't moved. Open Calibrate to check all three sorting arms, then reconnect."
+    },
     "deviceRebooted": {
       "title": "Sorter restarted unexpectedly",
       "description": "Calibration was re-sent and the self-test is running again."

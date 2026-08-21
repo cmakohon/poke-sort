@@ -36,7 +36,8 @@ export function CardScanner({ className, compact }: CardScannerProps) {
   const navigate = useNavigate();
   const { isAdmin } = useRole();
   const { autoFeed, setAutoFeed } = useScannedCards();
-  const { isConnected, isReady, connect, disconnect, sendTest } = useSerial();
+  const { isConnected, isReady, connect, disconnect, retryBootSequence } =
+    useSerial();
   const { hasCatchAll } = useBinConfigs();
   const {
     zoom,
@@ -192,7 +193,7 @@ export function CardScanner({ className, compact }: CardScannerProps) {
           onZoomChange={setZoom}
           onScannerConnect={connect}
           onScannerDisconnect={disconnect}
-          onScannerRetry={sendTest}
+          onScannerRetry={retryBootSequence}
           onCalibrate={() => navigate("/calibrate")}
           onAutoFeedChange={setAutoFeed}
           onAllowDuplicatesChange={setAllowDuplicates}

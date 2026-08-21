@@ -9,7 +9,7 @@ import {
 } from "@/features/calibration/lib/calibration-utils";
 import type { ActivePositions, ServoConfig, SliderKey } from "@/features/calibration/types";
 import { useSerial } from "@/features/scanner/api/use-serial";
-import { DEFAULT_CALIBRATION, type ServoCalibration } from "@poke-sort/shared";
+import { type ServoCalibration } from "@poke-sort/shared";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -31,13 +31,14 @@ export function useCalibrationPage() {
   const configsRef = useRef(configs);
   configsRef.current = configs;
 
+  // Any uncalibrated module disqualifies the self-test, not just all three: the
+  // test strokes every module, so one still on placeholder positions is enough
+  // to drive an arm past its stop. This used to compare values against
+  // DEFAULT_CALIBRATION with `every`, which passed two-of-three straight
+  // through — and let the board be flagged as calibrated the moment someone
+  // nudged a single slider.
   const isUnconfigured =
-    configs.length > 0 &&
-    configs.every((c) =>
-      (Object.keys(DEFAULT_CALIBRATION) as (keyof ServoCalibration)[]).every(
-        (key) => c.calibration[key] === DEFAULT_CALIBRATION[key],
-      ),
-    );
+    configs.length > 0 && configs.some((c) => !c.calibrated);
 
   const [sliderValues, setSliderValues] =
     useState<Record<SliderKey, number>>(defaultSliderValues);
