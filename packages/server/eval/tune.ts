@@ -162,6 +162,8 @@ function run(preps: Prepared[], cfg: Config): Report {
       released = "score+margin";
     } else if (
       cfg.gate.distanceGap &&
+      // Mirrors decideTier: the valve relaxes the margin, not minScore.
+      bestScore >= cfg.gate.minScore &&
       p.ids[bestI] === p.nearestId &&
       p.nearestD <= cfg.gate.distanceGap.d1Max &&
       p.gapToSecond >= cfg.gate.distanceGap.gapMin

@@ -196,6 +196,17 @@ describe("decideTier distanceGap", () => {
     ).toBe("review");
   });
 
+  it("does not rescue a card below minScore, however clear the picture", () => {
+    // The valve relaxes a thin margin, not the evidence floor. 0.4 clears
+    // reviewFloor and the gap test outright, and is still held.
+    expect(
+      tier([
+        { id: "a", score: 0.4, distance: 0.05 },
+        { id: "b", score: 0.38, distance: 0.3 },
+      ]),
+    ).toBe("review");
+  });
+
   it("never rescues a card below the review floor", () => {
     expect(
       tier([

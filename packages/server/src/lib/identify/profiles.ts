@@ -177,9 +177,14 @@ export const POKEMON_PROFILE: IdentityProfile = {
     hp: 0.05,
   },
   // distanceGap enabled 2026-08-21, at zero false accepts on every measurement:
-  // it releases 5 cards on the 956-probe real set (accept 86.4% -> 86.9%, top-1
+  // it releases 4 cards on the 956-probe real set (accept 86.4% -> 86.8%, top-1
   // unchanged), and recovers 11 of the 146 labelled review-tier rows when
   // replayed against the live catalog directly.
+  //
+  // The branch checks minScore too (see decideTier): it relaxes a thin margin,
+  // not the evidence floor, so a card cannot be released on the picture alone
+  // while OCR disagrees with it. That costs one of the 5 real-set releases, a
+  // card sitting at 0.4990 — 5 releases become 4.
   //
   // gapMin is the whole rule — d1Max is not binding, every ceiling from 0.10
   // to 0.44 selects the same cards. The cliff is one notch away rather than
