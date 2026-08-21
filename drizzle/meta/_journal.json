@@ -141,6 +141,13 @@
       "when": 1786500960000,
       "tag": "0019_route_failed",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1786501020000,
+      "tag": "0020_cards_name_search_idx",
+      "breakpoints": true
     }
   ]
 }
