@@ -19,6 +19,7 @@
     },
     "testingDevice": "Testing sorter…",
     "deviceReady": "Sorter ready",
+    "deviceResynced": "Sorter calibration restored",
     "deviceTestFailed": {
       "title": "Sorter test failed",
       "description": "Connected but got no response. Try reconnecting."
@@ -29,7 +30,7 @@
     },
     "deviceRebooted": {
       "title": "Sorter restarted unexpectedly",
-      "description": "Calibration was re-sent and the self-test is running again."
+      "description": "Calibration was re-sent. Any card left in the machine goes to the catch-all."
     },
     "reconnecting": {
       "title": "Sorter connection lost",

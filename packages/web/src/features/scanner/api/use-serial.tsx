@@ -41,6 +41,9 @@ const RECONNECT_WINDOW_MS = 30_000;
 // sorter that is working.
 const TEST_TIMEOUT_MS = 30_000;
 
+/** Whether this boot sequence follows a fresh connect or a mid-session reset. */
+type BootReason = "connect" | "reboot";
+
 /** The desktop shell's nudge that the set of attached devices changed. */
 function portsChangedBridge(): ((listener: () => void) => () => void) | null {
   const w = window as unknown as {
@@ -252,18 +255,27 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
     }
   }, [request]);
 
-  // Push stored calibration, then run the self-test. Runs on first connect
-  // and again whenever the firmware reboots mid-session (watchdog recovery,
-  // power blip): the sorter holds calibration in RAM only, so after any reset
-  // it is back on the inert compiled defaults until this re-push.
+  // Push stored calibration, then — on a fresh connect only — run the
+  // self-test. Runs on first connect and again whenever the firmware reboots
+  // mid-session (watchdog recovery, power blip): the sorter holds calibration
+  // in RAM only, so after any reset it is back on the inert compiled defaults
+  // until this re-push.
   //
   // The test only runs once every push is confirmed. It strokes each servo
   // through its full travel, so on unconfirmed calibration it is stroking
   // whatever the board happens to hold — which is how arms get detached. The
   // board sitting on its own inert defaults does nothing; running the test on
   // top of them does damage.
+  //
+  // A mid-session reboot skips the test entirely. A brownout mid-route leaves
+  // a card resting in the mechanism, and stroking three modules through full
+  // travel around it risks a jam; the app's own recovery (readIR, then
+  // clearDevice) drops that card to the catch-all, which is both predictable
+  // and 14 s sooner. That recovery is triggered by the isReady rising edge, so
+  // this path has to raise it itself rather than waiting for a test_complete
+  // that is never coming.
   const runBootSequence = useCallback(
-    async (port: SerialPort) => {
+    async (port: SerialPort, reason: BootReason = "connect") => {
       let synced = true;
       for (const hook of [...preTestHooksRef.current]) {
         try {
@@ -285,6 +297,13 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
         toast.error(t("serial.testSkipped.title"), {
           description: t("serial.testSkipped.description"),
         });
+        return;
+      }
+      if (reason === "reboot") {
+        log.record({ eventType: "reboot_resync" });
+        setIsReady(true);
+        isReadyRef.current = true;
+        toast.success(t("serial.deviceResynced"));
         return;
       }
       toast.info(t("serial.testingDevice"));
@@ -357,29 +376,39 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
   }, [queue, log]);
 
   // Resolves once the firmware's {"status":"ready"} banner arrives (the
-  // Arduino resets when the port opens), or after timeoutMs — true when the
-  // banner actually came. The banner is unsolicited, so it only ever reaches
-  // subscribers — this cannot consume a command reply by accident.
-  const waitForReady = useCallback((timeoutMs: number): Promise<boolean> => {
-    return new Promise<boolean>((resolve) => {
-      const finish = (arrived: boolean) => {
-        clearTimeout(timer);
-        listenersRef.current.delete(listener);
-        resolve(arrived);
-      };
-      const listener: SerialMessageListener = (msg) => {
-        if (
-          typeof msg === "object" &&
-          msg !== null &&
-          (msg as Record<string, unknown>).status === "ready"
-        ) {
-          finish(true);
-        }
-      };
-      const timer = setTimeout(() => finish(false), timeoutMs);
-      listenersRef.current.add(listener);
-    });
-  }, []);
+  // Arduino resets when the port opens), or after timeoutMs. The banner is
+  // unsolicited, so it only ever reaches subscribers — this cannot consume a
+  // command reply by accident.
+  //
+  // `cause` is the firmware's own account of why it reset: "watchdog" for a
+  // brownout recovery, "startup" for an ordinary power-up or port open. It is
+  // the only reliable way to tell a mid-session reset from a fresh connect,
+  // because a watchdog reset re-enumerates USB and therefore arrives down the
+  // same openPort path a user-initiated connect does.
+  const waitForReady = useCallback(
+    (timeoutMs: number): Promise<{ arrived: boolean; cause: string | null }> => {
+      return new Promise((resolve) => {
+        const finish = (arrived: boolean, cause: string | null) => {
+          clearTimeout(timer);
+          listenersRef.current.delete(listener);
+          resolve({ arrived, cause });
+        };
+        const listener: SerialMessageListener = (msg) => {
+          if (
+            typeof msg === "object" &&
+            msg !== null &&
+            (msg as Record<string, unknown>).status === "ready"
+          ) {
+            const raw = (msg as Record<string, unknown>).cause;
+            finish(true, typeof raw === "string" ? raw : null);
+          }
+        };
+        const timer = setTimeout(() => finish(false, null), timeoutMs);
+        listenersRef.current.add(listener);
+      });
+    },
+    [],
+  );
 
   const openPort = useCallback(
     async (port: SerialPort, opts?: { quiet?: boolean }): Promise<boolean> => {
@@ -431,13 +460,20 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
 
       (async () => {
         // Wait out the Arduino's boot before pushing config at it
-        const arrived = await waitForReady(5000);
+        const { arrived, cause } = await waitForReady(5000);
         // Staleness guard before recording: on a fast unplug/reconnect this
         // port's waiter can fire on the NEXT port's banner (or time out), and
         // recording that would stamp a spurious ready onto the new connection.
         if (portRef.current !== port) return;
-        log.record({ eventType: "ready", payload: { timedOut: !arrived } });
-        await runBootSequence(port);
+        log.record({
+          eventType: "ready",
+          payload: { timedOut: !arrived, cause },
+        });
+        // A watchdog reset re-enumerates USB, so its recovery reaches this path
+        // rather than the mid-session reboot listener below — the board's own
+        // cause is what separates the two. No banner at all means no evidence
+        // of a reset, which is the ordinary manual-connect case.
+        await runBootSequence(port, cause === "watchdog" ? "reboot" : "connect");
       })().catch((err) => {
         log.record({
           eventType: "boot_sync_failed",
@@ -701,7 +737,7 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
       toast.warning(t("serial.deviceRebooted.title"), {
         description: t("serial.deviceRebooted.description"),
       });
-      void runBootSequence(port).catch((err) => {
+      void runBootSequence(port, "reboot").catch((err) => {
         log.record({
           eventType: "boot_sync_failed",
           payload: { error: String(err) },
