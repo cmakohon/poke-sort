@@ -1,5 +1,5 @@
 import { QUERY_MIN_LENGTH, type PlayingCard } from "@poke-sort/shared";
-import { sql } from "drizzle-orm";
+import { sql, type SQL } from "drizzle-orm";
 import { db } from "../../db";
 import { hydrateCatalogCard, type CatalogCardRow } from "../catalog-card";
 import { getSetInfo } from "../set-index";
@@ -27,6 +27,30 @@ const SEARCH_PAGE_MAX = 200;
 
 /** Matches the `lang` column's own default, for callers that name only a game. */
 export const DEFAULT_CATALOG_LANG = "en";
+
+/**
+ * Folds a name (or a query) to the form both sides of the search compare on.
+ *
+ * Card names are full of characters nobody types. ILIKE is literal, so
+ * "Poke Ball" matched zero rows while "Poké Ball" matched 24 — the printing was
+ * in the catalog and simply unreachable, which read as the search truncating
+ * its results. The same held for "Farfetchd", "Ho Oh", "Type Null" and every
+ * trainer card whose apostrophe is the curly U+2019 rather than U+0027.
+ *
+ * The folding: lowercase; é to e (the only accented letter in the catalog);
+ * both apostrophes deleted, so "Bills Analysis" reaches "Bill’s Analysis"; and
+ * every other run of non-alphanumerics collapsed to a single space, so "Ho Oh"
+ * reaches "Ho-Oh". The remaining oddities (♀ ♂ ☆ ◇ δ, katakana) are decorative
+ * and become separators, which is what makes "Nidoran" reach "Nidoran♀".
+ *
+ * MUST stay character-for-character identical to the expression indexed by
+ * cards_name_search_idx (drizzle/0020). A divergence still returns correct
+ * rows, but silently stops using the index and sequentially scans ~22k rows on
+ * every debounced keystroke — and PGlite runs on the main thread and cannot
+ * cancel, so that stalls the server, an active sort included.
+ */
+const folded = (expr: SQL) =>
+  sql`btrim(regexp_replace(translate(lower(${expr}), 'é''’', 'e'), '[^a-z0-9]+', ' ', 'g'))`;
 
 export interface CardSearchSetFacet {
   code: string;
@@ -75,10 +99,17 @@ export async function searchLocalCatalog(
     return { cards: [], total: 0, page, limit, sets: [] };
   }
 
-  const pattern = `%${query}%`;
+  const name = folded(sql`name`);
+  const needle = folded(sql`${query}`);
+  // A query that folds away to nothing — pure punctuation, or a script the
+  // folding does not keep, like katakana against a Japanese catalog — would
+  // otherwise leave LIKE '%' || '' || '%', matching every row for the game.
+  // Tested on the folded value rather than the raw one: a JS-side check would
+  // have to reimplement the folding to agree with it, and the two would drift.
   const where = sql`game_key = ${options.gameKey}
       AND lang = ${options.lang}
-      AND name ILIKE ${pattern}
+      AND ${needle} <> ''
+      AND ${name} LIKE '%' || ${needle} || '%'
       ${options.setCode ? sql`AND set_code = ${options.setCode}` : sql``}`;
 
   const [rows, counts, sets] = await Promise.all([
@@ -90,8 +121,10 @@ export async function searchLocalCatalog(
       -- then names that start with the query, then the shortest — which puts
       -- "Charizard" above "Charizard ex" and "Dark Charizard". Set and number
       -- only break the remaining ties, so a card's printings stay together.
-      ORDER BY (lower(name) = lower(${query})) DESC,
-               (lower(name) LIKE lower(${query}) || '%') DESC,
+      -- Ranked on the folded forms too, so typing "Poke Ball" still ranks
+      -- "Poké Ball" as the exact match it is.
+      ORDER BY (${name} = ${needle}) DESC,
+               (${name} LIKE ${needle} || '%') DESC,
                length(name),
                name,
                set_code,

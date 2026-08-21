@@ -400,7 +400,10 @@ export function ReviewScreen() {
               }
               collectionGuid={current.collectionGuid ?? undefined}
               gameKey={current.gameKey}
-              initialQuery={detail?.ocr?.name ?? ""}
+              // Deliberately not seeded with the OCR reading. The search is
+              // opened precisely when the scan was wrong, so the OCR text is
+              // the least useful starting point there is — and it has to be
+              // cleared before anything can be typed.
               resultsClassName="max-h-[55vh]"
             />
           </div>

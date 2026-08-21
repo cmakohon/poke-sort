@@ -58,6 +58,8 @@ const CRITICAL_TYPES: ReadonlySet<MachineEventType> = new Set([
   "stream_ended",
   "disconnect",
   "boot_test_fail",
+  "boot_sync_failed",
+  "boot_test_skipped",
   "connect_failed",
   "port_open_failed",
   "read_error",

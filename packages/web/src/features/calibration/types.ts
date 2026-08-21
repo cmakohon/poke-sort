@@ -11,8 +11,12 @@ export interface ModuleConfigsContextValue {
     servo: "bottom" | "paddle" | "pusher",
     value: number,
   ) => void;
-  /** Re-push the stored calibration to the sorter. Only call while connected. */
-  syncToDevice: () => Promise<void>;
+  /**
+   * Re-push the stored calibration to the sorter. Only call while connected.
+   * Resolves false when a module is uncalibrated or the sorter did not confirm
+   * it — the self-test must not run in that case.
+   */
+  syncToDevice: () => Promise<boolean>;
 }
 
 export interface ServoConfig {

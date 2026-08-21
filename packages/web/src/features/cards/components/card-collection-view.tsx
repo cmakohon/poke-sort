@@ -319,6 +319,7 @@ export function CardCollectionView({
               card={card.card}
               onOpen={() => setOpenScanId(card.scanId)}
               binNumber={card.binNumber}
+              routeFailed={card.routeFailed}
               isSelected={selectedIds.has(card.scanId)}
               onToggleSelect={() => toggleSelect(card.scanId)}
               hasAlternatives={!!card.alternativeMatches?.length}

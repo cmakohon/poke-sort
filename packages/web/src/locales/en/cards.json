@@ -122,6 +122,8 @@
     },
     "reviewedTooltip": "Manually reviewed on the review screen — this verdict outranks the scan confidence",
     "bin": "Bin {{number}}",
+    "binNotDelivered": "Bin {{number}}?",
+    "binNotDeliveredTooltip": "The sorter never confirmed this route, so the card did not reach bin {{number}}. Check the catch-all.",
     "downloaded": "Exported"
   },
   "sessionSummaryDialog": {

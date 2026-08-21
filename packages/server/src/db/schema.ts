@@ -62,12 +62,15 @@ export const cardImageVectors = pgTable(
     unique("cards_card_id_idx").on(table.cardId),
     index("cards_game_lang_idx").on(table.gameKey, table.lang),
     index("cards_collector_number_idx").on(table.collectorNumber),
-    // Trigram index for the correction search's ILIKE '%...%' on the name.
+    // The correction search's trigram index is NOT declared here. It indexes an
+    // expression — the folded name, see `folded` in lib/card-search/local.ts —
+    // which drizzle's schema builder cannot express, so it lives in
+    // drizzle/0020 alongside the DROP of the raw-column index it replaces.
+    // Re-declaring the old one here would have drizzle recreate a dead index.
     //
-    // Required, not an optimisation: PGlite runs on the main thread and cannot
-    // cancel a query, so a sequential scan of ~22k rows per debounced keystroke
-    // would stall the process mid-sort.
-    index("cards_name_trgm_idx").using("gin", table.name.op("gin_trgm_ops")),
+    // It is required, not an optimisation: PGlite runs on the main thread and
+    // cannot cancel a query, so a sequential scan of ~22k rows per debounced
+    // keystroke would stall the process mid-sort.
     // Approximate nearest-neighbour index over the embeddings.
     //
     // Measured on the real 21,714-card catalog with degraded (low-quality)
@@ -282,6 +285,14 @@ export const collectionCards = pgTable(
     card: jsonb("card").notNull(),
     scannedAt: timestamp("scanned_at").notNull(),
     binNumber: integer("bin_number"),
+    // The card row is written before the sorter is asked to route it, so that a
+    // routing failure cannot lose the scan. That means bin_number records where
+    // the card was MEANT to go, not where it is. When a brownout kills the bin
+    // command mid-route, recovery drops the card into the catch-all instead —
+    // this flag is what stops the row from quietly claiming it reached its bin.
+    // Default false: legacy rows had no failure recorded, which is not the same
+    // as a confirmed delivery.
+    routeFailed: boolean("route_failed").notNull().default(false),
     // Deprecated: base64 JPEGs bloated this table badly. Captures are files on
     // disk now (see lib/captures.ts); kept nullable for one release so any
     // existing rows still render.

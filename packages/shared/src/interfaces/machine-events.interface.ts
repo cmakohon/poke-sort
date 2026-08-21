@@ -32,6 +32,12 @@ export type MachineEventType =
   | "ready"
   | "boot_test_pass"
   | "boot_test_fail"
+  /** A pre-test sync step threw instead of reporting a result. */
+  | "boot_sync_failed"
+  /** Calibration did not fully land, so the self-test was not run. */
+  | "boot_test_skipped"
+  /** Mid-session reset: calibration re-pushed, self-test deliberately skipped. */
+  | "reboot_resync"
   /** A second ready banner mid-session: the MCU reset (watchdog, power blip). */
   | "reboot_detected"
   | "unplug"

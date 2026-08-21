@@ -7,9 +7,12 @@ import type {
 import { DEFAULT_CALIBRATION } from "@poke-sort/shared";
 import { queryOptions } from "@tanstack/react-query";
 
+// Stand-ins for a response that carried no data. `calibrated: false` keeps them
+// out of anything that drives the sorter — see the flag's note in shared.
 function defaultModuleConfigs(): ModuleConfig[] {
   return ([1, 2, 3] as const).map((n) => ({
     moduleNumber: n,
+    calibrated: false,
     calibration: { ...DEFAULT_CALIBRATION },
   }));
 }

@@ -35,6 +35,15 @@ const SerialContext = createContext<SerialContextValue | null>(null);
 const RECONNECT_POLL_MS = 1500;
 const RECONNECT_WINDOW_MS = 30_000;
 
+// The firmware strokes the modules one at a time rather than in step (see the
+// {"test": true} handler), which trades roughly 6 s of wall clock for ~14 s.
+// The old 10 s ceiling would now expire mid-test and report a failure on a
+// sorter that is working.
+const TEST_TIMEOUT_MS = 30_000;
+
+/** Whether this boot sequence follows a fresh connect or a mid-session reset. */
+type BootReason = "connect" | "reboot";
+
 /** The desktop shell's nudge that the set of attached devices changed. */
 function portsChangedBridge(): ((listener: () => void) => () => void) | null {
   const w = window as unknown as {
@@ -80,7 +89,7 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
   // Assigned after openPort exists — the stream-ended callback inside
   // openPort needs it, and the two cannot reference each other directly.
   const beginAutoReconnectRef = useRef<() => void>(() => {});
-  const preTestHooksRef = useRef(new Set<() => Promise<void>>());
+  const preTestHooksRef = useRef(new Set<() => Promise<boolean>>());
 
   const decoderRef = useRef(new TextDecoder());
 
@@ -234,7 +243,7 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
   const sendTest = useCallback(async (): Promise<boolean> => {
     const { sent, response } = await request(
       JSON.stringify({ test: true }),
-      10000,
+      TEST_TIMEOUT_MS,
     );
     if (!sent || !response) return false;
 
@@ -246,15 +255,80 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
     }
   }, [request]);
 
-  // Push stored calibration, then run the self-test. Runs on first connect
-  // and again whenever the firmware reboots mid-session (watchdog recovery,
-  // power blip): the sorter holds calibration in RAM only, so after any reset
-  // it is back on the inert compiled defaults until this re-push.
+  // Push stored calibration, then — on a fresh connect only — run the
+  // self-test. Runs on first connect and again whenever the firmware reboots
+  // mid-session (watchdog recovery, power blip): the sorter holds calibration
+  // in RAM only, so after any reset it is back on the inert compiled defaults
+  // until this re-push.
+  //
+  // The test only runs once every push is confirmed. It strokes each servo
+  // through its full travel, so on unconfirmed calibration it is stroking
+  // whatever the board happens to hold — which is how arms get detached. The
+  // board sitting on its own inert defaults does nothing; running the test on
+  // top of them does damage.
+  //
+  // A mid-session reboot skips the test entirely. A brownout mid-route leaves
+  // a card resting in the mechanism, and stroking three modules through full
+  // travel around it risks a jam; the app's own recovery (readIR, then
+  // clearDevice) drops that card to the catch-all, which is both predictable
+  // and 14 s sooner. That recovery is triggered by the isReady rising edge, so
+  // this path has to raise it itself rather than waiting for a test_complete
+  // that is never coming.
   const runBootSequence = useCallback(
-    async (port: SerialPort) => {
+    async (port: SerialPort, reason: BootReason = "connect") => {
+      let synced = true;
       for (const hook of [...preTestHooksRef.current]) {
-        await hook();
+        try {
+          if (!(await hook())) synced = false;
+        } catch (err) {
+          // A throwing hook (the config fetch failing, say) used to reject out
+          // of the un-awaited caller as an unhandled rejection, taking the
+          // remaining hooks with it and leaving no record of why.
+          synced = false;
+          log.record({
+            eventType: "boot_sync_failed",
+            payload: { error: String(err) },
+          });
+        }
         if (portRef.current !== port) return;
+      }
+      if (!synced) {
+        log.record({ eventType: "boot_test_skipped" });
+        toast.error(t("serial.testSkipped.title"), {
+          description: t("serial.testSkipped.description"),
+        });
+        return;
+      }
+      if (reason === "reboot") {
+        // setConfig only rewrites the firmware's RAM; it moves nothing. The
+        // arms are still parked where setup()'s setAllNeutral() left them —
+        // the compiled defaults, pulse ~300 on every channel — and a
+        // calibrated bottom range that straddles 300 means the trapdoor is
+        // sitting half open. The self-test's trailing neutral used to be what
+        // incidentally corrected that, so skipping the test has to do it
+        // explicitly. One short move to the calibrated rest position, not a
+        // stroke: exactly what routeCard does at the end of every route.
+        const { sent, response } = await request(
+          JSON.stringify({ neutral: true }),
+        );
+        if (portRef.current !== port) return;
+        if (!sent || !response) {
+          // Arms at an unknown position with the link unhealthy. Staying
+          // un-ready keeps cards out of the machine until a reconnect.
+          log.record({
+            eventType: "boot_sync_failed",
+            payload: { step: "neutral" },
+          });
+          toast.error(t("serial.testSkipped.title"), {
+            description: t("serial.testSkipped.description"),
+          });
+          return;
+        }
+        log.record({ eventType: "reboot_resync" });
+        setIsReady(true);
+        isReadyRef.current = true;
+        toast.success(t("serial.deviceResynced"));
+        return;
       }
       toast.info(t("serial.testingDevice"));
       const ok = await sendTest();
@@ -274,7 +348,7 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
         });
       }
     },
-    [sendTest, t, log],
+    [sendTest, request, t, log],
   );
 
   const disconnect = useCallback(() => {
@@ -326,29 +400,39 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
   }, [queue, log]);
 
   // Resolves once the firmware's {"status":"ready"} banner arrives (the
-  // Arduino resets when the port opens), or after timeoutMs — true when the
-  // banner actually came. The banner is unsolicited, so it only ever reaches
-  // subscribers — this cannot consume a command reply by accident.
-  const waitForReady = useCallback((timeoutMs: number): Promise<boolean> => {
-    return new Promise<boolean>((resolve) => {
-      const finish = (arrived: boolean) => {
-        clearTimeout(timer);
-        listenersRef.current.delete(listener);
-        resolve(arrived);
-      };
-      const listener: SerialMessageListener = (msg) => {
-        if (
-          typeof msg === "object" &&
-          msg !== null &&
-          (msg as Record<string, unknown>).status === "ready"
-        ) {
-          finish(true);
-        }
-      };
-      const timer = setTimeout(() => finish(false), timeoutMs);
-      listenersRef.current.add(listener);
-    });
-  }, []);
+  // Arduino resets when the port opens), or after timeoutMs. The banner is
+  // unsolicited, so it only ever reaches subscribers — this cannot consume a
+  // command reply by accident.
+  //
+  // `cause` is the firmware's own account of why it reset: "watchdog" for a
+  // brownout recovery, "startup" for an ordinary power-up or port open. It is
+  // the only reliable way to tell a mid-session reset from a fresh connect,
+  // because a watchdog reset re-enumerates USB and therefore arrives down the
+  // same openPort path a user-initiated connect does.
+  const waitForReady = useCallback(
+    (timeoutMs: number): Promise<{ arrived: boolean; cause: string | null }> => {
+      return new Promise((resolve) => {
+        const finish = (arrived: boolean, cause: string | null) => {
+          clearTimeout(timer);
+          listenersRef.current.delete(listener);
+          resolve({ arrived, cause });
+        };
+        const listener: SerialMessageListener = (msg) => {
+          if (
+            typeof msg === "object" &&
+            msg !== null &&
+            (msg as Record<string, unknown>).status === "ready"
+          ) {
+            const raw = (msg as Record<string, unknown>).cause;
+            finish(true, typeof raw === "string" ? raw : null);
+          }
+        };
+        const timer = setTimeout(() => finish(false, null), timeoutMs);
+        listenersRef.current.add(listener);
+      });
+    },
+    [],
+  );
 
   const openPort = useCallback(
     async (port: SerialPort, opts?: { quiet?: boolean }): Promise<boolean> => {
@@ -400,14 +484,26 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
 
       (async () => {
         // Wait out the Arduino's boot before pushing config at it
-        const arrived = await waitForReady(5000);
+        const { arrived, cause } = await waitForReady(5000);
         // Staleness guard before recording: on a fast unplug/reconnect this
         // port's waiter can fire on the NEXT port's banner (or time out), and
         // recording that would stamp a spurious ready onto the new connection.
         if (portRef.current !== port) return;
-        log.record({ eventType: "ready", payload: { timedOut: !arrived } });
-        await runBootSequence(port);
-      })();
+        log.record({
+          eventType: "ready",
+          payload: { timedOut: !arrived, cause },
+        });
+        // A watchdog reset re-enumerates USB, so its recovery reaches this path
+        // rather than the mid-session reboot listener below — the board's own
+        // cause is what separates the two. No banner at all means no evidence
+        // of a reset, which is the ordinary manual-connect case.
+        await runBootSequence(port, cause === "watchdog" ? "reboot" : "connect");
+      })().catch((err) => {
+        log.record({
+          eventType: "boot_sync_failed",
+          payload: { error: String(err) },
+        });
+      });
 
       return true;
     },
@@ -665,7 +761,12 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
       toast.warning(t("serial.deviceRebooted.title"), {
         description: t("serial.deviceRebooted.description"),
       });
-      void runBootSequence(port);
+      void runBootSequence(port, "reboot").catch((err) => {
+        log.record({
+          eventType: "boot_sync_failed",
+          payload: { error: String(err) },
+        });
+      });
     };
     const listeners = listenersRef.current;
     listeners.add(listener);
@@ -681,7 +782,7 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const registerPreTestHook = useCallback((fn: () => Promise<void>) => {
+  const registerPreTestHook = useCallback((fn: () => Promise<boolean>) => {
     preTestHooksRef.current.add(fn);
     return () => {
       preTestHooksRef.current.delete(fn);
@@ -699,6 +800,15 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
     setUserDisconnectCount((n) => n + 1);
     await disconnect();
   }, [disconnect, cancelAutoReconnect]);
+
+  // "Retry connection" in the scanner menu. It used to call sendTest directly,
+  // which stroked every servo against whatever the board happened to hold —
+  // the one remaining way to run the test on calibration nobody confirmed.
+  const retryBootSequence = useCallback(async () => {
+    const port = portRef.current;
+    if (!port) return;
+    await runBootSequence(port);
+  }, [runBootSequence]);
 
   const binBusyRef = useRef(false);
 
@@ -742,6 +852,7 @@ export function SerialProvider({ children }: { children: React.ReactNode }) {
         requestLatest,
         subscribe,
         registerPreTestHook,
+        retryBootSequence,
       }}
     >
       {children}

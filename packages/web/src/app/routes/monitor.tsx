@@ -67,6 +67,7 @@ function CardGrid({
             key={card.scanId}
             card={card.card}
             binNumber={card.binNumber}
+            routeFailed={card.routeFailed}
             onOpen={() => setZoomed(card.card)}
           />
         ))}

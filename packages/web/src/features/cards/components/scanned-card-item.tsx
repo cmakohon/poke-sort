@@ -25,6 +25,7 @@ export const ScannedCardItem = memo(function ScannedCardItem({
   card,
   onOpen,
   binNumber,
+  routeFailed = false,
   isSelected = false,
   onToggleSelect,
   hasAlternatives = false,
@@ -128,16 +129,33 @@ export const ScannedCardItem = memo(function ScannedCardItem({
             ) : (
               <span />
             )}
+            {/* An unconfirmed route makes the bin a guess, not a location: the
+                card was almost certainly swept to the catch-all by the reset
+                recovery. Say so where the bin is read, rather than showing the
+                intended bin as though the card were sitting in it. */}
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <Badge variant="secondary" className="shadow-md">
-                    {t("scannedCardItem.bin", { number: binNumber })}
+                  <Badge
+                    variant={routeFailed ? "destructive" : "secondary"}
+                    className="shadow-md"
+                  >
+                    {routeFailed
+                      ? t("scannedCardItem.binNotDelivered", {
+                          number: binNumber,
+                        })
+                      : t("scannedCardItem.bin", { number: binNumber })}
                   </Badge>
                 }
               />
-              <TooltipContent side="top" className="p-0">
-                <BinLocationDiagram binNumber={binNumber} />
+              <TooltipContent side="top" className={routeFailed ? "" : "p-0"}>
+                {routeFailed ? (
+                  t("scannedCardItem.binNotDeliveredTooltip", {
+                    number: binNumber,
+                  })
+                ) : (
+                  <BinLocationDiagram binNumber={binNumber} />
+                )}
               </TooltipContent>
             </Tooltip>
           </div>

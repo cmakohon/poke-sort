@@ -146,6 +146,12 @@ export interface SerialContextValue {
   sendBin: (binNumber: number) => Promise<unknown | null>;
   sendTest: () => Promise<boolean>;
   /**
+   * Re-push calibration and then self-test, exactly as a fresh connect does.
+   * Prefer this over sendTest for anything user-facing — sendTest alone trusts
+   * whatever the board currently holds.
+   */
+  retryBootSequence: () => Promise<void>;
+  /**
    * One atomic write-then-read exchange: `data` is a JSON command without
    * trailing newline, the result carries the reply that answered it. Replaces
    * the old sendCommand/receiveResponse pair, which nothing kept paired.
@@ -161,8 +167,13 @@ export interface SerialContextValue {
     timeoutMs?: number,
   ) => Promise<SerialRequestResult>;
   subscribe: (listener: SerialMessageListener) => () => void;
-  /** Returns an unregister function — call it in effect cleanup. */
-  registerPreTestHook: (fn: () => Promise<void>) => () => void;
+  /**
+   * Register a step that must land before the boot self-test runs. Returns an
+   * unregister function — call it in effect cleanup. The hook resolves false
+   * when it could not put the sorter in a state safe to test, which skips the
+   * test — see runBootSequence.
+   */
+  registerPreTestHook: (fn: () => Promise<boolean>) => () => void;
 }
 
 export interface ScannerControlsProps {

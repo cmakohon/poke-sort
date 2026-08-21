@@ -15,6 +15,7 @@ export const CARD_COLUMNS = {
   card: collectionCards.card,
   scannedAt: collectionCards.scannedAt,
   binNumber: collectionCards.binNumber,
+  routeFailed: collectionCards.routeFailed,
   capturedImagePath: collectionCards.capturedImagePath,
   capturedImageDataUrl: collectionCards.capturedImageDataUrl,
   isFoil: collectionCards.isFoil,
@@ -38,6 +39,7 @@ export function toScannedCard(row: {
   capturedImagePath?: string | null;
   capturedImageDataUrl?: string | null;
   binNumber: number | null;
+  routeFailed?: boolean | null;
   isFoil?: boolean | null;
   isDownloaded?: boolean | null;
   alternativeMatches?: unknown;
@@ -56,6 +58,7 @@ export function toScannedCard(row: {
     card: row.card as PlayingCardWithDistance,
     scannedAt: row.scannedAt.getTime(),
     binNumber: row.binNumber ?? undefined,
+    routeFailed: row.routeFailed ?? undefined,
     // Prefer the file; fall back to any legacy inline data URL.
     capturedImageUrl:
       captureUrl(row.capturedImagePath) ??

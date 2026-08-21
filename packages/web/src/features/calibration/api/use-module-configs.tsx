@@ -22,6 +22,7 @@ const ModuleConfigsContext = createContext<ModuleConfigsContextValue | null>(
 function defaultConfigs(): ModuleConfig[] {
   return ([1, 2, 3] as const).map((n) => ({
     moduleNumber: n,
+    calibrated: false,
     calibration: { ...DEFAULT_CALIBRATION },
   }));
 }
@@ -46,16 +47,42 @@ export function ModuleConfigsProvider({
    * on connect and after a watchdog reboot (via the pre-test hook below), and
    * after a calibration file is imported, which rewrites all three rows at once
    * without going through `saveConfig`.
+   *
+   * Returns whether the sorter now holds a real calibration for all three
+   * modules — the caller must not run the self-test unless it does.
    */
   const syncToDevice = useCallback(async () => {
-    const fresh = await queryClient.fetchQuery(modulesQueryOptions);
+    // staleTime on the shared options is Infinity, which is right for the
+    // screens reading this but would make fetchQuery a cache hit that never
+    // re-reads. A reconnect has to see what is actually saved: the values may
+    // have changed, and a cached defaults-fallback from a fetch that raced
+    // startup would otherwise be re-pushed for the rest of the session.
+    const fresh = await queryClient.fetchQuery({
+      ...modulesQueryOptions,
+      staleTime: 0,
+    });
+    let allSynced = true;
     for (const config of fresh) {
+      // Never drive an uncalibrated module. It carries DEFAULT_CALIBRATION as a
+      // placeholder for the calibration screen, and those positions span nearly
+      // the whole travel range — pushing them detaches servo arms.
+      if (!config.calibrated) {
+        allSynced = false;
+        toast.error(
+          t("useModuleConfigs.toasts.notCalibrated", {
+            module: config.moduleNumber,
+          }),
+          { description: t("useModuleConfigs.toasts.notCalibratedDescription") },
+        );
+        continue;
+      }
       const { sent, response } = await request(
         JSON.stringify({
           setConfig: { module: config.moduleNumber, ...config.calibration },
         }),
       );
       if (!sent || !response) {
+        allSynced = false;
         toast.error(
           t("useModuleConfigs.toasts.notSynced", {
             module: config.moduleNumber,
@@ -67,6 +94,7 @@ export function ModuleConfigsProvider({
       try {
         const parsed = JSON.parse(response);
         if (parsed?.error) {
+          allSynced = false;
           toast.error(
             t("useModuleConfigs.toasts.notSynced", {
               module: config.moduleNumber,
@@ -75,6 +103,7 @@ export function ModuleConfigsProvider({
           );
         }
       } catch {
+        allSynced = false;
         toast.error(
           t("useModuleConfigs.toasts.notSynced", {
             module: config.moduleNumber,
@@ -87,6 +116,7 @@ export function ModuleConfigsProvider({
         );
       }
     }
+    return allSynced;
   }, [queryClient, request, t]);
 
   useEffect(() => {
@@ -108,7 +138,9 @@ export function ModuleConfigsProvider({
         ["modules"],
         (old = defaultConfigs()) =>
           old.map((c) =>
-            c.moduleNumber === moduleNumber ? { ...c, calibration } : c,
+            c.moduleNumber === moduleNumber
+              ? { ...c, calibration, calibrated: true }
+              : c,
           ),
       );
       return { previous };

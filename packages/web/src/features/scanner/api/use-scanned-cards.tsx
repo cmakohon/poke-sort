@@ -24,6 +24,7 @@ import {
 } from "@/features/collections/api/collections";
 import {
   addSessionCard,
+  markRouteFailed,
   commitScanSession,
   discardScanSession,
   getOpenScanSession,
@@ -259,11 +260,12 @@ export function ScannedCardsProvider({
     }
   }, [t]);
 
-  // Picks sorting back up after the serial layer has reconnected and the
-  // boot test passed (isReady rising edge) — the tail end of a watchdog
-  // reset. The interrupted card is the open question: the reboot returned
-  // every servo to neutral, so it may be resting at any module with the
-  // trapdoors closed. Its intended bin cannot be re-sent — routeCard() runs
+  // Picks sorting back up once the serial layer has reconnected and finished
+  // its boot sequence (isReady rising edge) — the tail end of a watchdog
+  // reset. The interrupted card is the open question: the boot sequence puts
+  // every servo back on the calibrated neutral, so it may be resting at any
+  // module with the trapdoors closed. Its intended bin cannot be re-sent —
+  // routeCard() runs
   // the feeder first, so the command would route the NEXT card — which is
   // why a stranded card goes to the catch-all instead, announced so the
   // operator can re-run it.
@@ -389,6 +391,37 @@ export function ScannedCardsProvider({
    * several scans before the first open resolves, and each must stage against
    * the same session rather than racing to create its own.
    */
+  /**
+   * The card row is staged before the sorter is asked to route it, so that a
+   * routing failure cannot lose the scan — which leaves `binNumber` recording
+   * an intention. Whenever the sorter fails to confirm, say so on the row too,
+   * so the collection never implies a card reached a bin it never reached.
+   *
+   * `staged` is that insert. sendBin can resolve null synchronously (no port,
+   * or a bin already in flight), which on the first card of a run raced the
+   * POST that creates the row: the session guid was still null, or the row did
+   * not exist yet and the flag 404'd into a swallowed promise. Waiting on the
+   * insert is what makes the flag land on the row it describes.
+   */
+  const flagRouteFailed = useCallback(
+    (scanId: string, staged: Promise<unknown>) => {
+      // Local state as well as the server: the operator is watching this run,
+      // and a flag that only appears after the run is committed and refetched
+      // is not a warning, it is a postmortem.
+      setCards((prev) =>
+        prev.map((c) =>
+          c.scanId === scanId ? { ...c, routeFailed: true } : c,
+        ),
+      );
+      void staged.then(() => {
+        const open = sessionRef.current;
+        if (!open) return;
+        return markRouteFailed(open.guid, scanId);
+      });
+    },
+    [],
+  );
+
   const ensureSession = useCallback(async (): Promise<ScanSession | null> => {
     const targetGuid = activeCollectionRef.current?.guid;
 
@@ -506,7 +539,7 @@ export function ScannedCardsProvider({
       setTimerTrigger(record.scannedAt);
       // Staged against the run, not written to the collection: nothing lands
       // in a collection until the operator saves.
-      ensureSession()
+      const staged = ensureSession()
         .then((open) => {
           if (!open) {
             setCards((prev) => prev.filter((c) => c.scanId !== record.scanId));
@@ -547,6 +580,7 @@ export function ScannedCardsProvider({
       ) {
         serialRef.current.sendBin(matchedBin.binNumber).then((response) => {
           if (!response) {
+            flagRouteFailed(record.scanId, staged);
             toast.error(t("scannedCards.routingFailed.title"), {
               description: t("scannedCards.routingFailed.description", {
                 binNumber: matchedBin.binNumber,
@@ -566,6 +600,7 @@ export function ScannedCardsProvider({
           }
           const res = response as Record<string, unknown>;
           if (res.empty) {
+            flagRouteFailed(record.scanId, staged);
             toast.error(t("scannedCards.feederEmpty.title"), {
               description: t("scannedCards.feederEmpty.description"),
               duration: FAULT_TOAST_DURATION_MS,
@@ -584,6 +619,7 @@ export function ScannedCardsProvider({
             return;
           }
           if (res.error) {
+            flagRouteFailed(record.scanId, staged);
             toast.error(t("scannedCards.sorterError.title"), {
               description: String(res.error),
               duration: FAULT_TOAST_DURATION_MS,
@@ -606,7 +642,7 @@ export function ScannedCardsProvider({
         });
       }
     },
-    [triggerAutoFeed, ensureSession, t],
+    [triggerAutoFeed, ensureSession, flagRouteFailed, t],
   );
 
   // Routes a card the app is NOT recording to a fixed bin: nothing was

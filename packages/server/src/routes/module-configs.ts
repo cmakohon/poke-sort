@@ -59,6 +59,7 @@ function toModuleConfig(row: {
 }): ModuleConfig {
   return {
     moduleNumber: row.moduleNumber as 1 | 2 | 3,
+    calibrated: true,
     calibration: {
       bottomClosed: row.bottomClosed,
       bottomOpen: row.bottomOpen,
@@ -72,10 +73,16 @@ function toModuleConfig(row: {
 }
 
 type CalibRow = { moduleNumber: number; bottomClosed: number; bottomOpen: number; paddleClosed: number; paddleOpen: number; pusherLeft: number; pusherNeutral: number; pusherRight: number };
+// A module with no row still has to appear here — the calibration screen needs
+// three modules to show. It is flagged `calibrated: false` rather than silently
+// handed DEFAULT_CALIBRATION as if it were saved: those defaults span nearly the
+// whole pulse range, and pushing them at a calibrated mechanism tears arms off.
 function buildConfigs(rows: CalibRow[]): ModuleConfig[] {
   return ([1, 2, 3] as const).map((n) => {
     const row = rows.find((r) => r.moduleNumber === n);
-    return row ? toModuleConfig(row) : { moduleNumber: n, calibration: { ...DEFAULT_CALIBRATION } };
+    return row
+      ? toModuleConfig(row)
+      : { moduleNumber: n, calibrated: false, calibration: { ...DEFAULT_CALIBRATION } };
   });
 }
 

@@ -124,6 +124,8 @@
   "useModuleConfigs": {
     "toasts": {
       "notSynced": "Saved, but the sorter didn't confirm sorting arm {{module}}. Reconnect and try again.",
+      "notCalibrated": "Sorting arm {{module}} is not calibrated",
+      "notCalibratedDescription": "It was left at its default positions, which the sorter must not be driven to. Calibrate it before running the self-test.",
       "unexpectedResponse": "The sorter sent something unexpected. Try reconnecting.",
       "noResponse": "No response from the sorter.",
       "saveFailed": "Couldn't save the sorting arm settings"
