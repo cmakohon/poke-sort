@@ -346,6 +346,42 @@ router.post("/:guid/cards", requireAuth, requireOrg, async (c) => {
   }
 });
 
+// POST /scan-sessions/:guid/cards/:scanId/route-failed
+//
+// The card row is inserted before the sorter is asked to route it, so a routing
+// failure cannot lose the scan. That leaves bin_number describing an intention
+// rather than an outcome, and a brownout that kills the bin command mid-route
+// used to leave the row asserting a delivery that never happened. The scanner
+// calls this the moment the sorter fails to confirm, so the row says so.
+router.post("/:guid/cards/:scanId/route-failed", requireAuth, requireOrg, async (c) => {
+  const orgId = c.get("orgId");
+  const guid = c.req.param("guid");
+  const scanId = c.req.param("scanId");
+  try {
+    const result = await authQuery(c.get("jwtClaims"), async (tx) => {
+      const updated = await tx
+        .update(collectionCards)
+        .set({ routeFailed: true })
+        .where(
+          and(
+            eq(collectionCards.guid, scanId),
+            eq(collectionCards.sessionGuid, guid),
+            eq(collectionCards.orgId, orgId),
+          ),
+        )
+        .returning({ guid: collectionCards.guid });
+      if (updated.length === 0) {
+        return { success: false as const, message: "Card not found." };
+      }
+      return { success: true as const, message: "Marked as not routed." };
+    });
+    return c.json(result, result.success ? 200 : 404);
+  } catch (err) {
+    console.error(err);
+    return c.json({ success: false, message: "Database error." }, 500);
+  }
+});
+
 // POST /scan-sessions/:guid/commit — save the run into a collection.
 //
 // One transaction: the cards acquire a collection_id and the session closes

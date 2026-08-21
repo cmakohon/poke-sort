@@ -24,6 +24,7 @@ import {
 } from "@/features/collections/api/collections";
 import {
   addSessionCard,
+  markRouteFailed,
   commitScanSession,
   discardScanSession,
   getOpenScanSession,
@@ -389,6 +390,18 @@ export function ScannedCardsProvider({
    * several scans before the first open resolves, and each must stage against
    * the same session rather than racing to create its own.
    */
+  /**
+   * The card row is staged before the sorter is asked to route it, so that a
+   * routing failure cannot lose the scan — which leaves `binNumber` recording
+   * an intention. Whenever the sorter fails to confirm, say so on the row too,
+   * so the collection never implies a card reached a bin it never reached.
+   */
+  const flagRouteFailed = useCallback((scanId: string) => {
+    const open = sessionRef.current;
+    if (!open) return;
+    void markRouteFailed(open.guid, scanId);
+  }, []);
+
   const ensureSession = useCallback(async (): Promise<ScanSession | null> => {
     const targetGuid = activeCollectionRef.current?.guid;
 
@@ -547,6 +560,7 @@ export function ScannedCardsProvider({
       ) {
         serialRef.current.sendBin(matchedBin.binNumber).then((response) => {
           if (!response) {
+            flagRouteFailed(record.scanId);
             toast.error(t("scannedCards.routingFailed.title"), {
               description: t("scannedCards.routingFailed.description", {
                 binNumber: matchedBin.binNumber,
@@ -566,6 +580,7 @@ export function ScannedCardsProvider({
           }
           const res = response as Record<string, unknown>;
           if (res.empty) {
+            flagRouteFailed(record.scanId);
             toast.error(t("scannedCards.feederEmpty.title"), {
               description: t("scannedCards.feederEmpty.description"),
               duration: FAULT_TOAST_DURATION_MS,
@@ -584,6 +599,7 @@ export function ScannedCardsProvider({
             return;
           }
           if (res.error) {
+            flagRouteFailed(record.scanId);
             toast.error(t("scannedCards.sorterError.title"), {
               description: String(res.error),
               duration: FAULT_TOAST_DURATION_MS,
@@ -606,7 +622,7 @@ export function ScannedCardsProvider({
         });
       }
     },
-    [triggerAutoFeed, ensureSession, t],
+    [triggerAutoFeed, ensureSession, flagRouteFailed, t],
   );
 
   // Routes a card the app is NOT recording to a fixed bin: nothing was

@@ -80,6 +80,26 @@ export async function addSessionCard(
   throw new Error(`API error: ${res.status}`);
 }
 
+/**
+ * Tell the server the sorter never confirmed this card's route, so the row
+ * stops implying it reached `binNumber`. Best-effort: the card is already
+ * staged and the operator has already been told, so a failure here is logged
+ * rather than surfaced a second time.
+ */
+export async function markRouteFailed(
+  sessionGuid: string,
+  scanId: string,
+): Promise<void> {
+  try {
+    await fetch(
+      `${API_BASE}/api/scan-sessions/${sessionGuid}/cards/${scanId}/route-failed`,
+      { method: "POST" },
+    );
+  } catch (err) {
+    console.warn("[ScanSessions] could not flag route failure:", err);
+  }
+}
+
 export async function commitScanSession(
   guid: string,
   collectionGuid: string,

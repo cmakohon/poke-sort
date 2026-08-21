@@ -119,6 +119,12 @@ export interface ScannedCard {
   card: PlayingCardWithDistance;
   scannedAt: number;
   binNumber?: number;
+  /**
+   * The sorter never confirmed the route, so `binNumber` is where this card was
+   * meant to go, not where it is. A brownout mid-route is the usual cause;
+   * recovery drops the stranded card into the catch-all.
+   */
+  routeFailed?: boolean;
   capturedImageUrl?: string;
   alternativeMatches?: PlayingCardWithDistance[];
   isFoil?: boolean;

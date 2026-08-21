@@ -54,6 +54,11 @@ export interface ScannedCardItemProps {
   card: PlayingCardWithDistance;
   onOpen: () => void;
   binNumber?: number;
+  /**
+   * The sorter never confirmed the route, so binNumber is where this card was
+   * meant to go rather than where it is. Marks the bin badge as undelivered.
+   */
+  routeFailed?: boolean;
   isSelected?: boolean;
   onToggleSelect?: () => void;
   hasAlternatives?: boolean;

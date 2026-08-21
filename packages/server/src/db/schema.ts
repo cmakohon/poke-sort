@@ -282,6 +282,14 @@ export const collectionCards = pgTable(
     card: jsonb("card").notNull(),
     scannedAt: timestamp("scanned_at").notNull(),
     binNumber: integer("bin_number"),
+    // The card row is written before the sorter is asked to route it, so that a
+    // routing failure cannot lose the scan. That means bin_number records where
+    // the card was MEANT to go, not where it is. When a brownout kills the bin
+    // command mid-route, recovery drops the card into the catch-all instead —
+    // this flag is what stops the row from quietly claiming it reached its bin.
+    // Default false: legacy rows had no failure recorded, which is not the same
+    // as a confirmed delivery.
+    routeFailed: boolean("route_failed").notNull().default(false),
     // Deprecated: base64 JPEGs bloated this table badly. Captures are files on
     // disk now (see lib/captures.ts); kept nullable for one release so any
     // existing rows still render.
