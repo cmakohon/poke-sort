@@ -94,33 +94,33 @@ const POKEMON_OCR: OcrProfile = {
    * discard the set abbreviation ("OBF", "SSH") printed right beside the
    * number, which is a second, independent signal for which set a card is from.
    */
+  // A seam-spanning right band (y .92-.985) reads 47 more collector numbers on
+  // the 956-probe real set — pl +30, dp +7 — and it was reverted anyway: those
+  // extra reads cost 2 false accepts, and false accepts are a constraint here,
+  // not a term to trade accept rate against.
+  //
+  // Both failures were a misread number landing exactly on a real card:
+  // dp2-113 (printed 113/123) read "120/132", which IS dp3-120, and bw9-43
+  // (printed 43/116) read "44", which is xy11-44. In both the truth had the
+  // better embedding and lost anyway, because a matched number scores 1.0 and
+  // outvotes it. A confidently wrong number is worse than no number, so a
+  // wider crop only pays once the digits it adds are trustworthy.
   collectorNumber: [
-    // Seam band first, and first is load-bearing: the escalation ladder in
-    // ocr.ts only re-reads collectorNumber[0], so the band it retries has to
-    // be the one most likely to hold the number on the eras that fail.
-    //
-    // pl/hgss/dp print the number right where the old deep-right (y .945-.995)
-    // and mid-right (y .895-.95) bands meet, so one clipped the digits' bottom
-    // and the other their top and neither held a whole fraction. Cropping
-    // pl4-87, hgss1-91 and dp7-84 shows it plainly. Spanning the seam won the
-    // 956-probe real-capture sweep: 175 hits vs 159 for the previous bands,
-    // and it doubles dp (7 -> 15). Per-era, sweep at 3x-normalise:
-    //
-    //   bands           total    bw       pl       dp      hgss     me
-    //   production     159/956  78/158   22/440   7/202   6/58    15/22
-    //   seam-right     175/956  84/158   26/440  15/202   6/58    13/22
-    //
-    // me loses 2 to the tighter set; bw, pl and dp more than pay for it.
-    { x0: 0.5, y0: 0.92, x1: 0.99, y1: 0.985 },
-    // Mid right: early-ex, xy, bw, sm print above the seam.
+    // Deep right: dp, base, later-ex, neo print the number at y=.955-.985 —
+    // BELOW the band this list used to stop at (y=.97), which cut the digits
+    // in half. Verified by cropping fixtures and looking.
+    { x0: 0.5, y0: 0.945, x1: 0.99, y1: 0.995 },
+    // Mid right: early-ex, xy, bw, sm.
     { x0: 0.5, y0: 0.895, x1: 0.99, y1: 0.95 },
-    // Tight bottom-left: just the number line of the swsh/sv/me frames. A
-    // taller left band drags the Illus. line and the set-code icons into the
-    // crop; the narrow one nearly doubled the me-era hit rate (6/17 -> 11/17)
-    // by upsampling the digits harder for the same read. The wider left band
-    // that used to sit beside it is gone — it cost more than it returned once
-    // the seam band existed.
+    // Tight bottom-left: just the number line of the swsh/sv/me frames. The
+    // taller left band below drags the Illus. line and the set-code icons
+    // into the crop, and on the real-capture sweep the narrow crop nearly
+    // doubled the me-era hit rate (6/17 -> 11/17) by upsampling the digits
+    // harder for the same read.
     { x0: 0.02, y0: 0.915, x1: 0.38, y1: 0.968 },
+    // Left: swsh moved the number bottom-left. Kept alongside the tight crop
+    // for the frames that print the number above its ceiling.
+    { x0: 0.02, y0: 0.9, x1: 0.5, y1: 0.97 },
     // Wide: sv reads most reliably from a full-width strip. Edges trimmed so
     // the rotation border the capture adds cannot dominate normalisation.
     { x0: 0.03, y0: 0.93, x1: 0.97, y1: 0.995 },
