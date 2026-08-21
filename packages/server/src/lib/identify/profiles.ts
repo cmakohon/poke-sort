@@ -95,21 +95,32 @@ const POKEMON_OCR: OcrProfile = {
    * number, which is a second, independent signal for which set a card is from.
    */
   collectorNumber: [
-    // Deep right: dp, base, later-ex, neo print the number at y=.955-.985 —
-    // BELOW the band this list used to stop at (y=.97), which cut the digits
-    // in half. Verified by cropping fixtures and looking.
-    { x0: 0.5, y0: 0.945, x1: 0.99, y1: 0.995 },
-    // Mid right: early-ex, xy, bw, sm.
+    // Seam band first, and first is load-bearing: the escalation ladder in
+    // ocr.ts only re-reads collectorNumber[0], so the band it retries has to
+    // be the one most likely to hold the number on the eras that fail.
+    //
+    // pl/hgss/dp print the number right where the old deep-right (y .945-.995)
+    // and mid-right (y .895-.95) bands meet, so one clipped the digits' bottom
+    // and the other their top and neither held a whole fraction. Cropping
+    // pl4-87, hgss1-91 and dp7-84 shows it plainly. Spanning the seam won the
+    // 956-probe real-capture sweep: 175 hits vs 159 for the previous bands,
+    // and it doubles dp (7 -> 15). Per-era, sweep at 3x-normalise:
+    //
+    //   bands           total    bw       pl       dp      hgss     me
+    //   production     159/956  78/158   22/440   7/202   6/58    15/22
+    //   seam-right     175/956  84/158   26/440  15/202   6/58    13/22
+    //
+    // me loses 2 to the tighter set; bw, pl and dp more than pay for it.
+    { x0: 0.5, y0: 0.92, x1: 0.99, y1: 0.985 },
+    // Mid right: early-ex, xy, bw, sm print above the seam.
     { x0: 0.5, y0: 0.895, x1: 0.99, y1: 0.95 },
-    // Tight bottom-left: just the number line of the swsh/sv/me frames. The
-    // taller left band below drags the Illus. line and the set-code icons
-    // into the crop, and on the real-capture sweep the narrow crop nearly
-    // doubled the me-era hit rate (6/17 -> 11/17) by upsampling the digits
-    // harder for the same read.
+    // Tight bottom-left: just the number line of the swsh/sv/me frames. A
+    // taller left band drags the Illus. line and the set-code icons into the
+    // crop; the narrow one nearly doubled the me-era hit rate (6/17 -> 11/17)
+    // by upsampling the digits harder for the same read. The wider left band
+    // that used to sit beside it is gone — it cost more than it returned once
+    // the seam band existed.
     { x0: 0.02, y0: 0.915, x1: 0.38, y1: 0.968 },
-    // Left: swsh moved the number bottom-left. Kept alongside the tight crop
-    // for the frames that print the number above its ceiling.
-    { x0: 0.02, y0: 0.9, x1: 0.5, y1: 0.97 },
     // Wide: sv reads most reliably from a full-width strip. Edges trimmed so
     // the rotation border the capture adds cannot dominate normalisation.
     { x0: 0.03, y0: 0.93, x1: 0.97, y1: 0.995 },
@@ -138,16 +149,23 @@ export const POKEMON_PROFILE: IdentityProfile = {
   // The embedding carries half the mass because on these probes it is by far
   // the most reliable signal.
   //
-  // Re-validated against 558 labelled real captures (eval:build-real +
-  // EVAL_FIXTURES=pokemon-real, 2026-08 review sessions): top-1 97.0%,
-  // 86.4% accept at zero false accepts — ahead of every config the sweep
-  // found once pre-SwSh PTCGO codes stopped feeding the abbreviation signal
-  // (see abbreviationOf). minMargin 0.04 looked clean on renders but admits
-  // real false accepts — one live at margin 0.044, and the 558-probe sweep
-  // shows FALSE=2 one margin notch down — so 0.05 stands. The remaining
-  // review pile is almost entirely reprint pairs the embedding cannot split;
-  // wins there come from reading the collector number, not from loosening
-  // the gate.
+  // Re-validated 2026-08-21 against 956 labelled real captures (eval:build-real
+  // + EVAL_FIXTURES=pokemon-real, 2026-08 review sessions): top-1 96.5%, 86.4%
+  // accept at zero false accepts, 86.9% with distanceGap on — ahead of every
+  // config the sweep found once pre-SwSh PTCGO codes stopped feeding the
+  // abbreviation signal (see abbreviationOf).
+  //
+  // This supersedes the earlier 558-probe run (top-1 97.0%), which had 13 dp
+  // and 6 hgss probes where this one has 202 and 58 — those eras are most of
+  // the review pile, so the older number was flattering. One caveat on the set:
+  // the 956 captures cover 438 distinct cards, so repeatedly-scanned cards
+  // carry more weight than a per-card set would give them.
+  //
+  // minMargin 0.04 looked clean on renders but admits real false accepts — one
+  // live at margin 0.044, and one notch down costs FALSE=2 on the 558 probes
+  // and FALSE=3 on the 956 — so 0.05 stands. The remaining review pile is
+  // almost entirely reprint pairs the embedding cannot split; wins there come
+  // from reading the collector number, not from loosening the gate.
   weights: {
     embedding: 0.5,
     name: 0.1,
@@ -158,7 +176,20 @@ export const POKEMON_PROFILE: IdentityProfile = {
     setAbbreviation: 0.05,
     hp: 0.05,
   },
-  accept: { minScore: 0.5, minMargin: 0.05 },
+  // distanceGap enabled 2026-08-21, at zero false accepts on every measurement:
+  // it releases 5 cards on the 956-probe real set (accept 86.4% -> 86.9%, top-1
+  // unchanged), and recovers 11 of the 146 labelled review-tier rows when
+  // replayed against the live catalog directly.
+  //
+  // gapMin is the whole rule — d1Max is not binding, every ceiling from 0.10
+  // to 0.44 selects the same cards. The cliff is one notch away rather than
+  // the two minMargin keeps: gapMin 0.015 admits 2 false accepts. Deliberate,
+  // and worth re-measuring whenever the review pile changes shape.
+  accept: {
+    minScore: 0.5,
+    minMargin: 0.05,
+    distanceGap: { d1Max: 0.15, gapMin: 0.02 },
+  },
   reviewFloor: 0.3,
   ocr: POKEMON_OCR,
 };

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildRerankInputs } from "../src/lib/identify";
-import { collectorNumberMatch } from "../src/lib/identify/rerank";
+import { POKEMON_PROFILE } from "../src/lib/identify/profiles";
+import { collectorNumberMatch, decideTier } from "../src/lib/identify/rerank";
 
 /**
  * The raw readings in these tests are verbatim from real scan_events captures
@@ -134,5 +135,73 @@ describe("buildRerankInputs set abbreviation", () => {
     );
     expect(swsh.setAbbreviation).toBe("SSH");
     expect(me.setAbbreviation).toBe("PFL");
+  });
+});
+
+/**
+ * decideTier's distanceGap branch shipped unused — no profile set it, so
+ * nothing exercised it. Enabling it for Pokemon makes these the tests that
+ * pin which cards it may and may not release.
+ */
+describe("decideTier distanceGap", () => {
+  const tier = (ranked: { id: string; score: number; distance: number }[]) =>
+    decideTier(ranked, POKEMON_PROFILE).tier;
+
+  it("accepts on score and margin without needing the gap", () => {
+    expect(
+      tier([
+        { id: "a", score: 0.7, distance: 0.1 },
+        { id: "b", score: 0.6, distance: 0.2 },
+      ]),
+    ).toBe("accept");
+  });
+
+  it("releases a thin fused margin when the image is unambiguous", () => {
+    // margin 0.02 — far under minMargin — but the top pick is also the
+    // nearest image match and 0.07 clear of the next.
+    expect(
+      tier([
+        { id: "a", score: 0.7, distance: 0.05 },
+        { id: "b", score: 0.68, distance: 0.12 },
+      ]),
+    ).toBe("accept");
+  });
+
+  it("holds when the nearest image match is not the top-scored card", () => {
+    // The clause that keeps OCR from promoting a card the picture disagrees
+    // with: b is nearest, a is ranked first, so the picture has not decided.
+    expect(
+      tier([
+        { id: "a", score: 0.7, distance: 0.12 },
+        { id: "b", score: 0.68, distance: 0.05 },
+      ]),
+    ).toBe("review");
+  });
+
+  it("holds when the next candidate is not clearly separated", () => {
+    expect(
+      tier([
+        { id: "a", score: 0.7, distance: 0.1 },
+        { id: "b", score: 0.68, distance: 0.11 },
+      ]),
+    ).toBe("review");
+  });
+
+  it("holds when even the nearest match is far away", () => {
+    expect(
+      tier([
+        { id: "a", score: 0.7, distance: 0.3 },
+        { id: "b", score: 0.68, distance: 0.5 },
+      ]),
+    ).toBe("review");
+  });
+
+  it("never rescues a card below the review floor", () => {
+    expect(
+      tier([
+        { id: "a", score: 0.25, distance: 0.02 },
+        { id: "b", score: 0.1, distance: 0.5 },
+      ]),
+    ).toBe("no-match");
   });
 });

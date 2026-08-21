@@ -52,6 +52,24 @@ const BAND_SETS: BandSet[] = [
     ],
   },
   {
+    // On pl/hgss/dp the number lands on the seam between the two right-hand
+    // production bands: cropping pl4-87, hgss1-91 and dp7-84 and looking at
+    // them shows mid-right (y .895-.95) clipping the bottom of the digits and
+    // deep-right (y .945-.995) clipping their top. This band spans the seam so
+    // one crop can hold the whole fraction. This won the 956-probe sweep
+    // (175 vs 159) and is now what production ships, so it duplicates the
+    // "production" entry above until the next band idea displaces it. A
+    // 36-probe hand check had preferred it only marginally — too small, and
+    // it over-sampled repeat scans of the same few cards.
+    label: "seam-right",
+    bands: [
+      { x0: 0.5, y0: 0.92, x1: 0.99, y1: 0.985 },
+      { x0: 0.5, y0: 0.895, x1: 0.99, y1: 0.95 },
+      { x0: 0.02, y0: 0.915, x1: 0.38, y1: 0.968 },
+      { x0: 0.03, y0: 0.93, x1: 0.97, y1: 0.995 },
+    ],
+  },
+  {
     // The production set with the left band tightened to just the number
     // line: on real me-era captures the wide left crop drags in the Illus.
     // line and the set-code icons, and a narrower crop upsamples the digits
@@ -164,6 +182,34 @@ async function score(
   return { hit, full, byEra, ms: Date.now() - t0 };
 }
 
+/**
+ * Caps the probe list while keeping every era represented, by taking one probe
+ * from each era in turn until the cap is met. A plain slice would return
+ * nothing but pl and bw.
+ */
+function stratify(probes: Probe[], cap: number): Probe[] {
+  if (!cap || cap >= probes.length) return probes;
+  const byEra = new Map<string, Probe[]>();
+  for (const p of probes) {
+    const list = byEra.get(p.era);
+    if (list) list.push(p);
+    else byEra.set(p.era, [p]);
+  }
+  const queues = [...byEra.values()];
+  const out: Probe[] = [];
+  for (let i = 0; out.length < cap; i++) {
+    let took = false;
+    for (const q of queues) {
+      if (i >= q.length) continue;
+      out.push(q[i]);
+      took = true;
+      if (out.length === cap) break;
+    }
+    if (!took) break;
+  }
+  return out;
+}
+
 async function main() {
   const { captures } = JSON.parse(
     await readFile(SIGNALS_PATH, "utf-8"),
@@ -177,7 +223,7 @@ async function main() {
   };
 
   const POCKET = /^(A\d|B\d|P-A)/;
-  const WEAK = /^(dp|ex|base|ecard|neo|hgss|pl|gym|pop|cel|dc|g1|np|si|ru|sve|swshp|svp|mcd|bwp|xyp|dpp|col|fut)/;
+  const WEAK = /^(dp|ex|base|ecard|neo|hgss|pl|bw|gym|pop|cel|dc|g1|np|si|ru|sve|swshp|svp|mcd|bwp|xyp|dpp|col|fut)/;
 
   const probes: Probe[] = [];
   const modernGuard: Probe[] = [];
@@ -196,12 +242,20 @@ async function main() {
     else modernGuard.push(probe);
   }
   // Every weak-era fixture, plus every 3rd modern one as a regression guard.
-  // Real-capture sets are small and every label was paid for at the review
-  // screen, so they run whole.
-  const sample =
+  const full =
     EVAL_SET === "pokemon"
       ? [...probes, ...modernGuard.filter((_, i) => i % 3 === 0)]
       : [...probes, ...modernGuard];
+  // The real-capture set used to be small enough to run whole. It is not any
+  // more — it grows with every review session, and the greedy sweep reads each
+  // probe once per band per pass, so a few hundred extra fixtures turn 15
+  // minutes into hours. EVAL_SAMPLE caps it, round-robining across eras so the
+  // cap cannot silently drop the small ones: pl and bw dominate by count, but
+  // dp and hgss are exactly the eras being measured.
+  const sample = stratify(full, Number(process.env.EVAL_SAMPLE ?? "0"));
+  if (sample.length < full.length) {
+    console.log(`EVAL_SAMPLE=${sample.length} of ${full.length} (unset it to sweep the whole set)`);
+  }
   console.log(`${sample.length} probes (${probes.length} weak-era, ${sample.length - probes.length} modern guard)\n`);
 
   // Pass 1: bands under current prep/psm.
