@@ -301,7 +301,12 @@ export function decideTier(
     const byDistance = [...ranked].sort((a, b) => a.distance - b.distance);
     const nearest = byDistance[0];
     const next = byDistance[1];
+    // minScore still applies: this valve exists to relax a thin MARGIN, not
+    // the floor on how much evidence there has to be in the first place.
+    // Without it a card can be released below minScore with OCR actively
+    // disagreeing, purely on being the nearest picture.
     if (
+      top >= profile.accept.minScore &&
       nearest.id === ranked[0].id &&
       nearest.distance <= dg.d1Max &&
       (next ? next.distance - nearest.distance : Infinity) >= dg.gapMin

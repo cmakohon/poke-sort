@@ -94,6 +94,17 @@ const POKEMON_OCR: OcrProfile = {
    * discard the set abbreviation ("OBF", "SSH") printed right beside the
    * number, which is a second, independent signal for which set a card is from.
    */
+  // A seam-spanning right band (y .92-.985) reads 47 more collector numbers on
+  // the 956-probe real set — pl +30, dp +7 — and it was reverted anyway: those
+  // extra reads cost 2 false accepts, and false accepts are a constraint here,
+  // not a term to trade accept rate against.
+  //
+  // Both failures were a misread number landing exactly on a real card:
+  // dp2-113 (printed 113/123) read "120/132", which IS dp3-120, and bw9-43
+  // (printed 43/116) read "44", which is xy11-44. In both the truth had the
+  // better embedding and lost anyway, because a matched number scores 1.0 and
+  // outvotes it. A confidently wrong number is worse than no number, so a
+  // wider crop only pays once the digits it adds are trustworthy.
   collectorNumber: [
     // Deep right: dp, base, later-ex, neo print the number at y=.955-.985 —
     // BELOW the band this list used to stop at (y=.97), which cut the digits
@@ -138,16 +149,23 @@ export const POKEMON_PROFILE: IdentityProfile = {
   // The embedding carries half the mass because on these probes it is by far
   // the most reliable signal.
   //
-  // Re-validated against 558 labelled real captures (eval:build-real +
-  // EVAL_FIXTURES=pokemon-real, 2026-08 review sessions): top-1 97.0%,
-  // 86.4% accept at zero false accepts — ahead of every config the sweep
-  // found once pre-SwSh PTCGO codes stopped feeding the abbreviation signal
-  // (see abbreviationOf). minMargin 0.04 looked clean on renders but admits
-  // real false accepts — one live at margin 0.044, and the 558-probe sweep
-  // shows FALSE=2 one margin notch down — so 0.05 stands. The remaining
-  // review pile is almost entirely reprint pairs the embedding cannot split;
-  // wins there come from reading the collector number, not from loosening
-  // the gate.
+  // Re-validated 2026-08-21 against 956 labelled real captures (eval:build-real
+  // + EVAL_FIXTURES=pokemon-real, 2026-08 review sessions): top-1 96.5%, 86.4%
+  // accept at zero false accepts, 86.9% with distanceGap on — ahead of every
+  // config the sweep found once pre-SwSh PTCGO codes stopped feeding the
+  // abbreviation signal (see abbreviationOf).
+  //
+  // This supersedes the earlier 558-probe run (top-1 97.0%), which had 13 dp
+  // and 6 hgss probes where this one has 202 and 58 — those eras are most of
+  // the review pile, so the older number was flattering. One caveat on the set:
+  // the 956 captures cover 438 distinct cards, so repeatedly-scanned cards
+  // carry more weight than a per-card set would give them.
+  //
+  // minMargin 0.04 looked clean on renders but admits real false accepts — one
+  // live at margin 0.044, and one notch down costs FALSE=2 on the 558 probes
+  // and FALSE=3 on the 956 — so 0.05 stands. The remaining review pile is
+  // almost entirely reprint pairs the embedding cannot split; wins there come
+  // from reading the collector number, not from loosening the gate.
   weights: {
     embedding: 0.5,
     name: 0.1,
@@ -158,7 +176,25 @@ export const POKEMON_PROFILE: IdentityProfile = {
     setAbbreviation: 0.05,
     hp: 0.05,
   },
-  accept: { minScore: 0.5, minMargin: 0.05 },
+  // distanceGap enabled 2026-08-21, at zero false accepts on every measurement:
+  // it releases 4 cards on the 956-probe real set (accept 86.4% -> 86.8%, top-1
+  // unchanged), and recovers 11 of the 146 labelled review-tier rows when
+  // replayed against the live catalog directly.
+  //
+  // The branch checks minScore too (see decideTier): it relaxes a thin margin,
+  // not the evidence floor, so a card cannot be released on the picture alone
+  // while OCR disagrees with it. That costs one of the 5 real-set releases, a
+  // card sitting at 0.4990 — 5 releases become 4.
+  //
+  // gapMin is the whole rule — d1Max is not binding, every ceiling from 0.10
+  // to 0.44 selects the same cards. The cliff is one notch away rather than
+  // the two minMargin keeps: gapMin 0.015 admits 2 false accepts. Deliberate,
+  // and worth re-measuring whenever the review pile changes shape.
+  accept: {
+    minScore: 0.5,
+    minMargin: 0.05,
+    distanceGap: { d1Max: 0.15, gapMin: 0.02 },
+  },
   reviewFloor: 0.3,
   ocr: POKEMON_OCR,
 };
