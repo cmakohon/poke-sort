@@ -100,6 +100,14 @@ It is the source of truth for in-flight work and is not checked in (it is a
 personal working document, not project documentation). Read it first when
 picking this project back up.
 
+Findings that outlive a single session live in `docs/` instead, because they
+are worth having in git alongside the code they explain:
+
+- [`docs/hgss-identification-accuracy.md`](docs/hgss-identification-accuracy.md)
+  — why HS-era cards identify worst of any era, what shipped, which OCR
+  approaches were measured and rejected (and why they keep getting
+  re-proposed), and the costed case for an art-window embedding.
+
 ## How it works
 
 1. A feeder mechanism (continuous-rotation servo + roller) pulls a card from the hopper into view of the webcam, into a fixed, per-camera-calibrated scan region (see calibration screen)
