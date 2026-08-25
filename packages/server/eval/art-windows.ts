@@ -40,12 +40,18 @@ async function render(serie: string, setId: string, localId: number): Promise<Bu
   } catch {
     /* not cached */
   }
-  const url = `https://assets.tcgdex.net/en/${serie}/${setId}/${localId}/high.webp`;
-  const r = await fetch(url).catch(() => null);
-  if (!r?.ok) return null;
-  const buf = Buffer.from(await r.arrayBuffer());
-  await writeFile(cache, buf);
-  return buf;
+  // sv and me zero-pad the collector number in the asset path ("001", not "1"),
+  // older series do not. The catalog stores the real localId per card; this
+  // script has no database, so it tries both rather than reconstructing wrong.
+  for (const id of [String(localId), String(localId).padStart(3, "0")]) {
+    const url = `https://assets.tcgdex.net/en/${serie}/${setId}/${id}/high.webp`;
+    const r = await fetch(url).catch(() => null);
+    if (!r?.ok) continue;
+    const buf = Buffer.from(await r.arrayBuffer());
+    await writeFile(cache, buf);
+    return buf;
+  }
+  return null;
 }
 
 async function main() {

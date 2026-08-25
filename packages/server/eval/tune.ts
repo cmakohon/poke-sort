@@ -75,7 +75,13 @@ type Signals = Record<keyof Weights, number>;
 const KEYS = ALL_SIGNALS;
 const CUTOFF = POKEMON_PROFILE.distanceCutoff;
 
-/** Weight-independent per-candidate signals, computed once. */
+/**
+ * Per-candidate signals that do not depend on the fusion weights.
+ *
+ * `artWeight` is the exception: it changes the embedding signal itself, so it
+ * cannot be swept inside `run` like the others. main() re-prepares per art
+ * weight and sweeps the rest inside that.
+ */
 interface Prepared {
   expectedId: string;
   era: string;
@@ -87,11 +93,28 @@ interface Prepared {
   nearestId: string;
   nearestD: number;
   gapToSecond: number;
+  /** How many candidates actually carried an art vector. */
+  artCoverage: number;
+  /**
+   * How many candidates' embedding signal clamped to exactly 0.
+   *
+   * A blended distance can exceed distanceCutoff where the raw one did not, and
+   * candidates pinned at 0 tie on score and fall through to the raw-distance
+   * tiebreak — which changes what `margin` means. If this jumps with art
+   * weight, the ramp needs looking at, not just the gate.
+   */
+  pinnedEmbedding: number;
 }
 
-function prepare(cap: Capture): Prepared {
+function prepare(cap: Capture, artWeight: number): Prepared {
+  // Mirrors scoreCandidate: the two views fuse into one distance before the
+  // ramp, and a candidate with no art vector keeps its whole-card distance.
+  const blended = (c: RerankInput) =>
+    c.artDistance == null
+      ? c.distance
+      : (1 - artWeight) * c.distance + artWeight * c.artDistance;
   const sigs = cap.candidates.map((c) => ({
-    embedding: Math.max(0, Math.min(1, 1 - c.distance / CUTOFF)),
+    embedding: Math.max(0, Math.min(1, 1 - blended(c) / CUTOFF)),
     name: nameSimilarity(cap.ocr.name, c.name),
     collectorNumber: collectorNumberMatch(cap.ocr, c),
     setAbbreviation: setAbbreviationMatch(cap.ocr, c),
@@ -115,7 +138,11 @@ function prepare(cap: Capture): Prepared {
     sigs,
     ids: cap.candidates.map((c) => c.id),
     distances: cap.candidates.map((c) => c.distance),
+    artCoverage: cap.candidates.filter((c) => c.artDistance != null).length,
+    pinnedEmbedding: sigs.filter((s) => s.embedding === 0).length,
     informativeMask,
+    // RAW distance, not blended: these feed the distanceGap valve, which
+    // production also runs on raw distance so distanceCutoff stays calibrated.
     nearestId: byD[0]?.id ?? "",
     nearestD: byD[0]?.d ?? Infinity,
     gapToSecond: byD.length > 1 ? byD[1].d - byD[0].d : Infinity,
@@ -335,9 +362,6 @@ async function main() {
   const { captures } = JSON.parse(
     await readFile(SIGNALS_PATH, "utf-8"),
   ) as { captures: Capture[] };
-  const preps = captures.map(prepare);
-  console.log(`\n${preps.length} captures\n`);
-
   const baseCfg: Config = {
     w: POKEMON_PROFILE.weights,
     gate: {
@@ -347,6 +371,46 @@ async function main() {
       distanceGap: POKEMON_PROFILE.accept.distanceGap ?? null,
     },
   };
+
+  // Art weight first, and against the SHIPPED gate rather than inside the
+  // grid. It changes the embedding signal, so sweeping it with everything else
+  // would mean re-preparing every capture per grid point — the grid is already
+  // 25,920 configs and an hour of CV. Pick it here, then tune the rest at the
+  // chosen value.
+  const artSweep = [0, 0.15, 0.25, 0.35, 0.5];
+  const coverage = captures.length
+    ? prepare(captures[0], 0).artCoverage / (captures[0].candidates.length || 1)
+    : 0;
+  console.log(
+    `\n${captures.length} captures, art vector coverage ${(coverage * 100).toFixed(0)}% ` +
+      "of the first capture's candidates",
+  );
+  if (coverage === 0) {
+    console.log(
+      "  NOTE: no art distances in this dump — every art weight will read the " +
+        "same. Rebuild it with eval:capture against a catalog that has them.",
+    );
+  }
+  console.log("\nart weight sweep (shipped gate):");
+  let artBaseline: Report | undefined;
+  for (const aw of artSweep) {
+    const p = captures.map((c) => prepare(c, aw));
+    const r = run(p, baseCfg);
+    const pinned = p.reduce((sum, x) => sum + x.pinnedEmbedding, 0);
+    const cands = p.reduce((sum, x) => sum + x.sigs.length, 0);
+    console.log(
+      `  aw ${String(aw).padEnd(5)} top1 ${(r.top1 * 100).toFixed(1)}%  ` +
+        `accept ${(r.accepted * 100).toFixed(1)}%  false ${r.falseAccepts}  ` +
+        `embedding-pinned-at-0 ${((pinned / cands) * 100).toFixed(1)}%`,
+    );
+    showEras(r, artBaseline);
+    artBaseline ??= r;
+  }
+
+  // Everything below runs at one art weight: the profile's, unless overridden.
+  const artWeight = Number(process.env.ART_WEIGHT ?? POKEMON_PROFILE.artWeight);
+  console.log(`\ntuning the rest at art weight ${artWeight}\n`);
+  const preps = captures.map((c) => prepare(c, artWeight));
   const baseReport = run(preps, baseCfg);
   show("current profile", baseReport);
   showEras(baseReport);
