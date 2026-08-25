@@ -8,6 +8,7 @@ import type { SyncSource, SyncSourceCard } from "./card-search/sync-types";
 import { sendDiscordNotification } from "./discord";
 import { invalidateFacets } from "./facets";
 import { pokemonSyncSource } from "./pokemon/sync";
+import { artWindowForSet, cropArt } from "./art-window";
 import { vectorizeImageFromBuffer } from "./vectorize";
 
 export const SYNC_SOURCES: Record<string, SyncSource> = {
@@ -264,6 +265,15 @@ async function runSync(source: SyncSource, lang: string): Promise<void> {
       ]);
       const buffer = Buffer.from(await imageRes.arrayBuffer());
       const embedding = await vectorizeImageFromBuffer(buffer);
+      // The art view, in the same pass. Without this every set released after
+      // the art backfill would land with a null vector, and those are the
+      // newest and most-scanned cards — they would be scored on a different
+      // scale than the rest of the catalog, permanently. Roughly doubles the
+      // per-card cost of a sync.
+      const window = artWindowForSet(card.setCode);
+      const embeddingArt = window
+        ? await vectorizeImageFromBuffer(await cropArt(buffer, window))
+        : null;
 
       // Claim the id immediately so a duplicate in the same run is skipped
       // rather than embedded twice while this one sits in the buffer.
@@ -275,6 +285,7 @@ async function runSync(source: SyncSource, lang: string): Promise<void> {
         name: card.name,
         setCode: card.setCode,
         embedding,
+        embeddingArt,
         collectorNumber: extras.collectorNumber ?? null,
         setTotal: extras.setTotal ?? null,
         cardData: extras.data ?? null,

@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { gunzipSync } from "node:zlib";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { db } from "../../db";
 import { cardImageVectors } from "../../db/schema";
 import { incompatibilityReason } from "../embedding-identity";
@@ -81,6 +81,27 @@ export async function countCards(
     and(
       eq(cardImageVectors.gameKey, gameKey),
       eq(cardImageVectors.lang, lang),
+    ),
+  );
+}
+
+/**
+ * How many of those still lack an art vector.
+ *
+ * A catalog imported before pack v4 identifies exactly as well as it always
+ * did, so nothing fails — it just never gets the art-blend accuracy, and
+ * silently. Surfacing the count is what makes a re-import discoverable.
+ */
+export async function countMissingArt(
+  gameKey: string,
+  lang: string,
+): Promise<number> {
+  return db.$count(
+    cardImageVectors,
+    and(
+      eq(cardImageVectors.gameKey, gameKey),
+      eq(cardImageVectors.lang, lang),
+      isNull(cardImageVectors.embeddingArt),
     ),
   );
 }

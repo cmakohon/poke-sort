@@ -10,6 +10,7 @@
     "db:studio": "drizzle-kit studio",
     "calibration": "tsx --env-file-if-exists ../../.env scripts/calibration.ts",
     "build:set-index": "tsx --env-file-if-exists ../../.env scripts/build-set-index.ts",
+    "backfill:art": "POKE_SORT_DATA_DIR=${POKE_SORT_DATA_DIR:-./.poke-sort-catalog} POKE_SORT_MODEL_DIR=${POKE_SORT_MODEL_DIR:-../../.models} tsx scripts/backfill-art-vectors.ts",
     "export:pack": "tsx --env-file-if-exists ../../.env scripts/export-pack.ts",
     "eval:accuracy": "POKE_SORT_DATA_DIR=${POKE_SORT_DATA_DIR:-./.poke-sort-catalog} POKE_SORT_MODEL_DIR=${POKE_SORT_MODEL_DIR:-../../.models} vitest run eval/accuracy.test.ts --disableConsoleIntercept",
     "eval:build": "POKE_SORT_DATA_DIR=${POKE_SORT_DATA_DIR:-./.poke-sort-catalog} tsx eval/build-fixtures.ts",

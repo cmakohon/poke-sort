@@ -1,4 +1,5 @@
 import sharp from "sharp";
+import { getSetInfo } from "./set-index";
 import type { OcrRegion } from "./identify/profiles";
 
 /**
@@ -81,6 +82,17 @@ const WINDOW_BY_SERIES: Record<string, OcrRegion | null> = {
 export function artWindowFor(serieId: string | null | undefined): OcrRegion | null {
   if (!serieId) return null;
   return WINDOW_BY_SERIES[serieId] ?? null;
+}
+
+/**
+ * The window a card from this set is cropped to.
+ *
+ * Goes through the set index rather than pattern-matching the set code: the
+ * series is not derivable from the set id, only 175 of 218 ids begin with it.
+ * An unknown set degrades to null and is scored on the whole card.
+ */
+export function artWindowForSet(setId: string | null | undefined): OcrRegion | null {
+  return artWindowFor(getSetInfo(setId ?? undefined)?.serieId);
 }
 
 /** Stable identity for a window, so equal geometry shares one forward pass. */
