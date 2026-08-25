@@ -19,7 +19,7 @@ import { relations } from "drizzle-orm/relations";
 
 const vector = customType<{ data: number[]; driverData: string }>({
   dataType() {
-    return "vector(768)"; // 768 dimensions — SigLIP ViT-Base-Patch16-224 embeddings
+    return "vector(768)"; // 768 dimensions — SigLIP base-patch16-512 embeddings
   },
   toDriver(value: number[]): string {
     return JSON.stringify(value);
@@ -42,6 +42,15 @@ export const cardImageVectors = pgTable(
     name: text("name").notNull(),
     setCode: text("set_code").notNull(),
     embedding: vector("embedding").notNull(),
+    // A second embedding of the ART WINDOW alone (lib/art-window.ts). The
+    // whole-card vector is dominated by the frame, which is identical across a
+    // set, so two printings of one Pokemon land ~0.02 apart — inside the margin
+    // gate, and the largest single cause of HS-era misidentification. Blended
+    // with `embedding` at rerank time it takes hgss top-1 74.2% -> 93.8%.
+    //
+    // Nullable: a catalog imported from a v3 pack has none, and a candidate
+    // without one is scored on its whole-card distance alone.
+    embeddingArt: vector("embedding_art"),
     // The printed collector number ("58") and the set's official count ("102").
     // Together they reconstruct "58/102" across every Pokemon era, which is the
     // single strongest disambiguator between the dozens of reprints that share
@@ -83,6 +92,12 @@ export const cardImageVectors = pgTable(
     // which is the structure HNSW exists to exploit.
     index("cards_embedding_hnsw")
       .using("hnsw", table.embedding.op("vector_cosine_ops")),
+    // There is deliberately NO index on embedding_art. Retrieval stays
+    // whole-card and the art vector only re-orders the 50 candidates it
+    // returns — measured recall@50 on the 1068-capture labelled set is 100% on
+    // every era, hgss included, so retrieval never loses the truth and there is
+    // nothing for a second index to find. Building one would cost ~35 s and the
+    // disk for a query that is never issued.
   ],
 );
 
