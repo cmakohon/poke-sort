@@ -19,6 +19,15 @@ import { artWindowForSet, cropArt } from "../src/lib/art-window";
 import { vectorizeImageFromBuffer } from "../src/lib/vectorize";
 
 const CONCURRENCY = Number(process.env.VECTORIZE_CONCURRENCY ?? 4);
+/**
+ * Cards per run, 0 for all of them.
+ *
+ * The whole catalog is an hour of wall clock, and an hour is a long time to
+ * hold a database that allows exactly one opener and has been corrupted by an
+ * abrupt exit before. Bounded runs let it be driven in chunks that each finish
+ * on their own; resumability makes the chunking free.
+ */
+const LIMIT = Number(process.env.BACKFILL_LIMIT ?? 0);
 const WRITE_BATCH_SIZE = 250;
 const FETCH_ATTEMPTS = 4;
 const FETCH_BACKOFF_MS = 500;
@@ -70,16 +79,19 @@ async function main() {
   `);
 
   // Series with no window are not failures and must not be retried forever.
-  const todo = rows.filter((r) => artWindowForSet(r.set_code) !== null);
+  const withWindow = rows.filter((r) => artWindowForSet(r.set_code) !== null);
+  const todo = LIMIT > 0 ? withWindow.slice(0, LIMIT) : withWindow;
   console.log(
-    `${rows.length} rows missing an art vector, ${todo.length} with a window ` +
-      `(${rows.length - todo.length} skipped: no window for their series)`,
+    `${rows.length} rows missing an art vector, ${withWindow.length} with a window ` +
+      `(${rows.length - withWindow.length} skipped: no window for their series)` +
+      (LIMIT > 0 ? `; this run takes ${todo.length}` : ""),
   );
   if (todo.length === 0) return;
 
   let pending: { cardId: string; embeddingArt: number[] }[] = [];
   let done = 0;
   let errors = 0;
+  let noImage = 0;
 
   // One writer, chained: PGlite is a single connection, so concurrent writes
   // would serialise anyway and interleave badly with the reads.
@@ -107,8 +119,11 @@ async function main() {
         const row = todo[i];
         const window = artWindowForSet(row.set_code);
         const image = row.card_data?.image;
+        // No image URL upstream, so there is nothing to crop — distinct from a
+        // fetch that failed, and counted separately so a run that can never
+        // make progress does not look like a run that might.
         if (!window || !image) {
-          errors++;
+          noImage++;
           continue;
         }
         try {
@@ -138,7 +153,10 @@ async function main() {
       SELECT count(*)::int AS remaining FROM cards WHERE embedding_art IS NULL
     `)
   ).rows;
-  console.log(`done: ${done} processed, ${errors} errors, ${remaining} still null`);
+  console.log(
+    `done: ${done} processed, ${errors} fetch errors, ${noImage} with no image ` +
+      `upstream, ${remaining} still null`,
+  );
 }
 
 main().then(
