@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   check:
-    name: Typecheck, lint, build
+    name: Typecheck, lint, test, build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -35,6 +35,17 @@ jobs:
 
       - name: Lint
         run: pnpm lint
+
+      # Nothing ran these until now, so a change could break the reranker and
+      # still go green — which is exactly how the seam-right band shipped with
+      # two false accepts on the real set. eval/real-set.test.ts replays the
+      # committed signals snapshot through the production reranker and fails on
+      # a false accept or a per-era top-1 drop. eval/accuracy.test.ts stays
+      # excluded: it needs the catalog database and the model weights.
+      - name: Test
+        run: |
+          pnpm --filter @poke-sort/server test
+          pnpm --filter @poke-sort/web test
 
       # `tsc -b` runs as part of the web build.
       - name: Build

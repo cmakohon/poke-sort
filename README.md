@@ -206,8 +206,17 @@ Electron nor the desktop `dev` script reads.
 for muscle memory.
 
 PGlite allows one process per directory, so anything that opens the dev install
-needs the app closed first: `eval:accuracy`, `eval:build`, `eval:capture`,
-`eval:hnsw` and `calibration` all default to it now.
+needs the app closed first: `eval:accuracy`, `eval:build`, `eval:build-real`,
+`eval:capture`, `eval:hnsw` and `calibration` all default to it now.
+`eval:tune` and `eval/ocr-sweep.ts` read JSON and fixture images only, so those
+two are safe to run while the app is up.
+
+After rebuilding the real-capture set, run `eval:snapshot`. It gzips
+`eval/signals-pokemon-real.json` (9.7MB, gitignored) into the committed
+`.json.gz` (~1.4MB) that `eval/real-set.test.ts` falls back to, which is what
+gives CI a real-capture regression guard rather than a skipped suite. The raw
+file wins locally when present, so forgetting to refresh the snapshot degrades
+CI rather than misleading you at your desk.
 
 The browser dev flow (`pnpm dev`, Vite plus Hono on :3001) deliberately keeps
 the default scratch directory rather than sharing the catalog: PGlite allows one
