@@ -42,6 +42,22 @@ export interface IdentityProfile {
   candidateLimit: number;
   /** Candidates further than this are not considered at all. */
   distanceCutoff: number;
+  /**
+   * How much the ART-window distance counts against the whole-card one:
+   * `(1 - artWeight) * distance + artWeight * artDistance`, feeding the
+   * embedding signal only.
+   *
+   * NOT in `weights`. Those are fusion weights over signals and are
+   * renormalised per key by `fuse`; this one reweights the two views that
+   * produce a single signal, before any of that happens. Putting it there
+   * would also break eval/tune.ts, which derives its signal record from
+   * `keyof weights`.
+   *
+   * Raw `distance` still drives the retrieval cutoff, the sort tiebreak, the
+   * distanceGap valve and the flipped-retry decision, so `distanceCutoff`
+   * stays calibrated to whole-card distances. 0 is an exact revert.
+   */
+  artWeight: number;
   weights: {
     embedding: number;
     name: number;
@@ -139,6 +155,9 @@ export const POKEMON_PROFILE: IdentityProfile = {
   // sits below rank 5 on embedding distance alone, so re-ranking never saw it.
   candidateLimit: 50,
   distanceCutoff: 0.3,
+  // Set in the commit that re-measures against a catalog with art vectors.
+  // Landing the plumbing at 0 first makes that diff provably behaviour-neutral.
+  artWeight: 0,
   // Tuned against eval/signals.json via eval/tune.ts (150 degraded-render
   // probes, full catalog): 87.3% accept at zero false accepts, held-out
   // 0/3000 across 40 fixed-config splits. Deliberately NOT the sweep argmax —

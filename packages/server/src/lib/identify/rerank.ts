@@ -18,6 +18,13 @@ import type { IdentityProfile } from "./profiles";
 export interface RerankInput {
   id: string;
   distance: number;
+  /**
+   * Cosine distance between the capture's art window and this card's, or null
+   * when the catalog has no art vector for it (a pre-v4 pack, or a series with
+   * no window). Optional so the eval fixtures and unit tests that predate it
+   * keep type-checking.
+   */
+  artDistance?: number | null;
   name: string;
   collectorNumber: string | null;
   setTotal: number | null;
@@ -255,10 +262,29 @@ export function scoreCandidate(
   ocr: OcrReading,
   profile: IdentityProfile,
 ): { score: number; signals: IdentifySignals } {
+  // Two views of the same card, fused before they become one signal.
+  //
+  // The whole-card embedding is dominated by the frame, which is identical
+  // across a set, so same-name reprints land inside the margin gate. The art
+  // window separates them but is worse where the frame carried real
+  // information, so neither replaces the other — blending beats both.
+  //
+  // Deliberately NOT a separate SignalKey. `fuse` computes ONE informative
+  // mask for the whole candidate set, so an `art` key would score 0 for every
+  // card the catalog happens to lack a vector for, punishing it for something
+  // it could not do — the exact failure the comment on `fuse` below describes.
+  // Folded in here, a missing art vector simply leaves the whole-card distance
+  // untouched.
+  const distance =
+    candidate.artDistance == null
+      ? candidate.distance
+      : (1 - profile.artWeight) * candidate.distance +
+        profile.artWeight * candidate.artDistance;
+
   // Distance 0 -> 1.0, distance at the cutoff -> 0.0.
   const embedding = Math.max(
     0,
-    Math.min(1, 1 - candidate.distance / profile.distanceCutoff),
+    Math.min(1, 1 - distance / profile.distanceCutoff),
   );
   const signals: IdentifySignals = {
     embedding,

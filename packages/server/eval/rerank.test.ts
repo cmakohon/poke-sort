@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { buildRerankInputs } from "../src/lib/identify";
 import { POKEMON_PROFILE } from "../src/lib/identify/profiles";
-import { collectorNumberMatch, decideTier } from "../src/lib/identify/rerank";
+import {
+  collectorNumberMatch,
+  decideTier,
+  scoreCandidate,
+} from "../src/lib/identify/rerank";
 
 /**
  * The raw readings in these tests are verbatim from real scan_events captures
@@ -234,5 +238,51 @@ describe("decideTier distanceGap", () => {
         { id: "b", score: 0.1, distance: 0.5 },
       ]),
     ).toBe("no-match");
+  });
+});
+
+describe("art distance", () => {
+  const row = (art_distance: number | null | undefined) => ({
+    card_id: "hgss1-51",
+    name: "Test",
+    collector_number: "51",
+    set_code: "hgss1",
+    card_data: null,
+    distance: 0.1,
+    set_total: 123,
+    art_distance,
+  });
+
+  // Number(null) is 0, and 0 is a PERFECT embedding match. If a missing art
+  // vector reached the blend as 0, every card the catalog has no vector for
+  // would outrank every card it does — silently, and worst on exactly the
+  // half-upgraded catalogs this column is rolled out to.
+  it("keeps a missing art vector null rather than zero", () => {
+    expect(buildRerankInputs([row(null)], "pokemon")[0].artDistance).toBeNull();
+    expect(
+      buildRerankInputs([row(undefined)], "pokemon")[0].artDistance,
+    ).toBeNull();
+  });
+
+  it("passes a present art distance through", () => {
+    expect(buildRerankInputs([row(0.04)], "pokemon")[0].artDistance).toBe(0.04);
+  });
+
+  it("blends only the embedding signal, leaving raw distance alone", () => {
+    const profile = { ...POKEMON_PROFILE, artWeight: 0.25 };
+    const [candidate] = buildRerankInputs([row(0.02)], "pokemon");
+    const { signals } = scoreCandidate(candidate, {}, profile);
+    // 0.75 * 0.1 + 0.25 * 0.02 = 0.08, ramped against distanceCutoff 0.3.
+    expect(signals.embedding).toBeCloseTo(1 - 0.08 / 0.3, 10);
+    expect(candidate.distance).toBe(0.1);
+  });
+
+  it("is an exact revert at artWeight 0", () => {
+    const profile = { ...POKEMON_PROFILE, artWeight: 0 };
+    const withArt = buildRerankInputs([row(0.02)], "pokemon")[0];
+    const without = buildRerankInputs([row(null)], "pokemon")[0];
+    expect(scoreCandidate(withArt, {}, profile).signals.embedding).toBe(
+      scoreCandidate(without, {}, profile).signals.embedding,
+    );
   });
 });
