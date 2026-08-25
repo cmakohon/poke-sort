@@ -151,9 +151,13 @@ is good evidence the proxy metric is trustworthy.
 
 ## The embedding is the remaining cause
 
-`vectorizeBuffer` runs SigLIP over the **whole card** at ~224px, where the art
-window is ~100px and the frame dominates. Two printings of one Pokémon with
+`vectorizeBuffer` runs SigLIP over the **whole card** at 512px, where the art
+window is ~220px and the frame dominates. Two printings of one Pokémon with
 different art land ~0.02 apart, inside the margin gate.
+
+(An earlier draft of this section said 224px and a ~100px art window. The model
+is `siglip-base-patch16-512` and its processor resizes to 512 — the ratio, and
+so the argument, is unchanged, but the absolute numbers were wrong.)
 
 Embedding-only retrieval over a 1254-card pool:
 
@@ -193,6 +197,9 @@ the database; caches renders and vectors under `eval/.artprobe`).
 
 ### Cost, in the order it should be decided
 
+Three of these were settled by measurement when the blend was implemented; see
+"What the implementation settled" below.
+
 1. **Art windows per era, or a detector — this is the blocker, not a detail.**
    The probe's fixed window fits dp/hgss/pl/bw. WOTC frames sit higher and
    modern sv/me frames are full-bleed, so roughly 40% of the catalog is
@@ -207,6 +214,52 @@ the database; caches renders and vectors under `eval/.artprobe`).
 5. Latency: a second forward pass is ~170 ms against a 2 s budget that OCR
    already spends ~1.5 s of. Batching both views through SigLIP in one pass
    would help.
+
+### What the implementation settled
+
+**Cost 1 dissolved: there are no per-era windows.** The fear was that one
+window could not fit 21 series. The measurement says the opposite, and says it
+twice.
+
+The probe filters *captures* to the four eras with enough labelled data, but
+its **rivals were never filtered** — it applied its one window to every card in
+the pool. So the headline 93.8% was already the "one universal window
+everywhere" number, and the per-era table was the untested configuration, not
+the safe one. Measured head to head:
+
+| art weight | hgss, one window | hgss, four series only |
+|---|---|---|
+| 0.25 | **93.8%** | 81.4% |
+| 0.5 | **95.9%** | 79.4% |
+
+Gaps are not free, because `(1-w)·d + w·d = d` — a card with no art vector is
+scored on a different scale than one with it, and the two have to meet. A
+typical 50-candidate set spans 8–17 series, and **every hgss deciding rival is
+cross-series**, so the mixed case is the whole population rather than an edge.
+
+Widening the capture filter past those four eras found no era regressing at
+weight 0.25: `me` 86.4% → 100.0%, `xy`/`base`/`pop`/`neo` flat, `dp` the only
+loser at −1.9pp, overall 95.6% → 97.7%. The contact sheets
+(`eval/art-windows.ts`) confirm the crop lands on the art for every series that
+never appears as truth — including the WOTC frames this document expected to
+sit too high. The exception is full-art cards, where the window catches attack
+text.
+
+**Cost 3 shrank: no second HNSW index.** Retrieval stays whole-card and the art
+vector only re-orders the 50 candidates that query already returned.
+**Recall@50 on the 1068-capture labelled set is 100% on every era**, hgss
+included — retrieval never loses the truth, so there is nothing for a second
+index to find.
+
+**Cost 4 shrank: raw distance still drives every threshold.** Only the embedding
+signal's ramp sees the blended distance. The retrieval cutoff, the sort
+tiebreak, the `distanceGap` valve and the flipped-retry decision all still read
+raw `distance`, so `distanceCutoff: 0.3` stays calibrated to whole-card
+distances and did not need re-deriving.
+
+**Cost 2 stands.** The pack grows by one vector for each of the 19,448 cards in
+a windowed series (tcgp is excluded at candidate time, so its 2,266 cards get
+none).
 
 ### Limits of this evidence
 
