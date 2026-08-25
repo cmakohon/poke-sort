@@ -4,6 +4,7 @@ import type {
   IdentifyTier,
   OcrReading,
 } from "@poke-sort/shared";
+import { isTrustworthySetTotal } from "../set-index";
 import type { IdentityProfile } from "./profiles";
 
 /**
@@ -154,12 +155,28 @@ export function collectorNumberMatch(
   ) {
     return 1;
   }
-  // A full fraction was read and its denominator names a different set: the
-  // numerator agreeing is then evidence AGAINST this candidate, not weak
+  // A full fraction was read and its denominator names a DIFFERENT REAL SET:
+  // the numerator agreeing is then evidence AGAINST this candidate, not weak
   // evidence for it. Half-crediting it promoted a same-numbered reprint over
   // the true card on a real capture ("53/18" misread of 83/108 boosting the
-  // #53 printing) — and at looser gates that same mode produced false accepts.
-  if (ocr.setTotal != null && candidate.setTotal != null) return 0;
+  // #53 printing — 18 is a real total, Trick or Trade 2023) — and at looser
+  // gates that same mode produced false accepts.
+  //
+  // "Real set" is the whole qualifier, and it used not to be there. A
+  // denominator no card prints is not a rival set's number, it is OCR noise
+  // that happened to sit after a slash, and letting it zero the signal threw
+  // away a numerator that had been read correctly. 43 of the 956 labelled real
+  // captures hit this branch with the right numerator, and 35 of those named a
+  // total that fails isTrustworthySetTotal — mostly a bare "1" or "11", a
+  // fragment of the real fraction. Those fall through to half credit now,
+  // which is what a numerator on its own has always been worth.
+  if (
+    ocr.setTotal != null &&
+    candidate.setTotal != null &&
+    isTrustworthySetTotal(ocr.setTotal)
+  ) {
+    return 0;
+  }
   return 0.5;
 }
 
@@ -187,6 +204,47 @@ export function setAbbreviationMatch(
   return pattern.test(ocr.collectorNumberRaw) ? 1 : 0;
 }
 
+/**
+ * Whether the denominator OCR read names a set of the candidate's size.
+ *
+ * This is the collector number's other half, and it is worth having on its own
+ * because the two halves fail independently. The numerator is three small
+ * digits unique to one card; the denominator is the same digits on every card
+ * in the set, so it is both easier to read and easier to corroborate. On the
+ * labelled hgss captures the denominator survives more often than the full
+ * fraction does.
+ *
+ * What it buys: a denominator cuts ~150 sets down to one or two ("/90" is
+ * hgss3 alone; "/123" is dp2 or hgss1), which is most of the way to splitting
+ * the same-name reprint pairs the embedding cannot. On the 28 labelled hgss
+ * mis-identifications the true card and the card that beat it print different
+ * denominators in 24.
+ *
+ * Deliberately its own signal rather than another branch inside
+ * collectorNumberMatch. Two reasons, both about being able to undo it: `fuse`
+ * renormalises per key, so folding it in would let a bare denominator move
+ * scores at the collector number's full weight, and a separate key means the
+ * revert is `weight: 0` — something eval:tune can select on its own, unlike
+ * the band geometry that had to be reverted by hand in 5526f2e.
+ *
+ * Gated on isTrustworthySetTotal for the same reason collectorNumberMatch is:
+ * ungated, the denominator is right about 63% of the time it parses, and a
+ * signal that confident-wrong a third of the time is not evidence.
+ *
+ * Note what it cannot do: every card in a set prints the same denominator, so
+ * this never separates two candidates from the SAME set, and because `fuse`
+ * renormalises it slightly compresses their margin when it fires. That is not
+ * hypothetical — on the labelled set it takes pl4-64 from accept to review,
+ * its rivals being other pl4 cards. The trade is worth it (net +1 accept,
+ * zero false accepts, and the card it costs is held rather than mis-sorted)
+ * but it is why the weight is 0.02 and not something that would matter.
+ */
+export function setTotalMatch(ocr: OcrReading, candidate: RerankInput): number {
+  if (ocr.setTotal == null || candidate.setTotal == null) return 0;
+  if (!isTrustworthySetTotal(ocr.setTotal)) return 0;
+  return ocr.setTotal === candidate.setTotal ? 1 : 0;
+}
+
 function hpMatch(ocr: OcrReading, candidate: RerankInput): number {
   if (ocr.hp == null || candidate.hp == null) return 0;
   return ocr.hp === candidate.hp ? 1 : 0;
@@ -207,6 +265,7 @@ export function scoreCandidate(
     name: nameSimilarity(ocr.name, candidate.name),
     collectorNumber: collectorNumberMatch(ocr, candidate),
     setAbbreviation: setAbbreviationMatch(ocr, candidate),
+    setTotal: setTotalMatch(ocr, candidate),
     hp: hpMatch(ocr, candidate),
   };
 
@@ -215,13 +274,25 @@ export function scoreCandidate(
 
 export type SignalKey = keyof IdentifySignals;
 
-const ALL_SIGNALS: SignalKey[] = [
+export const ALL_SIGNALS = [
   "embedding",
   "name",
   "collectorNumber",
   "setAbbreviation",
+  "setTotal",
   "hp",
-];
+] as const satisfies readonly SignalKey[];
+
+/**
+ * Compile error if a signal is added to IdentifySignals and not listed above.
+ *
+ * Worth the two lines: the list is duplicated in eval/tune.ts's replay, and a
+ * key present in one and missing from the other produces a tuning run that
+ * looks fine and optimises the wrong function. Nothing else would catch it.
+ */
+type MissingSignal = Exclude<SignalKey, (typeof ALL_SIGNALS)[number]>;
+const _allSignalsComplete: MissingSignal extends never ? true : never = true;
+void _allSignalsComplete;
 
 /**
  * Weighted mean over the signals that carry information, renormalised so the
@@ -244,7 +315,7 @@ const ALL_SIGNALS: SignalKey[] = [
 function fuse(
   signals: IdentifySignals,
   profile: IdentityProfile,
-  informative: SignalKey[],
+  informative: readonly SignalKey[],
 ): number {
   const w = profile.weights;
   let mass = 0;
@@ -261,7 +332,7 @@ function fuse(
  * reading matches nothing in the whole candidate set, it is noise, not
  * evidence — including it just adds a constant penalty to everyone.
  */
-function informativeSignals(all: IdentifySignals[]): SignalKey[] {
+function informativeSignals(all: IdentifySignals[]): readonly SignalKey[] {
   return ALL_SIGNALS.filter((key) =>
     key === "embedding" ? true : all.some((s) => s[key] > 0),
   );

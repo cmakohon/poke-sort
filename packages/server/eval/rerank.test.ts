@@ -96,6 +96,26 @@ describe("collectorNumberMatch", () => {
     ).toBe(0);
   });
 
+  it("keeps half credit when the denominator is not a real set size", () => {
+    // Both from real hgss captures: 51/123 read as "51/13", 62/123 as "62/1".
+    // The numerator is right and no set has 13 or 1 cards worth sorting, so
+    // the denominator is a fragment, not a rival set — it must not zero the
+    // one signal that was read correctly. Contrast with the "53/18" case
+    // above, where 18 IS a real total and the negative inference stands.
+    expect(
+      collectorNumberMatch(
+        { collectorNumber: "51", setTotal: 13 },
+        candidate("51", 123),
+      ),
+    ).toBe(0.5);
+    expect(
+      collectorNumberMatch(
+        { collectorNumber: "62", setTotal: 1 },
+        candidate("62", 123),
+      ),
+    ).toBe(0.5);
+  });
+
   it("zero for a different card even when digits look similar", () => {
     expect(
       collectorNumberMatch(

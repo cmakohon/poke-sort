@@ -3,9 +3,18 @@
 //   pnpm eval:tune
 //
 // No database, no model, no OCR — everything expensive was captured once by
-// eval/capture-signals.ts, so a full sweep of ~10k configurations runs in
-// seconds. That speed is what makes tuning honest: every candidate is
-// measured, and the measurement procedure itself is cross-validated.
+// eval/capture-signals.ts, so the main sweep is fast. That speed is what makes
+// tuning honest: every candidate is measured, and the measurement procedure
+// itself is cross-validated.
+//
+// Cost warning, because the grid multiplies and the report order hides it:
+// every weight added to IdentityProfile multiplies allConfigs() by its option
+// count, and the split-half CV at the bottom re-runs the WHOLE grid 40 times.
+// At 26k configs over 956 captures that section runs for the better part of an
+// hour while everything above it prints in minutes. The per-config gates —
+// full-set FALSE, the cliff neighbourhood, the fixed-config held-out figure —
+// all land before it, so reading those and stopping is a reasonable thing to
+// do; the CV validates the SELECTION PROCEDURE, not the config you ship.
 //
 // The objective is fixed and asymmetric: ZERO false accepts on the fixtures,
 // then the highest accept rate available under that constraint. A wrongly
@@ -22,12 +31,17 @@
 import { readFile } from "node:fs/promises";
 import type { OcrReading } from "@poke-sort/shared";
 import {
+  ALL_SIGNALS,
   collectorNumberMatch,
   nameSimilarity,
   setAbbreviationMatch,
+  setTotalMatch,
   type RerankInput,
 } from "../src/lib/identify/rerank";
-import { POKEMON_PROFILE } from "../src/lib/identify/profiles";
+import {
+  POKEMON_PROFILE,
+  type IdentityProfile,
+} from "../src/lib/identify/profiles";
 
 import { SIGNALS_PATH } from "./eval-set";
 
@@ -38,13 +52,9 @@ interface Capture {
   candidates: RerankInput[];
 }
 
-interface Weights {
-  embedding: number;
-  name: number;
-  collectorNumber: number;
-  setAbbreviation: number;
-  hp: number;
-}
+// Derived, not restated: adding a signal to the profile must break this file
+// rather than silently tune a different objective than the one that ships.
+type Weights = IdentityProfile["weights"];
 
 interface Gate {
   minScore: number;
@@ -61,12 +71,14 @@ interface Config {
 }
 
 type Signals = Record<keyof Weights, number>;
-const KEYS = ["embedding", "name", "collectorNumber", "setAbbreviation", "hp"] as const;
+// The same list production fuses over, imported rather than copied.
+const KEYS = ALL_SIGNALS;
 const CUTOFF = POKEMON_PROFILE.distanceCutoff;
 
 /** Weight-independent per-candidate signals, computed once. */
 interface Prepared {
   expectedId: string;
+  era: string;
   sigs: Signals[];
   ids: string[];
   distances: number[];
@@ -83,6 +95,7 @@ function prepare(cap: Capture): Prepared {
     name: nameSimilarity(cap.ocr.name, c.name),
     collectorNumber: collectorNumberMatch(cap.ocr, c),
     setAbbreviation: setAbbreviationMatch(cap.ocr, c),
+    setTotal: setTotalMatch(cap.ocr, c),
     hp: cap.ocr.hp != null && c.hp != null && cap.ocr.hp === c.hp ? 1 : 0,
   }));
   const informativeMask = KEYS.map(
@@ -93,6 +106,12 @@ function prepare(cap: Capture): Prepared {
     .sort((a, b) => a.d - b.d);
   return {
     expectedId: cap.expectedId,
+    // setCode has been carried through this harness since it was written and
+    // never read. It matters: pl is ~440 of the 956 real captures and hgss is
+    // ~97, so pickBest maximising aggregate accepts will trade ten hgss points
+    // for two pl points and call it an improvement. Per-era is the only way to
+    // see that happening.
+    era: cap.setCode.replace(/[\d.]+$/, "") || cap.setCode,
     sigs,
     ids: cap.candidates.map((c) => c.id),
     distances: cap.candidates.map((c) => c.distance),
@@ -124,14 +143,26 @@ interface Report {
   reviewCorrect: number;
   noMatch: number;
   byRule: Record<string, number>;
+  byEra: Record<string, EraCounts>;
+}
+
+interface EraCounts {
+  n: number;
+  top1: number;
+  accepted: number;
+  falseAccepts: number;
+  review: number;
 }
 
 function run(preps: Prepared[], cfg: Config): Report {
   const r: Report = {
     n: preps.length, top1: 0, accepted: 0, falseAccepts: 0,
-    review: 0, reviewCorrect: 0, noMatch: 0, byRule: {},
+    review: 0, reviewCorrect: 0, noMatch: 0, byRule: {}, byEra: {},
   };
+  const era = (p: Prepared): EraCounts =>
+    (r.byEra[p.era] ??= { n: 0, top1: 0, accepted: 0, falseAccepts: 0, review: 0 });
   for (const p of preps) {
+    era(p).n++;
     if (p.ids.length === 0) {
       r.noMatch++;
       continue;
@@ -150,7 +181,10 @@ function run(preps: Prepared[], cfg: Config): Report {
       }
     }
     const correct = p.ids[bestI] === p.expectedId;
-    if (correct) r.top1++;
+    if (correct) {
+      r.top1++;
+      era(p).top1++;
+    }
     const margin = secondScore >= 0 ? bestScore - secondScore : null;
 
     if (bestScore < cfg.gate.reviewFloor) {
@@ -173,25 +207,49 @@ function run(preps: Prepared[], cfg: Config): Report {
 
     if (released) {
       r.accepted++;
-      if (!correct) r.falseAccepts++;
+      era(p).accepted++;
+      if (!correct) {
+        r.falseAccepts++;
+        era(p).falseAccepts++;
+      }
       r.byRule[released] = (r.byRule[released] ?? 0) + 1;
     } else {
       r.review++;
+      era(p).review++;
       if (correct) r.reviewCorrect++;
     }
   }
   return r;
 }
 
+/**
+ * The shipped gate has to be IN the grid, or "full-set best" is not a
+ * comparison — it is a different question.
+ *
+ * It was not: minMargin 0.05 and distanceGap {0.15, 0.02} are what
+ * profiles.ts ships and neither was reachable, so pickBest returned a config
+ * scoring 4.8 points of accept rate BELOW the live profile and called it best.
+ * Anything picked on that basis silently changes the gate as well as the thing
+ * under test.
+ */
 function* allConfigs(): Generator<Config> {
   for (const e of [0.3, 0.4, 0.5]) {
     for (const nm of [0.1, 0.15, 0.2]) {
       for (const cn of [0.2, 0.25, 0.3]) {
         for (const sa of [0.05, 0.1]) {
-          const w: Weights = { embedding: e, name: nm, collectorNumber: cn, setAbbreviation: sa, hp: 0.05 };
-          for (const minMargin of [0.02, 0.03, 0.04, 0.06, 0.08]) {
+         // 0 is in the grid on purpose: it is the revert. If the denominator
+         // signal does not pay, pickBest turns it off by itself rather than
+         // anyone having to argue for removing it.
+         for (const st of [0, 0.02, 0.03, 0.05]) {
+          const w: Weights = { embedding: e, name: nm, collectorNumber: cn, setAbbreviation: sa, setTotal: st, hp: 0.05 };
+          for (const minMargin of [0.02, 0.03, 0.04, 0.05, 0.06, 0.08]) {
             for (const minScore of [0.4, 0.45, 0.5, 0.55, 0.6]) {
-              for (const dg of [null, { d1Max: 0.08, gapMin: 0.03 }, { d1Max: 0.1, gapMin: 0.04 }]) {
+              for (const dg of [
+                null,
+                { d1Max: 0.08, gapMin: 0.03 },
+                { d1Max: 0.1, gapMin: 0.04 },
+                { d1Max: 0.15, gapMin: 0.02 },
+              ]) {
                 yield {
                   w,
                   gate: { minScore, minMargin, reviewFloor: 0.3, distanceGap: dg },
@@ -199,6 +257,7 @@ function* allConfigs(): Generator<Config> {
               }
             }
           }
+         }
         }
       }
     }
@@ -230,6 +289,37 @@ function show(label: string, r: Report): void {
   );
 }
 
+/**
+ * Per-era breakdown, biggest era first, with a baseline to diff against.
+ *
+ * The aggregate hides the trade this whole harness is prone to making: a
+ * config that buys accepts on the era with the most captures while losing
+ * top-1 on a small one scores better on `accepted` and is worse in the bin.
+ * The rule is that no era's top-1 may drop and no era may gain a false accept,
+ * which needs both numbers side by side to check.
+ */
+function showEras(r: Report, base?: Report): void {
+  const rows = Object.entries(r.byEra).sort((a, b) => b[1].n - a[1].n);
+  const delta = (now: number, was: number | undefined) =>
+    was == null || was === now ? "" : ` (${now > was ? "+" : ""}${now - was})`;
+  console.log(
+    "  " + "era".padEnd(7) + "n".padStart(5) + "top1".padStart(8) +
+      "".padStart(7) + "accept".padStart(8) + "".padStart(7) +
+      "review".padStart(8) + "FALSE".padStart(8),
+  );
+  for (const [era, c] of rows) {
+    if (c.n === 0) continue;
+    const b = base?.byEra[era];
+    console.log(
+      "  " + era.padEnd(7) + String(c.n).padStart(5) +
+        pct(c.top1, c.n).padStart(8) + delta(c.top1, b?.top1).padEnd(7) +
+        pct(c.accepted, c.n).padStart(8) + delta(c.accepted, b?.accepted).padEnd(7) +
+        pct(c.review, c.n).padStart(8) +
+        `${c.falseAccepts}${delta(c.falseAccepts, b?.falseAccepts)}`.padStart(8),
+    );
+  }
+}
+
 /** Deterministic PRNG so CV splits are reproducible. */
 function mulberry(seed: number): () => number {
   let a = seed;
@@ -257,7 +347,9 @@ async function main() {
       distanceGap: POKEMON_PROFILE.accept.distanceGap ?? null,
     },
   };
-  show("current profile", run(preps, baseCfg));
+  const baseReport = run(preps, baseCfg);
+  show("current profile", baseReport);
+  showEras(baseReport);
 
   const best = pickBest(preps);
   if (!best) {
@@ -266,6 +358,7 @@ async function main() {
   }
   console.log("");
   show(`full-set best ${JSON.stringify(best.cfg)}`, best.r);
+  showEras(best.r, baseReport);
 
   // Cliff report: nudge each threshold one notch looser and report the damage,
   // so the distance between the chosen config and trouble is visible.

@@ -47,6 +47,7 @@ export interface IdentityProfile {
     name: number;
     collectorNumber: number;
     setAbbreviation: number;
+    setTotal: number;
     hp: number;
   };
   /** Sort as-is only when both hold; otherwise the card goes to review. */
@@ -174,6 +175,13 @@ export const POKEMON_PROFILE: IdentityProfile = {
     // fusion renormalises over the signals actually available, so a card with
     // no printed code is not penalised for it.
     setAbbreviation: 0.05,
+    // The printed denominator on its own. Small on purpose: w/(embedding + w)
+    // is the most this can shift a fused score when nothing else is
+    // informative, and at 0.02 that is 0.038 — under minMargin, so the signal
+    // cannot by itself carry a card across the accept gate. It can still nudge
+    // a pair that was already within a whisker of it, which is the population
+    // the cliff report exists to watch.
+    setTotal: 0.02,
     hp: 0.05,
   },
   // distanceGap enabled 2026-08-21, at zero false accepts on every measurement:
