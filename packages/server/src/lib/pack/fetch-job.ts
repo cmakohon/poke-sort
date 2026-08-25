@@ -63,12 +63,13 @@ export function getPackJobState(): PackJobState {
  * practical way to get a catalog.
  *
  * The tag tracks PACK_VERSION and EMBEDDING_IDENTITY, not the app version:
- * importPack refuses a pack built by a different pipeline, so bumping
- * PREPROCESSING_VERSION means publishing catalog-v4 and changing this line.
+ * importPack refuses a pack built by a different pipeline, so bumping either
+ * means publishing the next catalog tag and changing this line. v4 carries the
+ * art-window vectors, which is a body-layout change decodePack rejects a v3 for.
  */
 const DEFAULT_TEMPLATE =
   process.env.POKE_SORT_PACK_URL_TEMPLATE ??
-  "https://github.com/cmakohon/poke-sort/releases/download/catalog-v3/{game}-{lang}.pack.gz";
+  "https://github.com/cmakohon/poke-sort/releases/download/catalog-v4/{game}-{lang}.pack.gz";
 
 export function packUrlFor(gameKey: string, lang: string): string {
   return DEFAULT_TEMPLATE.replace("{game}", gameKey).replace("{lang}", lang);

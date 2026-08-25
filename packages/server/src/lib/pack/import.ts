@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { gunzipSync } from "node:zlib";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { cardImageVectors } from "../../db/schema";
 import { incompatibilityReason } from "../embedding-identity";
@@ -25,7 +25,9 @@ export async function importPack(
   filePath: string,
   onProgress?: (done: number, total: number) => void,
 ): Promise<PackImportResult> {
-  const { header, embeddings } = decodePack(gunzipSync(await readFile(filePath)));
+  const { header, embeddings, artEmbeddings } = decodePack(
+    gunzipSync(await readFile(filePath)),
+  );
 
   // Refuse before writing anything. A pack from a different embedding pipeline
   // imports perfectly happily and then makes every match slightly worse, which
@@ -35,6 +37,7 @@ export async function importPack(
     dtype: header.dtype,
     dim: header.dim,
     preprocessing: header.preprocessing,
+    artWindows: header.artWindows,
   });
   if (reason) throw new Error(reason);
 
@@ -44,6 +47,7 @@ export async function importPack(
     const rows = [];
     for (let i = start; i < end; i++) {
       const card = header.cards[i];
+      const art = artEmbeddings[i];
       rows.push({
         cardId: card.id,
         gameKey: header.gameKey,
@@ -54,13 +58,29 @@ export async function importPack(
         setTotal: card.setTotal ?? null,
         cardData: card.data ?? null,
         embedding: Array.from(embeddings[i]),
+        embeddingArt: art ? Array.from(art) : null,
       });
     }
 
+    // Upsert the art vector rather than skipping the row outright. Every
+    // established install already holds all ~21.7k card ids, so
+    // onConflictDoNothing would insert zero rows and leave embedding_art null
+    // forever — the pack would download, report success, and change nothing.
+    //
+    // Only the art column is touched, and only when the pack actually carries
+    // one, so re-importing an older pack cannot blank a vector that is already
+    // there. Everything else about an existing row is left alone, which is what
+    // it has always done.
     const written = await db
       .insert(cardImageVectors)
       .values(rows)
-      .onConflictDoNothing()
+      .onConflictDoUpdate({
+        target: cardImageVectors.cardId,
+        set: {
+          embeddingArt: sql`coalesce(excluded.embedding_art, ${cardImageVectors.embeddingArt})`,
+        },
+        setWhere: sql`excluded.embedding_art is not null`,
+      })
       .returning({ id: cardImageVectors.id });
 
     inserted += written.length;

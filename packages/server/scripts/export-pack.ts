@@ -31,6 +31,7 @@ async function main() {
       setTotal: cardImageVectors.setTotal,
       data: cardImageVectors.cardData,
       embedding: cardImageVectors.embedding,
+      embeddingArt: cardImageVectors.embeddingArt,
     })
     .from(cardImageVectors)
     .where(
@@ -63,6 +64,7 @@ async function main() {
       model: EMBEDDING_IDENTITY.model,
       dtype: EMBEDDING_IDENTITY.dtype,
       preprocessing: EMBEDDING_IDENTITY.preprocessing,
+      artWindows: EMBEDDING_IDENTITY.artWindows,
       setCodes: [...new Set(rows.map((r) => r.setCode))].sort(),
       cards: rows.map((r) => ({
         id: r.id,
@@ -74,13 +76,15 @@ async function main() {
       })),
     },
     rows.map((r) => r.embedding),
+    rows.map((r) => r.embeddingArt),
   );
 
   const gz = gzipSync(packed, { level: 9 });
   await writeFile(out, gz);
 
+  const withArt = rows.filter((r) => r.embeddingArt != null).length;
   console.log(
-    `${rows.length} cards, ${dim} dims -> ${out} ` +
+    `${rows.length} cards (${withArt} with art), ${dim} dims -> ${out} ` +
       `(${(packed.length / 1e6).toFixed(1)} MB raw, ${(gz.length / 1e6).toFixed(1)} MB gzipped)`,
   );
   process.exit(0);
