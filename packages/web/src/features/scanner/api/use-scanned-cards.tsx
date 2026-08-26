@@ -35,6 +35,8 @@ import { useCollectionLocks } from "@/features/collections/api/use-collection-lo
 import { useCollections } from "@/features/collections/api/use-collections";
 import { reportSerialEvent } from "@/features/notifications/api/notification-settings";
 import { useScanTimer } from "@/features/scanner/api/use-scan-timer";
+import { VALUE_TIER_MIN } from "@/features/cards/lib/value-tier";
+import { playValueChime } from "@/features/scanner/lib/audio";
 import { repriceAsReverseHolo } from "@/features/scanner/lib/reverse-holo-pricing";
 import { useSerial } from "@/features/scanner/api/use-serial";
 import type { ScannedCardsContextValue } from "@/features/scanner/types";
@@ -500,6 +502,11 @@ export function ScannedCardsProvider({
       // session POST stores this card object verbatim.
       const isFoil = reverseHoloRef.current;
       const effectiveCard = isFoil ? repriceAsReverseHolo(card) : card;
+
+      // Announced off the re-priced card, not the raw one: reverse-holo mode
+      // rewrites the price, and that is the price the tile shows and the bins
+      // route on.
+      if ((effectiveCard.price ?? 0) >= VALUE_TIER_MIN) playValueChime();
 
       // An uncertain card is set aside rather than routed to whichever bin its
       // (possibly wrong) identification implies. Setting a handful of cards

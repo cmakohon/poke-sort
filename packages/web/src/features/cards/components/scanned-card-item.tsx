@@ -1,5 +1,6 @@
 import { rarityColor } from "@/features/cards/lib/rarity-color";
 import { formatCardNumber } from "@/features/cards/lib/format-card-number";
+import { valueTier } from "@/features/cards/lib/value-tier";
 import { formatUsd } from "@/lib/format-currency";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,10 +42,12 @@ export const ScannedCardItem = memo(function ScannedCardItem({
   // verdict settles the question, so it clears the marker.
   const showAttention =
     reviewVerdict == null && (needsReview ?? hasAlternatives);
+  const tier = valueTier(card.price);
   return (
     <div
       className={cn(
-        "relative rounded-lg p-1 bg-muted border transition-shadow",
+        "relative rounded-lg p-1 border transition-shadow",
+        tier?.tile ?? "bg-muted",
         isSelected && "ring-2 ring-primary ring-offset-1",
       )}
     >
@@ -201,7 +204,12 @@ export const ScannedCardItem = memo(function ScannedCardItem({
           )}
         </div>
         {card.price != null && (
-          <p className="text-xs font-medium text-muted-foreground shrink-0">
+          <p
+            className={cn(
+              "text-xs font-medium shrink-0",
+              tier?.price ?? "text-muted-foreground",
+            )}
+          >
             {formatUsd(card.price)}
           </p>
         )}

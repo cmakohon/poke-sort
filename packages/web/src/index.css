@@ -69,6 +69,13 @@ code {
   --uncommon: oklch(78.194% 0.09549 244.199);
   --rare: oklch(83.828% 0.16176 98.163);
   --mythic: oklch(73.235% 0.17251 55.531);
+  /* Price tiers on the scan grid: $5 / $15 / $25 / $50. Distinct hues rather
+     than one ramp — mid-run the operator reads them at a glance, not by
+     comparing two tiles side by side. */
+  --value-1: oklch(58.5% 0.14 149);
+  --value-2: oklch(60% 0.12 231);
+  --value-3: oklch(55% 0.19 300);
+  --value-4: oklch(65% 0.15 76);
 }
 
 .dark {
@@ -104,6 +111,12 @@ code {
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.552 0.016 285.938);
+  /* Lighter and less saturated than the light-mode tiers: the same colour that
+     reads as a soft tint over white glows over the dark background. */
+  --value-1: oklch(72% 0.13 149);
+  --value-2: oklch(73% 0.11 231);
+  --value-3: oklch(70% 0.15 300);
+  --value-4: oklch(78% 0.13 76);
 }
 
 @theme inline {
@@ -135,6 +148,10 @@ code {
   --color-uncommon: var(--uncommon);
   --color-rare: var(--rare);
   --color-mythic: var(--mythic);
+  --color-value-1: var(--value-1);
+  --color-value-2: var(--value-2);
+  --color-value-3: var(--value-3);
+  --color-value-4: var(--value-4);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
