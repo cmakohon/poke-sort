@@ -10,7 +10,7 @@
 // Creating one per scan exhausts the limit quickly.
 let sharedAudioCtx: AudioContext | null = null;
 
-export function getAudioContext(): AudioContext {
+function getAudioContext(): AudioContext {
   if (!sharedAudioCtx || sharedAudioCtx.state === "closed") {
     sharedAudioCtx = new AudioContext();
   }

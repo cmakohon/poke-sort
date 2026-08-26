@@ -14,8 +14,10 @@ describe("valueTier", () => {
   });
 
   it("includes the threshold itself in the tier it opens", () => {
+    expect(valueTier(5)).not.toBeNull();
     expect(valueTier(5)).toEqual(valueTier(14.99));
     expect(valueTier(50)).toEqual(valueTier(1000));
+    expect(valueTier(50)).not.toEqual(valueTier(49.99));
   });
 
   it("gives each band a distinct colour", () => {

@@ -71,11 +71,17 @@ code {
   --mythic: oklch(73.235% 0.17251 55.531);
   /* Price tiers on the scan grid: $5 / $15 / $25 / $50. Distinct hues rather
      than one ramp — mid-run the operator reads them at a glance, not by
-     comparing two tiles side by side. */
-  --value-1: oklch(58.5% 0.14 149);
-  --value-2: oklch(60% 0.12 231);
-  --value-3: oklch(55% 0.19 300);
-  --value-4: oklch(65% 0.15 76);
+     comparing two tiles side by side.
+
+     These also colour the price text, so lightness is a contrast budget and
+     not just a look: each clears 4.5:1 on white, at or above the 4.83:1 of the
+     muted-foreground it replaces. Gold is the trap — the natural bright amber
+     lands at 3.30:1, which would make the $50+ tier the least readable price
+     on the screen. */
+  --value-1: oklch(53.5% 0.14 149);
+  --value-2: oklch(54.5% 0.12 231);
+  --value-3: oklch(54.5% 0.19 300);
+  --value-4: oklch(55.5% 0.15 76);
 }
 
 .dark {
