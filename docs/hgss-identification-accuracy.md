@@ -355,12 +355,23 @@ decision. Most of `238c2f6` is fixing it.
    the art everywhere it was checked, with full-art cards the known exception —
    the window catches attack text there. `ART_WINDOW_VERSION` plus a re-embed of
    that series is the whole cost of refining one.
-5. **`ex` and `base` are the new worst eras** at 85.7% and 89.5% top-1, on n=7
+5. **A denominator under 15 still stops the escalation ladder.**
+   `parseCollectorNumber` accepts any total in 1..400, so a fragment read like
+   `"62/1"` sets `setTotal = 1` — which counts as "a full number was read", so
+   the escalation pass that exists to recover the real fraction never runs, and
+   the fragment's numerator can overwrite a correct bare number an earlier band
+   already found. `isTrustworthySetTotal` (above) makes the *reranker* distrust
+   these, and 35 of the 43 observed cases were exactly these `1`/`11`
+   fragments, but the *reader* still treats them as complete. `238c2f6` fixed
+   the `>400` half of this; the `<15` half is open. An OCR reader change needs
+   its own McNemar + `WRONG_FULL` measurement — that is the standing rule that
+   killed three changes above — so it is recorded rather than patched.
+6. **`ex` and `base` are the new worst eras** at 85.7% and 89.5% top-1, on n=7
    and n=19. Too thin to act on; worth watching as the labelled set grows.
-6. Fix the `eval:capture` exit code if the eval flow is ever scripted. It bit
+7. Fix the `eval:capture` exit code if the eval flow is ever scripted. It bit
    this work twice — the backfill and the latency harness both end with the same
    native teardown race, after their data is safely written.
-7. Optional: make the tuner's cross-validation affordable again.
+8. Optional: make the tuner's cross-validation affordable again.
 
 **Where this left the original problem, before the art blend:** the hgss review
 rate went 75.3% → 70.1%. Better, not fixed. 25.8% of hgss top-1s were still
