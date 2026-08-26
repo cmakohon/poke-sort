@@ -160,7 +160,7 @@ export const POKEMON_PROFILE: IdentityProfile = {
   //
   //                    top-1   accept   FALSE   hgss top-1   hgss review
   //   artWeight 0      95.6%    81.8%     0        74.2%        70.1%
-  //   artWeight 0.25   97.2%    85.0%     0        89.7%        53.6%
+  //   artWeight 0.25   97.2%    84.9%     0        89.7%        53.6%
   //
   // 0.25 rather than the 0.5 that scored marginally higher: the gain is flat
   // from 0.25 up (97.2 / 97.0 / 97.2 at .25 / .35 / .5) while false accepts at
@@ -210,11 +210,18 @@ export const POKEMON_PROFILE: IdentityProfile = {
     setAbbreviation: 0.05,
     // The printed denominator on its own. Small on purpose: w/(embedding + w)
     // is the most this can shift a fused score when nothing else is
-    // informative, and at 0.02 that is 0.038 — under minMargin, so the signal
-    // cannot by itself carry a card across the accept gate. It can still nudge
-    // a pair that was already within a whisker of it, which is the population
-    // the cliff report exists to watch.
-    setTotal: 0.05,
+    // informative, and at 0.02 that is 0.038 — under minMargin (0.06), so the
+    // signal cannot by itself carry a card across the accept gate. It can still
+    // nudge a pair that was already within a whisker of it, which is the
+    // population the cliff report exists to watch.
+    //
+    // eval:tune picks 0.05 here, and 0.05 breaks that bound: 0.091 against a
+    // 0.06 margin, so a bare denominator COULD carry a card alone. It is
+    // overruled on purpose. The tuner maximises accepts subject to zero false
+    // accepts on this set; it cannot see an invariant. The measured difference
+    // is one capture — top-1 and every per-era figure are identical at 0.02,
+    // accept 84.9% against 85.0%.
+    setTotal: 0.02,
     hp: 0.05,
   },
   // distanceGap enabled 2026-08-21, at zero false accepts on every measurement:

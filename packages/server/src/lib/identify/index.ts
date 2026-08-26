@@ -14,8 +14,7 @@ import {
   normalizePokemonCard,
   type PokemonCardDetail,
 } from "../pokemon/search";
-import { artWindowForSet, artWindowKey, cropArt, distinctArtWindows } from "../art-window";
-import { getSetInfo } from "../set-index";
+import { artWindowKey, cropArt, distinctArtWindows } from "../art-window";
 import { vectorizeImageFromBuffer } from "../vectorize";
 import { readCard } from "./ocr";
 import { detectFirstEditionStamp, hasFirstEditionVariant } from "./stamp";
@@ -31,56 +30,20 @@ import {
   type IdentityProfile,
 } from "./profiles";
 import { decideTier, rerank, type RerankInput } from "./rerank";
+import {
+  artWindowForRow,
+  buildRerankInputs,
+  setIdOf,
+  type CandidateRow,
+} from "./candidates";
 
-interface CandidateRow extends CatalogCardRow {
-  distance: number;
-  set_total: number | null;
-  /** Null when the catalog has no art vector for this card. */
-  art_distance?: number | null;
-}
+// Re-exported so the eval harness and tests keep one import site for the
+// candidate view, without this module's database import coming with it.
+export { buildRerankInputs, setIdOf, type CandidateRow };
 
 /** A row's card, or null when the id is not among the rows at all. */
 function hydrate(gameKey: string, row: CandidateRow | undefined) {
   return row ? hydrateCatalogCard(gameKey, row) : null;
-}
-
-// Set codes are only printed on the card from Sword & Shield (2020-02) onward.
-// The set index carries an abbreviation for almost every set regardless — for
-// the 132 older ones it is a PTCGO code (dp6 "LA", pl2 "RR"...) that never
-// appears on the physical card, and matching those against the OCR'd bottom
-// band handed wrong reprints a signal the true card could not earn: 6 of the
-// 20 mis-identifications in the first 596 labelled production scans were
-// two-letter PTCGO codes false-matching OCR garble.
-const FIRST_PRINTED_SET_CODE = "2020-02";
-
-/**
- * The card's set id.
- *
- * Prefers the embedded set object over `set_code`: the sync derives the two
- * differently (`id.split("-")[0]` on the list endpoint, `set.id` on the detail
- * one) and they disagree for some promo sets.
- */
-function setIdOf(row: CandidateRow): string {
-  return (
-    ((row.card_data as { set?: { id?: string } } | null)?.set?.id) ??
-    row.set_code
-  );
-}
-
-/** The candidate set's printed code, from the local set index. */
-function abbreviationOf(gameKey: string, row: CandidateRow): string | null {
-  if (gameKey !== "pokemon") return null;
-  const info = getSetInfo(setIdOf(row));
-  if (!info?.releaseDate || info.releaseDate < FIRST_PRINTED_SET_CODE) {
-    return null;
-  }
-  return info.abbreviation ?? null;
-}
-
-function hpOf(gameKey: string, data: unknown): number | null {
-  if (gameKey !== "pokemon" || !data || typeof data !== "object") return null;
-  const hp = (data as { hp?: unknown }).hp;
-  return typeof hp === "number" ? hp : null;
 }
 
 /**
@@ -138,7 +101,7 @@ export async function fetchCandidates(
     LIMIT ${limit}
   `);
   return result.rows.map((row) => {
-    const window = artWindowForSet(setIdOf(row));
+    const window = artWindowForRow(row);
     const i = window ? windowKeys.indexOf(artWindowKey(window)) : -1;
     // Number(null) is 0, and 0 is a PERFECT match — a card the catalog has no
     // art vector for would beat every card that does. `embedding` is NOT NULL
@@ -151,27 +114,6 @@ export async function fetchCandidates(
       art_distance: raw == null ? null : Number(raw),
     };
   });
-}
-
-/**
- * The rerank view of a candidate row. Shared between the live pipeline and the
- * eval capture script, so the two can never drift apart on what a candidate
- * looks like to the fusion.
- */
-export function buildRerankInputs(
-  rows: CandidateRow[],
-  gameKey: string,
-): RerankInput[] {
-  return rows.map((row) => ({
-    id: row.card_id,
-    distance: row.distance,
-    name: row.name,
-    collectorNumber: row.collector_number,
-    setTotal: row.set_total,
-    hp: hpOf(gameKey, row.card_data),
-    setAbbreviation: abbreviationOf(gameKey, row),
-    artDistance: row.art_distance ?? null,
-  }));
 }
 
 /** Embedding-only path for games with no identity profile: unchanged behaviour. */

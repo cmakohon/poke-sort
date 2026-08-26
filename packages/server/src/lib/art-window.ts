@@ -115,12 +115,19 @@ export function distinctArtWindows(): { key: string; window: OcrRegion }[] {
   return [...seen].map(([key, window]) => ({ key, window }));
 }
 
-/** Crop to the window, as fractions of whatever the image happens to be. */
+/**
+ * Crop to the window, as fractions of whatever the image happens to be.
+ *
+ * Straight from the source buffer: sharp decodes webp and jpeg for both
+ * `metadata()` and `extract()`, so the PNG round-trip this used to do was three
+ * decodes and two encodes per call for no result. It runs on the scan hot path
+ * — once per orientation pass — and once per card across the whole catalog
+ * during a backfill.
+ */
 export async function cropArt(buffer: Buffer, window: OcrRegion): Promise<Buffer> {
-  const png = await sharp(buffer).png().toBuffer();
-  const { width, height } = await sharp(png).metadata();
+  const { width, height } = await sharp(buffer).metadata();
   if (!width || !height) throw new Error("art crop: image has no dimensions");
-  return sharp(png)
+  return sharp(buffer)
     .extract({
       left: Math.round(window.x0 * width),
       top: Math.round(window.y0 * height),

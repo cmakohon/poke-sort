@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { gunzipSync } from "node:zlib";
 import { and, eq, isNull, sql } from "drizzle-orm";
+import { artWindowForRow } from "../identify/candidates";
 import { db } from "../../db";
 import { cardImageVectors } from "../../db/schema";
 import { incompatibilityReason } from "../embedding-identity";
@@ -12,13 +13,17 @@ const BATCH_SIZE = 250;
 
 export interface PackImportResult {
   header: PackHeader;
+  /** Cards this import added. */
   inserted: number;
+  /** Existing cards that gained an art vector they did not have. */
+  updated: number;
 }
 
 /**
  * Streams a pack into the `cards` table.
  *
- * Import is idempotent (`onConflictDoNothing` on the unique card id), so a
+ * Import is idempotent on the unique card id: new cards insert, existing
+ * ones keep their data and only gain an art vector if they lack one, so a
  * re-run after a partial import resumes rather than duplicating.
  */
 export async function importPack(
@@ -42,6 +47,7 @@ export async function importPack(
   if (reason) throw new Error(reason);
 
   let inserted = 0;
+  let updated = 0;
   for (let start = 0; start < header.count; start += BATCH_SIZE) {
     const end = Math.min(start + BATCH_SIZE, header.count);
     const rows = [];
@@ -81,14 +87,19 @@ export async function importPack(
         },
         setWhere: sql`excluded.embedding_art is not null`,
       })
-      .returning({ id: cardImageVectors.id });
+      // xmax is 0 on a row this statement inserted and non-zero on one it
+      // updated. Without it `inserted` would count art-column updates too, and
+      // a v3 -> v4 re-import into a full catalog would report ~21,700
+      // "imported" while adding no cards at all.
+      .returning({ id: cardImageVectors.id, isNew: sql<boolean>`(xmax = 0)` });
 
-    inserted += written.length;
+    inserted += written.filter((r) => r.isNew).length;
+    updated += written.length - written.filter((r) => r.isNew).length;
     onProgress?.(end, header.count);
   }
 
   invalidateFacets();
-  return { header, inserted };
+  return { header, inserted, updated };
 }
 
 /** How many cards are already embedded for a game/language. */
@@ -106,22 +117,38 @@ export async function countCards(
 }
 
 /**
- * How many of those still lack an art vector.
+ * How many cards that SHOULD carry an art vector do not.
  *
  * A catalog imported before pack v4 identifies exactly as well as it always
  * did, so nothing fails — it just never gets the art-blend accuracy, and
- * silently. Surfacing the count is what makes a re-import discoverable.
+ * silently. Surfacing the count is what makes a re-import discoverable, which
+ * only works if a fully-upgraded catalog reports zero.
+ *
+ * So it excludes the cards that are meant to have none: series with no art
+ * window (tcgp, ~2,266 rows, digital-only and dropped at candidate time
+ * anyway) and the ~29 cards with no upstream image. Counting those would pin
+ * the number near 2,300 forever and make it meaningless.
  */
 export async function countMissingArt(
   gameKey: string,
   lang: string,
 ): Promise<number> {
-  return db.$count(
-    cardImageVectors,
-    and(
-      eq(cardImageVectors.gameKey, gameKey),
-      eq(cardImageVectors.lang, lang),
-      isNull(cardImageVectors.embeddingArt),
-    ),
-  );
+  const rows = await db
+    .select({
+      setCode: cardImageVectors.setCode,
+      cardData: cardImageVectors.cardData,
+    })
+    .from(cardImageVectors)
+    .where(
+      and(
+        eq(cardImageVectors.gameKey, gameKey),
+        eq(cardImageVectors.lang, lang),
+        isNull(cardImageVectors.embeddingArt),
+      ),
+    );
+  return rows.filter(
+    (r) =>
+      artWindowForRow({ set_code: r.setCode, card_data: r.cardData }) !== null &&
+      (r.cardData as { image?: string } | null)?.image != null,
+  ).length;
 }

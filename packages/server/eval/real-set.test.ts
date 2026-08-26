@@ -24,7 +24,7 @@
 // queue is worked newest-first.
 //
 // Measured on the 1068-capture dump of 2026-08-25, at artWeight 0.25 with the
-// gate re-tuned for it: overall top1 97.2%, accept 85.0%; pl 99.4%, dp 96.7%,
+// gate re-tuned for it: overall top1 97.2%, accept 84.9%; pl 99.4%, dp 96.7%,
 // bw 99.4%, hgss 89.7%, me 100%, xy 96.4%, base 89.5%. Update these when you
 // move a floor, so the next person can see drift rather than guess at it.
 //
@@ -72,8 +72,13 @@ interface Counts {
   falseAccepts: number;
 }
 
+// The suite factory runs at collection time regardless of skipIf, so parsing
+// has to survive a missing dump rather than relying on the skip to prevent it.
+const captures: Capture[] = present
+  ? (JSON.parse(raw!) as { captures: Capture[] }).captures
+  : [];
+
 describe.skipIf(!present)("real-capture set (production rerank)", () => {
-  const { captures } = JSON.parse(raw!) as { captures: Capture[] };
 
   const overall: Counts = { n: 0, top1: 0, accepted: 0, falseAccepts: 0 };
   const byEra = new Map<string, Counts>();

@@ -15,7 +15,8 @@ import { and, isNull, sql } from "drizzle-orm";
 import { db } from "../src/db";
 import { cardImageVectors } from "../src/db/schema";
 import { migrateDatabase } from "../src/db/migrate";
-import { artWindowForSet, cropArt } from "../src/lib/art-window";
+import { cropArt } from "../src/lib/art-window";
+import { artWindowForRow } from "../src/lib/identify/candidates";
 import { vectorizeImageFromBuffer } from "../src/lib/vectorize";
 
 const CONCURRENCY = Number(process.env.VECTORIZE_CONCURRENCY ?? 4);
@@ -79,7 +80,7 @@ async function main() {
   `);
 
   // Series with no window are not failures and must not be retried forever.
-  const withWindow = rows.filter((r) => artWindowForSet(r.set_code) !== null);
+  const withWindow = rows.filter((r) => artWindowForRow(r) !== null);
   const todo = LIMIT > 0 ? withWindow.slice(0, LIMIT) : withWindow;
   console.log(
     `${rows.length} rows missing an art vector, ${withWindow.length} with a window ` +
@@ -117,7 +118,7 @@ async function main() {
     Array.from({ length: Math.min(CONCURRENCY, todo.length) }, async () => {
       for (let i = next++; i < todo.length; i = next++) {
         const row = todo[i];
-        const window = artWindowForSet(row.set_code);
+        const window = artWindowForRow(row);
         const image = row.card_data?.image;
         // No image URL upstream, so there is nothing to crop — distinct from a
         // fetch that failed, and counted separately so a run that can never

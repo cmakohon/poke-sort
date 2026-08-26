@@ -152,7 +152,7 @@ export function startPackImport(
         state = { ...state, phase: "importing" };
       }
 
-      const { header, inserted } = await importPack(
+      const { header, inserted, updated } = await importPack(
         isLocal ? url : target,
         (done, total) => {
           state = { ...state, imported: done, cards: total };
@@ -165,8 +165,9 @@ export function startPackImport(
         imported: inserted,
         cards: header.count,
         message:
-          `Imported ${inserted} of ${header.count} cards ` +
-          `(${header.gameKey}/${header.lang}, built ${header.createdAt.slice(0, 10)}).`,
+          `Imported ${inserted} of ${header.count} cards` +
+          (updated > 0 ? `, and gave ${updated} existing cards an art vector` : "") +
+          ` (${header.gameKey}/${header.lang}, built ${header.createdAt.slice(0, 10)}).`,
       };
 
       if (!isLocal) await rm(target, { force: true });

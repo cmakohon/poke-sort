@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildRerankInputs } from "../src/lib/identify";
+import { buildRerankInputs } from "../src/lib/identify/candidates";
 import { POKEMON_PROFILE } from "../src/lib/identify/profiles";
 import {
   collectorNumberMatch,

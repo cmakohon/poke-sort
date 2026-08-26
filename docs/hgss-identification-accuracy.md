@@ -11,7 +11,7 @@ and the recommendation the rest of this document builds to — **shipped on
 2026-08-25**.
 
 **hgss top-1 74.2% → 89.7%, review rate 70.1% → 53.6%**, with overall top-1
-95.6% → 97.2% and accept 81.8% → 85.0% at zero false accepts. See "What
+95.6% → 97.2% and accept 81.8% → 84.9% at zero false accepts. See "What
 shipped: the art blend" below for the cost, which is real and is `dp`.
 
 ---
@@ -347,10 +347,9 @@ decision. Most of `238c2f6` is fixing it.
    ~200 captures / ~150 distinct roughly doubles the power of every future
    decision — and would now also settle whether 89.7% is the real number or an
    artefact of 97 captures.
-3. **Buy the latency back.** Two captures of 149 now exceed the 2 s budget.
-   Batching the whole-card and art views through SigLIP as one forward pass is
-   the obvious fix and has never been tried; `vectorizeBuffer` handles exactly
-   one image per call.
+3. **Batch the two views through SigLIP in one pass.** No longer urgent — no
+   capture exceeds the 2 s budget — but p50 is still ~240 ms up and
+   `vectorizeBuffer` handles exactly one image per call.
 4. **Revisit the window table when a series earns it.** Every series shares one
    geometry today. The contact sheets (`eval/art-windows.ts`) show it landing on
    the art everywhere it was checked, with full-art cards the known exception —
@@ -378,7 +377,7 @@ signal at `artWeight 0.25` before the ramp.
 | | overall top-1 | overall accept | hgss top-1 | hgss review | FALSE |
 |---|---|---|---|---|---|
 | before | 95.6% | 81.8% | 74.2% | 70.1% | 0 |
-| after | **97.2%** | **85.0%** | **89.7%** | **53.6%** | 0 |
+| after | **97.2%** | **84.9%** | **89.7%** | **53.6%** | 0 |
 
 Per era, top-1: pl 98.6 → 99.4, bw 98.8 → 99.4, me 86.4 → 100.0, ex 71.4 →
 85.7, xy/base/pop/neo unchanged. **dp 98.6 → 96.7 is the one loss.**
@@ -409,8 +408,17 @@ accepts: `xy0-36 → bw10-83`, and `ex13-54 → bw7-98` — already on record ab
 one of the two false accepts that killed the taller escalation band.
 
 `minMargin 0.05 → 0.06` is what holds the line; `minScore 0.5 → 0.4`,
-`name 0.1 → 0.15`, `setTotal 0.02 → 0.05`. Fixed-config held-out estimate at the
-shipped gate: **0/21360**. The cliff is one notch below.
+`name 0.1 → 0.15`. Fixed-config held-out estimate at the shipped gate:
+**0/21360**. The cliff is one notch below.
+
+`setTotal` stays at **0.02**, overruling the tuner, which picks 0.05. The
+weight's whole safety argument is that `w/(embedding + w)` — the most a bare
+denominator can shift a fused score when nothing else is informative — sits
+under `minMargin`. At 0.02 that is 0.038 against a 0.06 margin; at 0.05 it is
+0.091, and the denominator alone could carry a card across the gate. The tuner
+maximises accepts subject to zero false accepts on this set and cannot see an
+invariant. It costs one capture: identical top-1 and per-era figures, accept
+84.9% against 85.0%.
 
 `artWeight 0.25` rather than the 0.5 that scored a hair higher: the gain is flat
 from 0.25 up (97.2 / 97.0 / 97.2 at .25 / .35 / .5) while false accepts at the
@@ -419,11 +427,13 @@ clamps to zero goes 1.5% / 2.1% / 3.5%. Same accuracy, less scale distortion.
 
 ### What it cost
 
-- **Latency.** p50 954 → 1206 ms, p95 1469 → 1720 ms, max 1946 → 2667 ms.
-  p95 stays inside the 2 s budget but **two captures of 149 now cross it where
-  none did**. The art forward pass is ~250 ms, not the ~170 ms estimated above —
-  that figure predated knowing the model runs at 512px. Batching both views
-  through SigLIP in one pass is the unexplored fix.
+- **Latency.** p50 954 → 1196 ms, p95 1469 → 1595 ms, max 1946 → 1821 ms, and
+  **no capture of 149 exceeds the 2 s budget**. An earlier cut of this work
+  measured p95 1720 ms with 2 of 149 over budget; `cropArt` was re-encoding the
+  source to PNG and decoding it three times per call, which code review caught.
+  Removing that is pixel-identical — verified byte-for-byte, so the stored
+  vectors stay valid — and took the max below the whole-card baseline's own.
+  Batching both views through SigLIP in one pass remains unexplored.
 - **Pack size.** 66 MB → **121.5 MB** gzipped (170.0 MB raw), for 19,419 art
   vectors across 21,714 cards. Published as `catalog-v4`; `PACK_VERSION` 4 makes
   `decodePack` refuse a v3 pack outright.

@@ -245,6 +245,12 @@ export function setAbbreviationMatch(
  * its rivals being other pl4 cards. The trade is worth it (net +1 accept,
  * zero false accepts, and the card it costs is held rather than mis-sorted)
  * but it is why the weight is 0.02 and not something that would matter.
+ *
+ * 0.02 is also the largest value that keeps this signal unable to carry a card
+ * across the gate on its own: `w / (embedding + w)` is the most it can shift a
+ * fused score when nothing else is informative, 0.038 here against a minMargin
+ * of 0.06. See the weight in profiles.ts, where eval:tune's preference for
+ * 0.05 — which breaks that bound — is overruled.
  */
 export function setTotalMatch(ocr: OcrReading, candidate: RerankInput): number {
   if (ocr.setTotal == null || candidate.setTotal == null) return 0;
