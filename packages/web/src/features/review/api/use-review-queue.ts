@@ -21,6 +21,7 @@ import {
   getReviewStats,
   submitVerdict,
   type ReviewQueueStatus,
+  type ReviewQueueTier,
 } from "./review";
 
 export function captureImageUrl(capturePath: string | null): string | null {
@@ -33,21 +34,32 @@ const detailQueryOptions = (guid: string) => ({
   staleTime: 5 * 60_000,
 });
 
-export function useReviewQueue(status: ReviewQueueStatus) {
+export function useReviewQueue(
+  status: ReviewQueueStatus,
+  tier: ReviewQueueTier,
+) {
   const query = useInfiniteQuery({
-    queryKey: ["review-queue", status],
+    queryKey: ["review-queue", status, tier],
     queryFn: ({ pageParam }) =>
-      getReviewQueue(status, pageParam).then((r) => {
+      getReviewQueue(status, tier, pageParam).then((r) => {
         if (!r.data) throw new Error("Empty queue response");
         return r.data;
       }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.nextCursor ?? undefined,
-    // A sort keeps running while the operator reviews, so cards land in this
-    // queue behind their back. Polling on the same cadence as the stats rather
-    // than invalidating per scan: PGlite runs on the main thread, and
-    // refetching every loaded page on each card would compete with the run.
-    refetchInterval: 30_000,
+    // Deliberately NOT polled, and not refetched on focus.
+    //
+    // The screen holds a position in the flattened page list, and a background
+    // refetch re-runs every loaded page: under the default unreviewed filter
+    // the cards just reviewed drop out of the response, the array shrinks, and
+    // that position silently lands on a different card — which read, from the
+    // operator's side, as the screen advancing on its own while they were
+    // looking at it. So the list changes only when they cause it to: paging
+    // ahead (which appends), the refresh button, or a filter toggle.
+    //
+    // New scans still get noticed — useReviewStats below keeps polling, and
+    // the screen turns a rising count into a refresh badge rather than a jump.
+    refetchOnWindowFocus: false,
   });
 
   const items = useMemo(
@@ -137,17 +149,19 @@ export function useSubmitVerdict() {
             }
           : item;
       for (const status of ["unreviewed", "reviewed", "all"] as const) {
-        queryClient.setQueryData<InfiniteData<ReviewQueuePage>>(
-          ["review-queue", status],
-          (data) =>
-            data && {
-              ...data,
-              pages: data.pages.map((page) => ({
-                ...page,
-                items: page.items.map(patch),
-              })),
-            },
-        );
+        for (const tier of ["flagged", "all"] as const) {
+          queryClient.setQueryData<InfiniteData<ReviewQueuePage>>(
+            ["review-queue", status, tier],
+            (data) =>
+              data && {
+                ...data,
+                pages: data.pages.map((page) => ({
+                  ...page,
+                  items: page.items.map(patch),
+                })),
+              },
+          );
+        }
       }
       void queryClient.invalidateQueries({ queryKey: ["review-stats"] });
       void queryClient.invalidateQueries({ queryKey: ["review-detail", guid] });

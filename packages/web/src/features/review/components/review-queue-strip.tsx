@@ -18,6 +18,10 @@ interface ReviewQueueStripProps {
   hasMore: boolean;
   showReviewed: boolean;
   onToggleReviewed: () => void;
+  includeAccepted: boolean;
+  onToggleAccepted: () => void;
+  /** Scans that have landed since the queue was last pulled. */
+  newSinceRefresh: number;
   onRefresh: () => void;
   onToggleHelp: () => void;
   onPrev: () => void;
@@ -34,6 +38,9 @@ export function ReviewQueueStrip({
   hasMore,
   showReviewed,
   onToggleReviewed,
+  includeAccepted,
+  onToggleAccepted,
+  newSinceRefresh,
   onRefresh,
   onToggleHelp,
   onPrev,
@@ -42,10 +49,13 @@ export function ReviewQueueStrip({
   canNext,
 }: ReviewQueueStripProps) {
   const { t } = useTranslation("review");
+  // Count what this queue would actually hand back, accepts included only when
+  // the operator asked for them — a badge advertising work the filter hides is
+  // a badge that never reaches zero.
   const unreviewedTotal = stats
-    ? stats.unreviewed.accept +
-      stats.unreviewed.review +
-      stats.unreviewed["no-match"]
+    ? stats.unreviewed.review +
+      stats.unreviewed["no-match"] +
+      (includeAccepted ? stats.unreviewed.accept : 0)
     : null;
 
   return (
@@ -119,14 +129,27 @@ export function ReviewQueueStrip({
         {t("queue.showReviewed")}
         <kbd className="px-1 rounded border text-[10px]">R</kbd>
       </Label>
+      <Label className="flex items-center gap-2 text-xs font-normal text-muted-foreground">
+        <Switch checked={includeAccepted} onCheckedChange={onToggleAccepted} />
+        {t("queue.includeAccepted")}
+        <kbd className="px-1 rounded border text-[10px]">A</kbd>
+      </Label>
+      {/* The queue is not polled, so this is how a sort running behind the
+          operator announces itself — a count they can act on, not a list that
+          reshuffles under them. */}
       <Button
-        size="icon"
-        variant="ghost"
-        className="size-7"
+        size={newSinceRefresh > 0 ? "sm" : "icon"}
+        variant={newSinceRefresh > 0 ? "secondary" : "ghost"}
+        className={newSinceRefresh > 0 ? "h-7 gap-1.5" : "size-7"}
         onClick={onRefresh}
         aria-label={t("queue.refresh")}
       >
         <IconRefresh className="size-4" />
+        {newSinceRefresh > 0 && (
+          <span className="text-xs tabular-nums">
+            {t("queue.newSinceRefresh", { count: newSinceRefresh })}
+          </span>
+        )}
       </Button>
       <Button
         size="icon"

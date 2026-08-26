@@ -36,6 +36,22 @@ export async function searchCards(
   return apiGet<Result<CardSearchPage>>(`/api/cards/search?${params}`);
 }
 
+/**
+ * The same query against the game's live API, for the printings the local
+ * catalog never imported (the sync drops every card upstream has no image
+ * for). Explicit, because it costs one upstream fetch per hit — the picker
+ * offers it only once the local search has come back empty.
+ */
+export async function searchCardsOnline(
+  query: string,
+  options: { collectionGuid?: string; gameKey?: string } = {},
+): Promise<Result<PlayingCard[]>> {
+  const params = new URLSearchParams({ q: query });
+  if (options.collectionGuid) params.set("collectionGuid", options.collectionGuid);
+  if (options.gameKey) params.set("gameKey", options.gameKey);
+  return apiGet<Result<PlayingCard[]>>(`/api/cards/search/online?${params}`);
+}
+
 export async function getCardById(
   id: string,
   collectionGuid?: string,

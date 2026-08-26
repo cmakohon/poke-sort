@@ -1,5 +1,5 @@
 import type { CardPricing, PlayingCard, Result } from "@poke-sort/shared";
-import { resolveMarketPrice } from "@poke-sort/shared";
+import { QUERY_MIN_LENGTH, resolveMarketPrice } from "@poke-sort/shared";
 import type { CardSearchAdapter } from "../card-search/types";
 import { getSetInfo, releaseYear } from "../set-index";
 
@@ -198,7 +198,63 @@ export async function SearchById(
   };
 }
 
+/**
+ * Cap on how many brief search hits get enriched with a full detail fetch.
+ * TCGdex's list endpoint only returns {id, localId, name, image} — the picker
+ * needs set/rarity/collector number too, so each result costs its own
+ * /cards/:id call. This runs once per explicit click, never per keystroke.
+ */
+const MAX_ENRICHED_RESULTS = 30;
+
+/**
+ * Name search against the live API, for the cards the local catalog does not
+ * have. The sync skips every card TCGdex has no image for — all the trainer
+ * kits, the McDonald's sets, a long tail of promos — and those are exactly the
+ * ones a reviewer cannot find and so cannot correct to. This reaches them; the
+ * verdict endpoint already validates a corrected id against this same API, so
+ * a card found only here still saves.
+ */
+export async function SearchByName(
+  query: string,
+  baseUrl: string = POKEMON_DEFAULT_URL,
+): Promise<Result<PlayingCard[]>> {
+  if (query.trim().length < QUERY_MIN_LENGTH) {
+    return {
+      success: false,
+      message: `Your query must be at least ${QUERY_MIN_LENGTH} characters.`,
+    };
+  }
+
+  const url = `${baseUrl}?name=${encodeURIComponent(query.trim())}&pagination:itemsPerPage=${MAX_ENRICHED_RESULTS}`;
+  const response = await fetch(url, {
+    headers: POKEMON_HEADERS,
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+  if (!response.ok) {
+    return {
+      success: false,
+      message: "Failed to fetch from the TCGdex Pokémon API.",
+    };
+  }
+
+  const briefs = (await response.json()) as PokemonCardBrief[];
+  const details = await Promise.all(
+    briefs
+      .slice(0, MAX_ENRICHED_RESULTS)
+      .map((brief) => fetchDetail(brief.id, baseUrl)),
+  );
+
+  return {
+    success: true,
+    message: "Cards successfully retrieved.",
+    data: details
+      .filter((d): d is PokemonCardDetail => d !== null)
+      .map((card) => normalizePokemonCard(card)),
+  };
+}
+
 export const pokemonAdapter: CardSearchAdapter = {
   defaultUrl: POKEMON_DEFAULT_URL,
   searchById: SearchById,
+  searchByName: SearchByName,
 };

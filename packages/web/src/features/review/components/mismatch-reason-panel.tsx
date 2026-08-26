@@ -1,8 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { PendingVerdict } from "@/features/review/lib/review-machine";
+import {
+  REASONS_BY_KIND,
+  type PendingVerdict,
+} from "@/features/review/lib/review-machine";
 import { cn } from "@/lib/utils";
-import { MISMATCH_REASONS, type MismatchReason } from "@poke-sort/shared";
+import type { MismatchReason } from "@poke-sort/shared";
 import { IconCheck } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
 
@@ -18,6 +21,8 @@ interface MismatchReasonPanelProps {
 
 /**
  * Multi-select mismatch reasons, keyed 1–9 (toggle), with an optional note.
+ * Only the reasons that can apply to what is being recorded are shown — see
+ * REASONS_BY_KIND.
  * Rendered as a plain overlay (not a base-ui Dialog) so the screen's own
  * keydown listener keeps handling the number keys without fighting a focus
  * trap.
@@ -53,7 +58,7 @@ export function MismatchReasonPanel({
           )}
         </div>
         <div className="flex flex-col gap-1">
-          {MISMATCH_REASONS.map((reason, i) => {
+          {REASONS_BY_KIND[pending.kind].map((reason, i) => {
             const selected = pending.reasons.includes(reason);
             return (
               <button
@@ -78,7 +83,7 @@ export function MismatchReasonPanel({
                       : "border-border text-muted-foreground",
                   )}
                 >
-                  {i === 9 ? "0" : i + 1}
+                  {i + 1}
                 </kbd>
                 <span className="flex-1">{t(`reasons.${reason}`)}</span>
                 {selected && <IconCheck className="size-4 shrink-0" />}

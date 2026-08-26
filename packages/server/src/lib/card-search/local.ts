@@ -3,6 +3,7 @@ import { sql, type SQL } from "drizzle-orm";
 import { db } from "../../db";
 import { hydrateCatalogCard, type CatalogCardRow } from "../catalog-card";
 import { getSetInfo } from "../set-index";
+import { parseSearchQuery, type ParsedSearchQuery } from "./query";
 
 /**
  * Correction search, against the local catalog.
@@ -16,9 +17,15 @@ import { getSetInfo } from "../set-index";
  * possibly have scanned, with the full upstream object in `card_data`. Reading
  * it here means the whole catalog is reachable, results are ranked, there is no
  * per-keystroke fan-out of 30 detail fetches, and correcting a card works with
- * the network down. The cost is that a set released since the last catalog sync
- * is not searchable — but neither is it identifiable, so it could not have been
- * mis-scanned in the first place.
+ * the network down.
+ *
+ * It matches on name and on collector number (see ./query.ts) — a reviewer
+ * holding a card can type either what it is called or what is printed on it.
+ *
+ * What it cannot reach is a printing the catalog never imported: the sync skips
+ * every card upstream has no image for, which is a real and sizeable set. That
+ * is what the adapter's searchByName fallback is for, offered from the picker
+ * once this search comes back empty.
  */
 
 /** Enough to fill the picker's grid without an immediate second page. */
@@ -90,45 +97,85 @@ function pageBounds(options: CardSearchOptions) {
   return { limit, page, offset: (page - 1) * limit };
 }
 
-export async function searchLocalCatalog(
-  options: CardSearchOptions,
-): Promise<CardSearchPage> {
-  const query = options.query.trim();
-  const { limit, page, offset } = pageBounds(options);
-  if (query.length < QUERY_MIN_LENGTH) {
-    return { cards: [], total: 0, page, limit, sets: [] };
-  }
+/** The columns and filters every shape of this search shares. */
+function baseWhere(options: CardSearchOptions) {
+  return sql`game_key = ${options.gameKey}
+      AND lang = ${options.lang}
+      ${options.setCode ? sql`AND set_code = ${options.setCode}` : sql``}`;
+}
 
+interface SearchShape {
+  where: SQL;
+  orderBy: SQL;
+}
+
+function nameShape(options: CardSearchOptions, query: string): SearchShape {
   const name = folded(sql`name`);
   const needle = folded(sql`${query}`);
-  // A query that folds away to nothing — pure punctuation, or a script the
-  // folding does not keep, like katakana against a Japanese catalog — would
-  // otherwise leave LIKE '%' || '' || '%', matching every row for the game.
-  // Tested on the folded value rather than the raw one: a JS-side check would
-  // have to reimplement the folding to agree with it, and the two would drift.
-  const where = sql`game_key = ${options.gameKey}
-      AND lang = ${options.lang}
+  return {
+    // A query that folds away to nothing — pure punctuation, or a script the
+    // folding does not keep, like katakana against a Japanese catalog — would
+    // otherwise leave LIKE '%' || '' || '%', matching every row for the game.
+    // Tested on the folded value rather than the raw one: a JS-side check would
+    // have to reimplement the folding to agree with it, and the two would drift.
+    where: sql`${baseWhere(options)}
       AND ${needle} <> ''
-      AND ${name} LIKE '%' || ${needle} || '%'
-      ${options.setCode ? sql`AND set_code = ${options.setCode}` : sql``}`;
+      AND ${name} LIKE '%' || ${needle} || '%'`,
+    // Relevance, since the table has no notion of it: an exact name first,
+    // then names that start with the query, then the shortest — which puts
+    // "Charizard" above "Charizard ex" and "Dark Charizard". Set and number
+    // only break the remaining ties, so a card's printings stay together.
+    // Ranked on the folded forms too, so typing "Poke Ball" still ranks
+    // "Poké Ball" as the exact match it is.
+    orderBy: sql`(${name} = ${needle}) DESC,
+               (${name} LIKE ${needle} || '%') DESC,
+               length(name),
+               name,
+               set_code,
+               collector_number`,
+  };
+}
 
+/**
+ * A collector number, optionally narrowed by a name and a set total.
+ *
+ * Deliberately a separate shape rather than an OR against the name condition:
+ * an OR spanning cards_name_search_idx and cards_collector_number_idx drops the
+ * planner onto a sequential scan of the whole catalog, and PGlite runs on the
+ * main thread and cannot cancel — that is a stall mid-sort, not a slow search.
+ */
+function numberShape(
+  options: CardSearchOptions,
+  parsed: ParsedSearchQuery,
+): SearchShape {
+  const name = folded(sql`name`);
+  const needle = folded(sql`${parsed.name}`);
+  const hasName = parsed.name.length >= QUERY_MIN_LENGTH;
+  return {
+    where: sql`${baseWhere(options)}
+      AND collector_number IN (${sql.join(
+        parsed.numbers.map((n) => sql`${n}`),
+        sql`, `,
+      )})
+      ${parsed.setTotal != null ? sql`AND set_total = ${parsed.setTotal}` : sql``}
+      ${hasName ? sql`AND ${name} LIKE '%' || ${needle} || '%'` : sql``}`,
+    orderBy: sql`name, set_code, collector_number`,
+  };
+}
+
+async function runSearch(
+  options: CardSearchOptions,
+  shape: SearchShape,
+  bounds: { limit: number; page: number; offset: number },
+): Promise<CardSearchPage> {
+  const { where, orderBy } = shape;
+  const { limit, page, offset } = bounds;
   const [rows, counts, sets] = await Promise.all([
     db.execute<CatalogCardRow>(sql`
       SELECT card_id, name, collector_number, set_code, card_data
       FROM cards
       WHERE ${where}
-      -- Relevance, since the table has no notion of it: an exact name first,
-      -- then names that start with the query, then the shortest — which puts
-      -- "Charizard" above "Charizard ex" and "Dark Charizard". Set and number
-      -- only break the remaining ties, so a card's printings stay together.
-      -- Ranked on the folded forms too, so typing "Poke Ball" still ranks
-      -- "Poké Ball" as the exact match it is.
-      ORDER BY (${name} = ${needle}) DESC,
-               (${name} LIKE ${needle} || '%') DESC,
-               length(name),
-               name,
-               set_code,
-               collector_number
+      ORDER BY ${orderBy}
       LIMIT ${limit} OFFSET ${offset}
     `),
     db.execute<{ total: number }>(sql`
@@ -157,4 +204,29 @@ export async function searchLocalCatalog(
       count: row.count,
     })),
   };
+}
+
+export async function searchLocalCatalog(
+  options: CardSearchOptions,
+): Promise<CardSearchPage> {
+  const query = options.query.trim();
+  const bounds = pageBounds(options);
+  if (query.length < QUERY_MIN_LENGTH) {
+    return { cards: [], total: 0, page: bounds.page, limit: bounds.limit, sets: [] };
+  }
+
+  const parsed = parseSearchQuery(query);
+  if (parsed.numbers.length > 0) {
+    const byNumber = await runSearch(options, numberShape(options, parsed), bounds);
+    // Only a hit counts. A name that merely looks like a collector number —
+    // or a number this catalog spells some way the variants do not cover —
+    // must not come out worse than it did when every query was a name.
+    if (byNumber.total > 0) return byNumber;
+  }
+
+  // Falling back on the words rather than the whole string: "charizard 5" with
+  // no card 5 should still show the Charizards, not nothing.
+  const asName =
+    parsed.name.length >= QUERY_MIN_LENGTH ? parsed.name : query;
+  return runSearch(options, nameShape(options, asName), bounds);
 }

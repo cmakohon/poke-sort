@@ -13,7 +13,7 @@ import type {
   ReviewVerdict,
 } from "@poke-sort/shared";
 import { MISMATCH_REASONS } from "@poke-sort/shared";
-import { and, asc, count, eq, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, asc, count, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import { db } from "../db";
@@ -39,6 +39,13 @@ const router = new Hono<AppEnv>();
 
 /** Worst-first: uncertain scans are where review effort pays most. */
 const tierRank = sql<number>`case ${scanEvents.tier} when 'review' then 0 when 'no-match' then 1 else 2 end`;
+
+/**
+ * The tiers the pipeline could not settle on its own — what "flagged for
+ * review" means. Accepts are only worth walking when spot-checking the
+ * identifier, so the queue defaults to these and the screen offers a toggle.
+ */
+const FLAGGED_TIERS = ["review", "no-match"];
 
 export interface ReviewCursor {
   rank: number;
@@ -104,12 +111,16 @@ function storedCandidates(row: { candidates: unknown }): StoredCandidate[] {
 /** The predicted card plus the five alternates the 1–5 hotkeys map to. */
 const DETAIL_CANDIDATES = 6;
 
-// GET /api/review/queue?status=unreviewed|reviewed|all&limit=&cursor=
+// GET /api/review/queue?status=unreviewed|reviewed|all&tier=flagged|all&limit=&cursor=
 router.get("/queue", requireAuth, requireOrg, async (c) => {
   const orgId = c.get("orgId");
   const status = c.req.query("status") ?? "unreviewed";
   if (!["unreviewed", "reviewed", "all"].includes(status)) {
     return c.json({ success: false, message: "Invalid status filter." }, 400);
+  }
+  const tier = c.req.query("tier") ?? "flagged";
+  if (!["flagged", "all"].includes(tier)) {
+    return c.json({ success: false, message: "Invalid tier filter." }, 400);
   }
   const limit = Math.min(Math.max(Number(c.req.query("limit")) || 50, 1), 100);
   const cursorRaw = c.req.query("cursor");
@@ -122,6 +133,7 @@ router.get("/queue", requireAuth, requireOrg, async (c) => {
     eq(scanEvents.orgId, orgId),
     status === "unreviewed" ? isNull(scanEvents.reviewedAt) : undefined,
     status === "reviewed" ? isNotNull(scanEvents.reviewedAt) : undefined,
+    tier === "flagged" ? inArray(scanEvents.tier, FLAGGED_TIERS) : undefined,
     cursor
       ? sql`(${tierRank}, ${scanEvents.createdAt}, ${scanEvents.id}) > (${cursor.rank}, ${cursor.createdAt}::timestamptz, ${cursor.id})`
       : undefined,

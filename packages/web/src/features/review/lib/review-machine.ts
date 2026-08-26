@@ -38,6 +38,44 @@ export const INITIAL_REVIEW_STATE: ReviewMachineState = {
   pending: null,
 };
 
+/**
+ * Which reasons the panel offers for what is being recorded.
+ *
+ * MISMATCH_REASONS is the validation set, not a menu: showing all of it made
+ * the operator read past reasons that cannot apply ("wrong card entirely" on a
+ * scan nobody could identify), and once it grew past ten it stopped fitting
+ * the digits. Every list here is at most nine long, so the panel is always
+ * keyed 1-9 with no wrap-around.
+ */
+export const REASONS_BY_KIND: Record<
+  PendingVerdict["kind"],
+  readonly MismatchReason[]
+> = {
+  corrected: [
+    "wrong-card",
+    "same-pokemon-different-card",
+    "same-art-different-set",
+    "same-card-wrong-type",
+    "ocr-misread",
+    "image-quality",
+    "upside-down",
+    "other",
+  ],
+  // What "I looked and still cannot say" breaks down into. The catalog gap
+  // leads, because it is the one with a fix on our side.
+  unresolvable: [
+    "card-not-in-catalog",
+    "not-a-card",
+    "image-quality",
+    "upside-down",
+    "other",
+  ],
+  // The identity is right and the printing is not. A league stamp or a
+  // promo edition frequently has no catalog row of its own, which is why
+  // card-not-in-catalog belongs here too.
+  variant: ["wrong-variant", "card-not-in-catalog", "other"],
+};
+
 export type ReviewMachineEvent =
   | { type: "CONFIRM_CORRECT" }
   | { type: "PICK_CANDIDATE"; cardId: string; cardName?: string }
@@ -45,6 +83,7 @@ export type ReviewMachineEvent =
   | { type: "SEARCH_SELECT"; cardId: string; cardName?: string }
   | { type: "MARK_UNRESOLVABLE" }
   | { type: "MARK_WRONG_VARIANT" }
+  | { type: "MARK_CARD_NOT_LISTED" }
   | { type: "TOGGLE_REASON"; reason: MismatchReason }
   | { type: "SUBMIT" }
   | { type: "CANCEL" };
@@ -96,6 +135,20 @@ export function transition(
             state: {
               phase: "reason",
               pending: { kind: "unresolvable", reasons: [] },
+            },
+          };
+        case "MARK_CARD_NOT_LISTED":
+          // The printing is real and the catalog has no row for it, so there
+          // is nothing to correct to — it saves as unresolvable carrying the
+          // reason. One key away from the focus screen because it is the
+          // single most common thing a reviewer cannot otherwise record.
+          return {
+            state: {
+              phase: "reason",
+              pending: {
+                kind: "unresolvable",
+                reasons: ["card-not-in-catalog"],
+              },
             },
           };
         case "MARK_WRONG_VARIANT":

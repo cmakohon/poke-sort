@@ -12,7 +12,10 @@ import type { PlayingCard, PlayingCardWithDistance } from "./card.interface";
  * at the flip-retry logic, "ocr-misread" at the collector-number matcher.
  * Free text goes in the note, not here — the enum exists to aggregate.
  *
- * Order matters: the review screen maps these onto hotkeys 1–9, then 0.
+ * This is the validation set, not a menu: the review screen shows the subset
+ * that applies to the verdict being recorded (REASONS_BY_KIND in the web
+ * package) and numbers whatever it shows, so the order here is no longer
+ * load-bearing.
  */
 export const MISMATCH_REASONS = [
   "wrong-card", // wrong pokemon entirely
@@ -26,6 +29,11 @@ export const MISMATCH_REASONS = [
   "ocr-misread", // name/collector-number read wrong
   "image-quality", // blur / glare / off-center
   "not-a-card", // empty frame, sleeve, junk
+  // The printing exists, but the local catalog has no row for it to be
+  // corrected to — the sync skips every card TCGdex has no image for, which
+  // is all of the trainer kits, the McDonald's sets and a long tail of promos.
+  // Counting these is what says which sets are worth adding.
+  "card-not-in-catalog",
   "other",
 ] as const;
 export type MismatchReason = (typeof MISMATCH_REASONS)[number];

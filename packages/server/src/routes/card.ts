@@ -169,6 +169,35 @@ router.get("/search", requireAuth, async (c) => {
   return c.json({ success: true, message: "Cards retrieved.", data: page });
 });
 
+/**
+ * The explicit fallback when the local catalog comes back empty: search the
+ * game's live API instead. Registered before /search/:id so "online" is not
+ * read as a card id.
+ *
+ * Not a replacement for /search — it costs one upstream detail fetch per hit,
+ * so it is wired to a button the reviewer presses, never to typing.
+ */
+router.get("/search/online", requireAuth, async (c) => {
+  const resolved = await resolveSearchContext(c);
+  if (!resolved) {
+    return c.json(
+      { success: false, message: "No game configured for this collection." },
+      400,
+    );
+  }
+  if (!resolved.adapter.searchByName) {
+    return c.json(
+      { success: false, message: "This game has no online card search." },
+      404,
+    );
+  }
+  const result = await resolved.adapter.searchByName(
+    c.req.query("q") ?? "",
+    resolved.baseUrl,
+  );
+  return c.json(result);
+});
+
 router.get("/search/:id", requireAuth, async (c) => {
   const resolved = await resolveSearchContext(c);
   if (!resolved) {
