@@ -10,12 +10,13 @@ import {
 } from "@/components/ui/select";
 import {
   searchCards,
+  searchCardsOnline,
   type CardSearchSetFacet,
 } from "@/features/cards/api/card-search";
 import { formatCardNumber } from "@/features/cards/lib/format-card-number";
 import { QUERY_MIN_LENGTH, type PlayingCard } from "@poke-sort/shared";
-import { IconLoader2, IconSearch } from "@tabler/icons-react";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { IconLoader2, IconSearch, IconWorldSearch } from "@tabler/icons-react";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -40,6 +41,13 @@ interface CardSearchPickerProps {
  * than what came back. The previous version showed the first 30 hits of an
  * upstream query and filtered those client-side, so a common Pokemon's right
  * printing was frequently unreachable with nothing on screen to say so.
+ *
+ * The local catalog is not complete, though — the sync drops every card TCGdex
+ * has no image for, which is all the trainer kits, the McDonald's sets and a
+ * long tail of promos. So there is a second, explicit search against the live
+ * API for when the printing in the operator's hand is simply not in the table.
+ * It is a button rather than a fallback that fires on its own: each hit there
+ * costs an upstream detail fetch.
  */
 export function CardSearchPicker({
   onSelect,
@@ -54,6 +62,10 @@ export function CardSearchPicker({
   const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
   const [selectedSet, setSelectedSet] = useState("all");
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  // The query the operator explicitly asked to run online, so the button
+  // reappears the moment they type something else.
+  const [onlineFor, setOnlineFor] = useState<string | null>(null);
 
   const isQueryReady = debouncedQuery.trim().length >= QUERY_MIN_LENGTH;
 
@@ -85,9 +97,24 @@ export function CardSearchPicker({
     staleTime: 60_000,
   });
 
+  const online = useQuery({
+    queryKey: ["card-search-online", onlineFor, collectionGuid, gameKey],
+    queryFn: () =>
+      searchCardsOnline(onlineFor ?? "", { collectionGuid, gameKey }).then(
+        (r) => {
+          if (!r.success || !r.data) throw new Error(r.message);
+          return r.data;
+        },
+      ),
+    enabled: !!onlineFor,
+    staleTime: 60_000,
+    retry: false,
+  });
+
   const handleInputChange = (value: string) => {
     setQuery(value);
     setSelectedSet("all");
+    setOnlineFor(null);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => setDebouncedQuery(value), 300);
   };
@@ -193,31 +220,7 @@ export function CardSearchPicker({
             </p>
           )}
         {results.length > 0 && (!loading || isFetchingNextPage) && (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-1.5">
-            {results.map((card) => (
-              <Button
-                key={card.id}
-                variant="ghost"
-                className="relative w-full h-auto aspect-[2.5/3.5] p-0 rounded overflow-hidden group"
-                onClick={() => onSelect(card)}
-              >
-                {card.image?.small ? (
-                  <img
-                    src={card.image.small}
-                    alt={card.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-10 h-14 bg-muted rounded shrink-0" />
-                )}
-                <div className="absolute bottom-0 inset-x-0 bg-black/70 text-white text-[10px] leading-tight px-1 py-0.5 text-center truncate">
-                  {[card.setName || card.set.toUpperCase(), formatCardNumber(card)]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </div>
-              </Button>
-            ))}
-          </div>
+          <CardGrid cards={results} onSelect={onSelect} />
         )}
         {/* The count is the whole match, not the page. Without it there is no
             way to tell "that is every printing" from "that is the first 60". */}
@@ -244,7 +247,91 @@ export function CardSearchPicker({
             )}
           </div>
         )}
+        {/* Offered whether or not the local search found something: "none of
+            these is the card in my hand" is the same dead end as "no results",
+            and both are what the missing rows look like from here. */}
+        {isQueryReady && !loading && onlineFor !== debouncedQuery && (
+          <div className="flex justify-center pb-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setOnlineFor(debouncedQuery)}
+            >
+              <IconWorldSearch className="size-3.5" />
+              {t("cardDetailPanel.searchOnline")}
+            </Button>
+          </div>
+        )}
+        {onlineFor === debouncedQuery && (
+          <div className="border-t pt-2 flex flex-col gap-2">
+            <p className="text-xs text-muted-foreground px-1">
+              {t("cardDetailPanel.onlineResults")}
+            </p>
+            {online.isFetching && (
+              <div className="flex items-center justify-center py-6">
+                <IconLoader2 className="size-5 animate-spin text-muted-foreground" />
+              </div>
+            )}
+            {!online.isFetching && online.isError && (
+              <p className="text-center text-sm text-destructive py-6">
+                {t("cardDetailPanel.onlineFailed")}
+              </p>
+            )}
+            {!online.isFetching && online.data?.length === 0 && (
+              <p className="text-center text-sm text-muted-foreground py-6">
+                {t("cardDetailPanel.noCardsFound")}
+              </p>
+            )}
+            {!online.isFetching && !!online.data?.length && (
+              <CardGrid cards={online.data} onSelect={onSelect} />
+            )}
+          </div>
+        )}
       </ScrollArea>
     </>
+  );
+}
+
+/** The results grid, shared by the local catalog and the online fallback. */
+function CardGrid({
+  cards,
+  onSelect,
+}: {
+  cards: PlayingCard[];
+  onSelect: (card: PlayingCard) => void;
+}) {
+  return (
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-1.5">
+      {cards.map((card) => (
+        <Button
+          key={card.id}
+          variant="ghost"
+          className="relative w-full h-auto aspect-[2.5/3.5] p-0 rounded overflow-hidden group"
+          onClick={() => onSelect(card)}
+        >
+          {card.image?.small ? (
+            <img
+              src={card.image.small}
+              alt={card.name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            // The online fallback exists for the printings TCGdex has no image
+            // for, so a blank tile is the common case there, not the edge one —
+            // it has to say which card it is.
+            <div className="w-full h-full bg-muted grid place-items-center p-2">
+              <span className="text-xs text-center text-muted-foreground text-wrap">
+                {card.name}
+              </span>
+            </div>
+          )}
+          <div className="absolute bottom-0 inset-x-0 bg-black/70 text-white text-[10px] leading-tight px-1 py-0.5 text-center truncate">
+            {[card.setName || card.set.toUpperCase(), formatCardNumber(card)]
+              .filter(Boolean)
+              .join(" · ")}
+          </div>
+        </Button>
+      ))}
+    </div>
   );
 }

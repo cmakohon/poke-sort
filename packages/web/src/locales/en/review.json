@@ -6,12 +6,14 @@
     "tierReview": "held for review",
     "tierNoMatch": "no match",
     "showReviewed": "Show reviewed",
+    "includeAccepted": "Include accepted",
     "refresh": "Refresh queue",
+    "newSinceRefresh": "{{count}} new",
     "progress": "{{current}} / {{total}}",
     "allDone": "All caught up",
-    "allDoneHint": "Every loaded scan has been reviewed. Refresh to check for new ones.",
+    "allDoneHint": "Every flagged scan has been reviewed. Turn on \"Include accepted\" to spot-check the rest.",
     "empty": "Nothing to review",
-    "emptyHint": "Scan some cards and they will show up here."
+    "emptyHint": "Scans the sorter could not settle show up here."
   },
   "focus": {
     "capture": "Scanned capture",
@@ -34,6 +36,7 @@
     "confirm": "Correct",
     "wrongVariant": "Wrong variant",
     "search": "Search",
+    "cardNotListed": "Not in catalog",
     "unresolvable": "Unresolvable",
     "prev": "Previous card",
     "next": "Next card"
@@ -48,6 +51,7 @@
     "ocr-misread": "OCR misread name/number",
     "image-quality": "Bad image (blur / glare)",
     "not-a-card": "Not a card / empty frame",
+    "card-not-in-catalog": "Correct card not listed",
     "other": "Other"
   },
   "reason": {
@@ -70,12 +74,14 @@
     "wrongVariant": "Right card, wrong variant",
     "pickAlternate": "Pick an alternate match",
     "search": "Search catalog",
+    "cardNotListed": "Correct card not listed",
     "unresolvable": "Mark unresolvable",
     "skip": "Skip",
     "skipForward": "Skip forward",
     "back": "Back to previous",
     "rotate": "Rotate capture",
     "toggleReviewed": "Toggle reviewed filter",
+    "toggleAccepted": "Toggle accepted scans",
     "help": "Shortcut help"
   },
   "toast": {

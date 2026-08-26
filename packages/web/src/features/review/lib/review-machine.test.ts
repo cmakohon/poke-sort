@@ -1,6 +1,8 @@
+import { MISMATCH_REASONS } from "@poke-sort/shared";
 import { describe, expect, it } from "vitest";
 import {
   INITIAL_REVIEW_STATE,
+  REASONS_BY_KIND,
   transition,
   type ReviewMachineState,
 } from "./review-machine";
@@ -247,6 +249,24 @@ describe("review machine", () => {
       expect(r.state).toEqual(variant);
     });
 
+    it("files a card the catalog does not have as unresolvable", () => {
+      const pending = transition(
+        INITIAL_REVIEW_STATE,
+        { type: "MARK_CARD_NOT_LISTED" },
+        NO_PREDICTION,
+      ).state;
+      expect(pending).toEqual({
+        phase: "reason",
+        pending: { kind: "unresolvable", reasons: ["card-not-in-catalog"] },
+      });
+
+      const r = transition(pending, { type: "SUBMIT" }, NO_PREDICTION);
+      expect(r.save).toEqual({
+        verdict: "unresolvable",
+        mismatchReasons: ["card-not-in-catalog"],
+      });
+    });
+
     it("escape discards the pending verdict", () => {
       const r = transition(corrected, { type: "CANCEL" }, HAS_PREDICTION);
       expect(r.state).toEqual(INITIAL_REVIEW_STATE);
@@ -259,5 +279,27 @@ describe("review machine", () => {
       expect(r.state).toEqual(INITIAL_REVIEW_STATE);
       expect(r.save).toBeUndefined();
     });
+  });
+});
+
+/**
+ * The panel numbers whatever it renders, and the screen's digit handler
+ * indexes the same list — so a list longer than nine keys would silently make
+ * its tail unreachable, which is exactly the trap the flat ten-reason list
+ * grew into.
+ */
+describe("REASONS_BY_KIND", () => {
+  for (const [kind, reasons] of Object.entries(REASONS_BY_KIND)) {
+    it(`offers ${kind} a keyable, valid list`, () => {
+      expect(reasons.length).toBeGreaterThan(0);
+      expect(reasons.length).toBeLessThanOrEqual(9);
+      expect(new Set(reasons).size).toBe(reasons.length);
+      for (const reason of reasons) expect(MISMATCH_REASONS).toContain(reason);
+    });
+  }
+
+  it("leaves no reason unreachable from every verdict", () => {
+    const offered = new Set(Object.values(REASONS_BY_KIND).flat());
+    expect([...MISMATCH_REASONS].filter((r) => !offered.has(r))).toEqual([]);
   });
 });

@@ -13,12 +13,13 @@ import { ReviewFocus } from "@/features/review/components/review-focus";
 import { ReviewQueueStrip } from "@/features/review/components/review-queue-strip";
 import {
   INITIAL_REVIEW_STATE,
+  REASONS_BY_KIND,
   transition,
   type ReviewMachineEvent,
   type SaveCommand,
 } from "@/features/review/lib/review-machine";
 import { useReviewHotkeys } from "@/features/review/lib/use-review-hotkeys";
-import { MISMATCH_REASONS } from "@poke-sort/shared";
+import type { ReviewStats } from "@poke-sort/shared";
 import {
   IconCheck,
   IconChecklist,
@@ -26,10 +27,24 @@ import {
   IconLoader2,
   IconRubberStamp,
   IconSearch,
+  IconSearchOff,
 } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+
+/** The queue's own size, as the stats endpoint sees it. */
+function countUnreviewed(
+  stats: ReviewStats | null | undefined,
+  includeAccepted: boolean,
+): number | null {
+  if (!stats) return null;
+  return (
+    stats.unreviewed.review +
+    stats.unreviewed["no-match"] +
+    (includeAccepted ? stats.unreviewed.accept : 0)
+  );
+}
 
 /** How far ahead detail queries are warmed so advancing feels instant. */
 const PREFETCH_AHEAD = 2;
@@ -40,10 +55,15 @@ export function ReviewScreen() {
   const { t } = useTranslation("review");
   const [showReviewed, setShowReviewed] = useState(false);
   const status = showReviewed ? "all" : "unreviewed";
+  // The identifier is trustworthy enough that walking accepts is spot-checking,
+  // not reviewing — so the queue defaults to what the pipeline could not settle.
+  const [includeAccepted, setIncludeAccepted] = useState(false);
+  const tier = includeAccepted ? "all" : "flagged";
 
-  const queue = useReviewQueue(status);
+  const queue = useReviewQueue(status, tier);
   const { items } = queue;
-  const { data: stats } = useReviewStats();
+  const statsQuery = useReviewStats();
+  const stats = statsQuery.data;
   const prefetchDetails = usePrefetchReviewDetails();
   const verdictMutation = useSubmitVerdict();
 
@@ -53,6 +73,24 @@ export function ReviewScreen() {
   const [rotated, setRotated] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const noteInputRef = useRef<HTMLInputElement | null>(null);
+
+  // How many unreviewed scans the queue would hand back right now, per the
+  // stats poll — the queue itself is deliberately not polled (see
+  // useReviewQueue), so this is what notices a sort running behind the
+  // operator's back.
+  const unreviewed = countUnreviewed(stats, includeAccepted);
+  // Reviewing pulls the same number down, so the count alone cannot say what
+  // arrived: the baseline has to be discounted by the work done since it was
+  // taken. Refs rather than state — every input to this already re-renders.
+  const baselineRef = useRef<number | null>(null);
+  const reviewedSinceRef = useRef(0);
+  if (unreviewed != null && baselineRef.current == null) {
+    baselineRef.current = unreviewed;
+  }
+  const newSinceRefresh =
+    unreviewed != null && baselineRef.current != null
+      ? Math.max(0, unreviewed - (baselineRef.current - reviewedSinceRef.current))
+      : 0;
 
   const current = items[index];
   const { data: detail, isLoading: detailLoading } = useReviewDetail(
@@ -108,8 +146,41 @@ export function ReviewScreen() {
     setMachine(INITIAL_REVIEW_STATE);
   };
 
+  const refresh = async () => {
+    reviewedSinceRef.current = 0;
+    // The baseline comes from the refetched stats, not the ones on screen when
+    // the button was pressed — those are up to a poll old, and the difference
+    // would show straight back up as "new" work the queue is in fact holding.
+    const [, fresh] = await Promise.all([queue.refetch(), statsQuery.refetch()]);
+    baselineRef.current = countUnreviewed(fresh.data, includeAccepted);
+    goTo(0);
+  };
+
+  // Standing at the end of the queue with work known to have arrived is the one
+  // moment a re-anchor is expected rather than a surprise, so it is where new
+  // scans get pulled in without being asked for. Gated on the stats saying
+  // there is something to pull: refreshing an unchanged list would just bounce
+  // the operator back to a card they already answered.
+  //
+  // Once per arrival — the ref clears only when there is a card on screen
+  // again, so a pull that returns nothing cannot refetch itself in a loop.
+  const endPulledRef = useRef(false);
+  const atEnd = !current && items.length > 0 && !queue.hasNextPage;
+  useEffect(() => {
+    if (current) endPulledRef.current = false;
+  }, [current]);
+  useEffect(() => {
+    if (!atEnd || newSinceRefresh === 0) return;
+    if (endPulledRef.current || queue.isFetching) return;
+    endPulledRef.current = true;
+    void refresh();
+    // refresh is redefined every render; the ref above is what bounds this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [atEnd, newSinceRefresh, queue.isFetching]);
+
   const performSave = (save: SaveCommand) => {
     if (!current) return;
+    if (!current.reviewedAt) reviewedSinceRef.current += 1;
     verdictMutation.mutate(
       {
         guid: current.guid,
@@ -121,7 +192,13 @@ export function ReviewScreen() {
         },
       },
       {
-        onError: () => toast.error(t("toast.saveFailed")),
+        onError: () => {
+          // Put the optimistic count back. The scan stays unreviewed, so
+          // leaving it counted would make the queue look like it had new work
+          // in it for the rest of the session — and auto-pull for that phantom.
+          reviewedSinceRef.current = Math.max(0, reviewedSinceRef.current - 1);
+          toast.error(t("toast.saveFailed"));
+        },
       },
     );
     // Optimistic: advance immediately, the failure toast points back.
@@ -136,6 +213,15 @@ export function ReviewScreen() {
 
   const toggleReviewed = () => {
     setShowReviewed((v) => !v);
+    baselineRef.current = null;
+    reviewedSinceRef.current = 0;
+    goTo(0);
+  };
+
+  const toggleAccepted = () => {
+    setIncludeAccepted((v) => !v);
+    baselineRef.current = null;
+    reviewedSinceRef.current = 0;
     goTo(0);
   };
 
@@ -153,6 +239,10 @@ export function ReviewScreen() {
         if (!current) {
           if (e.key === "r") {
             toggleReviewed();
+            return true;
+          }
+          if (e.key === "a") {
+            toggleAccepted();
             return true;
           }
           if (e.key === "k" || e.key === "ArrowLeft" || e.key === "z") {
@@ -188,6 +278,10 @@ export function ReviewScreen() {
           dispatch({ type: "MARK_WRONG_VARIANT" });
           return true;
         }
+        if (e.key === "c") {
+          dispatch({ type: "MARK_CARD_NOT_LISTED" });
+          return true;
+        }
         if (e.key === "j" || e.key === "ArrowRight") {
           goTo(index + 1);
           return true;
@@ -204,6 +298,10 @@ export function ReviewScreen() {
           toggleReviewed();
           return true;
         }
+        if (e.key === "a") {
+          toggleAccepted();
+          return true;
+        }
         if (e.key === "?") {
           setHelpOpen(true);
           return true;
@@ -212,10 +310,13 @@ export function ReviewScreen() {
       }
 
       case "reason": {
-        if (/^[0-9]$/.test(e.key)) {
-          // 1–9 are the first nine reasons; 0 is the tenth.
-          const idx = e.key === "0" ? 9 : Number(e.key) - 1;
-          const reason = MISMATCH_REASONS[idx];
+        if (/^[1-9]$/.test(e.key)) {
+          // The panel shows only the reasons that apply to this verdict, and
+          // never more than nine of them — so the digits index that list.
+          const kind = machine.pending?.kind;
+          const reason = kind
+            ? REASONS_BY_KIND[kind][Number(e.key) - 1]
+            : undefined;
           if (reason) dispatch({ type: "TOGGLE_REASON", reason });
           return true;
         }
@@ -265,10 +366,10 @@ export function ReviewScreen() {
         hasMore={queue.hasNextPage ?? false}
         showReviewed={showReviewed}
         onToggleReviewed={toggleReviewed}
-        onRefresh={() => {
-          void queue.refetch();
-          goTo(0);
-        }}
+        includeAccepted={includeAccepted}
+        onToggleAccepted={toggleAccepted}
+        newSinceRefresh={newSinceRefresh}
+        onRefresh={() => void refresh()}
         onToggleHelp={() => setHelpOpen((v) => !v)}
       />
 
@@ -350,6 +451,16 @@ export function ReviewScreen() {
             >
               <IconSearch className="size-4" />
               {t("actions.search")}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={(e) => {
+                e.currentTarget.blur();
+                dispatch({ type: "MARK_CARD_NOT_LISTED" });
+              }}
+            >
+              <IconSearchOff className="size-4" />
+              {t("actions.cardNotListed")}
             </Button>
             <Button
               variant="outline"
@@ -439,6 +550,7 @@ function FooterHints({
       ? [["V", t("shortcuts.wrongVariant")] as [string, string]]
       : []),
     ["S", t("shortcuts.search")],
+    ["C", t("shortcuts.cardNotListed")],
     ["X", t("shortcuts.unresolvable")],
     ["J / K", t("shortcuts.skip")],
     ["?", t("shortcuts.help")],
@@ -464,11 +576,13 @@ function ShortcutHelp({ onClose }: { onClose: () => void }) {
     ["1–6", t("shortcuts.pickAlternate")],
     ["V", t("shortcuts.wrongVariant")],
     ["S or /", t("shortcuts.search")],
+    ["C", t("shortcuts.cardNotListed")],
     ["X", t("shortcuts.unresolvable")],
     ["J / →", t("shortcuts.skipForward")],
     ["K / ← / Z", t("shortcuts.back")],
     ["F", t("shortcuts.rotate")],
     ["R", t("shortcuts.toggleReviewed")],
+    ["A", t("shortcuts.toggleAccepted")],
     ["?", t("shortcuts.help")],
   ];
   return (

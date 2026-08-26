@@ -9,13 +9,16 @@ import type {
 } from "@poke-sort/shared";
 
 export type ReviewQueueStatus = "unreviewed" | "reviewed" | "all";
+/** "flagged" is review + no-match — the scans the pipeline could not settle. */
+export type ReviewQueueTier = "flagged" | "all";
 
 export async function getReviewQueue(
   status: ReviewQueueStatus,
+  tier: ReviewQueueTier,
   cursor?: string,
   limit = 50,
 ): Promise<Result<ReviewQueuePage>> {
-  const params = new URLSearchParams({ status, limit: String(limit) });
+  const params = new URLSearchParams({ status, tier, limit: String(limit) });
   if (cursor) params.set("cursor", cursor);
   return apiGet<Result<ReviewQueuePage>>(`/api/review/queue?${params}`);
 }

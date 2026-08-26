@@ -50,6 +50,48 @@ describe("useReviewHotkeys", () => {
     expect(handler).toHaveBeenCalledTimes(1);
   });
 
+  /**
+   * The regression this guard exists to prevent, and the one it used to cause.
+   * Clicking refresh or help left the button focused, and the old guard read
+   * that as "the button owns the keyboard" — so every verdict key went dead
+   * until the operator clicked somewhere else.
+   */
+  it("keeps firing verdict keys while a button has focus", () => {
+    const handler = vi.fn();
+    renderHook(() => useReviewHotkeys(handler));
+    const button = document.createElement("button");
+    document.body.appendChild(button);
+
+    for (const key of ["x", "1", "c", "j"]) press(key, button);
+    expect(handler).toHaveBeenCalledTimes(4);
+  });
+
+  it("never steals the keys that press the focused control", () => {
+    const handler = vi.fn();
+    renderHook(() => useReviewHotkeys(handler));
+    const button = document.createElement("button");
+    document.body.appendChild(button);
+
+    press(" ", button);
+    press("Enter", button);
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it("leaves a switch its arrows as well", () => {
+    const handler = vi.fn();
+    renderHook(() => useReviewHotkeys(handler));
+    const toggle = document.createElement("div");
+    toggle.setAttribute("role", "switch");
+    document.body.appendChild(toggle);
+
+    press("ArrowRight", toggle);
+    press(" ", toggle);
+    expect(handler).not.toHaveBeenCalled();
+    // ...but not the letters, which are not its to take.
+    press("v", toggle);
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
+
   it("still ignores typing, and still lets Escape out of an input", () => {
     const handler = vi.fn();
     renderHook(() => useReviewHotkeys(handler));

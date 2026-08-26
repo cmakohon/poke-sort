@@ -3,6 +3,7 @@ import { sql, type SQL } from "drizzle-orm";
 import { db } from "../../db";
 import { hydrateCatalogCard, type CatalogCardRow } from "../catalog-card";
 import { getSetInfo } from "../set-index";
+import { parseSearchQuery, type ParsedSearchQuery } from "./query";
 
 /**
  * Correction search, against the local catalog.
@@ -16,9 +17,15 @@ import { getSetInfo } from "../set-index";
  * possibly have scanned, with the full upstream object in `card_data`. Reading
  * it here means the whole catalog is reachable, results are ranked, there is no
  * per-keystroke fan-out of 30 detail fetches, and correcting a card works with
- * the network down. The cost is that a set released since the last catalog sync
- * is not searchable — but neither is it identifiable, so it could not have been
- * mis-scanned in the first place.
+ * the network down.
+ *
+ * It matches on name and on collector number (see ./query.ts) — a reviewer
+ * holding a card can type either what it is called or what is printed on it.
+ *
+ * What it cannot reach is a printing the catalog never imported: the sync skips
+ * every card upstream has no image for, which is a real and sizeable set. That
+ * is what the adapter's searchByName fallback is for, offered from the picker
+ * once this search comes back empty.
  */
 
 /** Enough to fill the picker's grid without an immediate second page. */
@@ -90,49 +97,117 @@ function pageBounds(options: CardSearchOptions) {
   return { limit, page, offset: (page - 1) * limit };
 }
 
-export async function searchLocalCatalog(
-  options: CardSearchOptions,
-): Promise<CardSearchPage> {
-  const query = options.query.trim();
-  const { limit, page, offset } = pageBounds(options);
-  if (query.length < QUERY_MIN_LENGTH) {
-    return { cards: [], total: 0, page, limit, sets: [] };
-  }
+/** The columns and filters every shape of this search shares. */
+function baseWhere(options: CardSearchOptions) {
+  return sql`game_key = ${options.gameKey}
+      AND lang = ${options.lang}
+      ${options.setCode ? sql`AND set_code = ${options.setCode}` : sql``}`;
+}
 
+interface SearchShape {
+  where: SQL;
+  orderBy: SQL;
+}
+
+function nameShape(options: CardSearchOptions, query: string): SearchShape {
   const name = folded(sql`name`);
   const needle = folded(sql`${query}`);
-  // A query that folds away to nothing — pure punctuation, or a script the
-  // folding does not keep, like katakana against a Japanese catalog — would
-  // otherwise leave LIKE '%' || '' || '%', matching every row for the game.
-  // Tested on the folded value rather than the raw one: a JS-side check would
-  // have to reimplement the folding to agree with it, and the two would drift.
-  const where = sql`game_key = ${options.gameKey}
-      AND lang = ${options.lang}
+  return {
+    // A query that folds away to nothing — pure punctuation, or a script the
+    // folding does not keep, like katakana against a Japanese catalog — would
+    // otherwise leave LIKE '%' || '' || '%', matching every row for the game.
+    // Tested on the folded value rather than the raw one: a JS-side check would
+    // have to reimplement the folding to agree with it, and the two would drift.
+    where: sql`${baseWhere(options)}
       AND ${needle} <> ''
-      AND ${name} LIKE '%' || ${needle} || '%'
-      ${options.setCode ? sql`AND set_code = ${options.setCode}` : sql``}`;
-
-  const [rows, counts, sets] = await Promise.all([
-    db.execute<CatalogCardRow>(sql`
-      SELECT card_id, name, collector_number, set_code, card_data
-      FROM cards
-      WHERE ${where}
-      -- Relevance, since the table has no notion of it: an exact name first,
-      -- then names that start with the query, then the shortest — which puts
-      -- "Charizard" above "Charizard ex" and "Dark Charizard". Set and number
-      -- only break the remaining ties, so a card's printings stay together.
-      -- Ranked on the folded forms too, so typing "Poke Ball" still ranks
-      -- "Poké Ball" as the exact match it is.
-      ORDER BY (${name} = ${needle}) DESC,
+      AND ${name} LIKE '%' || ${needle} || '%'`,
+    // Relevance, since the table has no notion of it: an exact name first,
+    // then names that start with the query, then the shortest — which puts
+    // "Charizard" above "Charizard ex" and "Dark Charizard". Set and number
+    // only break the remaining ties, so a card's printings stay together.
+    // Ranked on the folded forms too, so typing "Poke Ball" still ranks
+    // "Poké Ball" as the exact match it is.
+    orderBy: sql`(${name} = ${needle}) DESC,
                (${name} LIKE ${needle} || '%') DESC,
                length(name),
                name,
                set_code,
-               collector_number
+               collector_number`,
+  };
+}
+
+/**
+ * A collector number, optionally narrowed by a name and a set total.
+ *
+ * Deliberately a separate shape rather than an OR against the name condition:
+ * an OR spanning cards_name_search_idx and cards_collector_number_idx drops the
+ * planner onto a sequential scan of the whole catalog, and PGlite runs on the
+ * main thread and cannot cancel — that is a stall mid-sort, not a slow search.
+ */
+function numberShape(
+  options: CardSearchOptions,
+  parsed: ParsedSearchQuery,
+  setTotal: number | null,
+): SearchShape {
+  const name = folded(sql`name`);
+  const needle = folded(sql`${parsed.name}`);
+  const hasName = parsed.name.length >= QUERY_MIN_LENGTH;
+  return {
+    where: sql`${baseWhere(options)}
+      AND collector_number IN (${sql.join(
+        parsed.numbers.map((n) => sql`${n}`),
+        sql`, `,
+      )})
+      ${setTotal != null ? sql`AND set_total = ${setTotal}` : sql``}
+      ${hasName ? sql`AND ${name} LIKE '%' || ${needle} || '%'` : sql``}`,
+    orderBy: sql`name, set_code, collector_number`,
+  };
+}
+
+/**
+ * The number shapes to try, tightest first.
+ *
+ * A printed fraction narrows by set_total when it can, but that column is
+ * nullable and the sync writes whatever upstream had — and a secret rare's
+ * printed denominator is not its set's count anyway. Dropping the denominator
+ * has to be its own attempt, because the name search cannot rescue a fraction
+ * the way it rescues "charizard 5": "4/102" folds to "4 102" and matches no
+ * card that has ever been printed.
+ */
+function numberShapes(
+  options: CardSearchOptions,
+  parsed: ParsedSearchQuery,
+): SearchShape[] {
+  if (parsed.numbers.length === 0) return [];
+  const loose = numberShape(options, parsed, null);
+  return parsed.setTotal == null
+    ? [loose]
+    : [numberShape(options, parsed, parsed.setTotal), loose];
+}
+
+/** Rows matching a shape, across every page. */
+async function totalFor(where: SQL): Promise<number> {
+  const counts = await db.execute<{ total: number }>(sql`
+    SELECT count(*)::int AS total FROM cards WHERE ${where}
+  `);
+  return counts.rows[0]?.total ?? 0;
+}
+
+async function pageFor(
+  options: CardSearchOptions,
+  shape: SearchShape,
+  bounds: { limit: number; page: number; offset: number },
+  total: number,
+): Promise<CardSearchPage> {
+  const { where, orderBy } = shape;
+  const { limit, page, offset } = bounds;
+  const [rows, sets] = await Promise.all([
+    db.execute<CatalogCardRow>(sql`
+      SELECT card_id, name, collector_number, set_code, card_data
+      FROM cards
+      WHERE ${where}
+      ORDER BY ${orderBy}
       LIMIT ${limit} OFFSET ${offset}
-    `),
-    db.execute<{ total: number }>(sql`
-      SELECT count(*)::int AS total FROM cards WHERE ${where}
     `),
     // Over the whole match rather than the page, so choosing a set from the
     // dropdown can reach printings that page one never showed — the exact
@@ -148,7 +223,7 @@ export async function searchLocalCatalog(
 
   return {
     cards: rows.rows.map((row) => hydrateCatalogCard(options.gameKey, row)),
-    total: counts.rows[0]?.total ?? 0,
+    total,
     page,
     limit,
     sets: sets.rows.map((row) => ({
@@ -157,4 +232,40 @@ export async function searchLocalCatalog(
       count: row.count,
     })),
   };
+}
+
+export async function searchLocalCatalog(
+  options: CardSearchOptions,
+): Promise<CardSearchPage> {
+  const query = options.query.trim();
+  const bounds = pageBounds(options);
+  const empty: CardSearchPage = {
+    cards: [],
+    total: 0,
+    page: bounds.page,
+    limit: bounds.limit,
+    sets: [],
+  };
+  if (query.length < QUERY_MIN_LENGTH) return empty;
+
+  // Count before fetching, rather than issuing all three queries at once. A
+  // shape that matches nothing then costs one indexed count instead of a page
+  // and a facet aggregate as well — and every query here runs on the thread
+  // the sorter is using. Nothing is lost by serialising: PGlite executes them
+  // one at a time regardless.
+  const parsed = parseSearchQuery(query);
+  for (const shape of numberShapes(options, parsed)) {
+    const total = await totalFor(shape.where);
+    // Only a hit counts. A name that merely looks like a collector number —
+    // or a number this catalog spells some way the variants do not cover —
+    // must not come out worse than it did when every query was a name.
+    if (total > 0) return pageFor(options, shape, bounds, total);
+  }
+
+  // Falling back on the words rather than the whole string: "charizard 5" with
+  // no card 5 should still show the Charizards, not nothing.
+  const asName = parsed.name.length >= QUERY_MIN_LENGTH ? parsed.name : query;
+  const shape = nameShape(options, asName);
+  const total = await totalFor(shape.where);
+  return total > 0 ? pageFor(options, shape, bounds, total) : empty;
 }
