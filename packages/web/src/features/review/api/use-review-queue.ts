@@ -60,6 +60,12 @@ export function useReviewQueue(
     // New scans still get noticed — useReviewStats below keeps polling, and
     // the screen turns a rising count into a refresh badge rather than a jump.
     refetchOnWindowFocus: false,
+    // Mounting is the exception. The global staleTime is Infinity, so without
+    // this the screen would render whatever it last held — leaving /review and
+    // coming back mid-sort would show a list from before the run, and the
+    // badge could not say so either, since its baseline re-anchors on mount.
+    // Safe where polling was not: `index` is component state and starts at 0.
+    refetchOnMount: "always",
   });
 
   const items = useMemo(

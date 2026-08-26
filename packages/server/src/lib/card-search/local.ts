@@ -147,6 +147,7 @@ function nameShape(options: CardSearchOptions, query: string): SearchShape {
 function numberShape(
   options: CardSearchOptions,
   parsed: ParsedSearchQuery,
+  setTotal: number | null,
 ): SearchShape {
   const name = folded(sql`name`);
   const needle = folded(sql`${parsed.name}`);
@@ -157,29 +158,56 @@ function numberShape(
         parsed.numbers.map((n) => sql`${n}`),
         sql`, `,
       )})
-      ${parsed.setTotal != null ? sql`AND set_total = ${parsed.setTotal}` : sql``}
+      ${setTotal != null ? sql`AND set_total = ${setTotal}` : sql``}
       ${hasName ? sql`AND ${name} LIKE '%' || ${needle} || '%'` : sql``}`,
     orderBy: sql`name, set_code, collector_number`,
   };
 }
 
-async function runSearch(
+/**
+ * The number shapes to try, tightest first.
+ *
+ * A printed fraction narrows by set_total when it can, but that column is
+ * nullable and the sync writes whatever upstream had — and a secret rare's
+ * printed denominator is not its set's count anyway. Dropping the denominator
+ * has to be its own attempt, because the name search cannot rescue a fraction
+ * the way it rescues "charizard 5": "4/102" folds to "4 102" and matches no
+ * card that has ever been printed.
+ */
+function numberShapes(
+  options: CardSearchOptions,
+  parsed: ParsedSearchQuery,
+): SearchShape[] {
+  if (parsed.numbers.length === 0) return [];
+  const loose = numberShape(options, parsed, null);
+  return parsed.setTotal == null
+    ? [loose]
+    : [numberShape(options, parsed, parsed.setTotal), loose];
+}
+
+/** Rows matching a shape, across every page. */
+async function totalFor(where: SQL): Promise<number> {
+  const counts = await db.execute<{ total: number }>(sql`
+    SELECT count(*)::int AS total FROM cards WHERE ${where}
+  `);
+  return counts.rows[0]?.total ?? 0;
+}
+
+async function pageFor(
   options: CardSearchOptions,
   shape: SearchShape,
   bounds: { limit: number; page: number; offset: number },
+  total: number,
 ): Promise<CardSearchPage> {
   const { where, orderBy } = shape;
   const { limit, page, offset } = bounds;
-  const [rows, counts, sets] = await Promise.all([
+  const [rows, sets] = await Promise.all([
     db.execute<CatalogCardRow>(sql`
       SELECT card_id, name, collector_number, set_code, card_data
       FROM cards
       WHERE ${where}
       ORDER BY ${orderBy}
       LIMIT ${limit} OFFSET ${offset}
-    `),
-    db.execute<{ total: number }>(sql`
-      SELECT count(*)::int AS total FROM cards WHERE ${where}
     `),
     // Over the whole match rather than the page, so choosing a set from the
     // dropdown can reach printings that page one never showed — the exact
@@ -195,7 +223,7 @@ async function runSearch(
 
   return {
     cards: rows.rows.map((row) => hydrateCatalogCard(options.gameKey, row)),
-    total: counts.rows[0]?.total ?? 0,
+    total,
     page,
     limit,
     sets: sets.rows.map((row) => ({
@@ -211,22 +239,33 @@ export async function searchLocalCatalog(
 ): Promise<CardSearchPage> {
   const query = options.query.trim();
   const bounds = pageBounds(options);
-  if (query.length < QUERY_MIN_LENGTH) {
-    return { cards: [], total: 0, page: bounds.page, limit: bounds.limit, sets: [] };
-  }
+  const empty: CardSearchPage = {
+    cards: [],
+    total: 0,
+    page: bounds.page,
+    limit: bounds.limit,
+    sets: [],
+  };
+  if (query.length < QUERY_MIN_LENGTH) return empty;
 
+  // Count before fetching, rather than issuing all three queries at once. A
+  // shape that matches nothing then costs one indexed count instead of a page
+  // and a facet aggregate as well — and every query here runs on the thread
+  // the sorter is using. Nothing is lost by serialising: PGlite executes them
+  // one at a time regardless.
   const parsed = parseSearchQuery(query);
-  if (parsed.numbers.length > 0) {
-    const byNumber = await runSearch(options, numberShape(options, parsed), bounds);
+  for (const shape of numberShapes(options, parsed)) {
+    const total = await totalFor(shape.where);
     // Only a hit counts. A name that merely looks like a collector number —
     // or a number this catalog spells some way the variants do not cover —
     // must not come out worse than it did when every query was a name.
-    if (byNumber.total > 0) return byNumber;
+    if (total > 0) return pageFor(options, shape, bounds, total);
   }
 
   // Falling back on the words rather than the whole string: "charizard 5" with
   // no card 5 should still show the Charizards, not nothing.
-  const asName =
-    parsed.name.length >= QUERY_MIN_LENGTH ? parsed.name : query;
-  return runSearch(options, nameShape(options, asName), bounds);
+  const asName = parsed.name.length >= QUERY_MIN_LENGTH ? parsed.name : query;
+  const shape = nameShape(options, asName);
+  const total = await totalFor(shape.where);
+  return total > 0 ? pageFor(options, shape, bounds, total) : empty;
 }

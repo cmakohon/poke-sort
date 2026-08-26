@@ -29,7 +29,12 @@ export function CandidateRow({ alternates, onPick }: CandidateRowProps) {
         <button
           key={candidate.id}
           type="button"
-          onClick={() => onPick(candidate)}
+          // blur before dispatching: this row stays mounted under the reason
+          // overlay, and a still-focused button swallows the Enter that submits.
+          onClick={(e) => {
+            e.currentTarget.blur();
+            onPick(candidate);
+          }}
           className="shrink-0 flex flex-col gap-1.5 items-start cursor-pointer group w-28"
         >
           <div className="relative w-28 aspect-[2.5/3.5] rounded-lg overflow-hidden border-2 border-border group-hover:border-primary/60 transition-all bg-muted">

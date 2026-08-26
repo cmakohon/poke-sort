@@ -192,7 +192,13 @@ export function ReviewScreen() {
         },
       },
       {
-        onError: () => toast.error(t("toast.saveFailed")),
+        onError: () => {
+          // Put the optimistic count back. The scan stays unreviewed, so
+          // leaving it counted would make the queue look like it had new work
+          // in it for the rest of the session — and auto-pull for that phantom.
+          reviewedSinceRef.current = Math.max(0, reviewedSinceRef.current - 1);
+          toast.error(t("toast.saveFailed"));
+        },
       },
     );
     // Optimistic: advance immediately, the failure toast points back.

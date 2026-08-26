@@ -237,8 +237,13 @@ export async function SearchByName(
     };
   }
 
+  // allSettled, not all: thirty concurrent detail fetches against a public API
+  // is exactly the shape that loses one to a reset or the timeout, and taking
+  // the other twenty-nine down with it would put the reviewer back where they
+  // started. fetchDetail keeps its throwing contract for SearchById, where a
+  // network failure must not read as "no such card".
   const briefs = (await response.json()) as PokemonCardBrief[];
-  const details = await Promise.all(
+  const details = await Promise.allSettled(
     briefs
       .slice(0, MAX_ENRICHED_RESULTS)
       .map((brief) => fetchDetail(brief.id, baseUrl)),
@@ -248,8 +253,11 @@ export async function SearchByName(
     success: true,
     message: "Cards successfully retrieved.",
     data: details
-      .filter((d): d is PokemonCardDetail => d !== null)
-      .map((card) => normalizePokemonCard(card)),
+      .filter(
+        (d): d is PromiseFulfilledResult<PokemonCardDetail> =>
+          d.status === "fulfilled" && d.value !== null,
+      )
+      .map((d) => normalizePokemonCard(d.value)),
   };
 }
 
