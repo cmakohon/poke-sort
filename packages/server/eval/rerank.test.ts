@@ -221,12 +221,18 @@ describe("decideTier distanceGap", () => {
   });
 
   it("does not rescue a card below minScore, however clear the picture", () => {
-    // The valve relaxes a thin margin, not the evidence floor. 0.4 clears
-    // reviewFloor and the gap test outright, and is still held.
+    // The valve relaxes a thin margin, not the evidence floor. This score
+    // clears reviewFloor and the gap test outright, and is still held.
+    //
+    // Derived from the profile rather than written as a literal: this was 0.4
+    // against a minScore of 0.5, and when the art blend re-tuned minScore TO
+    // 0.4 the case silently became "exactly at the floor" and started
+    // accepting. The test was still right; only its constant had rotted.
+    const below = POKEMON_PROFILE.accept.minScore - 0.05;
     expect(
       tier([
-        { id: "a", score: 0.4, distance: 0.05 },
-        { id: "b", score: 0.38, distance: 0.3 },
+        { id: "a", score: below, distance: 0.05 },
+        { id: "b", score: below - 0.02, distance: 0.3 },
       ]),
     ).toBe("review");
   });

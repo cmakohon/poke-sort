@@ -410,7 +410,11 @@ async function identifyOnce(
 
   const [embedding, artVectors] = await Promise.all([
     vectorizeImageFromBuffer(imageBuffer),
-    profile ? embedArtViews(imageBuffer) : Promise.resolve(NO_ART),
+    // Skipped at artWeight 0 so the documented revert is actually free: the
+    // blend would be the identity there, and the forward pass pure cost.
+    profile && profile.artWeight > 0
+      ? embedArtViews(imageBuffer)
+      : Promise.resolve(NO_ART),
   ]);
   const rows = await fetchCandidates(
     embedding,

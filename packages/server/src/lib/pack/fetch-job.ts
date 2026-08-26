@@ -56,8 +56,8 @@ export function getPackJobState(): PackJobState {
  * Where published packs live. Overridable so a maintainer can test a pack
  * before it is released, and so forks do not have to patch source.
  *
- * Pinned to its own tag rather than `releases/latest/download`. A pack is ~66 MB
- * and changes only when the catalog or the embedding pipeline does, so hanging
+ * Pinned to its own tag rather than `releases/latest/download`. A pack is
+ * ~122 MB and changes only when the catalog or the embedding pipeline does, so hanging
  * it off `latest` would mean re-uploading it with every app release — and the
  * first release that forgot would silently 404 every new install's only
  * practical way to get a catalog.
@@ -98,7 +98,7 @@ async function download(url: string, target: string): Promise<void> {
   // between it and the pipeline() call gave the stream an event-loop turn to
   // emit into a handler that only counted. The first ~20 KB of every download
   // was read and dropped, so the file on disk lost its gzip header and the
-  // import died on "incorrect header check" after downloading all 66 MB.
+  // import died on "incorrect header check" after downloading the whole pack.
   //
   // A Transform also keeps backpressure intact, which a bare listener does not.
   const counter = new Transform({

@@ -84,7 +84,7 @@ changes with every build, so macOS asks for camera permission again after each
 update.
 
 On first launch the card catalog is empty and nothing can be identified. The app
-prompts for a one-time import of a prebuilt embedding pack (~120 MB) from the
+prompts for a one-time import of a prebuilt embedding pack (~122 MB) from the
 `catalog-v4` release; see [Catalog](#catalog).
 
 ## Working plan
@@ -407,7 +407,7 @@ imports it on first run, which takes a couple of minutes.
 
 The pack hangs off its own tag rather than `releases/latest`, because it changes
 only when the catalog or the embedding pipeline does — pinning it to `latest`
-would mean re-uploading 66 MB with every app release, and the first release that
+would mean re-uploading 122 MB with every app release, and the first release that
 forgot would 404 every new install. Close the app first; PGlite allows one
 process per data directory:
 
