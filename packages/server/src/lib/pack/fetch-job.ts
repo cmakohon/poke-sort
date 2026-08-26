@@ -56,19 +56,20 @@ export function getPackJobState(): PackJobState {
  * Where published packs live. Overridable so a maintainer can test a pack
  * before it is released, and so forks do not have to patch source.
  *
- * Pinned to its own tag rather than `releases/latest/download`. A pack is ~66 MB
- * and changes only when the catalog or the embedding pipeline does, so hanging
+ * Pinned to its own tag rather than `releases/latest/download`. A pack is
+ * ~122 MB and changes only when the catalog or the embedding pipeline does, so hanging
  * it off `latest` would mean re-uploading it with every app release — and the
  * first release that forgot would silently 404 every new install's only
  * practical way to get a catalog.
  *
  * The tag tracks PACK_VERSION and EMBEDDING_IDENTITY, not the app version:
- * importPack refuses a pack built by a different pipeline, so bumping
- * PREPROCESSING_VERSION means publishing catalog-v4 and changing this line.
+ * importPack refuses a pack built by a different pipeline, so bumping either
+ * means publishing the next catalog tag and changing this line. v4 carries the
+ * art-window vectors, which is a body-layout change decodePack rejects a v3 for.
  */
 const DEFAULT_TEMPLATE =
   process.env.POKE_SORT_PACK_URL_TEMPLATE ??
-  "https://github.com/cmakohon/poke-sort/releases/download/catalog-v3/{game}-{lang}.pack.gz";
+  "https://github.com/cmakohon/poke-sort/releases/download/catalog-v4/{game}-{lang}.pack.gz";
 
 export function packUrlFor(gameKey: string, lang: string): string {
   return DEFAULT_TEMPLATE.replace("{game}", gameKey).replace("{lang}", lang);
@@ -97,7 +98,7 @@ async function download(url: string, target: string): Promise<void> {
   // between it and the pipeline() call gave the stream an event-loop turn to
   // emit into a handler that only counted. The first ~20 KB of every download
   // was read and dropped, so the file on disk lost its gzip header and the
-  // import died on "incorrect header check" after downloading all 66 MB.
+  // import died on "incorrect header check" after downloading the whole pack.
   //
   // A Transform also keeps backpressure intact, which a bare listener does not.
   const counter = new Transform({
@@ -151,7 +152,7 @@ export function startPackImport(
         state = { ...state, phase: "importing" };
       }
 
-      const { header, inserted } = await importPack(
+      const { header, inserted, updated } = await importPack(
         isLocal ? url : target,
         (done, total) => {
           state = { ...state, imported: done, cards: total };
@@ -164,8 +165,9 @@ export function startPackImport(
         imported: inserted,
         cards: header.count,
         message:
-          `Imported ${inserted} of ${header.count} cards ` +
-          `(${header.gameKey}/${header.lang}, built ${header.createdAt.slice(0, 10)}).`,
+          `Imported ${inserted} of ${header.count} cards` +
+          (updated > 0 ? `, and gave ${updated} existing cards an art vector` : "") +
+          ` (${header.gameKey}/${header.lang}, built ${header.createdAt.slice(0, 10)}).`,
       };
 
       if (!isLocal) await rm(target, { force: true });

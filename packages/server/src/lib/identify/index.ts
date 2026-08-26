@@ -14,7 +14,7 @@ import {
   normalizePokemonCard,
   type PokemonCardDetail,
 } from "../pokemon/search";
-import { getSetInfo } from "../set-index";
+import { artWindowKey, cropArt, distinctArtWindows } from "../art-window";
 import { vectorizeImageFromBuffer } from "../vectorize";
 import { readCard } from "./ocr";
 import { detectFirstEditionStamp, hasFirstEditionVariant } from "./stamp";
@@ -30,46 +30,30 @@ import {
   type IdentityProfile,
 } from "./profiles";
 import { decideTier, rerank, type RerankInput } from "./rerank";
+import {
+  artWindowForRow,
+  buildRerankInputs,
+  setIdOf,
+  type CandidateRow,
+} from "./candidates";
 
-interface CandidateRow extends CatalogCardRow {
-  distance: number;
-  set_total: number | null;
-}
+// Re-exported so the eval harness and tests keep one import site for the
+// candidate view, without this module's database import coming with it.
+export { buildRerankInputs, setIdOf, type CandidateRow };
 
 /** A row's card, or null when the id is not among the rows at all. */
 function hydrate(gameKey: string, row: CandidateRow | undefined) {
   return row ? hydrateCatalogCard(gameKey, row) : null;
 }
 
-// Set codes are only printed on the card from Sword & Shield (2020-02) onward.
-// The set index carries an abbreviation for almost every set regardless — for
-// the 132 older ones it is a PTCGO code (dp6 "LA", pl2 "RR"...) that never
-// appears on the physical card, and matching those against the OCR'd bottom
-// band handed wrong reprints a signal the true card could not earn: 6 of the
-// 20 mis-identifications in the first 596 labelled production scans were
-// two-letter PTCGO codes false-matching OCR garble.
-const FIRST_PRINTED_SET_CODE = "2020-02";
-
-/** The candidate set's printed code, from the local set index. */
-function abbreviationOf(gameKey: string, row: CandidateRow): string | null {
-  if (gameKey !== "pokemon") return null;
-  const setId =
-    ((row.card_data as { set?: { id?: string } } | null)?.set?.id) ??
-    row.set_code;
-  const info = getSetInfo(setId);
-  if (!info?.releaseDate || info.releaseDate < FIRST_PRINTED_SET_CODE) {
-    return null;
-  }
-  return info.abbreviation ?? null;
-}
-
-function hpOf(gameKey: string, data: unknown): number | null {
-  if (gameKey !== "pokemon" || !data || typeof data !== "object") return null;
-  const hp = (data as { hp?: unknown }).hp;
-  return typeof hp === "number" ? hp : null;
-}
-
-/** Exported for the eval harness, which captures the intermediate stages. */
+/**
+ * Exported for the eval harness, which captures the intermediate stages.
+ *
+ * `artVectors` maps a window key to the capture embedded under that window
+ * (see lib/art-window.ts). The capture's era is not knowable at scan time, so
+ * it is embedded once per DISTINCT window and each candidate is compared under
+ * its own series' geometry. Omit it to get the pre-art behaviour exactly.
+ */
 export async function fetchCandidates(
   embedding: number[],
   gameKey: string,
@@ -77,8 +61,17 @@ export async function fetchCandidates(
   limit: number,
   cutoff: number,
   excludedSetIds: string[] = [],
+  artVectors: Map<string, number[]> = new Map(),
 ): Promise<CandidateRow[]> {
   const vector = `[${embedding.join(",")}]`;
+  // One output column per window. These sit in the TARGET LIST only, never in
+  // WHERE or ORDER BY: retrieval stays whole-card, so Postgres evaluates them
+  // on the ~50 rows that survive the LIMIT rather than the whole catalog.
+  const windowKeys = [...artVectors.keys()];
+  const artSelects = windowKeys.map(
+    (key, i) =>
+      sql`, embedding_art <=> ${`[${artVectors.get(key)!.join(",")}]`}::vector(768) AS ${sql.raw(`art_d${i}`)}`,
+  );
   // Digital-only sets are excluded here, at candidate time, rather than from
   // the catalog: search and pricing still want them, but a physical capture
   // can never be one, and their art-identical twins eat ranking margin.
@@ -98,6 +91,7 @@ export async function fetchCandidates(
       set_code,
       card_data,
       embedding <=> ${vector}::vector(768) AS distance
+      ${sql.join(artSelects, sql``)}
     FROM cards
     WHERE game_key = ${gameKey}
       AND lang = ${lang}
@@ -106,27 +100,20 @@ export async function fetchCandidates(
     ORDER BY embedding <=> ${vector}::vector(768)
     LIMIT ${limit}
   `);
-  return result.rows.map((r) => ({ ...r, distance: Number(r.distance) }));
-}
-
-/**
- * The rerank view of a candidate row. Shared between the live pipeline and the
- * eval capture script, so the two can never drift apart on what a candidate
- * looks like to the fusion.
- */
-export function buildRerankInputs(
-  rows: CandidateRow[],
-  gameKey: string,
-): RerankInput[] {
-  return rows.map((row) => ({
-    id: row.card_id,
-    distance: row.distance,
-    name: row.name,
-    collectorNumber: row.collector_number,
-    setTotal: row.set_total,
-    hp: hpOf(gameKey, row.card_data),
-    setAbbreviation: abbreviationOf(gameKey, row),
-  }));
+  return result.rows.map((row) => {
+    const window = artWindowForRow(row);
+    const i = window ? windowKeys.indexOf(artWindowKey(window)) : -1;
+    // Number(null) is 0, and 0 is a PERFECT match — a card the catalog has no
+    // art vector for would beat every card that does. `embedding` is NOT NULL
+    // so `distance` never hits this; `embedding_art` is nullable, so this one
+    // must stay explicit.
+    const raw = i >= 0 ? (row as Record<string, unknown>)[`art_d${i}`] : null;
+    return {
+      ...row,
+      distance: Number(row.distance),
+      art_distance: raw == null ? null : Number(raw),
+    };
+  });
 }
 
 /** Embedding-only path for games with no identity profile: unchanged behaviour. */
@@ -311,6 +298,34 @@ export async function identifyCard(
   return first;
 }
 
+const NO_ART: Map<string, number[]> = new Map();
+
+/**
+ * The capture embedded under every distinct art window.
+ *
+ * Which window applies depends on the card's series, which is exactly what the
+ * scan is trying to work out — so the capture is cropped every way the table
+ * asks for and each candidate is compared under its own. One window today, so
+ * one extra forward pass; the cost is linear in DISTINCT windows, not series.
+ *
+ * A failure here degrades ranking, not correctness: no art vector means every
+ * candidate is scored on its whole-card distance, which is what the pipeline
+ * did before.
+ */
+async function embedArtViews(imageBuffer: Buffer): Promise<Map<string, number[]>> {
+  const windows = distinctArtWindows();
+  if (windows.length === 0) return NO_ART;
+  const out = new Map<string, number[]>();
+  for (const { key, window } of windows) {
+    try {
+      out.set(key, await vectorizeImageFromBuffer(await cropArt(imageBuffer, window)));
+    } catch (err) {
+      console.error("[identify] art crop failed:", err);
+    }
+  }
+  return out;
+}
+
 /**
  * One oriented pass, owning its own concurrency.
  *
@@ -335,7 +350,14 @@ async function identifyOnce(
       })
     : Promise.resolve({});
 
-  const embedding = await vectorizeImageFromBuffer(imageBuffer);
+  const [embedding, artVectors] = await Promise.all([
+    vectorizeImageFromBuffer(imageBuffer),
+    // Skipped at artWeight 0 so the documented revert is actually free: the
+    // blend would be the identity there, and the forward pass pure cost.
+    profile && profile.artWeight > 0
+      ? embedArtViews(imageBuffer)
+      : Promise.resolve(NO_ART),
+  ]);
   const rows = await fetchCandidates(
     embedding,
     gameKey,
@@ -343,6 +365,7 @@ async function identifyOnce(
     profile?.candidateLimit ?? LEGACY_LIMIT,
     profile?.distanceCutoff ?? LEGACY_CUTOFF,
     profile?.excludedSetIds ?? [],
+    artVectors,
   );
 
   if (rows.length === 0) {

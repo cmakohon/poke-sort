@@ -38,6 +38,17 @@ export interface IdentifySignals {
    * share art and a name but never a set.
    */
   setAbbreviation: number;
+  /**
+   * The printed denominator alone ("/123") agreeing with the candidate's set
+   * size, independent of whether the numerator was read.
+   *
+   * Separate from collectorNumber because the two fail differently: the
+   * numerator is a small target that OCR garbles constantly, while the
+   * denominator is the same digits on every card of a set and survives more
+   * often. A denominator narrows ~150 sets to one or two, which is most of the
+   * way to splitting a reprint pair.
+   */
+  setTotal: number;
   hp: number;
 }
 

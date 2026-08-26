@@ -61,3 +61,10 @@ packages/server/eval/fixtures/
 
 # captured eval signals (regenerate with `pnpm eval:capture`)
 packages/server/eval/signals*.json
+
+# per-probe OCR sweep dumps (regenerate with `eval/ocr-sweep.ts`)
+packages/server/eval/.sweep/
+
+# art-crop probe cache: catalog renders + vectors (regenerate with
+# `eval/art-crop-probe.ts`; it re-downloads and re-embeds on a cold cache)
+packages/server/eval/.artprobe/

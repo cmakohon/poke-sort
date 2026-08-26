@@ -1,187 +1,212 @@
-// Measures collector-number OCR hit rate for band/preprocessing variants.
+// Measures collector-number OCR for band/preprocessing variants.
 //
 //   pnpm exec tsx eval/ocr-sweep.ts
+//   EVAL_FIXTURES=pokemon-real EVAL_SAMPLE=200 pnpm exec tsx eval/ocr-sweep.ts
 //
-// Greedy-sequential: best band set under current preprocessing, then best
-// preprocessing under the winning bands, then page-segmentation mode. A full
-// cross product would be ~an hour of Tesseract; the greedy pass is ~15 minutes
-// and the dimensions are close to independent (bands decide WHAT text is in
-// the crop, preprocessing decides how legible it is).
+// This sweep NOMINATES; eval:tune decides. Nothing ships on a number from
+// here. That is not modesty, it is the lesson of the seam-right band (5526f2e):
+// it won the old sweep 175 hits to 159 and cost two false accepts on 956
+// probes, because a hit count cannot see a read that is confidently wrong.
+// Hence WRONG_FULL below, and hence the rule that benefit may be sampled but
+// harm may not — a variant's WRONG_FULL is only meaningful on the full set.
 //
-// The subsample is stratified toward the eras that currently fail — every
-// classic/ex/dp fixture, plus a modern guard set to catch regressions.
-import { readFile } from "node:fs/promises";
+// Two things this file used to get wrong, both fixed by reading the production
+// code rather than a copy of it (`readCollectorNumber`):
+//
+//   - It chose bands under 3x-normalise while production read them under
+//     4x-contrast-sharpen, so pass 1 ranked bands for a pipeline that does not
+//     run.
+//   - It had no escalation pass at all, so it understated every band the
+//     ladder rescues and could not measure the ladder itself.
+//
+// The old greedy bands -> prep -> psm structure is gone too. It assumed the
+// dimensions were independent and they are not: escalation only fires when no
+// band parsed a full fraction, so a preprocessing change that reads more
+// numbers fires escalation LESS. Picking a band under one prep and then a prep
+// under that band walks straight past the interaction. Configs are enumerated
+// explicitly instead — say what you want compared, and compare it.
+import { readFile, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
-import sharp from "sharp";
-import { createWorker, type Worker } from "tesseract.js";
-import { parseCollectorNumber } from "../src/lib/identify/ocr";
+import { fileURLToPath } from "node:url";
+import {
+  disposeOcr,
+  readCollectorNumber,
+  productionCollectorPlan,
+  ESCALATION,
+  type CollectorNumberPlan,
+  type ReadOptions,
+} from "../src/lib/identify/ocr";
+import { collectorNumberMatch, type RerankInput } from "../src/lib/identify/rerank";
 import { POKEMON_PROFILE, type OcrRegion } from "../src/lib/identify/profiles";
+import sharp from "sharp";
 import { EVAL_SET, FIXTURES_DIR, SIGNALS_PATH } from "./eval-set";
 
 const FIXTURES = FIXTURES_DIR;
+const DUMP_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), ".sweep");
+const OCR = POKEMON_PROFILE.ocr!;
 
-type BandSet = { label: string; bands: OcrRegion[] };
-type Prep = { label: string; apply: (s: sharp.Sharp, w: number) => sharp.Sharp };
+// ---------------------------------------------------------------- variants
 
-const BAND_SETS: BandSet[] = [
-  {
-    // Whatever profiles.ts ships right now, by reference — a pasted copy
-    // went stale twice (a "current" that was two revisions old, and a
-    // variant that had silently become production), and a sweep judged
-    // against bands production no longer runs draws wrong conclusions.
-    label: "production",
-    bands: POKEMON_PROFILE.ocr!.collectorNumber,
-  },
-  {
-    // The right band pushed down to where dp/base actually print the number.
-    label: "deep-right",
-    bands: [
-      { x0: 0.5, y0: 0.945, x1: 0.99, y1: 0.995 },
-      { x0: 0.02, y0: 0.9, x1: 0.5, y1: 0.97 },
-      { x0: 0.02, y0: 0.92, x1: 0.99, y1: 1.0 },
-    ],
-  },
-  {
-    // Deep + a mid-right band so the ex/xy/bw position keeps its own crop.
-    label: "deep+mid-right",
-    bands: [
-      { x0: 0.5, y0: 0.945, x1: 0.99, y1: 0.995 },
-      { x0: 0.5, y0: 0.895, x1: 0.99, y1: 0.95 },
-      { x0: 0.02, y0: 0.9, x1: 0.5, y1: 0.97 },
-      { x0: 0.03, y0: 0.93, x1: 0.97, y1: 0.995 },
-    ],
-  },
-  {
-    // On pl/hgss/dp the number lands on the seam between the two right-hand
-    // production bands: cropping pl4-87, hgss1-91 and dp7-84 and looking at
-    // them shows mid-right (y .895-.95) clipping the bottom of the digits and
-    // deep-right (y .945-.995) clipping their top. This band spans the seam so
-    // one crop can hold the whole fraction. It won the 956-probe sweep, 175
-    // hits vs 159, and was still REVERTED from production: the 47 extra reads
-    // it buys include garbled ones, and two of those landed exactly on a real
-    // card (dp2-113 read as "120/132" = dp3-120; bw9-43 read as "44" =
-    // xy11-44), taking false accepts from 0 to 2. Kept here because the band
-    // is right and the reads are not — it becomes shippable the day a garbled
-    // read can be told from a clean one.
-    label: "seam-right",
-    bands: [
-      { x0: 0.5, y0: 0.92, x1: 0.99, y1: 0.985 },
-      { x0: 0.5, y0: 0.895, x1: 0.99, y1: 0.95 },
-      { x0: 0.02, y0: 0.915, x1: 0.38, y1: 0.968 },
-      { x0: 0.03, y0: 0.93, x1: 0.97, y1: 0.995 },
-    ],
-  },
-  {
-    // The production set with the left band tightened to just the number
-    // line: on real me-era captures the wide left crop drags in the Illus.
-    // line and the set-code icons, and a narrower crop upsamples the digits
-    // ~1.4x more for the same read.
-    label: "tight-left",
-    bands: [
-      { x0: 0.5, y0: 0.945, x1: 0.99, y1: 0.995 },
-      { x0: 0.5, y0: 0.895, x1: 0.99, y1: 0.95 },
-      { x0: 0.02, y0: 0.915, x1: 0.38, y1: 0.968 },
-      { x0: 0.03, y0: 0.93, x1: 0.97, y1: 0.995 },
-    ],
-  },
+/** What production reads collector bands under today. */
+const CONTRAST: ReadOptions = { contrast: true };
+/** Plain normalise — what the bands were originally chosen under. */
+const NORMALISE: ReadOptions = {};
+const NORMALISE_SHARPEN: ReadOptions = { sharpen: true };
+
+/** Deep right, y .945-.995: dp, base, later-ex, neo. Production's band 0. */
+const DEEP_RIGHT: OcrRegion = OCR.collectorNumber[0];
+/**
+ * A right band tall enough to hold the whole fraction wherever the footer
+ * lands.
+ *
+ * Kept as an arm, not a candidate. Judged set-wide on 2026-08-25 it wins the
+ * read count outright — 269 -> 290, McNemar p<0.001, and WRONG_FULL 2 -> 4 —
+ * and the two extra wrong reads went on to be two real false accepts under
+ * eval:tune (dp2-113 -> dp3-120, ex13-54 -> bw7-98). Same shape as seam-right,
+ * same verdict. It stays here so the next person can reproduce the rejection
+ * in twenty minutes instead of rediscovering it in a sorting session.
+ */
+const TALL_RIGHT: OcrRegion = { x0: 0.5, y0: 0.9, x1: 0.99, y1: 1.0 };
+
+function planOf(
+  bands: { region: OcrRegion; opts?: ReadOptions }[],
+  escalationRegion: OcrRegion | null,
+): CollectorNumberPlan {
+  return {
+    bands,
+    escalation: escalationRegion
+      ? { region: escalationRegion, ladder: ESCALATION }
+      : undefined,
+  };
+}
+
+/** Production's five bands, all under one preprocessing setting. */
+function uniform(opts: ReadOptions) {
+  return OCR.collectorNumber.map((region) => ({ region, opts }));
+}
+
+/**
+ * Per-band preprocessing: one band gets normalise, the rest keep contrast.
+ *
+ * This is the only production-expressible form of "hgss wants different
+ * treatment" — era cannot be chosen at scan time, it is what the pipeline is
+ * trying to determine, but the bands already encode era-specific geometry, so
+ * band is a usable proxy for era.
+ *
+ * Which band was not obvious and the first guess was wrong. Deep-right (index
+ * 0) looked right because HS Base prints its number at y≈.952, inside that
+ * band — but normalising it alone leaves hgss at 8/97, exactly where
+ * production sits, because the band clips the glyph tops and no preprocessing
+ * recovers digits that were never in the crop. The reads all-normalise gains
+ * on hgss come from somewhere else, so index 1 (mid-right, y .895-.95) gets
+ * its own arm.
+ */
+function bandNormalised(index: number) {
+  return OCR.collectorNumber.map((region, i) => ({
+    region,
+    opts: i === index ? NORMALISE : CONTRAST,
+  }));
+}
+
+const CONFIGS: { label: string; plan: CollectorNumberPlan }[] = [
+  // By reference, so this arm can never drift from what ships.
+  { label: "production", plan: productionCollectorPlan(OCR) },
+  { label: "all-normalise", plan: planOf(uniform(NORMALISE), DEEP_RIGHT) },
+  { label: "all-norm-sharpen", plan: planOf(uniform(NORMALISE_SHARPEN), DEEP_RIGHT) },
+  { label: "deepright-norm", plan: planOf(bandNormalised(0), DEEP_RIGHT) },
+  { label: "midright-norm", plan: planOf(bandNormalised(1), DEEP_RIGHT) },
+  { label: "esc-tall", plan: planOf(uniform(CONTRAST), TALL_RIGHT) },
+  { label: "esc-tall+mr-norm", plan: planOf(bandNormalised(1), TALL_RIGHT) },
+  { label: "esc-tall+all-norm", plan: planOf(uniform(NORMALISE), TALL_RIGHT) },
+  { label: "no-escalation", plan: planOf(uniform(CONTRAST), null) },
 ];
 
-const PREPS: Prep[] = [
-  {
-    label: "3x-normalise (current)",
-    apply: (s, w) => s.resize({ width: w * 3 }).greyscale().normalise(),
-  },
-  {
-    label: "3x-normalise-sharpen",
-    apply: (s, w) => s.resize({ width: w * 3 }).greyscale().normalise().sharpen(),
-  },
-  {
-    label: "4x-contrast-sharpen",
-    apply: (s, w) =>
-      s.resize({ width: w * 4 }).greyscale().linear(1.35, -35).sharpen(),
-  },
-];
-
-const PSMS = ["3", "7"] as const;
+// ------------------------------------------------------------------ probes
 
 interface Probe {
   file: string;
   id: string;
-  expectNum: string;
-  expectTotal: number | null;
   era: string;
+  truth: RerankInput;
+  rivals: RerankInput[];
 }
 
-let worker: Worker | null = null;
-async function getWorker(): Promise<Worker> {
-  if (!worker) worker = await createWorker("eng");
-  return worker;
+const stripZeros = (v: string) => v.replace(/^0+(?=\d)/, "");
+
+interface ManifestCard {
+  id: string;
+  name: string;
+  setCode: string;
+  file?: string;
+  collectorNumber?: string | null;
+  setTotal?: number | null;
 }
 
-async function readBand(
-  buf: Buffer,
-  region: OcrRegion,
-  prep: Prep,
-  psm: string,
-): Promise<string> {
-  const image = sharp(buf);
-  const meta = await image.metadata();
-  const width = meta.width ?? 745;
-  const height = meta.height ?? 1043;
-  const left = Math.round(region.x0 * width);
-  const top = Math.round(region.y0 * height);
-  const w = Math.min(width - left, Math.round((region.x1 - region.x0) * width));
-  const h = Math.min(height - top, Math.round((region.y1 - region.y0) * height));
-  if (w <= 0 || h <= 0) return "";
-  const crop = await prep
-    .apply(image.extract({ left, top, width: w, height: h }), w)
-    .withMetadata({ density: 300 })
-    .png()
-    .toBuffer();
-  const wk = await getWorker();
-  await wk.setParameters({
-    tessedit_char_whitelist: "",
-    tessedit_pageseg_mode: psm as never,
-  });
-  const { data } = await wk.recognize(crop);
-  return data.text.trim();
+/**
+ * Truth comes from the manifest, which carries the catalog's printed number
+ * and official set total. It used to be derived here — the number from the
+ * card id's last segment, the total from the probe's own candidate list — and
+ * both were wrong in ways that biased the result: the id suffix is not the
+ * printed number on promo sets, and the candidate list has no total at all
+ * when the true card fell outside the top 50. That second one is the
+ * dangerous one, because falling outside the top 50 is what embedding-weak
+ * probes do, and embedding-weak is exactly the population under treatment.
+ */
+function truthOf(card: ManifestCard): RerankInput {
+  return {
+    id: card.id,
+    distance: 0,
+    name: card.name,
+    collectorNumber:
+      card.collectorNumber ?? stripZeros(card.id.split("-").pop() ?? ""),
+    setTotal: card.setTotal ?? null,
+    hp: null,
+    setAbbreviation: null,
+  };
 }
 
-const strip = (v: string) => v.replace(/^0+(?=\d)/, "").toLowerCase();
+async function loadProbes(): Promise<Probe[]> {
+  const [manifestRaw, signalsRaw] = await Promise.all([
+    readFile(path.join(FIXTURES, "manifest.json"), "utf-8"),
+    readFile(SIGNALS_PATH, "utf-8"),
+  ]);
+  const manifest = JSON.parse(manifestRaw) as { cards: ManifestCard[] };
+  const { captures } = JSON.parse(signalsRaw) as {
+    captures: { expectedId: string; file?: string; candidates: RerankInput[] }[];
+  };
 
-async function score(
-  probes: Probe[],
-  bands: OcrRegion[],
-  prep: Prep,
-  psm: string,
-): Promise<{ hit: number; full: number; byEra: Record<string, string>; ms: number }> {
-  let hit = 0;
-  let full = 0;
-  const eraHit: Record<string, [number, number]> = {};
-  const t0 = Date.now();
-  for (const p of probes) {
-    const buf = await readFile(path.join(FIXTURES, p.file));
-    let got = false;
-    let gotFull = false;
-    for (const band of bands) {
-      const text = await readBand(buf, band, prep, psm);
-      const parsed = parseCollectorNumber(text);
-      if (!parsed) continue;
-      if (strip(parsed.collectorNumber) === strip(p.expectNum)) {
-        got = true;
-        if (p.expectTotal != null && parsed.setTotal === p.expectTotal) gotFull = true;
-      }
-    }
-    if (got) hit++;
-    if (gotFull) full++;
-    const e = (eraHit[p.era] ??= [0, 0]);
-    e[1]++;
-    if (got) e[0]++;
+  // Renders are named by id; real captures by scan guid.
+  const byFile = new Map<string, RerankInput[]>();
+  for (const c of captures) {
+    byFile.set(c.file ?? `${c.expectedId}.jpg`, c.candidates);
   }
-  const byEra = Object.fromEntries(
-    Object.entries(eraHit).map(([k, [h, n]]) => [k, `${h}/${n}`]),
-  );
-  return { hit, full, byEra, ms: Date.now() - t0 };
+
+  // Digital-only printings are never physically scanned.
+  const POCKET = /^(A\d|B\d|P-A)/;
+  const probes: Probe[] = [];
+  for (const card of manifest.cards) {
+    if (POCKET.test(card.id)) continue;
+    const file = card.file ?? `${card.id}.jpg`;
+    const candidates = byFile.get(file);
+    if (!candidates) continue; // no signals dump entry — nothing to score rivals against
+    const truth = truthOf(card);
+    // build-fixtures.ts (the degraded renders) writes no truth total, so fall
+    // back to the candidate list there. It is the weaker source — null whenever
+    // the true card missed the top 50 — but on renders that is rare, and a
+    // truth with no setTotal can never score 1, which would read as "this band
+    // reads nothing" rather than "the harness has no answer to check against".
+    if (truth.setTotal == null) {
+      truth.setTotal = candidates.find((c) => c.id === card.id)?.setTotal ?? null;
+    }
+    probes.push({
+      file,
+      id: card.id,
+      era: card.setCode.replace(/[\d.]+$/, "") || card.setCode,
+      truth,
+      rivals: candidates.filter((c) => c.id !== card.id),
+    });
+  }
+  return probes;
 }
 
 /**
@@ -189,12 +214,16 @@ async function score(
  * era in turn until the cap is met. A plain slice would return nothing but pl
  * and bw.
  *
+ * Within an era, distinct cards come before repeat scans of a card already
+ * taken. Repeats are not independent samples — the same physical card in the
+ * same session shares its lighting and framing — so a cap that fills up on one
+ * card scanned nine times buys resolution it cannot spend. The full set keeps
+ * every repeat, which is right: repeats do measure lighting robustness.
+ *
  * Each era's probes are spread first, deterministically. The manifest comes out
  * of build-real-fixtures ORDER BY created_at, so the head of an era is the
  * oldest review session — one set of lighting, and the run where repeat scans
- * of the same card cluster. Sampling that head would measure band placement on
- * the narrowest slice of the set, which is the same mistake that made a
- * 36-probe hand check disagree with the full sweep.
+ * of the same card cluster.
  */
 function stratify(probes: Probe[], cap: number): Probe[] {
   if (!cap || cap >= probes.length) return probes;
@@ -219,7 +248,18 @@ function stratify(probes: Probe[], cap: number): Probe[] {
       const j = Math.floor(rand() * (i + 1));
       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
-    return shuffled;
+    // Stable partition: first sighting of each card, then the repeats.
+    const seen = new Set<string>();
+    const first: Probe[] = [];
+    const rest: Probe[] = [];
+    for (const p of shuffled) {
+      if (seen.has(p.id)) rest.push(p);
+      else {
+        seen.add(p.id);
+        first.push(p);
+      }
+    }
+    return [...first, ...rest];
   });
   const out: Probe[] = [];
   for (let i = 0; out.length < cap; i++) {
@@ -235,101 +275,182 @@ function stratify(probes: Probe[], cap: number): Probe[] {
   return out;
 }
 
-async function main() {
-  const { captures } = JSON.parse(
-    await readFile(SIGNALS_PATH, "utf-8"),
-  ) as {
-    captures: {
-      expectedId: string;
-      setCode: string;
-      file?: string;
-      candidates: { id: string; setTotal: number | null }[];
-    }[];
-  };
+// ----------------------------------------------------------------- scoring
 
-  const POCKET = /^(A\d|B\d|P-A)/;
-  const WEAK = /^(dp|ex|base|ecard|neo|hgss|pl|bw|gym|pop|cel|dc|g1|np|si|ru|sve|swshp|svp|mcd|bwp|xyp|dpp|col|fut)/;
+interface ProbeResult {
+  file: string;
+  id: string;
+  era: string;
+  right: boolean;
+  half: boolean;
+  wrongFull: boolean;
+  denomParsed: boolean;
+  denomRight: boolean;
+  parsedNum: string | null;
+  parsedTotal: number | null;
+}
 
-  const probes: Probe[] = [];
-  const modernGuard: Probe[] = [];
-  for (const c of captures) {
-    if (POCKET.test(c.expectedId)) continue; // digital-only; never physically scanned
-    const self = c.candidates.find((x) => x.id === c.expectedId);
-    const probe: Probe = {
-      // Older signal dumps predate the file field; renders are named by id.
-      file: c.file ?? `${c.expectedId}.jpg`,
-      id: c.expectedId,
-      expectNum: c.expectedId.split("-").pop()!.replace(/^0+(?=\d)/, ""),
-      expectTotal: self?.setTotal ?? null,
-      era: c.setCode.replace(/[\d.]+$/, "") || c.setCode,
-    };
-    if (WEAK.test(c.expectedId)) probes.push(probe);
-    else modernGuard.push(probe);
+/**
+ * Scores one reading in the units the accept gate actually consumes, by
+ * running the real `collectorNumberMatch` against the true card and against
+ * every rival the retrieval stage returned for this capture.
+ *
+ * WRONG_FULL is the metric this harness was missing. A garbled read that
+ * matches nothing is harmless noise the fusion renormalises away; a garbled
+ * read that lands on a real candidate is a false accept waiting to happen.
+ * dp2-113 misread as "120/132" was only dangerous because dp3-120 was in the
+ * list. Scoring against the stored top-50 is the correct scope, not a
+ * limitation of it: a false accept can only ever come from a candidate.
+ */
+function scoreReading(
+  probe: Probe,
+  reading: Awaited<ReturnType<typeof readCollectorNumber>>,
+): ProbeResult {
+  const truthScore = collectorNumberMatch(reading, probe.truth);
+  let rivalMax = 0;
+  for (const rival of probe.rivals) {
+    const s = collectorNumberMatch(reading, rival);
+    if (s > rivalMax) rivalMax = s;
   }
-  // Every weak-era fixture, plus every 3rd modern one as a regression guard.
-  const full =
-    EVAL_SET === "pokemon"
-      ? [...probes, ...modernGuard.filter((_, i) => i % 3 === 0)]
-      : [...probes, ...modernGuard];
-  // The real-capture set used to be small enough to run whole. It is not any
-  // more — it grows with every review session, and the greedy sweep reads each
-  // probe once per band per pass, so a few hundred extra fixtures turn 15
-  // minutes into hours. EVAL_SAMPLE caps it, round-robining across eras so the
-  // cap cannot silently drop the small ones: pl and bw dominate by count, but
-  // dp and hgss are exactly the eras being measured.
+  return {
+    file: probe.file,
+    id: probe.id,
+    era: probe.era,
+    right: truthScore === 1,
+    half: truthScore === 0.5,
+    wrongFull: rivalMax === 1 && truthScore < 1,
+    denomParsed: reading.setTotal != null,
+    denomRight:
+      reading.setTotal != null && reading.setTotal === probe.truth.setTotal,
+    parsedNum: reading.collectorNumber ?? null,
+    parsedTotal: reading.setTotal ?? null,
+  };
+}
+
+async function runConfig(
+  probes: Probe[],
+  plan: CollectorNumberPlan,
+): Promise<ProbeResult[]> {
+  const out: ProbeResult[] = new Array(probes.length);
+  // The OCR pool (OCR_POOL_SIZE) is what actually parallelises the reads; this
+  // just keeps enough plans in flight to keep every worker busy.
+  const lanes = Math.max(2, Number(process.env.OCR_POOL_SIZE) || 2);
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: lanes }, async () => {
+      for (let i = next++; i < probes.length; i = next++) {
+        const probe = probes[i];
+        const image = sharp(await readFile(path.join(FIXTURES, probe.file)));
+        const meta = await image.metadata();
+        const reading = await readCollectorNumber(
+          image,
+          meta.width ?? 0,
+          meta.height ?? 0,
+          plan,
+        );
+        out[i] = scoreReading(probe, reading);
+      }
+    }),
+  );
+  return out;
+}
+
+function summarise(results: ProbeResult[]) {
+  const byEra = new Map<string, { n: number; right: number; wrong: number }>();
+  let right = 0;
+  let half = 0;
+  let wrongFull = 0;
+  let denomParsed = 0;
+  let denomRight = 0;
+  for (const r of results) {
+    if (r.right) right++;
+    if (r.half) half++;
+    if (r.wrongFull) wrongFull++;
+    if (r.denomParsed) denomParsed++;
+    if (r.denomRight) denomRight++;
+    const e = byEra.get(r.era) ?? { n: 0, right: 0, wrong: 0 };
+    e.n++;
+    if (r.right) e.right++;
+    if (r.wrongFull) e.wrong++;
+    byEra.set(r.era, e);
+  }
+  return { right, half, wrongFull, denomParsed, denomRight, byEra };
+}
+
+async function main() {
+  const all = await loadProbes();
   const raw = process.env.EVAL_SAMPLE;
   const cap = raw == null ? 0 : Number(raw);
   if (raw != null && (!Number.isInteger(cap) || cap <= 0)) {
     throw new Error(`EVAL_SAMPLE must be a positive integer, got "${raw}"`);
   }
-  const sample = stratify(full, cap);
-  if (sample.length < full.length) {
-    console.log(`EVAL_SAMPLE=${sample.length} of ${full.length} (unset it to sweep the whole set)`);
-  }
-  const weakFiles = new Set(probes.map((p) => p.file));
-  const weakInSample = sample.filter((p) => weakFiles.has(p.file)).length;
-  console.log(`${sample.length} probes (${weakInSample} weak-era, ${sample.length - weakInSample} modern guard)\n`);
+  const probes = stratify(all, cap);
+  const distinct = new Set(probes.map((p) => p.id)).size;
 
-  // Pass 1: bands under current prep/psm.
-  let bestBands = BAND_SETS[0];
-  let bestHit = -1;
-  for (const bs of BAND_SETS) {
-    const r = await score(sample, bs.bands, PREPS[0], "3");
+  console.log(
+    `${EVAL_SET}: ${probes.length} probes of ${all.length} (${distinct} distinct cards)`,
+  );
+  if (probes.length < all.length) {
     console.log(
-      `bands=${bs.label.padEnd(16)} hit=${r.hit}/${sample.length} full=${r.full} ${(r.ms / 1000).toFixed(0)}s ${JSON.stringify(r.byEra)}`,
+      "SAMPLED — benefit numbers only. WRONG_FULL needs the full set (unset EVAL_SAMPLE).",
     );
-    if (r.hit > bestHit) {
-      bestHit = r.hit;
-      bestBands = bs;
+  }
+  console.log(
+    `pool=${Number(process.env.OCR_POOL_SIZE) || 2} (set OCR_POOL_SIZE to cores-1)\n`,
+  );
+
+  await mkdir(DUMP_DIR, { recursive: true });
+
+  // A full grid over the real set is ~25 minutes; SWEEP_ONLY runs a subset so
+  // it can be done in batches, and dumps from earlier batches stay on disk for
+  // ocr-compare. Labels are comma-separated and must match CONFIGS exactly.
+  const only = process.env.SWEEP_ONLY?.split(",").map((x) => x.trim()).filter(Boolean);
+  const configs = only ? CONFIGS.filter((c) => only.includes(c.label)) : CONFIGS;
+  if (only) {
+    const unknown = only.filter((l) => !CONFIGS.some((c) => c.label === l));
+    if (unknown.length > 0) {
+      throw new Error(`SWEEP_ONLY names no such config: ${unknown.join(", ")}`);
     }
   }
 
-  // Pass 2: preprocessing under the winning bands.
-  console.log("");
-  let bestPrep = PREPS[0];
-  bestHit = -1;
-  for (const prep of PREPS) {
-    const r = await score(sample, bestBands.bands, prep, "3");
+  console.log(
+    "config".padEnd(20) +
+      "RIGHT".padStart(8) +
+      "HALF".padStart(7) +
+      "WRONG".padStart(7) +
+      "denom".padStart(11) +
+      "  secs",
+  );
+  for (const cfg of configs) {
+    const t0 = Date.now();
+    const results = await runConfig(probes, cfg.plan);
+    const s = summarise(results);
+    const secs = ((Date.now() - t0) / 1000).toFixed(0);
     console.log(
-      `prep=${prep.label.padEnd(24)} hit=${r.hit}/${sample.length} full=${r.full} ${(r.ms / 1000).toFixed(0)}s`,
+      cfg.label.padEnd(20) +
+        `${s.right}/${probes.length}`.padStart(8) +
+        String(s.half).padStart(7) +
+        String(s.wrongFull).padStart(7) +
+        `${s.denomRight}/${s.denomParsed}`.padStart(11) +
+        `  ${secs}s`,
     );
-    if (r.hit > bestHit) {
-      bestHit = r.hit;
-      bestPrep = prep;
-    }
+    const era = [...s.byEra.entries()]
+      .sort((a, b) => b[1].n - a[1].n)
+      .map(([k, v]) => `${k} ${v.right}/${v.n}${v.wrong ? ` W${v.wrong}` : ""}`)
+      .join("  ");
+    console.log(`  ${era}`);
+    // Per-probe, so two configs can be compared as paired data. Marginals
+    // alone cannot: 7/97 versus 17/97 is anywhere from p=0.002 to p=0.064
+    // depending on how the two sets overlap, and only the overlap settles it.
+    await writeFile(
+      path.join(DUMP_DIR, `${EVAL_SET}-${cfg.label}.jsonl`),
+      results.map((r) => JSON.stringify(r)).join("\n") + "\n",
+    );
   }
 
-  // Pass 3: page segmentation mode.
-  console.log("");
-  for (const psm of PSMS) {
-    const r = await score(sample, bestBands.bands, bestPrep, psm);
-    console.log(
-      `psm=${psm} hit=${r.hit}/${sample.length} full=${r.full} ${(r.ms / 1000).toFixed(0)}s ${JSON.stringify(r.byEra)}`,
-    );
-  }
-
-  console.log(`\nwinners: bands=${bestBands.label} prep=${bestPrep.label}`);
-  await worker?.terminate();
+  console.log(`\nper-probe dumps in ${DUMP_DIR}`);
+  console.log("compare two configs: pnpm exec tsx eval/ocr-compare.ts <a> <b>");
+  await disposeOcr();
   process.exit(0);
 }
 

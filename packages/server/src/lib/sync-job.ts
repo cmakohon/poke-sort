@@ -8,6 +8,8 @@ import type { SyncSource, SyncSourceCard } from "./card-search/sync-types";
 import { sendDiscordNotification } from "./discord";
 import { invalidateFacets } from "./facets";
 import { pokemonSyncSource } from "./pokemon/sync";
+import { cropArt } from "./art-window";
+import { artWindowForRow } from "./identify/candidates";
 import { vectorizeImageFromBuffer } from "./vectorize";
 
 export const SYNC_SOURCES: Record<string, SyncSource> = {
@@ -264,6 +266,29 @@ async function runSync(source: SyncSource, lang: string): Promise<void> {
       ]);
       const buffer = Buffer.from(await imageRes.arrayBuffer());
       const embedding = await vectorizeImageFromBuffer(buffer);
+      // The art view, in the same pass. Without this every set released after
+      // the art backfill would land with a null vector, and those are the
+      // newest and most-scanned cards — they would be scored on a different
+      // scale than the rest of the catalog, permanently. Roughly doubles the
+      // per-card cost of a sync.
+      // Its own try: the art view is an enhancement, and before it existed a
+      // card whose crop failed still landed with a valid whole-card embedding.
+      // Sharing the outer catch would drop the row entirely and leave the card
+      // silently unidentifiable — a much worse failure than scoring it on the
+      // whole card, which is exactly what a null degrades to.
+      const window = artWindowForRow({
+        set_code: card.setCode,
+        card_data: extras.data,
+      });
+      let embeddingArt: number[] | null = null;
+      if (window) {
+        try {
+          embeddingArt = await vectorizeImageFromBuffer(await cropArt(buffer, window));
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          addLog(`Art crop failed for ${card.name} (${card.setCode}): ${msg}`);
+        }
+      }
 
       // Claim the id immediately so a duplicate in the same run is skipped
       // rather than embedded twice while this one sits in the buffer.
@@ -275,6 +300,7 @@ async function runSync(source: SyncSource, lang: string): Promise<void> {
         name: card.name,
         setCode: card.setCode,
         embedding,
+        embeddingArt,
         collectorNumber: extras.collectorNumber ?? null,
         setTotal: extras.setTotal ?? null,
         cardData: extras.data ?? null,

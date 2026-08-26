@@ -23,6 +23,7 @@ import {
 } from "../src/lib/identify";
 import { disposeOcr, readCard } from "../src/lib/identify/ocr";
 import { POKEMON_PROFILE } from "../src/lib/identify/profiles";
+import { cropArt, distinctArtWindows } from "../src/lib/art-window";
 import { vectorizeImageFromBuffer } from "../src/lib/vectorize";
 
 const FIXTURES = FIXTURES_DIR;
@@ -39,6 +40,12 @@ async function main() {
   for (const fixture of manifest.cards) {
     const buf = await readFile(path.join(FIXTURES, fixture.file));
     const embedding = await vectorizeImageFromBuffer(buf);
+    // The art views, exactly as identifyOnce computes them, so the snapshot
+    // carries the same artDistance the live pipeline would see.
+    const artVectors = new Map<string, number[]>();
+    for (const { key, window } of distinctArtWindows()) {
+      artVectors.set(key, await vectorizeImageFromBuffer(await cropArt(buf, window)));
+    }
     const rows = await fetchCandidates(
       embedding,
       "pokemon",
@@ -46,6 +53,7 @@ async function main() {
       POKEMON_PROFILE.candidateLimit,
       POKEMON_PROFILE.distanceCutoff,
       POKEMON_PROFILE.excludedSetIds,
+      artVectors,
     );
     const ocr = POKEMON_PROFILE.ocr
       ? await readCard(buf, POKEMON_PROFILE.ocr).catch(() => ({}))

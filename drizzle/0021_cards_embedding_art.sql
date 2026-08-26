@@ -1,0 +1,19 @@
+-- A second embedding per card, of the art window alone.
+--
+-- SigLIP sees a whole card at 512px, where the frame — identical across every
+-- card in a set — dominates and the art is ~220px. Two printings of one Pokemon
+-- with different art land ~0.02 apart, inside the margin gate. That is the
+-- largest single cause of HS-era misidentification: hgss top-1 74.2% against
+-- pl/dp/bw at ~98.6%, with 84 of 88 live reviews failing on margin alone.
+-- Embedding the art window separately and blending the two distances at rerank
+-- time measures hgss 74.2% -> 93.8%. See docs/hgss-identification-accuracy.md.
+--
+-- Nullable, and stays nullable: a catalog imported from a v3 pack has no art
+-- vectors, and a candidate without one is scored on its whole-card distance.
+--
+-- No HNSW index, on purpose. Retrieval stays whole-card; the art vector only
+-- re-orders the 50 candidates that query already returned. Measured recall@50
+-- on the 1068-capture labelled set is 100% on every era, so retrieval never
+-- loses the truth and a second index would cost ~35 s of build and the disk for
+-- a query that is never issued.
+ALTER TABLE "cards" ADD COLUMN IF NOT EXISTS "embedding_art" vector(768);

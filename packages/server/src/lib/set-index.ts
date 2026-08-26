@@ -74,6 +74,61 @@ export function digitalOnlySetIds(): string[] {
     .map((s) => s.id);
 }
 
+/**
+ * Whether a denominator OCR read off a card footer — the 123 of "67/123" — is
+ * solid enough to argue AGAINST a candidate that prints a different one.
+ *
+ * That is a deliberately higher bar than "some set has this many cards", and
+ * the asymmetry is the point. A denominator that AGREES with a candidate is
+ * checked by equality and needs no help from here; this gate only guards the
+ * negative inference, where being wrong is expensive: `collectorNumberMatch`
+ * takes a correctly-read numerator from half credit to zero on the strength of
+ * it. Across the 956 labelled real captures that branch fires 43 times with
+ * the numerator right.
+ *
+ * Two tests, because either alone lets the real failures through:
+ *
+ *  - Membership. The catalog's own totals would do, but the index is the
+ *    better source: it covers 56 sets not synced locally (so a later sync
+ *    cannot silently change behaviour) and it keeps this callable from
+ *    eval/tune.ts, which has no database. Verified equal to `cards.set_total`
+ *    on all 162 sets the two share — both are tcgdex `cardCount.official`,
+ *    which is the number that gets printed.
+ *
+ *  - A floor, and this is the one that actually does the work. The garbled
+ *    denominators in the labelled set are almost all fragments of the real
+ *    fraction — "1" sixteen times, "11" six, then 10, 9, 7, 5, 4, 3, 14.
+ *    Membership does not catch them, because the index carries oddities whose
+ *    cardCount genuinely IS 1, 5, 7, 9, 10, 11.
+ *
+ * 15 is where those two groups separate, and the set list supports the cut
+ * independently: every set below 15 cards is a trainer kit, a sample sheet, an
+ * energy pack or a McDonald's insert — products that do not turn up in a bulk
+ * sorting pile — while 15 and up is Rumble, POP Series, Southern Islands,
+ * Dragon Vault, real things people sort. It is still a line drawn through 43
+ * observed cases, so treat it as calibrated rather than derived, and re-check
+ * it when the labelled set grows.
+ *
+ * The floor costs little it should not: a small set read CORRECTLY still gets
+ * full credit from the equality branch in collectorNumberMatch, which runs
+ * first. All this decides is whether a disagreeing denominator counts as proof
+ * against a candidate, and "/1" should not.
+ */
+const MIN_TRUSTWORTHY_TOTAL = 15;
+
+let setTotals: Set<number> | null = null;
+export function isTrustworthySetTotal(total: number): boolean {
+  if (total < MIN_TRUSTWORTHY_TOTAL) return false;
+  if (!setTotals) {
+    setTotals = new Set(
+      Object.values(data.sets)
+        .map((s) => s.cardCount)
+        .filter((c): c is number => c != null && c > 0),
+    );
+  }
+  return setTotals.has(total);
+}
+
 /** Year a set released, for "everything before 2010" style rules. */
 export function releaseYear(info: SetInfo | null): number | null {
   if (!info?.releaseDate) return null;

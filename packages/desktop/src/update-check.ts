@@ -20,7 +20,7 @@ export interface UpdateInfo {
 
 /**
  * App releases are tagged `vX.Y.Z`. Data assets get their own tags — the card
- * catalog ships as `catalog-v3` — and are not app releases; GitHub will happily
+ * catalog ships as `catalog-v4` — and are not app releases; GitHub will happily
  * report one as "latest" when it is the only release in the repo, so the shape
  * of the tag is what decides whether it is a version at all.
  */

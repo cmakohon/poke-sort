@@ -84,8 +84,8 @@ changes with every build, so macOS asks for camera permission again after each
 update.
 
 On first launch the card catalog is empty and nothing can be identified. The app
-prompts for a one-time import of a prebuilt embedding pack (~66 MB) from the
-`catalog-v3` release; see [Catalog](#catalog).
+prompts for a one-time import of a prebuilt embedding pack (~122 MB) from the
+`catalog-v4` release; see [Catalog](#catalog).
 
 ## Working plan
 
@@ -99,6 +99,14 @@ open — lives outside the repo at:
 It is the source of truth for in-flight work and is not checked in (it is a
 personal working document, not project documentation). Read it first when
 picking this project back up.
+
+Findings that outlive a single session live in `docs/` instead, because they
+are worth having in git alongside the code they explain:
+
+- [`docs/hgss-identification-accuracy.md`](docs/hgss-identification-accuracy.md)
+  — why HS-era cards identify worst of any era, what shipped, which OCR
+  approaches were measured and rejected (and why they keep getting
+  re-proposed), and the costed case for an art-window embedding.
 
 ## How it works
 
@@ -206,8 +214,17 @@ Electron nor the desktop `dev` script reads.
 for muscle memory.
 
 PGlite allows one process per directory, so anything that opens the dev install
-needs the app closed first: `eval:accuracy`, `eval:build`, `eval:capture`,
-`eval:hnsw` and `calibration` all default to it now.
+needs the app closed first: `eval:accuracy`, `eval:build`, `eval:build-real`,
+`eval:capture`, `eval:hnsw` and `calibration` all default to it now.
+`eval:tune` and `eval/ocr-sweep.ts` read JSON and fixture images only, so those
+two are safe to run while the app is up.
+
+After rebuilding the real-capture set, run `eval:snapshot`. It gzips
+`eval/signals-pokemon-real.json` (9.7MB, gitignored) into the committed
+`.json.gz` (~1.4MB) that `eval/real-set.test.ts` falls back to, which is what
+gives CI a real-capture regression guard rather than a skipped suite. The raw
+file wins locally when present, so forgetting to refresh the snapshot degrades
+CI rather than misleading you at your desk.
 
 The browser dev flow (`pnpm dev`, Vite plus Hono on :3001) deliberately keeps
 the default scratch directory rather than sharing the catalog: PGlite allows one
@@ -390,14 +407,14 @@ imports it on first run, which takes a couple of minutes.
 
 The pack hangs off its own tag rather than `releases/latest`, because it changes
 only when the catalog or the embedding pipeline does — pinning it to `latest`
-would mean re-uploading 66 MB with every app release, and the first release that
+would mean re-uploading 122 MB with every app release, and the first release that
 forgot would 404 every new install. Close the app first; PGlite allows one
 process per data directory:
 
 ```bash
 pnpm --filter @poke-sort/server export:pack pokemon en ./pokemon-en.pack.gz
-gh release create catalog-v3 ./pokemon-en.pack.gz --latest=false \
-  --title "Card catalog pack v3"
+gh release create catalog-v4 ./pokemon-en.pack.gz --latest=false \
+  --title "Card catalog pack v4"
 ```
 
 `--latest=false` matters: the in-app update check reads `/releases/latest`, and a
@@ -405,8 +422,9 @@ data asset must not present itself as an app release.
 
 The tag tracks `PACK_VERSION` and `EMBEDDING_IDENTITY`, not the app version.
 `importPack` refuses a pack built by a different pipeline, so bumping
-`PREPROCESSING_VERSION` means cutting `catalog-v4` and updating
-`DEFAULT_TEMPLATE` in `packages/server/src/lib/pack/fetch-job.ts`.
+`PREPROCESSING_VERSION` — or `PACK_VERSION`, as v4 did for the art vectors —
+means cutting the next tag and updating `DEFAULT_TEMPLATE` in
+`packages/server/src/lib/pack/fetch-job.ts`.
 
 Import is `POST /api/admin/catalog/import` (`{gameKey, lang, url?}`), polled via
 `GET` on the same path; `url` may be a local path so a pack can be verified
@@ -418,7 +436,8 @@ depends on the image CDN staying friendly.
 The maintainer re-cuts the pack; everyone else re-imports it. The full sync is
 "multi-hour" only for an empty catalog — `sync-job.ts` loads the existing card
 ids first and skips them, so an established catalog only embeds the new set's
-few hundred cards.
+few hundred cards. Each of those now costs two forward passes rather than one,
+because the art window is embedded alongside the whole card.
 
 ```bash
 # 1. Pull and embed only what is new. In the app: Card database -> Sync,
@@ -434,7 +453,7 @@ pnpm --filter @poke-sort/server build:set-index
 #    embedding pipeline, not the card count, and nothing about a new set
 #    invalidates an existing pack's vectors.
 pnpm --filter @poke-sort/server export:pack pokemon en ./pokemon-en.pack.gz
-gh release upload catalog-v3 ./pokemon-en.pack.gz --clobber -R cmakohon/poke-sort
+gh release upload catalog-v4 ./pokemon-en.pack.gz --clobber -R cmakohon/poke-sort
 ```
 
 Commit the regenerated `packages/server/src/data/pokemon-set-index.json`.
@@ -447,15 +466,23 @@ from the same address. A fresh install is prompted automatically; an established
 one is not, because there is no version stamped on an imported pack to compare
 against (see the note on `onConflictDoNothing` below).
 
-Cut a **new** tag (`catalog-v4`, and update `DEFAULT_TEMPLATE`) only when
-`PREPROCESSING_VERSION` or `EMBEDDING_IDENTITY` changes — that is the one thing
+Cut a **new** tag (`catalog-v5`, and update `DEFAULT_TEMPLATE`) only when
+`PACK_VERSION`, `PREPROCESSING_VERSION` or `EMBEDDING_IDENTITY` changes — that is the one thing
 that makes every published pack unimportable, and `importPack` will refuse the
 old one rather than corrupt anything.
 
-One limit worth knowing: `importPack` inserts with `onConflictDoNothing`, so a
-re-import **adds** cards it has not seen and never **updates** ones it has. New
-sets are all new rows, so this is the right trade — but a correction to an
-existing card's data will not propagate to installs that already have it.
+One limit worth knowing: `importPack` still leaves an existing row's data alone
+on re-import — it **adds** cards it has not seen and does not **update** the
+rest, so a correction to an existing card's data will not propagate to installs
+that already have it. New sets are all new rows, so this is the right trade.
+
+The single exception is `embedding_art`, which a re-import does fill in.
+Without it the v4 pack would be inert on every established install: they
+already hold all ~21.7k card ids, so a pure insert writes nothing and the
+download would report success while changing nothing. `coalesce` guards it, so
+importing an older pack cannot blank a vector that is already there. The
+catalog status endpoint reports `missingArt`, which is how an established
+install can tell it is still on whole-card-only identification.
 
 The correction picker searches this catalog, not a remote API, so it is paged
 and offline and every printing is reachable — `GET /api/cards/search` takes

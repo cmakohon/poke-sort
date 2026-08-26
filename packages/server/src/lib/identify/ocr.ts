@@ -24,8 +24,14 @@ import type { OcrProfile, OcrRegion } from "./profiles";
  * p95 was 1.7s of a 2s budget. Two workers run the bands pairwise; the pool is
  * two rather than more because the embedding forward pass is competing for the
  * same cores at the same time.
+ *
+ * OCR_POOL_SIZE exists for eval/ocr-sweep.ts, which runs no embedding and so
+ * has the cores to spare — a band sweep over the real-capture set is thousands
+ * of reads and two workers make it hours. Unset in the app, deliberately: the
+ * 2 above is a measured trade against the forward pass, not a default nobody
+ * thought about.
  */
-const POOL_SIZE = 2;
+const POOL_SIZE = Number(process.env.OCR_POOL_SIZE) || 2;
 
 let poolPromise: Promise<Worker[]> | null = null;
 let nextWorker = 0;
@@ -82,7 +88,7 @@ export async function disposeOcr(): Promise<void> {
  * works depends on the card, so a short ladder is tried, both polarities.
  * Measured on the weakest-era fixtures: 2/33 plain, 20/33 with the ladder.
  */
-interface ReadOptions {
+export interface ReadOptions {
   scale?: number;
   threshold?: number;
   negate?: boolean;
@@ -92,8 +98,17 @@ interface ReadOptions {
    * a webcam capture's footer is low-contrast but evenly lit, and normalise
    * lets the holo texture set the levels. Collector-number reads only —
    * name/HP bands were not measured under it.
+   *
+   * Re-measured 2026-08-25 on the 1068-capture real set with hgss at 97, and
+   * contrast holds. A marginal count on the older hgss-thin set suggested
+   * normalise was far better for that era; paired, it is not. hgss 8 -> 13
+   * reads is McNemar p=0.18 (p=0.125 per distinct card), and set-wide it is
+   * 269 -> 270, p=1.000 — the same reads, redistributed. Not a reason to
+   * change what ships. See the grid in eval/ocr-sweep.ts.
    */
   contrast?: boolean;
+  /** Sharpen after normalise. `contrast` already sharpens; this is for the other path. */
+  sharpen?: boolean;
 }
 
 async function readRegion(
@@ -118,7 +133,9 @@ async function readRegion(
     .greyscale();
   pipeline = opts.contrast
     ? pipeline.linear(1.35, -35).sharpen()
-    : pipeline.normalise();
+    : opts.sharpen
+      ? pipeline.normalise().sharpen()
+      : pipeline.normalise();
   if (opts.threshold != null) pipeline = pipeline.threshold(opts.threshold);
   if (opts.negate) pipeline = pipeline.negate();
 
@@ -142,12 +159,62 @@ async function readRegion(
  * no fraction at all — the card was headed to review anyway, so a couple of
  * extra reads to rescue it is the cheap side of the trade.
  */
-const ESCALATION: ReadOptions[] = [
+export const ESCALATION: ReadOptions[] = [
   { scale: 4, threshold: 100 },
   { scale: 4, threshold: 125 },
   { scale: 4, threshold: 145 },
   { scale: 4, threshold: 100, negate: true },
 ];
+
+/**
+ * Which crops to read for the collector number, and how.
+ *
+ * Every band carries its own ReadOptions rather than the whole list sharing
+ * one preprocessing setting: the bands already encode era-specific geometry
+ * (see POKEMON_OCR.collectorNumber), so per-band preprocessing is the only way
+ * to say "the band where hgss prints its number wants different treatment"
+ * without detecting the era first — which is not knowable at scan time.
+ *
+ * eval/ocr-sweep.ts builds these directly, which is the point: the sweep used
+ * to keep its own copy of the preprocessing and of the band-reduction loop, so
+ * it measured a pipeline production does not run.
+ */
+export interface CollectorNumberPlan {
+  bands: { region: OcrRegion; opts?: ReadOptions }[];
+  /**
+   * Retried, cheapest rung first, only when no band parsed a full fraction.
+   * Absent means no rescue pass.
+   */
+  escalation?: { region: OcrRegion; ladder: ReadOptions[] };
+}
+
+/** Exactly what the live pipeline reads. The sweep's baseline arm. */
+export function productionCollectorPlan(
+  profile: OcrProfile,
+): CollectorNumberPlan {
+  const bands = profile.collectorNumber.map((region) => ({
+    region,
+    opts: { contrast: true } as ReadOptions,
+  }));
+  const deepRight = profile.collectorNumber[0];
+  return {
+    bands,
+    // The dark-footer eras (ex, neo, hgss, dp) defeat plain binarisation, and
+    // the deep-right band is where all of them print the number. Except hgss,
+    // where the band clips the tops of the digits: on 97 labelled hgss
+    // captures it reads 1-2 and the ladder rescues 0.
+    //
+    // A taller right band (y .90-1.0) fixes that and was REJECTED anyway,
+    // measured end to end on 2026-08-25. It is a big, real read gain — 269 ->
+    // 290 set-wide, McNemar p<0.001 — and it costs two false accepts:
+    // dp2-113 -> dp3-120 and ex13-54 -> bw7-98. The first is the same card
+    // that killed the seam band in 5526f2e, found again from scratch. The
+    // trade is +7 accepts for 2 mis-sorts, and false accepts are a constraint
+    // here, not a term. Do not re-litigate this without new evidence about
+    // telling a garbled read from a clean one.
+    escalation: deepRight ? { region: deepRight, ladder: ESCALATION } : undefined,
+  };
+}
 
 /**
  * Largest plausible printed denominator. The catalog's biggest set is 307, so
@@ -220,10 +287,80 @@ function cleanName(text: string): string | undefined {
 }
 
 /**
- * Reads every region in the profile and keeps the best-formed parse, rather
- * than trying to detect the card's era first. Era detection is itself a guess,
- * and a wrong guess costs the signal entirely.
+ * Reads every band in the plan and keeps the best-formed parse, rather than
+ * trying to detect the card's era first. Era detection is itself a guess, and
+ * a wrong guess costs the signal entirely.
+ *
+ * Exported so eval/ocr-sweep.ts measures this exact code rather than a copy of
+ * it. The copy had already drifted: the sweep chose bands under 3x-normalise
+ * while production read them under 4x-contrast-sharpen, and it had no
+ * escalation pass at all.
  */
+export async function readCollectorNumber(
+  image: Sharp,
+  width: number,
+  height: number,
+  plan: CollectorNumberPlan,
+): Promise<Pick<OcrReading, "collectorNumber" | "setTotal" | "collectorNumberRaw">> {
+  const reading: Pick<
+    OcrReading,
+    "collectorNumber" | "setTotal" | "collectorNumberRaw"
+  > = {};
+  const texts = await Promise.all(
+    plan.bands.map((b) => readRegion(image, width, height, b.region, b.opts)),
+  );
+
+  // Prefer a reading that includes the denominator — it is worth double. The
+  // raw text is kept regardless: candidates are matched against it directly,
+  // which tolerates the stray marks OCR adds around the number.
+  const rawReadings: string[] = [];
+  for (const text of texts) {
+    if (!text) continue;
+    rawReadings.push(text);
+    const parsed = parseCollectorNumber(text);
+    if (!parsed) continue;
+    if (parsed.setTotal != null && reading.setTotal == null) {
+      reading.collectorNumber = parsed.collectorNumber;
+      reading.setTotal = parsed.setTotal;
+    } else {
+      reading.collectorNumber ??= parsed.collectorNumber;
+    }
+  }
+
+  // Escalate only when nothing parsed as a full fraction: the card was headed
+  // to review anyway, so a couple of extra reads to rescue it is the cheap
+  // side of the trade.
+  if (reading.setTotal == null && plan.escalation) {
+    const { region, ladder } = plan.escalation;
+    // Pairwise, matching the pool width: latency of ceil(4/2) reads, and the
+    // second pair is skipped entirely when the first finds a parse.
+    for (let i = 0; i < ladder.length; i += 2) {
+      const rung = await Promise.all(
+        ladder
+          .slice(i, i + 2)
+          .map((opts) => readRegion(image, width, height, region, opts)),
+      );
+      let found = false;
+      for (const text of rung) {
+        if (!text) continue;
+        const parsed = parseCollectorNumber(text);
+        if (parsed?.setTotal != null) {
+          rawReadings.push(text);
+          reading.collectorNumber = parsed.collectorNumber;
+          reading.setTotal = parsed.setTotal;
+          found = true;
+          break;
+        }
+      }
+      if (found) break;
+    }
+  }
+
+  if (rawReadings.length > 0) reading.collectorNumberRaw = rawReadings.join(" ");
+  return reading;
+}
+
+/** Name, collector number and HP from one capture, all bands in parallel. */
 export async function readCard(
   imageBuffer: Buffer,
   profile: OcrProfile,
@@ -239,15 +376,17 @@ export async function readCard(
   // Every plain region is queued at once and drained by the pool: which crop
   // holds which fact is not knowable in advance, so nothing is gained by
   // reading them in a clever order and everything by reading them in parallel.
-  const [nameTexts, numberTexts, hpTexts] = await Promise.all([
+  const [nameTexts, number, hpTexts] = await Promise.all([
     Promise.all(profile.name.map((r) => readRegion(image, width, height, r))),
-    Promise.all(
-      profile.collectorNumber.map((r) =>
-        readRegion(image, width, height, r, { contrast: true }),
-      ),
+    readCollectorNumber(
+      image,
+      width,
+      height,
+      productionCollectorPlan(profile),
     ),
     Promise.all(profile.hp.map((r) => readRegion(image, width, height, r))),
   ]);
+  Object.assign(reading, number);
 
   for (const text of nameTexts) {
     const name = cleanName(text);
@@ -256,52 +395,6 @@ export async function readCard(
       break;
     }
   }
-
-  // Prefer a reading that includes the denominator — it is worth double. The
-  // raw text is kept regardless: candidates are matched against it directly,
-  // which tolerates the stray marks OCR adds around the number.
-  const rawReadings: string[] = [];
-  for (const text of numberTexts) {
-    if (!text) continue;
-    rawReadings.push(text);
-    const parsed = parseCollectorNumber(text);
-    if (!parsed) continue;
-    if (parsed.setTotal != null && reading.setTotal == null) {
-      reading.collectorNumber = parsed.collectorNumber;
-      reading.setTotal = parsed.setTotal;
-    } else {
-      reading.collectorNumber ??= parsed.collectorNumber;
-    }
-  }
-  // Escalate only when nothing parsed as a full fraction: the dark-footer
-  // eras (ex, neo, hgss, dp) defeat plain binarisation, and the deep-right
-  // band is where all of them print the number.
-  if (reading.setTotal == null) {
-    const deepRight = profile.collectorNumber[0];
-    // Pairwise, matching the pool width: latency of ceil(4/2) reads, and the
-    // second pair is skipped entirely when the first finds a parse.
-    for (let i = 0; i < ESCALATION.length; i += 2) {
-      const texts = await Promise.all(
-        ESCALATION.slice(i, i + 2).map((opts) =>
-          readRegion(image, width, height, deepRight, opts),
-        ),
-      );
-      let found = false;
-      for (const text of texts) {
-        if (!text) continue;
-        const parsed = parseCollectorNumber(text);
-        if (parsed?.setTotal != null) {
-          rawReadings.push(text);
-          reading.collectorNumber = parsed.collectorNumber;
-          reading.setTotal = parsed.setTotal;
-          found = true;
-          break;
-        }
-      }
-      if (found) break;
-    }
-  }
-  if (rawReadings.length > 0) reading.collectorNumberRaw = rawReadings.join(" ");
 
   for (const text of hpTexts) {
     const hp = parseHp(text);

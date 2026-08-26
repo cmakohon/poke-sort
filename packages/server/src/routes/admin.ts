@@ -17,7 +17,7 @@ import {
   SYNC_SOURCES,
 } from "../lib/sync-job";
 import { getPackJobState, packUrlFor, startPackImport } from "../lib/pack/fetch-job";
-import { countCards } from "../lib/pack/import";
+import { countCards, countMissingArt } from "../lib/pack/import";
 import { vectorizeImageFromBuffer } from "../lib/vectorize";
 import { requireAuth, requireRole, type AppEnv } from "../middleware/auth";
 
@@ -69,6 +69,7 @@ router.get("/catalog/:gameKey", requireAuth, requireRole("admin"), async (c) => 
       gameKey,
       lang,
       count: await countCards(gameKey, lang),
+      missingArt: await countMissingArt(gameKey, lang),
       packUrl: packUrlFor(gameKey, lang),
     },
   });
