@@ -155,9 +155,19 @@ export const POKEMON_PROFILE: IdentityProfile = {
   // sits below rank 5 on embedding distance alone, so re-ranking never saw it.
   candidateLimit: 50,
   distanceCutoff: 0.3,
-  // Set in the commit that re-measures against a catalog with art vectors.
-  // Landing the plumbing at 0 first makes that diff provably behaviour-neutral.
-  artWeight: 0,
+  // Measured 2026-08-25 on the 1068-capture real set, against a catalog with
+  // art vectors for 19,419 of 19,448 windowed cards:
+  //
+  //                    top-1   accept   FALSE   hgss top-1   hgss review
+  //   artWeight 0      95.6%    81.8%     0        74.2%        70.1%
+  //   artWeight 0.25   97.2%    85.0%     0        89.7%        53.6%
+  //
+  // 0.25 rather than the 0.5 that scored marginally higher: the gain is flat
+  // from 0.25 up (97.2 / 97.0 / 97.2 at .25 / .35 / .5) while false accepts at
+  // the OLD gate climb 2 / 3 / 4 and the share of candidates whose embedding
+  // signal clamps to zero goes 1.5% / 2.1% / 3.5%. Same accuracy, less of the
+  // scale distortion. 0 is an exact revert and was in the sweep.
+  artWeight: 0.25,
   // Tuned against eval/signals.json via eval/tune.ts (150 degraded-render
   // probes, full catalog): 87.3% accept at zero false accepts, held-out
   // 0/3000 across 40 fixed-config splits. Deliberately NOT the sweep argmax —
@@ -186,9 +196,13 @@ export const POKEMON_PROFILE: IdentityProfile = {
   // and FALSE=3 on the 956 — so 0.05 stands. The remaining review pile is
   // almost entirely reprint pairs the embedding cannot split; wins there come
   // from reading the collector number, not from loosening the gate.
+  // Re-tuned 2026-08-25 when artWeight went to 0.25 (name 0.1 -> 0.15,
+  // setTotal 0.02 -> 0.05, minScore 0.5 -> 0.4, minMargin 0.05 -> 0.06). The
+  // blend shifts every fused score, so the gate it was calibrated against no
+  // longer held: at the old gate 0.25 admits 2 false accepts.
   weights: {
     embedding: 0.5,
-    name: 0.1,
+    name: 0.15,
     collectorNumber: 0.2,
     // Decisive when present, but only Sword & Shield onward prints one. The
     // fusion renormalises over the signals actually available, so a card with
@@ -200,7 +214,7 @@ export const POKEMON_PROFILE: IdentityProfile = {
     // cannot by itself carry a card across the accept gate. It can still nudge
     // a pair that was already within a whisker of it, which is the population
     // the cliff report exists to watch.
-    setTotal: 0.02,
+    setTotal: 0.05,
     hp: 0.05,
   },
   // distanceGap enabled 2026-08-21, at zero false accepts on every measurement:
@@ -217,9 +231,14 @@ export const POKEMON_PROFILE: IdentityProfile = {
   // to 0.44 selects the same cards. The cliff is one notch away rather than
   // the two minMargin keeps: gapMin 0.015 admits 2 false accepts. Deliberate,
   // and worth re-measuring whenever the review pile changes shape.
+  // minMargin 0.06 is what holds the line under the blend, and it is the whole
+  // gate: at 0.05 the same config admits 2 false accepts (xy0-36 -> bw10-83 and
+  // ex13-54 -> bw7-98, the latter already on record as a false accept from the
+  // rejected taller escalation band). The cliff is one notch below, and the
+  // fixed-config held-out estimate at this gate is 0/21360.
   accept: {
-    minScore: 0.5,
-    minMargin: 0.05,
+    minScore: 0.4,
+    minMargin: 0.06,
     distanceGap: { d1Max: 0.15, gapMin: 0.02 },
   },
   reviewFloor: 0.3,

@@ -171,6 +171,8 @@ interface Report {
   noMatch: number;
   byRule: Record<string, number>;
   byEra: Record<string, EraCounts>;
+  /** truth -> what was accepted instead. A count alone cannot be argued with. */
+  falseAcceptPairs: string[];
 }
 
 interface EraCounts {
@@ -183,7 +185,7 @@ interface EraCounts {
 
 function run(preps: Prepared[], cfg: Config): Report {
   const r: Report = {
-    n: preps.length, top1: 0, accepted: 0, falseAccepts: 0,
+    n: preps.length, top1: 0, accepted: 0, falseAccepts: 0, falseAcceptPairs: [],
     review: 0, reviewCorrect: 0, noMatch: 0, byRule: {}, byEra: {},
   };
   const era = (p: Prepared): EraCounts =>
@@ -238,6 +240,7 @@ function run(preps: Prepared[], cfg: Config): Report {
       if (!correct) {
         r.falseAccepts++;
         era(p).falseAccepts++;
+        r.falseAcceptPairs.push(`${p.expectedId}->${p.ids[bestI]}`);
       }
       r.byRule[released] = (r.byRule[released] ?? 0) + 1;
     } else {
@@ -399,9 +402,12 @@ async function main() {
     const pinned = p.reduce((sum, x) => sum + x.pinnedEmbedding, 0);
     const cands = p.reduce((sum, x) => sum + x.sigs.length, 0);
     console.log(
-      `  aw ${String(aw).padEnd(5)} top1 ${(r.top1 * 100).toFixed(1)}%  ` +
-        `accept ${(r.accepted * 100).toFixed(1)}%  false ${r.falseAccepts}  ` +
-        `embedding-pinned-at-0 ${((pinned / cands) * 100).toFixed(1)}%`,
+      `  aw ${String(aw).padEnd(5)} top1 ${((r.top1 / r.n) * 100).toFixed(1)}%  ` +
+        `accept ${((r.accepted / r.n) * 100).toFixed(1)}%  false ${r.falseAccepts}  ` +
+        `embedding-pinned-at-0 ${((pinned / cands) * 100).toFixed(1)}%` +
+        (r.falseAcceptPairs.length
+          ? `\n         false: ${r.falseAcceptPairs.join(", ")}`
+          : ""),
     );
     showEras(r, artBaseline);
     artBaseline ??= r;
@@ -446,6 +452,9 @@ async function main() {
     ["margin .05 score .5", { w: wBest, gate: { minScore: 0.5, minMargin: 0.05, reviewFloor: 0.3, distanceGap: null } }],
     ["margin .05 score .5 +dgap", { w: wBest, gate: { minScore: 0.5, minMargin: 0.05, reviewFloor: 0.3, distanceGap: { d1Max: 0.1, gapMin: 0.04 } } }],
     ["margin .06 score .5 +dgap", { w: wBest, gate: { minScore: 0.5, minMargin: 0.06, reviewFloor: 0.3, distanceGap: { d1Max: 0.1, gapMin: 0.04 } } }],
+    // The grid argmax itself, so it gets the same no-re-picking held-out
+    // estimate as the hand-written entries rather than only a full-set figure.
+    ["grid best", best.cfg],
   ];
   for (const [label, cfg] of shortlist) {
     show(`  ${label}`, run(preps, cfg));

@@ -23,9 +23,13 @@
 // measured 81.8% and failed. Newer captures skew harder because the review
 // queue is worked newest-first.
 //
-// Measured on the 1068-capture dump of 2026-08-25: overall top1 95.6%,
-// accept 81.8%; pl 98.6%, dp 98.6%, bw 98.8%, hgss 74.2%. Update these when
-// you move a floor, so the next person can see drift rather than guess at it.
+// Measured on the 1068-capture dump of 2026-08-25, at artWeight 0.25 with the
+// gate re-tuned for it: overall top1 97.2%, accept 85.0%; pl 99.4%, dp 96.7%,
+// bw 99.4%, hgss 89.7%, me 100%, xy 96.4%, base 89.5%. Update these when you
+// move a floor, so the next person can see drift rather than guess at it.
+//
+// The same dump before the art blend: top1 95.6%, accept 81.8%; pl 98.6%,
+// dp 98.6%, bw 98.8%, hgss 74.2%.
 import { existsSync, readFileSync } from "node:fs";
 import { gunzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
@@ -108,8 +112,23 @@ describe.skipIf(!present)("real-capture set (production rerank)", () => {
 
   it("holds its overall floors", () => {
     expect(overall.n).toBeGreaterThan(500);
-    expect(overall.top1 / overall.n).toBeGreaterThan(0.94);
-    expect(overall.accepted / overall.n).toBeGreaterThan(0.78);
+    expect(overall.top1 / overall.n).toBeGreaterThan(0.955);
+    expect(overall.accepted / overall.n).toBeGreaterThan(0.82);
+  });
+
+  // Without this, a snapshot captured before the catalog had art vectors makes
+  // every assertion above pass by measuring artWeight-0 behaviour while
+  // production runs blended — green for the wrong reason, and invisible,
+  // because loadSignals prefers the raw dump locally and the committed
+  // snapshot in CI, so the two can disagree silently.
+  it("replays a dump that actually carries art distances", () => {
+    if (POKEMON_PROFILE.artWeight === 0) return;
+    const total = captures.reduce((sum, c) => sum + c.candidates.length, 0);
+    const withArt = captures.reduce(
+      (sum, c) => sum + c.candidates.filter((k) => k.artDistance != null).length,
+      0,
+    );
+    expect(withArt / total).toBeGreaterThan(0.9);
   });
 
   // Per era, because the aggregate hides the trade this pipeline is prone to:
@@ -118,13 +137,20 @@ describe.skipIf(!present)("real-capture set (production rerank)", () => {
   // Only eras with enough captures to mean anything are asserted.
   const FLOORS: Record<string, number> = {
     pl: 0.97,
-    dp: 0.97,
+    // Lowered from 0.97 when the art blend shipped, and it is the one place
+    // that change cost something: dp measures 96.7%, down from 98.6%. Four
+    // captures — dp2-113 twice, dp7-84, dp1-103 — against 26 gained elsewhere.
+    // The loss is intrinsic to the blend rather than the gate (top-1 does not
+    // depend on the gate at all), and the alternative that spares dp, giving
+    // its series no art window, measured far worse everywhere. Deliberate, and
+    // the ledger is in docs/hgss-identification-accuracy.md.
+    dp: 0.95,
     bw: 0.97,
-    // hgss is the outlier this whole branch is about — measured 74.2%, and at
-    // n=97 a three-point move is three cards, so the floor sits low enough to
-    // ignore that noise and only catch a genuine collapse. Raise it when the
-    // era stops being the problem.
-    hgss: 0.68,
+    // Was 0.68 when hgss was the problem this branch existed to fix; it
+    // measures 89.7% now. At n=97 a three-point move is three cards, so the
+    // floor still sits low enough to ignore that noise and only catch a
+    // genuine collapse — but high enough that losing the art blend fails here.
+    hgss: 0.84,
   };
 
   it.each(Object.entries(FLOORS))("keeps %s top-1 above %d", (era, floor) => {
