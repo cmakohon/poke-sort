@@ -43,10 +43,14 @@ export default function App() {
       <section className="col-span-4 lg:col-span-3 xl:col-span-4 2xl:col-span-2 overflow-hidden flex flex-col h-full p-2 border-r gap-2 bg-sidebar/70">
         <CollectionSwitcher />
         <PresetSelector readOnly />
-        <CardScanner className="flex-none" />
+        {/* The preview is capped rather than left at its card aspect: at 289px
+            of sidebar that aspect alone claimed 381px of 666, and the stats
+            below it — the only item in the column that can shrink — were
+            crushed to 100px with no scrollbar, since the section clips. */}
+        <CardScanner className="flex-none max-h-[45%]" />
         <GameSwitchAlert />
         <ScannerDebug />
-        <ScanStats />
+        <ScanStats className="flex-1" />
       </section>
       <section className="col-span-8 lg:col-span-9 xl:col-span-8 2xl:col-span-10 overflow-y-auto h-full @container flex flex-col">
         <CardGrid />

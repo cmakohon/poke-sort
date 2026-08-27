@@ -18,7 +18,7 @@ export function formatElapsed(ms: number): string {
   return `${m}:${String(sec).padStart(2, "0")}`;
 }
 
-export function ScanStats() {
+export function ScanStats({ className }: { className?: string }) {
   const { t } = useTranslation("scanner");
   const [expandedSets, setExpandedSets] = useState(false);
   const { cards, elapsedMs, isTimerActive } = useScannedCards();
@@ -28,7 +28,12 @@ export function ScanStats() {
 
   if (!stats) {
     return (
-      <div className="rounded-lg bg-input/20 dark:bg-input/30 border border-input text-xs font-semibold text-muted-foreground p-2">
+      <div
+        className={cn(
+          "rounded-lg bg-input/20 dark:bg-input/30 border border-input text-xs font-semibold text-muted-foreground p-2",
+          className,
+        )}
+      >
         {t("scanStats.emptyState")}
       </div>
     );
@@ -62,7 +67,7 @@ export function ScanStats() {
   );
 
   return (
-    <ScrollArea className="min-h-0 rounded-lg">
+    <ScrollArea className={cn("min-h-0 rounded-lg", className)}>
       <div className="flex flex-col gap-2 text-sm">
         <div className="rounded-lg bg-input/20 dark:bg-input/30 border border-input">
           <div className="grid grid-cols-2">

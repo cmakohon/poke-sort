@@ -12,6 +12,7 @@ import {
   drawDetectionOverlay,
   resolveCardContour,
 } from "@/features/scanner/lib/card-detection";
+import { fitRotatedPreview } from "@/features/scanner/lib/preview-fit";
 import { ScannerMenu } from "@/features/scanner/components/scanner-menu";
 import { SerialPortPicker } from "@/features/scanner/components/serial-port-picker";
 import { ScannerOverlay } from "@/features/scanner/components/scanner-overlay";
@@ -80,20 +81,17 @@ export function CardScanner({ className, compact }: CardScannerProps) {
       canvas.height = height;
     }
 
-    // The camera is mounted sideways over the feeder, so the preview is always
-    // rotated 90° in CSS and the cover-fit maths swaps the axes to match.
     const container = display.parentElement;
     if (container) {
-      const cw = container.clientWidth;
-      const ch = container.clientHeight;
-      const scale = Math.max(cw / height, ch / width);
-      const cssW = Math.round(width * scale);
-      const cssH = Math.round(height * scale);
+      const fit = fitRotatedPreview(
+        { width: container.clientWidth, height: container.clientHeight },
+        { width, height },
+      );
       for (const canvas of [display, overlay]) {
-        canvas.style.width = `${cssW}px`;
-        canvas.style.height = `${cssH}px`;
-        canvas.style.left = `${(cw - cssW) / 2}px`;
-        canvas.style.top = `${(ch - cssH) / 2}px`;
+        canvas.style.width = `${fit.cssW}px`;
+        canvas.style.height = `${fit.cssH}px`;
+        canvas.style.left = `${fit.left}px`;
+        canvas.style.top = `${fit.top}px`;
       }
     }
 
