@@ -45,7 +45,12 @@ export const ScannedCardItem = memo(function ScannedCardItem({
   return (
     <div
       className={cn(
-        "relative rounded-lg p-1 border transition-shadow",
+        // isolate, or the tile's z-indexed children escape into the page:
+        // `relative` alone is z-index auto and opens no stacking context, so
+        // the select button's z-30 was competing with the sticky toolbar and
+        // footer directly — and winning, leaving checkmarks floating over both
+        // bars as the grid scrolled under them.
+        "relative isolate rounded-lg p-1 border transition-shadow",
         tier ?? "bg-muted",
         isSelected && "ring-2 ring-primary ring-offset-1",
       )}
