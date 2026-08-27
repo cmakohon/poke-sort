@@ -21,7 +21,8 @@ describe("valueTier", () => {
   });
 
   it("gives each band a distinct colour", () => {
-    const bands = [5, 15, 25, 50].map((p) => valueTier(p)?.price);
+    const bands = [5, 15, 25, 50].map((p) => valueTier(p));
+    expect(bands.every(Boolean)).toBe(true);
     expect(new Set(bands).size).toBe(4);
   });
 

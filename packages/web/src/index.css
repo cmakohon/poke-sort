@@ -73,15 +73,19 @@ code {
      than one ramp — mid-run the operator reads them at a glance, not by
      comparing two tiles side by side.
 
-     These also colour the price text, so lightness is a contrast budget and
-     not just a look: each clears 4.5:1 on white, at or above the 4.83:1 of the
-     muted-foreground it replaces. Gold is the trap — the natural bright amber
-     lands at 3.30:1, which would make the $50+ tier the least readable price
-     on the screen. */
+     Solid fills, and the same in both themes. They started as a 12% tint over
+     bg-muted, which turned out to be invisible: a $6 card and a $0.40 card
+     were indistinguishable at arm's length, which is the only distance this
+     feature is used from.
+
+     Filled, they carry white text, so lightness is a contrast budget and not
+     just a look — each clears 4.5:1 against white. Warm hues are the trap: the
+     natural bright gold for the $50+ tier only reaches 3.30:1, so the top tier
+     sits at a deeper amber than it wants to. */
   --value-1: oklch(53.5% 0.14 149);
   --value-2: oklch(54.5% 0.12 231);
   --value-3: oklch(54.5% 0.19 300);
-  --value-4: oklch(55.5% 0.15 76);
+  --value-4: oklch(57.5% 0.17 60);
 }
 
 .dark {
@@ -117,12 +121,6 @@ code {
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.552 0.016 285.938);
-  /* Lighter and less saturated than the light-mode tiers: the same colour that
-     reads as a soft tint over white glows over the dark background. */
-  --value-1: oklch(72% 0.13 149);
-  --value-2: oklch(73% 0.11 231);
-  --value-3: oklch(70% 0.15 300);
-  --value-4: oklch(78% 0.13 76);
 }
 
 @theme inline {

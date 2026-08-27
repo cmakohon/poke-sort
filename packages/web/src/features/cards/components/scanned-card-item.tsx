@@ -47,7 +47,7 @@ export const ScannedCardItem = memo(function ScannedCardItem({
     <div
       className={cn(
         "relative rounded-lg p-1 border transition-shadow",
-        tier?.tile ?? "bg-muted",
+        tier ?? "bg-muted",
         isSelected && "ring-2 ring-primary ring-offset-1",
       )}
     >
@@ -182,7 +182,12 @@ export const ScannedCardItem = memo(function ScannedCardItem({
           <IconCheck />
         </Button>
       )}
-      <div className="flex flex-row justify-between items-center px-1 pb-1 gap-2">
+      <div
+        className={cn(
+          "flex flex-row justify-between items-center px-1 pb-1 gap-2",
+          tier && "text-white",
+        )}
+      >
         <div className="flex flex-row items-center gap-2 min-w-0">
           <div
             className="size-3 rounded-full shrink-0"
@@ -194,12 +199,22 @@ export const ScannedCardItem = memo(function ScannedCardItem({
           >
             {card.setName || card.set.toUpperCase()}
           </p>
-          <p className="text-xs text-muted-foreground shrink-0">
+          <p
+            className={cn(
+              "text-xs shrink-0",
+              tier ? "text-white/80" : "text-muted-foreground",
+            )}
+          >
             {formatCardNumber(card)}
           </p>
           {isDownloaded && (
             <span title={t("scannedCardItem.downloaded")}>
-              <IconDownload className="size-3 text-muted-foreground shrink-0" />
+              <IconDownload
+                className={cn(
+                  "size-3 shrink-0",
+                  tier ? "text-white/80" : "text-muted-foreground",
+                )}
+              />
             </span>
           )}
         </div>
@@ -207,7 +222,7 @@ export const ScannedCardItem = memo(function ScannedCardItem({
           <p
             className={cn(
               "text-xs font-medium shrink-0",
-              tier?.price ?? "text-muted-foreground",
+              tier ? "text-white" : "text-muted-foreground",
             )}
           >
             {formatUsd(card.price)}
