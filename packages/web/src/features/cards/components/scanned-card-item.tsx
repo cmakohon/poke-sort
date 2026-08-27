@@ -1,4 +1,3 @@
-import { rarityColor } from "@/features/cards/lib/rarity-color";
 import { formatCardNumber } from "@/features/cards/lib/format-card-number";
 import { valueTier } from "@/features/cards/lib/value-tier";
 import { formatUsd } from "@/lib/format-currency";
@@ -189,19 +188,20 @@ export const ScannedCardItem = memo(function ScannedCardItem({
         )}
       >
         <div className="flex flex-row items-center gap-2 min-w-0">
-          <div
-            className="size-3 rounded-full shrink-0"
-            style={{ backgroundColor: rarityColor(card.rarity) }}
-          />
+          {/* The set code, not the set name: the name is what a tile this
+              narrow has room for least, and it used to be the thing that gave
+              way — "Black & White" truncated to "Bl…" while the collector
+              number sat next to it at full width. The number is the one that
+              yields now. */}
           <p
-            className="text-xs font-semibold truncate min-w-0"
-            title={`${card.setName || card.set} (${card.set.toUpperCase()})`}
+            className="text-xs font-semibold shrink-0"
+            title={card.setName || card.set.toUpperCase()}
           >
-            {card.setName || card.set.toUpperCase()}
+            {card.set.toUpperCase()}
           </p>
           <p
             className={cn(
-              "text-xs shrink-0",
+              "text-xs truncate min-w-0",
               tier ? "text-white/80" : "text-muted-foreground",
             )}
           >
