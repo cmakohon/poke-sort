@@ -33,9 +33,12 @@ import {
   readCollectorNumber,
   productionCollectorPlan,
   ESCALATION,
+  WHOLE_CARD_PLAN,
   type CollectorNumberPlan,
   type ReadOptions,
+  type TextRecognizer,
 } from "../src/lib/identify/ocr";
+import { disposeVision, visionRecognizer } from "./vision-ocr";
 import { collectorNumberMatch, type RerankInput } from "../src/lib/identify/rerank";
 import { POKEMON_PROFILE, type OcrRegion } from "../src/lib/identify/profiles";
 import sharp from "sharp";
@@ -47,7 +50,7 @@ const OCR = POKEMON_PROFILE.ocr!;
 
 // ---------------------------------------------------------------- variants
 
-/** What production reads collector bands under today. */
+/** What the Tesseract fallback reads collector bands under. */
 const CONTRAST: ReadOptions = { contrast: true };
 /** Plain normalise — what the bands were originally chosen under. */
 const NORMALISE: ReadOptions = {};
@@ -108,9 +111,47 @@ function bandNormalised(index: number) {
   }));
 }
 
-const CONFIGS: { label: string; plan: CollectorNumberPlan }[] = [
-  // By reference, so this arm can never drift from what ships.
-  { label: "production", plan: productionCollectorPlan(OCR) },
+/**
+ * Apple Vision arms.
+ *
+ * The question is how much of the collector-number failure rate is the band
+ * geometry and how much is Tesseract. Every band, every preprocessing setting
+ * and the whole escalation ladder were measured against Tesseract's adaptive
+ * binarisation — so a fair answer needs BOTH an arm that changes only the
+ * engine and an arm that lets a scene-text recogniser work the way it wants to.
+ *
+ *   vision-prod-prep  the Tesseract band plan exactly, Vision instead of
+ *                     Tesseract.
+ *                     Isolates the engine, and is unfair to Vision: the 4x
+ *                     contrast-stretch exists to make foil binarisable.
+ *   vision-raw        the same bands, but colour crops with untouched levels.
+ *                     No escalation — the ladder is four hard thresholds, which
+ *                     is binarisation for an engine that does not binarise.
+ *   vision-fullcard   no bands at all, one read of the whole capture. Worth an
+ *                     arm because Vision reads the number off an unprocessed
+ *                     capture unaided; if it holds up, the era-specific band
+ *                     table stops being load-bearing. It is also the arm most
+ *                     likely to produce WRONG_FULL, since the parsers now see
+ *                     the rules text and the copyright line they were narrowed
+ *                     to exclude.
+ */
+const RAW: ReadOptions = { raw: true };
+
+const CONFIGS: {
+  label: string;
+  plan: CollectorNumberPlan;
+  recognize?: TextRecognizer;
+}[] = [
+  // ⚠ `tesseract`, not `production`: since 2026-08-27 the app reads with Apple
+  // Vision over the whole card, so the arm that ships is `vision-fullcard`
+  // below. This one is the Tesseract band pipeline, kept as the baseline every
+  // historical number in profiles.ts and docs/ was measured against — it still
+  // returns exactly 269, which is what makes those numbers comparable.
+  //
+  // The plan is taken by reference so the arm cannot drift from
+  // productionCollectorPlan, which Tesseract still uses wherever Vision is
+  // unavailable (Windows, Linux, a mac build without the sidecar).
+  { label: "tesseract", plan: productionCollectorPlan(OCR) },
   { label: "all-normalise", plan: planOf(uniform(NORMALISE), DEEP_RIGHT) },
   { label: "all-norm-sharpen", plan: planOf(uniform(NORMALISE_SHARPEN), DEEP_RIGHT) },
   { label: "deepright-norm", plan: planOf(bandNormalised(0), DEEP_RIGHT) },
@@ -119,6 +160,23 @@ const CONFIGS: { label: string; plan: CollectorNumberPlan }[] = [
   { label: "esc-tall+mr-norm", plan: planOf(bandNormalised(1), TALL_RIGHT) },
   { label: "esc-tall+all-norm", plan: planOf(uniform(NORMALISE), TALL_RIGHT) },
   { label: "no-escalation", plan: planOf(uniform(CONTRAST), null) },
+  {
+    label: "vision-prod-prep",
+    plan: productionCollectorPlan(OCR),
+    recognize: visionRecognizer,
+  },
+  {
+    label: "vision-raw",
+    plan: planOf(uniform(RAW), null),
+    recognize: visionRecognizer,
+  },
+  {
+    // What ships. By reference to WHOLE_CARD_PLAN for the same reason the
+    // Tesseract arm is by reference to productionCollectorPlan.
+    label: "vision-fullcard",
+    plan: WHOLE_CARD_PLAN,
+    recognize: visionRecognizer,
+  },
 ];
 
 // ------------------------------------------------------------------ probes
@@ -330,6 +388,7 @@ function scoreReading(
 async function runConfig(
   probes: Probe[],
   plan: CollectorNumberPlan,
+  recognize?: TextRecognizer,
 ): Promise<ProbeResult[]> {
   const out: ProbeResult[] = new Array(probes.length);
   // The OCR pool (OCR_POOL_SIZE) is what actually parallelises the reads; this
@@ -347,6 +406,7 @@ async function runConfig(
           meta.width ?? 0,
           meta.height ?? 0,
           plan,
+          recognize,
         );
         out[i] = scoreReading(probe, reading);
       }
@@ -423,7 +483,7 @@ async function main() {
   );
   for (const cfg of configs) {
     const t0 = Date.now();
-    const results = await runConfig(probes, cfg.plan);
+    const results = await runConfig(probes, cfg.plan, cfg.recognize);
     const s = summarise(results);
     const secs = ((Date.now() - t0) / 1000).toFixed(0);
     console.log(
@@ -451,6 +511,7 @@ async function main() {
   console.log(`\nper-probe dumps in ${DUMP_DIR}`);
   console.log("compare two configs: pnpm exec tsx eval/ocr-compare.ts <a> <b>");
   await disposeOcr();
+  await disposeVision();
   process.exit(0);
 }
 

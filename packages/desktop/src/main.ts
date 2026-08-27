@@ -102,6 +102,15 @@ const MIGRATIONS_DIR = app.isPackaged
   ? path.join(process.resourcesPath, "drizzle")
   : path.resolve(__dirname, "../../../drizzle");
 
+/**
+ * The Apple Vision OCR sidecar. macOS only, and absent on any build where
+ * swiftc was unavailable — the server probes for it and falls back to
+ * tesseract.js, so a missing path here is a supported state, not an error.
+ */
+const VISION_OCR = app.isPackaged
+  ? path.join(process.resourcesPath, "vision", "vision-ocr")
+  : path.resolve(__dirname, "../../server/native/vision-ocr");
+
 let serverProcess: UtilityProcess | null = null;
 let mainWindow: BrowserWindow | null = null;
 let serverStart: Promise<number> | null = null;
@@ -189,6 +198,7 @@ function startServer(): Promise<number> {
         // Only enforced in the packaged app; an unpackaged dev run is allowed
         // to pull the weights down on demand.
         POKE_SORT_MODELS_OFFLINE: app.isPackaged ? "1" : "0",
+        POKE_SORT_VISION_OCR: VISION_OCR,
       },
     });
     serverProcess = child;

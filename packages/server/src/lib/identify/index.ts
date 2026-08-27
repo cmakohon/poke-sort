@@ -16,7 +16,7 @@ import {
 } from "../pokemon/search";
 import { artWindowKey, cropArt, distinctArtWindows } from "../art-window";
 import { vectorizeImageFromBuffer } from "../vectorize";
-import { readCard } from "./ocr";
+import { readCardWithBestEngine } from "./ocr";
 import { detectFirstEditionStamp, hasFirstEditionVariant } from "./stamp";
 import {
   fetchFreshCard,
@@ -343,7 +343,7 @@ async function identifyOnce(
   const profile = getIdentityProfile(gameKey);
 
   const ocrPromise: Promise<OcrReading> = profile?.ocr
-    ? readCard(imageBuffer, profile.ocr).catch((err) => {
+    ? readCardWithBestEngine(imageBuffer, profile.ocr).catch((err) => {
         // OCR is an enhancement; losing it degrades ranking, not correctness.
         console.error("[identify] OCR failed:", err);
         return {};

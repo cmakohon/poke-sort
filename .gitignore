@@ -68,3 +68,8 @@ packages/server/eval/.sweep/
 # art-crop probe cache: catalog renders + vectors (regenerate with
 # `eval/art-crop-probe.ts`; it re-downloads and re-embeds on a cold cache)
 packages/server/eval/.artprobe/
+
+# Compiled Apple Vision OCR sidecar. Built by scripts/build-vision.mjs from
+# native/vision-ocr.swift; macOS-only and machine-specific, so the source is
+# tracked and the binary is not.
+packages/server/native/vision-ocr

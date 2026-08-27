@@ -46,6 +46,13 @@ run("pnpm", ["--filter", "@poke-sort/server", "deploy", "--prod", ".server-bundl
 
 run(process.execPath, [path.join(here, "prune-bundle.mjs")]);
 
+// The Apple Vision OCR sidecar. Compiled into packages/server/native, which
+// electron-builder copies as extraResources — so it has to exist before
+// electron-builder runs, not before the deploy. A no-op off macOS.
+run(process.execPath, [
+  path.resolve(DESKTOP, "../server/scripts/build-vision.mjs"),
+]);
+
 /**
  * Refuses to hand electron-builder a tree it would package into broken links.
  *

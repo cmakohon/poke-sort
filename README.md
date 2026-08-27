@@ -30,6 +30,7 @@ game, running entirely on one desk. Different goals, same foundation.
 | Auth           | Neon Auth, orgs, members, invites       | none — one local user                                                   |
 | Card data      | Scryfall + TCGdex + Gundam adapters     | TCGdex only                                                             |
 | Identification | one embedding, top-5, take the first    | embedding + OCR + collector number, re-ranked behind a confidence gate  |
+| OCR            | —                                       | Apple Vision on macOS, tesseract.js elsewhere                           |
 
 The Magic and Gundam adapters, the Scryfall integration, the auth system, and
 the marketing site are removed rather than disabled. Fields that were
@@ -107,6 +108,13 @@ are worth having in git alongside the code they explain:
   — why HS-era cards identify worst of any era, what shipped, which OCR
   approaches were measured and rejected (and why they keep getting
   re-proposed), and the costed case for an art-window embedding.
+- [`docs/vision-ocr-evaluation.md`](docs/vision-ocr-evaluation.md)
+  — Apple Vision reads 3.5x more collector numbers than Tesseract (936/1068
+  against 269) and takes the review pile from 15.1% to 1.8% at zero false
+  accepts; and the 15 mislabeled captures that discovery turned up, which
+  invalidated the stated evidence for three decisions written into
+  `profiles.ts` and `ocr.ts`. Read before trusting any pre-2026-08-27
+  false-accept number.
 
 ## How it works
 
@@ -114,14 +122,14 @@ are worth having in git alongside the code they explain:
 2. The browser crops that region to a straightened card image (plain Canvas 2D, no computer vision needed, since the camera mounting and card size are fixed and calibrated ahead of time)
 3. The image is sent to the server for embedding search (Hugging Face SigLIP)
 4. Vector similarity search (pgvector, in an embedded PGlite database) returns the nearest candidates
-5. Local OCR reads the card's name and collector number, and the candidates are re-ranked on the fused signal; a low-confidence result routes to a review bin instead of being guessed
+5. Local OCR reads the card's name and collector number — Apple Vision where it is available, tesseract.js otherwise — and the candidates are re-ranked on the fused signal; a low-confidence result routes to a review bin instead of being guessed
 6. Configurable, per-collection bin rules decide which bin the card should go to
 7. The web app sends a serial command to the Arduino, which drives the trapdoor/paddle/pusher servos to route the card into that bin
 
 ## Features
 
 - Live webcam scanning with automatic card detection and identification; captures wait for the card to physically settle at the sensor before the shot is taken
-- Fused identification: SigLIP image embedding, Tesseract OCR of the name and collector number, and set-code matching, re-ranked together behind a confidence gate that sends ambiguous cards to review rather than mis-sorting them
+- Fused identification: SigLIP image embedding, local OCR of the name and collector number, and set-code matching, re-ranked together behind a confidence gate that sends ambiguous cards to review rather than mis-sorting them. On macOS the OCR is Apple Vision, which reads the printed number off 936 of 1068 real captures against 269 for tesseract.js and cuts the review pile from 15.1% to 1.8%; Windows and Linux use tesseract.js ([`docs/vision-ocr-evaluation.md`](docs/vision-ocr-evaluation.md))
 - Rule-based sort bins, grouped by collection, with and/or rule trees across Pokémon card fields (energy type, rarity, HP, set, series, price, regulation mark, legality, and more)
 - Card grid sorting and filtering by energy type, rarity and set
 - Multiple collections, each with their own bin configuration and card history
