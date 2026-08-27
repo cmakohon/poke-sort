@@ -12,6 +12,10 @@ import {
   drawDetectionOverlay,
   resolveCardContour,
 } from "@/features/scanner/lib/card-detection";
+import {
+  DEFAULT_CAMERA_HEIGHT,
+  DEFAULT_CAMERA_WIDTH,
+} from "@/features/scanner/api/use-camera";
 import { fitRotatedPreview } from "@/features/scanner/lib/preview-fit";
 import { ScannerMenu } from "@/features/scanner/components/scanner-menu";
 import { SerialPortPicker } from "@/features/scanner/components/serial-port-picker";
@@ -66,6 +70,13 @@ export function CardScanner({ className, compact }: CardScannerProps) {
   const displayCanvasRef = useRef<HTMLCanvasElement>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
 
+  // Rotated: the camera is mounted sideways, so the box is as tall as the
+  // frame is wide. Falls back to the resolution use-camera asks getUserMedia
+  // for, so the layout does not jump when the stream actually arrives.
+  const previewAspect = videoSize
+    ? `${videoSize.height} / ${videoSize.width}`
+    : `${DEFAULT_CAMERA_HEIGHT} / ${DEFAULT_CAMERA_WIDTH}`;
+
   // Mirrors the engine's video onto the visible canvas, and outlines the region
   // capture crops to. Torn down with the screen — the sort does not depend on
   // it, so there is no reason to keep copying 1080p frames nobody is watching.
@@ -81,8 +92,13 @@ export function CardScanner({ className, compact }: CardScannerProps) {
       canvas.height = height;
     }
 
+    // Re-measured on every container resize, not just when the video changes.
+    // Sizing once left the canvas laid out for whatever the container happened
+    // to be at mount, so dragging the window moved the preview off-centre and
+    // left a band of background down one side.
     const container = display.parentElement;
-    if (container) {
+    const applyFit = () => {
+      if (!container) return;
       const fit = fitRotatedPreview(
         { width: container.clientWidth, height: container.clientHeight },
         { width, height },
@@ -93,7 +109,10 @@ export function CardScanner({ className, compact }: CardScannerProps) {
         canvas.style.left = `${fit.left}px`;
         canvas.style.top = `${fit.top}px`;
       }
-    }
+    };
+    applyFit();
+    const observer = container ? new ResizeObserver(applyFit) : null;
+    if (container && observer) observer.observe(container);
 
     const overlayCtx = overlay.getContext("2d");
     if (overlayCtx) {
@@ -115,7 +134,10 @@ export function CardScanner({ className, compact }: CardScannerProps) {
     };
     raf = requestAnimationFrame(loop);
 
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      observer?.disconnect();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     videoRef,
@@ -135,11 +157,22 @@ export function CardScanner({ className, compact }: CardScannerProps) {
         className,
       )}
     >
+      {/* The box takes the camera's own aspect ratio — swapped, since the
+          preview is rotated 90°. That is what makes the fit exact: contain and
+          cover agree when the ratios match, so the feed fills the box edge to
+          edge with no letterboxing and nothing cropped, at any window size.
+          A card-shaped box was neither, and showed a band of background beside
+          the feed. */}
       <div
         className={cn(
-          "relative overflow-hidden bg-background w-full h-full max-w-full rounded-lg border",
-          !compact && "md:aspect-[2.5/3.5]",
+          "relative overflow-hidden bg-background rounded-lg border",
+          // Sized from the height and centred: the aspect ratio supplies the
+          // width, so auto side margins are what keep it centred — and they
+          // are also why the width cannot come from stretching, which would
+          // fight the ratio.
+          compact ? "w-full h-full" : "flex-1 min-h-0 w-auto max-w-full mx-auto",
         )}
+        style={compact ? undefined : { aspectRatio: previewAspect }}
       >
         <canvas
           ref={displayCanvasRef}

@@ -16,6 +16,14 @@ import { useTranslation } from "react-i18next";
 
 const CameraContext = createContext<CameraContextValue | null>(null);
 
+
+/**
+ * What we ask getUserMedia for. Exported because the preview box shapes itself
+ * to the camera's aspect, and needs a ratio before the stream reports one.
+ */
+export const DEFAULT_CAMERA_WIDTH = 1920;
+export const DEFAULT_CAMERA_HEIGHT = 1080;
+
 async function acquireStream(deviceId?: string): Promise<MediaStream> {
   // `zoom` is deliberately NOT requested here. As a bare value it is a *basic*
   // constraint, meaning required — so any camera that does not expose zoom
@@ -26,8 +34,8 @@ async function acquireStream(deviceId?: string): Promise<MediaStream> {
   const stream = await navigator.mediaDevices.getUserMedia({
     video: {
       ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
-      width: { ideal: 1920 },
-      height: { ideal: 1080 },
+      width: { ideal: DEFAULT_CAMERA_WIDTH },
+      height: { ideal: DEFAULT_CAMERA_HEIGHT },
     } as MediaTrackConstraints,
   });
 

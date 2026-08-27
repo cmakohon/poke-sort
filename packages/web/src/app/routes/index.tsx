@@ -43,11 +43,12 @@ export default function App() {
       <section className="col-span-4 lg:col-span-3 xl:col-span-4 2xl:col-span-2 overflow-hidden flex flex-col h-full p-2 border-r gap-2 bg-sidebar/70">
         <CollectionSwitcher />
         <PresetSelector readOnly />
-        {/* The preview is capped rather than left at its card aspect: at 289px
-            of sidebar that aspect alone claimed 381px of 666, and the stats
-            below it — the only item in the column that can shrink — were
-            crushed to 100px with no scrollbar, since the section clips. */}
-        <CardScanner className="flex-none max-h-[45%]" />
+        {/* A definite height, not a cap: the preview box sizes itself to the
+            camera's aspect within whatever it is given, and needs something
+            resolved to size against. It is also the budget that stops the
+            preview eating the column — at 289px of sidebar its old card aspect
+            claimed 381px of 666, crushing the stats below it to 100px. */}
+        <CardScanner className="h-[45%] shrink-0" />
         <GameSwitchAlert />
         <ScannerDebug />
         <ScanStats className="flex-1" />

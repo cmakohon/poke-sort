@@ -8,9 +8,15 @@
  *
  * Contain, not cover. Cover crops whatever does not fit, and the first thing
  * off the edge is the border of the frame — which is exactly where the
- * detection outline sits. At window sizes where the container's aspect drifts
+ * detection outline sits. At window sizes where the container's aspect drifted
  * from the camera's, the operator was watching a preview with the scan region
- * cut off the side. Letterboxing is the lesser cost.
+ * cut off the side.
+ *
+ * In practice neither applies: CardScanner gives the box the camera's own
+ * aspect, so the two axes scale by the same factor and the feed fills the box
+ * exactly. Contain is the safe direction to round in if that ever stops being
+ * true — a thin band of background is recoverable, a hidden scan region is
+ * not.
  *
  * Rotation does not affect the centring: `rotate(90deg)` turns the element
  * about its own centre, so placing the layout box centrally places the visual
