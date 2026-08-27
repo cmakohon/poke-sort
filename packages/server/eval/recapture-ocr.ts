@@ -42,10 +42,18 @@ async function main() {
   if (arm !== "vision" && arm !== "visionfull") {
     throw new Error(`usage: recapture-ocr.ts <vision|visionfull>`);
   }
-  const out = SIGNALS_PATH.replace(/\.json$/, "").replace(
-    `signals-${EVAL_SET}`,
-    `signals-${EVAL_SET}-${arm}`,
-  ) + ".json";
+  // Derived from the BASENAME, not by substituting the set name into the path.
+  // The default set is special-cased in eval-set.ts to `signals.json` rather
+  // than `signals-pokemon.json`, so a `signals-${EVAL_SET}` substitution
+  // matches nothing there and collapses back onto SIGNALS_PATH — which would
+  // overwrite the Tesseract baseline with Vision readings, silently (the dumps
+  // are gitignored) and irrecoverably short of a full eval:capture re-run.
+  const dir = path.dirname(SIGNALS_PATH);
+  const base = path.basename(SIGNALS_PATH, ".json");
+  const out = path.join(dir, `${base}-${arm}.json`);
+  if (out === SIGNALS_PATH) {
+    throw new Error(`refusing to overwrite the source dump at ${SIGNALS_PATH}`);
+  }
 
   const { captures } = JSON.parse(await readFile(SIGNALS_PATH, "utf-8")) as {
     captures: Capture[];

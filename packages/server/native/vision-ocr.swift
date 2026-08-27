@@ -95,6 +95,11 @@ while let line = readLine(strippingNewline: true) {
   if line.isEmpty { continue }
   guard let data = line.data(using: .utf8),
         let request = try? decoder.decode(Request.self, from: data) else {
+    // Always answer, even here. The driver is serial and waits for one line
+    // per request, so a silently skipped line is not a dropped read — it is a
+    // read that never returns, which stalls the scan holding it. The id is
+    // unknown by definition; the driver pairs by position, not by id.
+    emit(Response(id: -1, text: "", confidence: 0, error: "unparseable request"))
     continue
   }
   guard let image = loadImage(request.path) else {

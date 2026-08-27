@@ -19,8 +19,10 @@ import type { TextRecognizer } from "./ocr";
  * docs/vision-ocr-evaluation.md.
  *
  * macOS only. Everything here is written so that absence, a missing Swift
- * toolchain, and a sidecar that dies mid-run are all ordinary states that end
- * in "use Tesseract instead" rather than a failed scan.
+ * toolchain, and a sidecar that dies or wedges mid-run are all ordinary states
+ * that end in "use Tesseract instead" rather than a failed or hanging scan.
+ * A scan blocked forever is the worst outcome available: the feeder has
+ * already committed the card.
  */
 
 /**
@@ -29,6 +31,16 @@ import type { TextRecognizer } from "./ocr";
  * that wins those cores just moves the bottleneck.
  */
 const POOL_SIZE = Number(process.env.OCR_POOL_SIZE) || 2;
+
+/**
+ * How long one read may take before the worker is treated as wedged.
+ *
+ * Process *exit* is observable; a sidecar that is alive and simply not
+ * answering is not. Vision returns in tens of milliseconds, and identification
+ * runs to a 2s budget, so this is far outside anything real and exists only to
+ * convert a hang into the degradation this module already promises.
+ */
+const READ_TIMEOUT_MS = Number(process.env.VISION_READ_TIMEOUT_MS) || 5000;
 
 interface Reply {
   id: number;
@@ -52,6 +64,7 @@ class VisionWorker {
   private proc: ChildProcess;
   private buffer = "";
   private pending: { resolve: (r: Reply) => void; reject: (e: Error) => void } | null = null;
+  private timer: NodeJS.Timeout | null = null;
   private nextId = 1;
   dead = false;
   readonly scratch: string;
@@ -63,17 +76,37 @@ class VisionWorker {
     this.proc.stdout!.on("data", (chunk: string) => this.onData(chunk));
     this.proc.stderr!.setEncoding("utf-8");
     this.proc.stderr!.on("data", (c: string) => console.error(`[vision] ${c.trim()}`));
-    // A sidecar that exits takes its in-flight read with it. Without this the
-    // caller waits forever on a promise nothing will ever settle, which on a
-    // sorter means the feeder stalls mid-card.
-    const die = (why: string) => {
-      this.dead = true;
-      const p = this.pending;
-      this.pending = null;
-      p?.reject(new VisionUnavailable(`vision sidecar ${why}`));
-    };
-    this.proc.on("exit", (code, signal) => die(`exited (${code ?? signal})`));
-    this.proc.on("error", (err) => die(`failed to start: ${err.message}`));
+    this.proc.on("exit", (code, signal) => this.die(`exited (${code ?? signal})`));
+    this.proc.on("error", (err) => this.die(`failed to start: ${err.message}`));
+    // Node emits 'error' on the STREAM as well as calling write's callback, and
+    // an unhandled stream 'error' is an uncaught exception that takes the
+    // server down. The window is real: the sidecar exits, the 'exit' event has
+    // not been delivered yet, and a queued read writes into the broken pipe —
+    // i.e. exactly the non-runnable-binary cases probeVision exists to absorb.
+    this.proc.stdin!.on("error", (err: Error) => this.die(`stdin: ${err.message}`));
+  }
+
+  /**
+   * The worker is finished. Settles whatever it was holding and tells the pool,
+   * which is what wakes anyone queued behind it.
+   */
+  private die(why: string) {
+    const first = !this.dead;
+    this.dead = true;
+    this.settle(null, new VisionUnavailable(`vision sidecar ${why}`));
+    if (first) onWorkerDeath(this);
+  }
+
+  private settle(reply: Reply | null, err: Error | null) {
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
+    const p = this.pending;
+    this.pending = null;
+    if (!p) return;
+    if (err) p.reject(err);
+    else p.resolve(reply!);
   }
 
   private onData(chunk: string) {
@@ -83,36 +116,40 @@ class VisionWorker {
       const line = this.buffer.slice(0, nl);
       this.buffer = this.buffer.slice(nl + 1);
       if (!line.trim()) continue;
-      const p = this.pending;
-      this.pending = null;
-      if (!p) continue;
       try {
-        p.resolve(JSON.parse(line) as Reply);
+        this.settle(JSON.parse(line) as Reply, null);
       } catch (err) {
-        p.reject(new VisionUnavailable(`unparseable reply: ${String(err)}`));
+        this.settle(null, new VisionUnavailable(`unparseable reply: ${String(err)}`));
       }
     }
   }
 
   async read(png: Buffer): Promise<Reply> {
     if (this.dead) throw new VisionUnavailable("sidecar is gone");
+    // The serial protocol is only serial if the pool honours it. A second
+    // concurrent read would overwrite `pending`, stranding the first promise
+    // and resolving the second with the first crop's text — the silent
+    // mispairing this class is shaped to prevent. Fail loudly instead.
+    if (this.pending) throw new VisionUnavailable("worker is already reading");
     // Reused per worker rather than a fresh file per read: the worker is
     // serial, so the previous crop is always consumed before this overwrites it.
     await writeFile(this.scratch, png);
     const id = this.nextId++;
     return new Promise<Reply>((resolve, reject) => {
       this.pending = { resolve, reject };
+      this.timer = setTimeout(
+        () => this.die(`did not answer within ${READ_TIMEOUT_MS}ms`),
+        READ_TIMEOUT_MS,
+      );
       this.proc.stdin!.write(JSON.stringify({ id, path: this.scratch }) + "\n", (err) => {
-        if (err) {
-          this.pending = null;
-          reject(new VisionUnavailable(`write failed: ${err.message}`));
-        }
+        if (err) this.settle(null, new VisionUnavailable(`write failed: ${err.message}`));
       });
     });
   }
 
   kill() {
     this.dead = true;
+    this.settle(null, new VisionUnavailable("disposed"));
     this.proc.stdin!.end();
     this.proc.kill();
   }
@@ -121,8 +158,32 @@ class VisionWorker {
 let pool: VisionWorker[] | null = null;
 let scratchDir: string | null = null;
 let free: VisionWorker[] = [];
-const waiters: ((w: VisionWorker) => void)[] = [];
+let waiters: { resolve: (w: VisionWorker) => void; reject: (e: Error) => void }[] = [];
 let starting: Promise<void> | null = null;
+
+function rejectWaiters(err: Error) {
+  const queued = waiters;
+  waiters = [];
+  for (const w of queued) w.reject(err);
+}
+
+/**
+ * A worker is gone: drop it, and if it was the last one, unblock everybody
+ * waiting on it.
+ *
+ * The waiters are the whole reason this is not just a filter. One read of a
+ * card fans out over more crops than there are workers, so callers are
+ * routinely parked here — and a queued caller that is never woken never
+ * settles, which stalls the scan, the HTTP request, and then the graceful
+ * shutdown that is waiting for that request to finish.
+ */
+function onWorkerDeath(dead: VisionWorker) {
+  pool = pool?.filter((w) => w !== dead) ?? null;
+  free = free.filter((w) => w !== dead);
+  if (!pool || pool.length === 0) {
+    rejectWaiters(new VisionUnavailable("all vision sidecars are gone"));
+  }
+}
 
 async function ensurePool(): Promise<void> {
   if (pool) return;
@@ -134,8 +195,11 @@ async function ensurePool(): Promise<void> {
       const dir = await mkdtemp(path.join(os.tmpdir(), "poke-vision-"));
       const workers = Array.from({ length: POOL_SIZE }, (_, i) => new VisionWorker(dir, i));
       scratchDir = dir;
-      pool = workers;
-      free = [...workers];
+      // A worker can die during construction (bad binary), and onWorkerDeath
+      // runs before this assignment — so filter rather than trust the array.
+      pool = workers.filter((w) => !w.dead);
+      free = [...pool];
+      if (pool.length === 0) throw new VisionUnavailable("no sidecar survived startup");
     })().catch((err) => {
       starting = null;
       throw err;
@@ -147,18 +211,17 @@ async function ensurePool(): Promise<void> {
 function acquire(): Promise<VisionWorker> {
   const w = free.pop();
   if (w) return Promise.resolve(w);
-  return new Promise((resolve) => waiters.push(resolve));
+  return new Promise<VisionWorker>((resolve, reject) => waiters.push({ resolve, reject }));
 }
 
 function release(w: VisionWorker) {
-  // A dead worker is not handed back out; the pool shrinks and probeVision's
-  // result is what decides whether Vision is used at all next time.
   if (w.dead) {
-    pool = pool?.filter((x) => x !== w) ?? null;
+    // die() already routed through onWorkerDeath; nothing to hand back.
+    onWorkerDeath(w);
     return;
   }
   const next = waiters.shift();
-  if (next) next(w);
+  if (next) next.resolve(w);
   else free.push(w);
 }
 
@@ -211,10 +274,15 @@ export async function probeVision(): Promise<boolean> {
 }
 
 export async function disposeVision(): Promise<void> {
-  if (pool) for (const w of pool) w.kill();
+  const workers = pool;
   pool = null;
   free = [];
   starting = null;
+  // Before killing anything: a caller parked in acquire() has no worker to be
+  // woken by, and leaving the queue populated would also let a stale resolver
+  // survive into a later pool and be handed a worker somebody else is using.
+  rejectWaiters(new VisionUnavailable("vision disposed"));
+  if (workers) for (const w of workers) w.kill();
   if (scratchDir) await rm(scratchDir, { recursive: true, force: true }).catch(() => {});
   scratchDir = null;
 }

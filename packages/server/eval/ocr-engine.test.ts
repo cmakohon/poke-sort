@@ -1,9 +1,10 @@
 import sharp from "sharp";
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import {
   getOcrEngine,
   productionCollectorPlan,
   readCard,
+  resetOcrEngine,
   TESSERACT_ENGINE,
   VISION_ENGINE,
   WHOLE_CARD_PLAN,
@@ -11,8 +12,19 @@ import {
   type TextRecognizer,
 } from "../src/lib/identify/ocr";
 import { POKEMON_PROFILE } from "../src/lib/identify/profiles";
+import { disposeVision, visionRecognizer } from "../src/lib/identify/vision";
+import { VISION_OCR_BIN } from "../src/config";
+import { existsSync } from "node:fs";
 
 const OCR = POKEMON_PROFILE.ocr!;
+
+// getOcrEngine() probes, and probing spawns real sidecar processes and a temp
+// directory. Without this the run ends holding live children open on any macOS
+// machine where the sidecar is built.
+afterAll(async () => {
+  await disposeVision();
+  resetOcrEngine();
+});
 
 /**
  * A recogniser that returns canned text without touching an OCR engine, so the
@@ -127,5 +139,49 @@ describe("engine selection", () => {
     if (process.platform !== "darwin") {
       expect(engine.name).toBe("tesseract");
     }
+  });
+});
+
+// Only meaningful where a sidecar exists; the pool is a macOS concern.
+const hasVision = process.platform === "darwin" && existsSync(VISION_OCR_BIN);
+
+describe.runIf(hasVision)("vision pool", () => {
+  it("settles reads queued behind the pool instead of stranding them", async () => {
+    // One card fans out over more crops than there are workers (POOL_SIZE is 2),
+    // so callers are routinely parked in the acquire queue. A queued caller that
+    // is never woken never settles — which stalls the scan, then the HTTP
+    // request, then the graceful shutdown waiting on that request. Losing the
+    // pool has to reject them, not drop them.
+    const png = await sharp({
+      create: { width: 64, height: 32, channels: 3, background: "#fff" },
+    })
+      .png()
+      .toBuffer();
+
+    // Force the pool up FIRST. Without this every read rejects at the
+    // `pool === null` guard before it ever reaches the acquire queue, and the
+    // test passes against the very bug it is meant to catch.
+    await visionRecognizer(png);
+
+    const reads = Array.from({ length: 32 }, () =>
+      visionRecognizer(png).then(
+        () => "ok" as const,
+        () => "rejected" as const,
+      ),
+    );
+    // Long enough for two of them to be in flight and the rest to be parked in
+    // `waiters`, short enough that the queue cannot drain.
+    await new Promise((r) => setTimeout(r, 5));
+    // Pull the pool out from under the queue.
+    await disposeVision();
+
+    const outcomes = await Promise.race([
+      Promise.all(reads),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("queued reads never settled")), 5000),
+      ),
+    ]);
+    expect(outcomes).toHaveLength(32);
+    resetOcrEngine();
   });
 });
