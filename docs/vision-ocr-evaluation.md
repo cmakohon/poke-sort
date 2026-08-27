@@ -206,6 +206,44 @@ Verified end to end through `identifyCard` against the 21,714-card catalog:
 `[ocr] recogniser: Apple Vision`, 150 render probes, 99.3% top-1, 97.3%
 accepted, **0 false accepts**.
 
+## Why the accept gate did not move
+
+`eval:tune`'s full grid finds a better gate for Vision than the one that ships:
+same weights, `minMargin` 0.03 and no `distanceGap`, for **99.0% accept at zero
+false accepts** against the shipped 98.2%. It was not taken, for two reasons.
+
+**It sits one notch from the cliff.** At `minMargin` 0.02 the same config admits
+a false accept. `profiles.ts` already records why that disqualifies a config:
+the sweep argmax "sat one margin notch from a config with 2 false accepts, and a
+procedure-level cross-validation showed argmax-picking leaks false accepts on
+held-out halves". This run reproduces that — split-half CV over 40 splits puts
+the *selection procedure* at 23/21360 held-out false accepts (0.1%) for Vision
+and 28/21360 for Tesseract. The grid best is optimistic by construction.
+
+**The gate is shared, and the two engines disagree about it.**
+`POKEMON_PROFILE.accept` serves whichever engine resolved, so loosening it for
+Vision loosens it for the Tesseract fallback on Windows and Linux — where it is
+not free:
+
+| gate | Vision accept | Vision FALSE | Tesseract accept | Tesseract FALSE | fixed-config held-out |
+| --- | --- | --- | --- | --- | --- |
+| **shipped** (score .4, margin .06, +dgap) | **98.2%** | **0** | **85.0%** | **0** | **0/21360** |
+| score .45, margin .04 | 98.6% | 0 | 89.5% | **2** | **34/21360** |
+| score .4, margin .03 (grid best) | 99.0% | 0 | — | — | 0/21360 |
+
+Buying Vision another 0.4 points would hand the fallback two false accepts on
+this set and a 34/21360 held-out leak. False accepts are a constraint here, not
+a term, so the answer is no.
+
+Worth noting for the record: the Tesseract full-set best **is** the shipped
+gate. The incumbent was already at its own optimum, which is why adopting Vision
+needed no re-tuning at all — the extra accepts come from reading more numbers,
+not from a looser gate.
+
+**If that last 0.8% is ever wanted it needs a per-engine gate**, because these
+two gates are not compatible. That is a real change with its own validation
+burden, not a constant to nudge.
+
 ## Status
 
 The labels are corrected and `eval:tune` returns **zero false accepts on every

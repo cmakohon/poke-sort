@@ -258,6 +258,16 @@ export const POKEMON_PROFILE: IdentityProfile = {
   // the same card and being marked wrong for it; ex13-54 is bw7-98. minMargin
   // 0.06 may still be right, but nothing below is evidence for it. Re-tune
   // once the fixtures are corrected — docs/vision-ocr-evaluation.md.
+  //
+  // Re-validated 2026-08-27 under Apple Vision (docs/vision-ocr-evaluation.md)
+  // and DELIBERATELY UNCHANGED. This gate is shared by both recognisers, and
+  // they disagree about loosening it: score .45 / margin .04 gives Vision
+  // 98.6% accept at zero false, and gives the Tesseract fallback 2 false
+  // accepts with a 34/21360 fixed-config held-out leak. The grid's own best
+  // for Vision (margin .03, no distanceGap, 99.0%) sits one notch from a
+  // cliff, which is the same disqualification recorded above. The Tesseract
+  // full-set best IS this gate — the incumbent was already at its optimum, so
+  // Vision's gain comes entirely from reading more numbers.
   accept: {
     minScore: 0.4,
     minMargin: 0.06,
