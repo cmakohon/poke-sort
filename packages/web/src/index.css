@@ -69,6 +69,23 @@ code {
   --uncommon: oklch(78.194% 0.09549 244.199);
   --rare: oklch(83.828% 0.16176 98.163);
   --mythic: oklch(73.235% 0.17251 55.531);
+  /* Price tiers on the scan grid: $5 / $15 / $25 / $50. Distinct hues rather
+     than one ramp — mid-run the operator reads them at a glance, not by
+     comparing two tiles side by side.
+
+     Solid fills, and the same in both themes. They started as a 12% tint over
+     bg-muted, which turned out to be invisible: a $6 card and a $0.40 card
+     were indistinguishable at arm's length, which is the only distance this
+     feature is used from.
+
+     Filled, they carry white text, so lightness is a contrast budget and not
+     just a look — each clears 4.5:1 against white. Warm hues are the trap: the
+     natural bright gold for the $50+ tier only reaches 3.30:1, so the top tier
+     sits at a deeper amber than it wants to. */
+  --value-1: oklch(53.5% 0.14 149);
+  --value-2: oklch(54.5% 0.12 231);
+  --value-3: oklch(54.5% 0.19 300);
+  --value-4: oklch(57.5% 0.17 60);
 }
 
 .dark {
@@ -135,6 +152,10 @@ code {
   --color-uncommon: var(--uncommon);
   --color-rare: var(--rare);
   --color-mythic: var(--mythic);
+  --color-value-1: var(--value-1);
+  --color-value-2: var(--value-2);
+  --color-value-3: var(--value-3);
+  --color-value-4: var(--value-4);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);

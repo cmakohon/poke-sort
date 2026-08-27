@@ -154,35 +154,47 @@ export function CardToolbar({
           >
             <IconDownload className="size-4" />
           </Button>
-          <DynamicDialog
-            open={clearAllDialogOpen}
-            onOpenChange={setClearAllDialogOpen}
-            title={t("cardToolbar.deleteScannedCardsTitle")}
-            description={t("cardToolbar.deleteScannedCardsDescription")}
-            trigger={
-              <Button variant="outline" size="icon" title={t("cardToolbar.clearAllCardsTitle")}>
-                <IconTrash className="size-4" />
-              </Button>
-            }
-            footer={
-              <>
+          {/* Gated on the handler, not just present whenever the group is:
+              the scan screen supplies onExport but no onClearAll, so an
+              ungated trash icon rendered there and confirmed a deletion that
+              never happened. */}
+          {onClearAll && (
+            <DynamicDialog
+              open={clearAllDialogOpen}
+              onOpenChange={setClearAllDialogOpen}
+              title={t("cardToolbar.deleteScannedCardsTitle")}
+              description={t("cardToolbar.deleteScannedCardsDescription")}
+              trigger={
                 <Button
                   variant="outline"
-                  onClick={() => setClearAllDialogOpen(false)}
+                  size="icon"
+                  title={t("cardToolbar.clearAllCardsTitle")}
                 >
-                  {t("cardToolbar.cancel")}
+                  <IconTrash className="size-4" />
                 </Button>
-                <Button
-                  variant="destructive"
-                  onClick={handleClear}
-                  disabled={isClearing}
-                >
-                  {isClearing ? t("cardToolbar.clearing") : t("cardToolbar.clearAll")}
-                </Button>
-              </>
-            }
-            footerClassName="flex-col-reverse md:flex-row"
-          />
+              }
+              footer={
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => setClearAllDialogOpen(false)}
+                  >
+                    {t("cardToolbar.cancel")}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleClear}
+                    disabled={isClearing}
+                  >
+                    {isClearing
+                      ? t("cardToolbar.clearing")
+                      : t("cardToolbar.clearAll")}
+                  </Button>
+                </>
+              }
+              footerClassName="flex-col-reverse md:flex-row"
+            />
+          )}
         </ButtonGroup>
       )}
     </div>

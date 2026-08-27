@@ -35,6 +35,8 @@ import { useCollectionLocks } from "@/features/collections/api/use-collection-lo
 import { useCollections } from "@/features/collections/api/use-collections";
 import { reportSerialEvent } from "@/features/notifications/api/notification-settings";
 import { useScanTimer } from "@/features/scanner/api/use-scan-timer";
+import { VALUE_TIER_MIN } from "@/features/cards/lib/value-tier";
+import { playValueChime } from "@/features/scanner/lib/audio";
 import { repriceAsReverseHolo } from "@/features/scanner/lib/reverse-holo-pricing";
 import { useSerial } from "@/features/scanner/api/use-serial";
 import type { ScannedCardsContextValue } from "@/features/scanner/types";
@@ -537,6 +539,16 @@ export function ScannedCardsProvider({
 
       setCards((prev) => [record, ...prev]);
       setTimerTrigger(record.scannedAt);
+
+      // Announced off the re-priced card, not the raw one: reverse-holo mode
+      // rewrites the price, and that is the price the tile shows and the bins
+      // route on.
+      //
+      // Below the staging, not above it. addCard runs inside the scan loop's
+      // try, so an AudioContext that fails to construct would surface as a
+      // scanner fault — and a card the machine had not recorded or routed.
+      // Losing the sound is the cheaper failure.
+      if ((effectiveCard.price ?? 0) >= VALUE_TIER_MIN) playValueChime();
       // Staged against the run, not written to the collection: nothing lands
       // in a collection until the operator saves.
       const staged = ensureSession()

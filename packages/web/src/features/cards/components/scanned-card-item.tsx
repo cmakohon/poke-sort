@@ -1,5 +1,5 @@
-import { rarityColor } from "@/features/cards/lib/rarity-color";
 import { formatCardNumber } from "@/features/cards/lib/format-card-number";
+import { valueTier } from "@/features/cards/lib/value-tier";
 import { formatUsd } from "@/lib/format-currency";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,10 +41,17 @@ export const ScannedCardItem = memo(function ScannedCardItem({
   // verdict settles the question, so it clears the marker.
   const showAttention =
     reviewVerdict == null && (needsReview ?? hasAlternatives);
+  const tier = valueTier(card.price);
   return (
     <div
       className={cn(
-        "relative rounded-lg p-1 bg-muted border transition-shadow",
+        // isolate, or the tile's z-indexed children escape into the page:
+        // `relative` alone is z-index auto and opens no stacking context, so
+        // the select button's z-30 was competing with the sticky toolbar and
+        // footer directly — and winning, leaving checkmarks floating over both
+        // bars as the grid scrolled under them.
+        "relative isolate rounded-lg p-1 border transition-shadow",
+        tier ?? "bg-muted",
         isSelected && "ring-2 ring-primary ring-offset-1",
       )}
     >
@@ -179,29 +186,50 @@ export const ScannedCardItem = memo(function ScannedCardItem({
           <IconCheck />
         </Button>
       )}
-      <div className="flex flex-row justify-between items-center px-1 pb-1 gap-2">
+      <div
+        className={cn(
+          "flex flex-row justify-between items-center px-1 pb-1 gap-2",
+          tier && "text-white",
+        )}
+      >
         <div className="flex flex-row items-center gap-2 min-w-0">
-          <div
-            className="size-3 rounded-full shrink-0"
-            style={{ backgroundColor: rarityColor(card.rarity) }}
-          />
+          {/* The set code, not the set name: the name is what a tile this
+              narrow has room for least, and it used to be the thing that gave
+              way — "Black & White" truncated to "Bl…" while the collector
+              number sat next to it at full width. The number is the one that
+              yields now. */}
           <p
-            className="text-xs font-semibold truncate min-w-0"
-            title={`${card.setName || card.set} (${card.set.toUpperCase()})`}
+            className="text-xs font-semibold shrink-0"
+            title={card.setName || card.set.toUpperCase()}
           >
-            {card.setName || card.set.toUpperCase()}
+            {card.set.toUpperCase()}
           </p>
-          <p className="text-xs text-muted-foreground shrink-0">
+          <p
+            className={cn(
+              "text-xs truncate min-w-0",
+              tier ? "text-white/80" : "text-muted-foreground",
+            )}
+          >
             {formatCardNumber(card)}
           </p>
           {isDownloaded && (
             <span title={t("scannedCardItem.downloaded")}>
-              <IconDownload className="size-3 text-muted-foreground shrink-0" />
+              <IconDownload
+                className={cn(
+                  "size-3 shrink-0",
+                  tier ? "text-white/80" : "text-muted-foreground",
+                )}
+              />
             </span>
           )}
         </div>
         {card.price != null && (
-          <p className="text-xs font-medium text-muted-foreground shrink-0">
+          <p
+            className={cn(
+              "text-xs font-medium shrink-0",
+              tier ? "text-white" : "text-muted-foreground",
+            )}
+          >
             {formatUsd(card.price)}
           </p>
         )}

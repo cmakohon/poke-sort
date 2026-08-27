@@ -59,9 +59,9 @@ export interface CardCollectionViewProps {
   /** Manual add from the detail panel. Scan screen only. */
   onAddCard?: (card: PlayingCardWithDistance) => void;
   /**
-   * Empties the whole collection. Deliberately absent on the scan screen,
-   * where the destructive action is "discard this run" and belongs to the
-   * session bar instead.
+   * Empties the whole collection. Absent on the scan screen, where the
+   * destructive action is "discard this run" and belongs to the session bar
+   * instead — CardToolbar hides its trash button when this is not supplied.
    */
   onClearAll?: () => Promise<void> | void;
   /** Shown instead of the grid when there are no cards at all. */
@@ -189,9 +189,8 @@ export function CardCollectionView({
                 <Skeleton className="aspect-[2.5/3.5] rounded-lg" />
                 <div className="flex flex-row justify-between items-center px-1 pb-1">
                   <div className="flex flex-row items-center gap-2">
-                    <Skeleton className="size-3 rounded-full shrink-0" />
                     <Skeleton className="h-3 w-8 rounded" />
-                    <Skeleton className="h-3 w-6 rounded" />
+                    <Skeleton className="h-3 w-10 rounded" />
                   </div>
                   <Skeleton className="h-3 w-8 rounded" />
                 </div>
@@ -205,15 +204,11 @@ export function CardCollectionView({
 
   // The footer's children are laid out by this row, not by themselves — drop
   // the wrapper and the scanner's buttons stack vertically at full width.
-  const footer = (extra?: ReactNode) =>
-    footerSlot || extra ? (
-      <div className="sticky bottom-0 z-20 bg-background/80 backdrop-blur-2xl p-2 border-t">
-        <div className="flex flex-row gap-2 items-center w-full">
-          {extra}
-          {footerSlot}
-        </div>
-      </div>
-    ) : null;
+  const footer = footerSlot ? (
+    <div className="sticky bottom-0 z-20 bg-background/80 backdrop-blur-2xl p-2 border-t">
+      <div className="flex flex-row gap-2 items-center w-full">{footerSlot}</div>
+    </div>
+  ) : null;
 
   if (cards.length === 0) {
     return (
@@ -224,7 +219,7 @@ export function CardCollectionView({
             <p className="text-xs">{t("cardGrid.scanToGetStarted")}</p>
           </div>
         )}
-        {footer()}
+        {footer}
       </>
     );
   }
@@ -290,6 +285,22 @@ export function CardCollectionView({
           availableTypes={stats?.types}
           availableSets={stats?.sets}
         />
+        {/* Second row rather than the footer: the bottom bar drives the
+            machine, and burying "delete these scans" in among the feed and
+            pause buttons put a destructive action where the hands already are. */}
+        {selectedIds.size > 0 && (
+          <div className="flex flex-row gap-2 items-center w-full pt-2">
+            <span className="text-sm text-muted-foreground">
+              {t("cardGrid.cardsSelected", { count: selectedIds.size })}
+            </span>
+            <Button variant="ghost" onClick={() => setSelectedIds(new Set())}>
+              {t("cardGrid.clear")}
+            </Button>
+            <Button variant="destructive" onClick={() => setConfirmOpen(true)}>
+              {t("cardGrid.delete")}
+            </Button>
+          </div>
+        )}
       </div>
       {filteredAndSorted.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground flex-1">
@@ -356,21 +367,7 @@ export function CardCollectionView({
         )}
       </div>
 
-      {footer(
-        selectedIds.size > 0 ? (
-          <>
-            <span className="text-sm text-muted-foreground">
-              {t("cardGrid.cardsSelected", { count: selectedIds.size })}
-            </span>
-            <Button variant="ghost" onClick={() => setSelectedIds(new Set())}>
-              {t("cardGrid.clear")}
-            </Button>
-            <Button variant="destructive" onClick={() => setConfirmOpen(true)}>
-              {t("cardGrid.delete")}
-            </Button>
-          </>
-        ) : null,
-      )}
+      {footer}
 
       <SessionSummaryDialog
         open={summaryOpen}
