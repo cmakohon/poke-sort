@@ -3,6 +3,7 @@ import { createWorker, type Worker } from "tesseract.js";
 import type { OcrReading } from "@poke-sort/shared";
 import { MODEL_DIR } from "../../config";
 import type { OcrProfile, OcrRegion } from "./profiles";
+import { probeVision, visionRecognizer, VisionUnavailable } from "./vision";
 
 /**
  * Local OCR as a second identification signal.
@@ -79,6 +80,115 @@ export async function disposeOcr(): Promise<void> {
 }
 
 /**
+ * PNG bytes in, recognised text out — the only thing this module needs from an
+ * OCR engine.
+ *
+ * A seam, not an abstraction layer: everything above it (band geometry,
+ * preprocessing, the escalation ladder, the parsers) was measured against
+ * Tesseract's failure modes specifically, so swapping the engine is a question
+ * to be measured rather than a drop-in. eval/vision-ocr.ts implements this
+ * against Apple Vision so the sweep can answer that question on real captures.
+ */
+export type TextRecognizer = (png: Buffer) => Promise<string>;
+
+/** Round-robin across the Tesseract worker pool. */
+export const tesseractRecognizer: TextRecognizer = async (png) => {
+  // Workers hold no per-region parameters, so every worker is interchangeable
+  // and reads genuinely run side by side.
+  const pool = await getPool();
+  const worker = pool[nextWorker++ % pool.length];
+  const { data } = await worker.recognize(png);
+  return data.text.trim();
+};
+
+/**
+ * A recogniser plus the collector-number plan it reads best under.
+ *
+ * The two travel together because they are not independent: the band table
+ * exists to point Tesseract at the few crops it can binarise, and handing those
+ * same narrow, hard-thresholded crops to a scene-text engine throws away most
+ * of what makes it better. Pairing them in one value is what stops a fallback
+ * from running Vision's plan on Tesseract, which would read the whole card as
+ * prose and return garbage.
+ */
+export interface OcrEngine {
+  name: "vision" | "tesseract";
+  recognize: TextRecognizer;
+  plan(profile: OcrProfile): CollectorNumberPlan;
+}
+
+/**
+ * One read of the entire capture, unprocessed.
+ *
+ * Vision finds the text itself, so there is nothing for the era-specific bands
+ * to do. Measured on the 1068-capture real set this beats running Vision
+ * through production's bands, 936 collector numbers to 883, on a third of the
+ * reads. No escalation ladder: those four rungs are hard thresholds, which is
+ * binarisation for an engine that does not binarise.
+ */
+export const WHOLE_CARD_PLAN: CollectorNumberPlan = {
+  bands: [{ region: { x0: 0, y0: 0, x1: 1, y1: 1 }, opts: { raw: true, scale: 1 } }],
+};
+
+let enginePromise: Promise<OcrEngine> | null = null;
+
+export const TESSERACT_ENGINE: OcrEngine = {
+  name: "tesseract",
+  recognize: tesseractRecognizer,
+  plan: productionCollectorPlan,
+};
+
+/**
+ * Vision, wrapped so that losing the sidecar costs one degraded reading rather
+ * than every reading after it.
+ *
+ * A dead sidecar is not retried in place: the plan would still be the
+ * whole-card one, and Tesseract cannot read that. Instead the cached engine is
+ * cleared, this scan finishes with whatever it has (OCR is an enhancement — the
+ * embedding still carries it), and the next scan re-resolves to Tesseract with
+ * Tesseract's bands.
+ */
+export const VISION_ENGINE: OcrEngine = {
+  name: "vision",
+  recognize: async (png) => {
+    try {
+      return await visionRecognizer(png);
+    } catch (err) {
+      if (err instanceof VisionUnavailable) {
+        console.error(`[ocr] vision lost mid-scan, reverting to Tesseract: ${err.message}`);
+        enginePromise = null;
+        return "";
+      }
+      throw err;
+    }
+  },
+  plan: () => WHOLE_CARD_PLAN,
+};
+
+/**
+ * Which engine this machine gets, decided once and remembered.
+ *
+ * Probed rather than assumed from `process.platform`: the sidecar is macOS
+ * only, but a macOS build can still be missing it (no Swift toolchain on the
+ * builder) or ship one that will not run (wrong arch, Gatekeeper). Every one of
+ * those has to end in Tesseract rather than in an app that reads nothing.
+ */
+export function getOcrEngine(): Promise<OcrEngine> {
+  if (!enginePromise) {
+    enginePromise = probeVision().then((ok) => {
+      console.log(`[ocr] recogniser: ${ok ? "Apple Vision" : "tesseract.js"}`);
+      return ok ? VISION_ENGINE : TESSERACT_ENGINE;
+    });
+  }
+  return enginePromise;
+}
+
+/** Test seam: forget the probed engine so the next call re-decides. */
+export function resetOcrEngine(): void {
+  enginePromise = null;
+}
+
+/**
  * A rescue pass for text Tesseract's own binarisation cannot separate.
  *
  * Several eras print the collector number in silver-on-holofoil (ex, neo,
@@ -109,6 +219,16 @@ export interface ReadOptions {
   contrast?: boolean;
   /** Sharpen after normalise. `contrast` already sharpens; this is for the other path. */
   sharpen?: boolean;
+  /**
+   * Extract and upscale only — no greyscale, no levels, no threshold.
+   *
+   * Every other option here exists to hand Tesseract something its adaptive
+   * binarisation can separate. A scene-text recogniser does not binarise, so
+   * for one of those the same transforms are not neutral, they are destroyed
+   * information (colour is a real cue for where the digits end and the foil
+   * begins). Exists for the Vision arms of eval/ocr-sweep.ts.
+   */
+  raw?: boolean;
 }
 
 async function readRegion(
@@ -117,6 +237,7 @@ async function readRegion(
   height: number,
   region: OcrRegion,
   opts: ReadOptions = {},
+  recognize: TextRecognizer = tesseractRecognizer,
 ): Promise<string> {
   const left = Math.max(0, Math.round(region.x0 * width));
   const top = Math.max(0, Math.round(region.y0 * height));
@@ -129,15 +250,17 @@ async function readRegion(
   let pipeline = image
     .clone()
     .extract({ left, top, width: cropWidth, height: cropHeight })
-    .resize({ width: cropWidth * (opts.scale ?? (opts.contrast ? 4 : 3)) })
-    .greyscale();
-  pipeline = opts.contrast
-    ? pipeline.linear(1.35, -35).sharpen()
-    : opts.sharpen
-      ? pipeline.normalise().sharpen()
-      : pipeline.normalise();
-  if (opts.threshold != null) pipeline = pipeline.threshold(opts.threshold);
-  if (opts.negate) pipeline = pipeline.negate();
+    .resize({ width: cropWidth * (opts.scale ?? (opts.contrast ? 4 : 3)) });
+  if (!opts.raw) {
+    pipeline = pipeline.greyscale();
+    pipeline = opts.contrast
+      ? pipeline.linear(1.35, -35).sharpen()
+      : opts.sharpen
+        ? pipeline.normalise().sharpen()
+        : pipeline.normalise();
+    if (opts.threshold != null) pipeline = pipeline.threshold(opts.threshold);
+    if (opts.negate) pipeline = pipeline.negate();
+  }
 
   const buffer = await pipeline
     // Tesseract warns and guesses when the DPI is implausible; the upscale
@@ -146,12 +269,7 @@ async function readRegion(
     .png()
     .toBuffer();
 
-  // Round-robin across the pool. Workers hold no per-region parameters, so
-  // every worker is interchangeable and reads genuinely run side by side.
-  const pool = await getPool();
-  const worker = pool[nextWorker++ % pool.length];
-  const { data } = await worker.recognize(buffer);
-  return data.text.trim();
+  return recognize(buffer);
 }
 
 /**
@@ -212,6 +330,14 @@ export function productionCollectorPlan(
     // trade is +7 accepts for 2 mis-sorts, and false accepts are a constraint
     // here, not a term. Do not re-litigate this without new evidence about
     // telling a garbled read from a clean one.
+    //
+    // ⚠ CORRECTION, 2026-08-27: NEITHER was a false accept. Both fixtures are
+    // mislabeled and the band read both correctly — dp2-113 is Night
+    // Maintenance 120/132 (dp3-120), ex13-54 is Vibrava 98/149 (bw7-98), each
+    // confirmed by opening the capture. "The same card, found again from
+    // scratch" was the same bad LABEL found twice. This rejection has no
+    // surviving evidence behind it and the band is owed a fresh measurement
+    // once the labels are fixed. See docs/vision-ocr-evaluation.md.
     escalation: deepRight ? { region: deepRight, ladder: ESCALATION } : undefined,
   };
 }
@@ -301,13 +427,16 @@ export async function readCollectorNumber(
   width: number,
   height: number,
   plan: CollectorNumberPlan,
+  recognize: TextRecognizer = tesseractRecognizer,
 ): Promise<Pick<OcrReading, "collectorNumber" | "setTotal" | "collectorNumberRaw">> {
   const reading: Pick<
     OcrReading,
     "collectorNumber" | "setTotal" | "collectorNumberRaw"
   > = {};
   const texts = await Promise.all(
-    plan.bands.map((b) => readRegion(image, width, height, b.region, b.opts)),
+    plan.bands.map((b) =>
+      readRegion(image, width, height, b.region, b.opts, recognize),
+    ),
   );
 
   // Prefer a reading that includes the denominator — it is worth double. The
@@ -338,7 +467,7 @@ export async function readCollectorNumber(
       const rung = await Promise.all(
         ladder
           .slice(i, i + 2)
-          .map((opts) => readRegion(image, width, height, region, opts)),
+          .map((opts) => readRegion(image, width, height, region, opts, recognize)),
       );
       let found = false;
       for (const text of rung) {
@@ -360,10 +489,34 @@ export async function readCollectorNumber(
   return reading;
 }
 
-/** Name, collector number and HP from one capture, all bands in parallel. */
+/**
+ * What the live pipeline calls: read this capture with whichever engine this
+ * machine actually has.
+ *
+ * Kept separate from `readCard` so the eval harness keeps naming its recogniser
+ * and plan explicitly — a sweep arm that silently became Vision on macOS would
+ * report a baseline that is not the baseline.
+ */
+export async function readCardWithBestEngine(
+  imageBuffer: Buffer,
+  profile: OcrProfile,
+): Promise<OcrReading> {
+  const engine = await getOcrEngine();
+  return readCard(imageBuffer, profile, engine.recognize, engine.plan(profile));
+}
+
+/**
+ * Name, collector number and HP from one capture, all bands in parallel.
+ *
+ * `recognize` and `plan` are seams for the eval harness, which measures
+ * alternative engines end to end. Both default to Tesseract's behaviour, so a
+ * caller that names neither gets exactly what shipped before Vision existed.
+ */
 export async function readCard(
   imageBuffer: Buffer,
   profile: OcrProfile,
+  recognize: TextRecognizer = tesseractRecognizer,
+  plan?: CollectorNumberPlan,
 ): Promise<OcrReading> {
   const image = sharp(imageBuffer);
   const meta = await image.metadata();
@@ -377,14 +530,19 @@ export async function readCard(
   // holds which fact is not knowable in advance, so nothing is gained by
   // reading them in a clever order and everything by reading them in parallel.
   const [nameTexts, number, hpTexts] = await Promise.all([
-    Promise.all(profile.name.map((r) => readRegion(image, width, height, r))),
+    Promise.all(
+      profile.name.map((r) => readRegion(image, width, height, r, {}, recognize)),
+    ),
     readCollectorNumber(
       image,
       width,
       height,
-      productionCollectorPlan(profile),
+      plan ?? productionCollectorPlan(profile),
+      recognize,
     ),
-    Promise.all(profile.hp.map((r) => readRegion(image, width, height, r))),
+    Promise.all(
+      profile.hp.map((r) => readRegion(image, width, height, r, {}, recognize)),
+    ),
   ]);
   Object.assign(reading, number);
 

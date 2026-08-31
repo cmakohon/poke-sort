@@ -73,6 +73,25 @@ export const MODEL_DIR = process.env.POKE_SORT_MODEL_DIR
 export const MODELS_OFFLINE = process.env.POKE_SORT_MODELS_OFFLINE === "1";
 
 /**
+ * The Apple Vision OCR sidecar (native/vision-ocr.swift), or null when this
+ * build has none.
+ *
+ * macOS only. Vision reads 3.5x more collector numbers than tesseract.js on
+ * real captures and takes the review pile from 15.1% to 1.8%
+ * (docs/vision-ocr-evaluation.md), but it is a system framework, so Windows and
+ * Linux keep Tesseract. Absence is a supported state everywhere, not an error:
+ * lib/identify/ocr.ts probes for it and falls back.
+ *
+ * Resolved like MIGRATIONS_DIR — the default has to work for both
+ * `tsx src/index.ts` and the bundled `dist/index.js`, which sit at different
+ * depths, so it is anchored on the package rather than on __dirname's parent.
+ * The desktop shell overrides it with an extraResources path.
+ */
+export const VISION_OCR_BIN =
+  process.env.POKE_SORT_VISION_OCR ??
+  path.resolve(__dirname, "../native/vision-ocr");
+
+/**
  * Refresh the identified card's price from upstream during a scan.
  *
  * On by default: bin rules can route on price, and the routing decision is made

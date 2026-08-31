@@ -42,6 +42,19 @@ extraResources:
   # rather than downloaded: offline operation is the whole point of the app.
   - from: ../../.models
     to: models
+  # The Apple Vision OCR sidecar, built by the server's scripts/build-vision.mjs
+  # during bundle:server. A ~100 KB Swift binary that must stay OUTSIDE the asar
+  # because it has to be exec'd; adhoc-sign.mjs finds it by Mach-O magic and
+  # signs it with everything else.
+  #
+  # The DIRECTORY, not the binary, and that is the whole point: the binary only
+  # exists on macOS, and a `from` that does not exist fails the build with an
+  # opaque copyFiles error (the same trap the .models check above guards). The
+  # directory always exists because the .swift source is tracked, so Windows and
+  # Linux copy a 4 KB source file, find no sidecar, and fall back to
+  # tesseract.js — which is exactly what they should do.
+  - from: ../server/native
+    to: vision
 
 # Ad-hoc signs the macOS bundle. Runs on every platform; no-ops off darwin.
 # afterPack rather than afterSign — see the script for why both halves of that

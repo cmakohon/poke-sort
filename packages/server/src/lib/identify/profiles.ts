@@ -122,6 +122,14 @@ const POKEMON_OCR: OcrProfile = {
   // better embedding and lost anyway, because a matched number scores 1.0 and
   // outvotes it. A confidently wrong number is worse than no number, so a
   // wider crop only pays once the digits it adds are trustworthy.
+  //
+  // ⚠ CORRECTION, 2026-08-27: dp2-113 IS dp3-120. The capture is Night
+  // Maintenance 120/132 (Secret Wonders) and the fixture label is wrong — the
+  // band read it correctly and was scored against a bad label. So this
+  // rejection rests on one verified non-failure and one (bw9-43) nobody has
+  // checked. See docs/vision-ocr-evaluation.md and eval/label-audit.ts. The
+  // reasoning above is still sound; the evidence for it is not. Re-measure
+  // against corrected labels before treating this band as settled.
   collectorNumber: [
     // Deep right: dp, base, later-ex, neo print the number at y=.955-.985 —
     // BELOW the band this list used to stop at (y=.97), which cut the digits
@@ -243,6 +251,23 @@ export const POKEMON_PROFILE: IdentityProfile = {
   // ex13-54 -> bw7-98, the latter already on record as a false accept from the
   // rejected taller escalation band). The cliff is one notch below, and the
   // fixed-config held-out estimate at this gate is 0/21360.
+  //
+  // ⚠ CORRECTION, 2026-08-27: both "false accepts" are label errors. xy0-36
+  // and bw10-83 are BOTH captures of bw2-95 (Pokemon Catcher 95/98), so that
+  // pair was the pipeline matching one capture of a card to another capture of
+  // the same card and being marked wrong for it; ex13-54 is bw7-98. minMargin
+  // 0.06 may still be right, but nothing below is evidence for it. Re-tune
+  // once the fixtures are corrected — docs/vision-ocr-evaluation.md.
+  //
+  // Re-validated 2026-08-27 under Apple Vision (docs/vision-ocr-evaluation.md)
+  // and DELIBERATELY UNCHANGED. This gate is shared by both recognisers, and
+  // they disagree about loosening it: score .45 / margin .04 gives Vision
+  // 98.6% accept at zero false, and gives the Tesseract fallback 2 false
+  // accepts with a 34/21360 fixed-config held-out leak. The grid's own best
+  // for Vision (margin .03, no distanceGap, 99.0%) sits one notch from a
+  // cliff, which is the same disqualification recorded above. The Tesseract
+  // full-set best IS this gate — the incumbent was already at its optimum, so
+  // Vision's gain comes entirely from reading more numbers.
   accept: {
     minScore: 0.4,
     minMargin: 0.06,

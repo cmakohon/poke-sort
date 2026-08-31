@@ -26,6 +26,7 @@ import { notificationsRouter } from "./routes/notifications";
 import { orgSettingsRouter } from "./routes/org-settings";
 import { reviewRouter } from "./routes/review";
 import { scanSessionsRouter } from "./routes/scan-sessions";
+import { disposeVision } from "./lib/identify/vision";
 
 /**
  * Present only when Electron runs this file inside a `utilityProcess`; the
@@ -177,6 +178,11 @@ function installShutdownHandlers(server: { close(cb?: (err?: Error) => void): vo
       // Best-effort: a stale port file only ever points a reader at a
       // connection-refused, which is self-explaining.
       rmSync(PORT_FILE, { force: true });
+      // The OCR sidecars exit on their own when this process closes their
+      // stdin, so this is tidiness rather than a leak fix — but it happens
+      // before the database close, which is the slow part, so they are gone by
+      // the time the shell stops waiting.
+      await disposeVision().catch(() => {});
       await new Promise<void>((resolve) => server.close(() => resolve()));
       await client.close();
       // After the close, so the directory is never advertised as free while
