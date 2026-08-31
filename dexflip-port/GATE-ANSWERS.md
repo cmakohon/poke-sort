@@ -1,5 +1,14 @@
 # DexFlip gate answers — from the poke-sort engine
 
+> **2026-08-31, post-pin note.** DexFlip's interface pin has been adopted and
+> the delivered Swift now matches it: `identify(CGImage, CardQuad) ->
+> Identification` with the verdict exposed, `versionTag`, bare `displayName`
+> + `setLabel`, top-left-origin normalized quad (y flipped once, inside
+> `deskew`). Statements below about the *delivered code* — the `Data` entry
+> point, engine-side EXIF handling, the internal rectangle-detection
+> fallback — describe the pre-pin deliverable and are superseded; the
+> measurements and engine facts all stand.
+
 Answered from the code (`packages/server/src/lib/identify/`,
 `packages/web/src/features/scanner/lib/`) and from measurements run against
 the real catalog and the 1068-capture labelled eval set on 2026-08-31.
@@ -383,14 +392,24 @@ conformance + pipeline actor + faithful ports of fusion/gating/parsers, all
 first-party frameworks), the exported 63 MB index (built today from the live
 catalog), the export script, and this document.
 
+**Done 2026-08-31 — the Core ML conversion** (`SigLIP-vision.mlpackage`,
+178 MB fp16, preprocessing baked in; `scripts/convert_siglip.py`). Two
+measured findings attached to it:
+- The ANE silently corrupts SigLIP (fp16 activation overflow; cosine vs truth
+  0.53–0.76). Faithful on `.cpuAndGPU` (0.99999, ~80 ms/pass on an M-series
+  GPU); `Embedder.swift` pins that.
+- The G7 comparability question is now measured, and the answer is **re-embed
+  required**: Core ML query embeddings sit up to 0.016 from the ONNX-q8 ones,
+  worst per-candidate |Δd| 0.029 (bigger than the 0.02 distanceGap notch),
+  top-50 overlap dips to 76%, top-1 catalog match flips on 2/24 captures.
+
 Not done, in dependency order, with owners to agree:
-1. **Core ML conversion** of the SigLIP vision tower (coremltools, needs a
-   Python env; ~a day including compile-time preprocessing).
-2. **Catalog re-embed with the converted model + index re-export** (the G7
-   comparability constraint; mechanical, ~40k forward passes).
-3. **Parity harness**: run the 1068-capture eval through the Swift pipeline
+1. **Catalog re-embed with the Core ML model + index re-export** (the G7
+   comparability constraint, now confirmed by measurement; needs the ~19.5k
+   TCGdex card renders re-fetched, then mechanical).
+2. **Parity harness**: run the 1068-capture eval through the Swift pipeline
    and confirm it reproduces 99.6% / 98.2% / 0 false accepts before any
    handheld variable enters.
-4. **Handheld eval**: ~200 labelled captures through DexFlip's real capture
+3. **Handheld eval**: ~200 labelled captures through DexFlip's real capture
    path — the number that answers G1e and validates your ≤20%/≤5% targets.
    Until this exists, no handheld accuracy claim should ship.

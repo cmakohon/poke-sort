@@ -49,26 +49,37 @@ index/
 **Done and faithful to the measured pipeline:** fusion, parsers, tier gate,
 band/window geometry, retrieval semantics, orientation retry, index export.
 
+**Done 2026-08-31 — the Core ML model** (`SigLIP-vision.mlpackage`, 178 MB
+fp16 mlprogram, iOS17+ target, preprocessing baked in, converted via
+`torch.export` — `jit.trace` fails on the pooling head's MultiheadAttention).
+Two measured facts that MUST survive into the app:
+
+- **Never run it with `computeUnits = .all`.** SigLIP's attention overflows
+  the ANE's fp16 arithmetic and the embedding is silently garbage (cosine vs
+  fp32 truth 0.53–0.76). On `.cpuAndGPU` it is faithful (0.99999) and fast
+  (~80 ms/pass on an M-series GPU). `Embedder.swift` pins this.
+- **The bundled index is NOT usable with this model — re-embed confirmed
+  required.** Measured on 24 real captures against the exported index:
+  query embeddings differ from the ONNX-q8 ones by up to 0.016 cosine
+  distance, worst per-candidate |Δd| 0.029 — **bigger than the whole 0.02
+  `distanceGap` notch** — top-50 overlap dips to 76%, and the top-1 catalog
+  match changes on 2/24 captures. Exactly the silent degradation
+  `embedding-identity.ts` warns about.
+
 **Not done, and blocking real accuracy:**
 
-1. **The Core ML model does not exist yet.** Convert
-   `google/siglip-base-patch16-512`'s vision tower with coremltools (fp16,
-   ~185 MB; palettization can shrink it — measure accuracy after).
-   Preprocessing must be baked in: squash-resize to 512×512 (no aspect
-   preservation), scale 1/255, normalise (x−0.5)/0.5, RGB.
-2. **The bundled vectors match the ONNX q8 embedder, not Core ML.** Vectors
-   are only comparable to vectors made the same way
-   (`packages/server/src/lib/embedding-identity.ts`). Either verify Core ML
-   distances sit well inside the 0.02 `distanceGap` notch of the ONNX ones, or
-   — the safe default — **re-embed the catalog with the converted model** and
-   re-run `export-dexflip-index.ts` against it. Re-embedding is ~40k forward
-   passes; the sorter repo has the loops.
-3. **No handheld-photo accuracy number exists.** Every figure below is from
+1. **Re-embed the catalog with the Core ML model** and re-run
+   `export-dexflip-index.ts`. The catalog stores vectors, not images, so this
+   means re-fetching ~19.5k card renders from TCGdex (the sync already knows
+   the URLs) and running them through the mlpackage — a few hours of pipeline,
+   then bump the index identity (`model: coreml-fp16`) so a mismatched pair
+   can never ship.
+2. **No handheld-photo accuracy number exists.** Every figure below is from
    the sorter's fixed webcam. The port needs its own eval set: ~200 handheld
    captures through DexFlip's own capture path, labelled, run through the
    parity harness. The sorter's eval tooling (`eval/capture-signals.ts`,
    `eval/tune.ts`) is reusable for the replay half.
-4. **Two deliberate divergences to parity-test:** Vision gets raw (not
+3. **Two deliberate divergences to parity-test:** Vision gets raw (not
    greyscale-normalised) name/HP crops, and the Tesseract fallback +
    escalation ladder are dropped entirely (iOS always has Vision).
 
@@ -79,13 +90,24 @@ band/window geometry, retrieval semantics, orientation retry, index export.
    CoreImage, Accelerate, ImageIO.
 2. Add the three `index/` files to the target as bundle resources (no asset
    catalog; `CardIndex` loads them by name, memory-mapped).
-3. Add the converted `SigLIP.mlpackage` when it exists.
+3. Add `SigLIP-vision.mlpackage`. It is gitignored (177 MB weight file; LFS
+   is unavailable on this fork) — download it from the
+   `dexflip-port-model-v1` GitHub release, or rebuild it byte-for-byte with
+   `scripts/convert_siglip.py`. Load with `.cpuAndGPU`, never `.all`.
 4. Construct once at startup, off the main actor:
    `let service = try PokeSortRecognitionService(modelURL: ...)` — this pays
    index load + model compile (~1–2 s) so the first shutter press doesn't.
-5. Preferred call: `identify(_:cardQuad:)` with the quad from DexFlip's
-   existing `DetectRectanglesRequest`. The bare `identify(_:)` falls back to
-   internal rectangle detection and whiffs when no quad is found.
+5. The entry point is the pinned contract (DexFlip interface pin,
+   2026-08-31): `identify(_ image: CGImage, quad: CardQuad) async ->
+   Identification`. DexFlip passes upright sRGB pixels with the card's long
+   axis vertical and a normalized **top-left-origin, y-down** quad; the
+   engine flips y exactly once (in `deskew`), warps to 745×1043, and owns the
+   180° ambiguity. Returns up to 6 candidates plus the
+   accept/review/no-match verdict; `candidates.isEmpty == (verdict ==
+   .noMatch)`. `versionTag` is derived from the index's embedding identity +
+   card count + an engine revision constant — persist it per card as the pin
+   says. There is no full-frame/`Data` entry point and no internal rectangle
+   detection: finding the card is DexFlip's job.
 
 ## Numbers (sorter hardware/captures — the honest baseline)
 

@@ -73,3 +73,4 @@ packages/server/eval/.artprobe/
 # native/vision-ocr.swift; macOS-only and machine-specific, so the source is
 # tracked and the binary is not.
 packages/server/native/vision-ocr
+dexflip-port/SigLIP-vision.mlpackage/

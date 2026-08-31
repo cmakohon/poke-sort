@@ -48,9 +48,12 @@ final class SigLIPEmbedder: CardEmbedder {
 
     init(modelURL: URL) throws {
         let config = MLModelConfiguration()
-        // .all lets Core ML pick the ANE; SigLIP-base is a straightforward
-        // ViT and should schedule almost entirely onto it.
-        config.computeUnits = .all
+        // NEVER .all: SigLIP's attention activations overflow the ANE's fp16
+        // arithmetic and the embedding comes back silently wrong (measured
+        // 2026-08-31: cosine vs fp32 truth 0.53-0.76 on the ANE, 0.99999 on
+        // GPU, ~80ms/pass on an M-series GPU). fp16 weights are fine; the
+        // ANE's math is not.
+        config.computeUnits = .cpuAndGPU
         model = try MLModel(contentsOf: modelURL, configuration: config)
         guard let input = model.modelDescription.inputDescriptionsByName.first?.key,
               let output = model.modelDescription.outputDescriptionsByName.first?.key

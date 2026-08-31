@@ -28,9 +28,21 @@ struct CandidateHit: Sendable {
     let artDistance: Double?
 }
 
+/// Which embedding pipeline produced the index's vectors — the same identity
+/// the sorter stamps on packs (embedding-identity.ts). Folded into the
+/// service's versionTag so a re-embedded index changes the tag by itself.
+struct IndexIdentity: Codable, Sendable {
+    let model: String
+    let dtype: String
+    let dim: Int
+    let preprocessing: Int
+    let artWindows: Int
+}
+
 final class CardIndex: Sendable {
     let cards: [IndexedCard]
     let trustworthyTotals: Set<Int>
+    let identity: IndexIdentity
     private let dim: Int
     /// Row-major Float16, one row per card, unit-normalised.
     private let whole: [Float16]
@@ -38,6 +50,7 @@ final class CardIndex: Sendable {
 
     init(cardsURL: URL, embeddingsURL: URL, artEmbeddingsURL: URL) throws {
         struct RawMeta: Codable {
+            let identity: IndexIdentity
             let dim: Int
             let count: Int
             let setTotals: [Int]
@@ -46,6 +59,7 @@ final class CardIndex: Sendable {
         let meta = try JSONDecoder().decode(RawMeta.self, from: Data(contentsOf: cardsURL))
         cards = meta.cards
         dim = meta.dim
+        identity = meta.identity
         trustworthyTotals = Set(meta.setTotals)
 
         func loadF16(_ url: URL, expecting rows: Int) throws -> [Float16] {
